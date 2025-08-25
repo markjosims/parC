@@ -18,7 +18,7 @@ CLASS_PREFIXES = [
     "r",
     "l",
 ]
-CLASS_AGREE = features.Feature("class", *CLASS_PREFIXES)
+CLASS_AGREE = features.Feature("class", *CLASS_PREFIXES+['unmarked'])
 
 # verb features
 
@@ -30,7 +30,7 @@ TAM = features.Feature(
     "infinitive",
     "imperative"
 )
-DEIXIS = features.Feature("deixis", "ventive", "itive")
+DEIXIS = features.Feature("deixis", "ventive", "itive", "unmarked")
 
 INFLECTED_VERB = features.Category(TAM, DEIXIS, CLASS_AGREE)
 
