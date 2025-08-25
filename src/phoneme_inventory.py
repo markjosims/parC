@@ -3,7 +3,7 @@ Declare FSAs for phoneme inventory and phonological classes in Tira.
 """
 
 import pynini
-from pynini.lib import paradigms
+from pynini.lib import paradigms, pynutil
 
 TIRA_CONSONANTS = [
     'm', 'n',      'ɲ', 'ŋ',
@@ -29,8 +29,11 @@ FALL_TONE = '\u0306'
 RISE_TONE = '\u030c'
 TIRA_TONES = [HIGH_TONE, LOW_TONE, FALL_TONE, RISE_TONE]
 
+BOUNDARY_STR = '-'
+BOUNDARY=pynini.accep(BOUNDARY_STR)
+
 TIRA_SYMBOL_TABLE = pynini.SymbolTable(name="Tira phones")
-for phone in TIRA_CONSONANTS+TIRA_VOWELS+TIRA_TONES:
+for phone in TIRA_CONSONANTS+TIRA_VOWELS+TIRA_TONES+[BOUNDARY_STR]:
     TIRA_SYMBOL_TABLE.add_symbol(phone)
 TIRA_SYMBOL_TABLE
 
