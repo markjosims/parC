@@ -3,6 +3,7 @@ Declare FSAs for phoneme inventory and phonological classes in Tira.
 """
 
 import pynini
+from pynini.lib import paradigms
 
 TIRA_CONSONANTS = [
     'm', 'n',      'ɲ', 'ŋ',
@@ -36,4 +37,5 @@ TIRA_SYMBOL_TABLE
 C = pynini.union(*TIRA_CONSONANTS).optimize()
 V = pynini.union(*TIRA_VOWELS).optimize()
 T = pynini.union(*TIRA_TONES).optimize()
-SigmaStar = pynini.union(C,V,T).closure().optimize()
+SIGMASTAR = pynini.union(C,V,T).closure().optimize()
+STEM = paradigms.make_byte_star_except_boundary()
