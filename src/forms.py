@@ -41,12 +41,6 @@ VO_IT_PFV_FV = lambda stem: paradigms.suffix("-ɛ̀", stem).optimize()
 AV_INF_FV = lambda stem: paradigms.suffix("-á", stem).optimize()
 OV_INF_FV = lambda stem: paradigms.suffix("-ɔ́", stem).optimize()
 
-ITIVE_D_STEM = C.closure() + V + pynutil.insert(HIGH_TONE) + STEM.closure()
-VENTIVE_D_STEM = C.closure() + V + pynutil.insert(LOW_TONE) + STEM.closure()
-
-ITIVE_D_STEM = ITIVE_D_STEM.optimize()
-VENTIVE_D_STEM = VENTIVE_D_STEM.optimize()
-
 # prefixes/auxiliaries
 
 IPFV_AUX = lambda stem: paradigms.prefix("á-", stem).optimize()
