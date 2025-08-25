@@ -36,6 +36,7 @@ INFLECTED_VERB = features.Category(TAM, DEIXIS, CLASS_AGREE)
 
 # verb feature bundles
 
+INFINITIVE = features.FeatureVector(INFLECTED_VERB, "tam=infinitive", "class=ð", "deixis=unmarked")
 IPFV_IT = features.FeatureVector(INFLECTED_VERB, "tam=imperfective", "deixis=itive")
 IPFV_VENT = features.FeatureVector(INFLECTED_VERB, "tam=imperfective", "deixis=ventive")
 PFV_IT = features.FeatureVector(INFLECTED_VERB, "tam=perfective", "deixis=itive")
