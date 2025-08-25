@@ -27,6 +27,11 @@ def get_root2fv_fst() -> pynini.Fst:
     root2fv = pynini.string_map(root2fv_strs)
     return root2fv
 
+def get_roots_for_class(fv_class: str) -> List[str]:
+    fv_mask = VERBS_DF['root_fv']==fv_class
+    roots = VERBS_DF.loc[fv_mask, 'verb_root'].tolist()
+    return roots
+
 def main() -> int:
     root2gloss = get_root2gloss_fst()
     root2gloss.write(ROOT2GLOSS_FST_PATH)
