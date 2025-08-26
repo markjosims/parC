@@ -7,45 +7,52 @@ import pynini
 from pynini.lib import features, paradigms, rewrite, pynutil
 from phoneme_inventory import *
 from features import *
-from lexicon import get_roots_for_class
+from lexicon import get_roots_for_class, get_all_verb_roots_and_fvs
+from typing import *
+import random
 
 # helper functions
 
-def print_forms(stem: str, paradigm: paradigms.Paradigm):
+def print_forms(stem: str, paradigm: paradigms.Paradigm, return_wordforms: bool=False):
     lattice = rewrite.rewrite_lattice(
         stem,
         paradigm.stems_to_forms @ paradigm.feature_label_rewriter
     )
+    wordforms = []
     for wordform in rewrite.lattice_to_strings(lattice):
-        print(wordform)
+        if return_wordforms:
+            wordforms.append(wordform)
+        else:
+            print(wordform)
+    if return_wordforms:
+        return wordforms
+
+def add_class_prefix(stem: pynini.Fst, class_agree: str) -> pynini.Fst:
+    return (paradigms.prefix(f"{class_agree}ə̀-", stem)@DELETE_SCHWA_BEFORE_VOWEL).optimize()
 
 def add_class_prefixes_to_slots(slot_list):
     slots_w_class_prefixes = []
     for stem, feature_vector in slot_list:
         category = feature_vector.category
         feature_values = [f"{feature}={value}" for feature, value in feature_vector.values.items()]
-        for prefix in CLASS_PREFIXES:
-            features_with_class = features.FeatureVector(category, f"class={prefix}", *feature_values)
-            prefixed_verb = (paradigms.prefix(f"{prefix}ə̀-", stem)@DELETE_SCHWA_BEFORE_VOWEL).optimize()
+        for class_agree in CLASS_PREFIXES:
+            features_with_class = features.FeatureVector(category, f"class={class_agree}", *feature_values)
+            prefixed_verb = add_class_prefix(stem, class_agree)
             slots_w_class_prefixes.append((prefixed_verb, features_with_class))
     return slots_w_class_prefixes
 
-# curried FV functions
+# FV mappings
 
-VO_VENT_FV = lambda stem: paradigms.suffix("-ɔ́", stem).optimize()
-VU_VENT_FV = lambda stem: paradigms.suffix("-ú", stem).optimize()
-VQ_VENT_FV = lambda stem: paradigms.suffix("-ó", stem).optimize()
-VI_VENT_FV = lambda stem: paradigms.suffix("-í", stem).optimize()
-
-OV_IT_IPFV_FV = lambda stem: paradigms.suffix("-ɔ̀", stem).optimize()
-AV_IT_IPFV_FV = lambda stem: paradigms.suffix("-à", stem).optimize()
-
-VO_IT_PFV_FV = lambda stem: paradigms.suffix("-ɛ̀", stem).optimize()
-VI_IT_PFV_FV = lambda stem: paradigms.suffix("-ì", stem).optimize()
-
-
-AV_INF_FV = lambda stem: paradigms.suffix("-á", stem).optimize()
-OV_INF_FV = lambda stem: paradigms.suffix("-ɔ́", stem).optimize()
+CLASS2FV = {
+    "aɔ": {"a_morphome": "a", "o_morphome": "ɔ", "e_morphome": "ɛ"},
+    "ao": {"a_morphome": "a", "o_morphome": "o", "e_morphome": "i"},
+    "au": {"a_morphome": "a", "o_morphome": "u", "e_morphome": "i"},
+    "ai": {"a_morphome": "a", "o_morphome": "i", "e_morphome": "i"},
+    "ɔɔ": {"a_morphome": "ɔ", "o_morphome": "ɔ", "e_morphome": "ɛ"},
+    "ɔu": {"a_morphome": "ɔ", "o_morphome": "u", "e_morphome": "i"},
+    "ɔi": {"a_morphome": "ɔ", "o_morphome": "i", "e_morphome": "i"},
+}
+FV_CLASSES = list(CLASS2FV.keys())
 
 # prefixes/auxiliaries
 
@@ -55,88 +62,43 @@ INFINITIVE_PREFIX = lambda stem: paradigms.prefix("ðə́-", stem).optimize()
 
 # slots for verb paradigms
 
-IPFV_SLOTS = {
-    "aɔ": [
-        (AV_IT_IPFV_FV(IPFV_AUX(HLSTAR)), IPFV_IT),
-        (VO_VENT_FV(IPFV_AUX(ALL_LOW_TONE)), IPFV_VENT),
-    ],
-    "ao": [
-        (AV_IT_IPFV_FV(IPFV_AUX(HLSTAR)), IPFV_IT),
-        (VQ_VENT_FV(IPFV_AUX(ALL_LOW_TONE)), IPFV_VENT),
-    ],
-    "au": [
-        (AV_IT_IPFV_FV(IPFV_AUX(HLSTAR)), IPFV_IT),
-        (VU_VENT_FV(IPFV_AUX(ALL_LOW_TONE)), IPFV_VENT),
-    ],
-    "ai": [
-        (AV_IT_IPFV_FV(IPFV_AUX(HLSTAR)), IPFV_IT),
-        (VI_VENT_FV(IPFV_AUX(ALL_LOW_TONE)), IPFV_VENT),
-    ],
-    "ɔɔ": [
-        (OV_IT_IPFV_FV(IPFV_AUX(HLSTAR)), IPFV_IT),
-        (VO_VENT_FV(IPFV_AUX(ALL_LOW_TONE)), IPFV_VENT),
-    ],
-    "ɔu": [
-        (OV_IT_IPFV_FV(IPFV_AUX(HLSTAR)), IPFV_IT),
-        (VU_VENT_FV(IPFV_AUX(ALL_LOW_TONE)), IPFV_VENT),
-    ],
-    "ɔi": [
-        (OV_IT_IPFV_FV(IPFV_AUX(HLSTAR)), IPFV_IT),
-        (VI_VENT_FV(IPFV_AUX(ALL_LOW_TONE)), IPFV_VENT),
-    ],
-}
+def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.FeatureVector]]]:
+    a_morphome = CLASS2FV[fv_class]["a_morphome"]
+    o_morphome = CLASS2FV[fv_class]["o_morphome"]
+    e_morphome = CLASS2FV[fv_class]["e_morphome"]
+    
+    ipfv_it_suffix=f"-{a_morphome}{LOW_TONE}"
+    ipfv_it_stem = IPFV_AUX(HLSTAR)
+    ipfv_vent_suffix=f"-{o_morphome}{HIGH_TONE}"
+    ipfv_vent_stem = IPFV_AUX(ALL_LOW_TONE)
+    ipfv_slots = [
+        (paradigms.suffix(ipfv_it_suffix, ipfv_it_stem), IPFV_IT),
+        (paradigms.suffix(ipfv_vent_suffix, ipfv_vent_stem), IPFV_VENT),
+    ]
+    ipfv_slots = add_class_prefixes_to_slots(ipfv_slots)
 
-PFV_SLOTS = {
-    "aɔ": [
-        (VO_IT_PFV_FV(PFV_IT_AUX(HLSTAR)), PFV_IT),
-        (VO_VENT_FV(ALL_LOW_TONE), PFV_VENT),
-    ],
-    "ao": [
-        (VO_IT_PFV_FV(PFV_IT_AUX(HLSTAR)), PFV_IT),
-        (VQ_VENT_FV(ALL_LOW_TONE), PFV_VENT),
-    ],
-    "au": [
-        (VO_IT_PFV_FV(PFV_IT_AUX(HLSTAR)), PFV_IT),
-        (VU_VENT_FV(ALL_LOW_TONE), PFV_VENT),
-    ],
-    "ai": [
-        (VO_IT_PFV_FV(PFV_IT_AUX(HLSTAR)), PFV_IT),
-        (VI_VENT_FV(ALL_LOW_TONE), PFV_VENT),
-    ],
-    "ɔɔ": [
-        (VO_IT_PFV_FV(PFV_IT_AUX(HLSTAR)), PFV_IT),
-        (VO_VENT_FV(ALL_LOW_TONE), PFV_VENT),
-    ],
-    "ɔu": [
-        (VO_IT_PFV_FV(PFV_IT_AUX(HLSTAR)), PFV_IT),
-        (VU_VENT_FV(ALL_LOW_TONE), PFV_VENT),
-    ],
-    "ɔi": [
-        (VO_IT_PFV_FV(PFV_IT_AUX(HLSTAR)), PFV_IT),
-        (VI_VENT_FV(ALL_LOW_TONE), PFV_VENT),
-    ],
-}
+    pfv_it_suffix = f"-{e_morphome}{LOW_TONE}"
+    pfv_it_stem = PFV_IT_AUX(HLSTAR)
+    pfv_vent_suffix = ipfv_vent_suffix
+    pfv_vent_stem = ALL_LOW_TONE
+    pfv_slots = [
+        (paradigms.suffix(pfv_it_suffix, pfv_it_stem), PFV_IT),
+        (paradigms.suffix(pfv_vent_suffix, pfv_vent_stem), PFV_VENT),
+    ]
+    pfv_slots = add_class_prefixes_to_slots(pfv_slots)
 
-IPFV_SLOTS = {k: add_class_prefixes_to_slots(v) for k, v in IPFV_SLOTS.items()}
-PFV_SLOTS = {k: add_class_prefixes_to_slots(v) for k, v in PFV_SLOTS.items()}
+    inf_suffix = f"-{a_morphome}{HIGH_TONE}"
+    inf_class = 'ð'
+    inf_stem = add_class_prefix(ALL_HIGH_TONE, inf_class)
+    inf_slot = [(paradigms.suffix(inf_suffix, inf_stem), INFINITIVE)]
 
-INFINITIVE_STEM = INFINITIVE_PREFIX(ALL_HIGH_TONE)@DELETE_SCHWA_BEFORE_VOWEL
-INFINITIVE_SLOTS = {
-    'aɔ': [(AV_INF_FV(INFINITIVE_STEM).optimize(), INFINITIVE)],
-    'ao': [(AV_INF_FV(INFINITIVE_STEM).optimize(), INFINITIVE)],
-    'au': [(AV_INF_FV(INFINITIVE_STEM).optimize(), INFINITIVE)],
-    'ai': [(AV_INF_FV(INFINITIVE_STEM).optimize(), INFINITIVE)],
-    'ɔɔ': [(OV_INF_FV(INFINITIVE_STEM).optimize(), INFINITIVE)],
-    'ɔu': [(OV_INF_FV(INFINITIVE_STEM).optimize(), INFINITIVE)],
-    'ɔi': [(OV_INF_FV(INFINITIVE_STEM).optimize(), INFINITIVE)],
-}
+    slots = [*ipfv_slots, *pfv_slots, *inf_slot]
 
-ALL_VERB_SLOTS = [IPFV_SLOTS, PFV_SLOTS, INFINITIVE_SLOTS]
+    return slots
 
-def get_slots_for_class(fv_class: str):
-    slots = []
-    for slot_dict in ALL_VERB_SLOTS:
-        slots.extend(slot_dict[fv_class])
+
+def get_paradigm_for_class(fv_class: str):
+    slots = make_verb_slots(fv_class)
     fv_paradigm = paradigms.Paradigm(
         category=INFLECTED_VERB,
         name=f"{fv_class} class",
@@ -146,11 +108,36 @@ def get_slots_for_class(fv_class: str):
     )
     return fv_paradigm
 
-AO_PARADIGM = get_slots_for_class("aɔ")
-AQ_PARADIGM = get_slots_for_class("ao")
-AU_PARADIGM = get_slots_for_class("au")
-AI_PARADIGM = get_slots_for_class("ai")
-OO_PARADIGM = get_slots_for_class("ɔɔ")
-OU_PARADIGM = get_slots_for_class("ɔu")
-OI_PARADIGM = get_slots_for_class("ɔi")
-breakpoint()
+AO_PARADIGM = get_paradigm_for_class("aɔ")
+AQ_PARADIGM = get_paradigm_for_class("ao")
+AU_PARADIGM = get_paradigm_for_class("au")
+AI_PARADIGM = get_paradigm_for_class("ai")
+OO_PARADIGM = get_paradigm_for_class("ɔɔ")
+OU_PARADIGM = get_paradigm_for_class("ɔu")
+OI_PARADIGM = get_paradigm_for_class("ɔi")
+
+FV2PARADIGM = {
+    "aɔ": AO_PARADIGM,
+    "ao": AQ_PARADIGM,
+    "au": AU_PARADIGM,
+    "ai": AI_PARADIGM,
+    "ɔɔ": OO_PARADIGM,
+    "ɔu": OU_PARADIGM,
+    "ɔi": OI_PARADIGM,
+}
+
+def inflect_random_verb(fv_class: Optional[str]=None):
+    if fv_class is None:
+        fv_class = random.choice(FV_CLASSES)
+    root = random.choice(get_roots_for_class(fv_class))
+    print(root, fv_class)
+    print_forms(root, FV2PARADIGM[fv_class])
+
+for verb_root, fv_class in get_all_verb_roots_and_fvs():
+    if fv_class not in FV_CLASSES:
+        continue
+    paradigm = FV2PARADIGM[fv_class]
+    try:
+        print_forms(verb_root, paradigm, return_wordforms=True)
+    except:
+        print(verb_root, fv_class)
