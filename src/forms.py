@@ -134,13 +134,15 @@ INFINITIVE_SLOTS = {
 ALL_VERB_SLOTS = [IPFV_SLOTS, PFV_SLOTS, INFINITIVE_SLOTS]
 
 def get_slots_for_class(fv_class: str):
-    slots = [slot_dict[fv_class] for slot_dict in ALL_VERB_SLOTS].sum()
+    slots = []
+    for slot_dict in ALL_VERB_SLOTS:
+        slots.extend(slot_dict[fv_class])
     fv_paradigm = paradigms.Paradigm(
         category=INFLECTED_VERB,
         name=f"{fv_class} class",
         slots=slots,
         lemma_feature_vector=INFINITIVE,
-        stems=get_roots_for_class("aɔ"),
+        stems=get_roots_for_class(fv_class),
     )
     return fv_paradigm
 
@@ -151,3 +153,4 @@ AI_PARADIGM = get_slots_for_class("ai")
 OO_PARADIGM = get_slots_for_class("ɔɔ")
 OU_PARADIGM = get_slots_for_class("ɔu")
 OI_PARADIGM = get_slots_for_class("ɔi")
+breakpoint()
