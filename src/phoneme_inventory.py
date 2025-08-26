@@ -5,16 +5,22 @@ Declare FSAs for phoneme inventory and phonological classes in Tira.
 import pynini
 from pynini.lib import paradigms, pynutil
 
-TIRA_CONSONANTS = [
-    'm', 'n',      'ɲ', 'ŋ',
+TIRA_STOPS = [
     'p', 't̪', 't', 'c', 'k',
     'b', 'd̪', 'd', 'ɟ', 'g',
-              's',
-    'v', 'ð',
-    'w',      'l', 'j',
-         'r', 'ɾ', 'ɽ',
 ]
-
+TIRA_FRICATIVES = [
+    's', 'v', 'ð',
+]
+TIRA_GLIDES = [
+    'w', 'j',
+]
+TIRA_NASALS = [
+    'm', 'n', 'ɲ', 'ŋ',
+]
+TIRA_SONORANTS = [
+    'l', 'r', 'ɾ', 'ɽ',
+]
 TIRA_VOWELS = [
     'i',      'u',
     'ɪ',      'ʊ',
@@ -22,6 +28,9 @@ TIRA_VOWELS = [
     'ɛ', 'ɜ', 'ɔ',
          'a',
 ]
+
+TIRA_CONSONANTS = TIRA_STOPS + TIRA_FRICATIVES + TIRA_GLIDES + TIRA_NASALS + TIRA_SONORANTS
+TIRA_TBUS = TIRA_VOWELS + TIRA_NASALS + TIRA_SONORANTS
 
 HIGH_TONE = '\u0301'
 LOW_TONE = '\u0300'
@@ -40,13 +49,14 @@ TIRA_SYMBOL_TABLE
 C = pynini.union(*TIRA_CONSONANTS).optimize()
 V = pynini.union(*TIRA_VOWELS).optimize()
 T = pynini.union(*TIRA_TONES).optimize()
+TBU = pynini.union(*TIRA_TBUS).optimize()
 SIGMASTAR = pynini.union(C,V,T,BOUNDARY).closure().optimize()
 STEM = paradigms.make_byte_star_except_boundary(BOUNDARY)
 
 # phonological processes
 
-HTONE_SYLL = (C.closure() + V + pynutil.insert(HIGH_TONE) + C.closure()).optimize()
-LTONE_SYLL = (C.closure() + V + pynutil.insert(LOW_TONE) + C.closure()).optimize()
+HTONE_SYLL = (C.closure() + TBU + pynutil.insert(HIGH_TONE) + C.closure()).optimize()
+LTONE_SYLL = (C.closure() + TBU + pynutil.insert(LOW_TONE) + C.closure()).optimize()
 
 HLSTAR = (HTONE_SYLL + LTONE_SYLL.closure()).optimize()
 ALL_HIGH_TONE = HTONE_SYLL.closure().optimize()
