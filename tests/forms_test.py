@@ -8,7 +8,7 @@ def test_compile_regular_paradigms(verb_root, fv_class):
     if fv_class == 'IRREG':
         return
     try:
-        forms = generate_forms(verb_root, FV2PARADIGM[fv_class], return_wordforms=True)
+        forms = generate_forms(verb_root, FV2PARADIGM[fv_class], action='return')
         assert len(forms) >= VERB_PARADIGM_SIZE
     except Exception as error:
         print(verb_root, fv_class)
