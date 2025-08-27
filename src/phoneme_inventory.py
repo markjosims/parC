@@ -96,3 +96,16 @@ for tone in TIRA_TONES:
     rule = dock_floating_tone@delete_floating_tone
     FLOAT_TONE_RULE = FLOAT_TONE_RULE@rule
 FLOAT_TONE_RULE = FLOAT_TONE_RULE.optimize()
+
+COMBINE_TONES = pynini.string_map([
+    (LOW_TONE+HIGH_TONE, RISE_TONE),
+    (HIGH_TONE+LOW_TONE, FALL_TONE),
+    (HIGH_TONE+HIGH_TONE, HIGH_TONE),
+    (LOW_TONE+LOW_TONE, LOW_TONE),
+])
+COMBINE_TONES_RULE = pynini.cdrewrite(
+    tau=COMBINE_TONES,
+    l='',
+    r='',
+    sigma_star=SIGMASTAR,
+)

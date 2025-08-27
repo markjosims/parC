@@ -69,7 +69,7 @@ def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.
     e_morphome = CLASS2FV[fv_class]["e_morphome"]
     
     prepare_root_for_inflection = REMOVE_HOMOPHONE_TAG@ADD_PLACEHOLDER_TBU
-    finalize_form = FLOAT_TONE_RULE
+    finalize_form = FLOAT_TONE_RULE@COMBINE_TONES_RULE
 
     compose_stem = lambda stem_rule: prepare_root_for_inflection@stem_rule@finalize_form
 
