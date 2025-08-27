@@ -43,3 +43,5 @@ PFV_IT = features.FeatureVector(INFLECTED_VERB, "tam=perfective", "deixis=itive"
 PFV_VENT = features.FeatureVector(INFLECTED_VERB, "tam=perfective", "deixis=ventive")
 DEP_IT = features.FeatureVector(INFLECTED_VERB, "tam=dependent", "deixis=itive")
 DEP_VENT = features.FeatureVector(INFLECTED_VERB, "tam=dependent", "deixis=ventive")
+IMP_IT = features.FeatureVector(INFLECTED_VERB, "tam=imperative", "deixis=itive")
+IMP_VENT = features.FeatureVector(INFLECTED_VERB, "tam=imperative", "deixis=ventive")

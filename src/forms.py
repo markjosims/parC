@@ -73,6 +73,15 @@ def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.
 
     compose_stem = lambda stem_rule: prepare_root_for_inflection@stem_rule@finalize_form
 
+    imp_it_suffix=f"-{o_morphome}{HIGH_TONE}"
+    imp_vent_suffix=f"-{a_morphome}{HIGH_TONE}"
+    imp_it_stem=compose_stem(ALL_HIGH_TONE)
+    imp_vent_stem=compose_stem(ALL_LOW_TONE)
+    imp_slots = [
+        (paradigms.suffix(imp_it_suffix, imp_it_stem), IMP_IT),
+        (paradigms.suffix(imp_vent_suffix, imp_vent_stem), IMP_VENT),
+    ]
+
     ipfv_it_suffix=f"-{a_morphome}{LOW_TONE}"
     ipfv_it_stem = compose_stem(IPFV_AUX(HLSTAR))
     ipfv_vent_suffix=f"-{o_morphome}{HIGH_TONE}"
@@ -107,7 +116,7 @@ def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.
     ]
     dep_slots = add_class_prefixes_to_slots(dep_slots)
 
-    slots = [*ipfv_slots, *pfv_slots, *inf_slot, *dep_slots]
+    slots = [*imp_slots, *ipfv_slots, *pfv_slots, *inf_slot, *dep_slots]
 
     return slots
 
