@@ -9,29 +9,32 @@ import pandas as pd
 from src.phoneme_inventory import *
 from src.features import *
 from src.lexicon import get_roots_for_class, get_all_verb_roots_and_fvs
-from src.glossing import REMOVE_HOMOPHONE_TAG
+from src.glossing import REMOVE_HOMOPHONE_TAG, feature_str_to_dict
 from src.constants import INFLECTED_VERBS_PATH
 from typing import *
 import random
 
 # helper functions
 
-def print_forms(stem: str, paradigm: paradigms.Paradigm, return_wordforms: bool=False):
+def generate_forms(stem: str, paradigm: paradigms.Paradigm, action: Literal['print', 'return']='print', parse: bool=False):
     lattice = rewrite.rewrite_lattice(
         stem,
         paradigm.stems_to_forms @ paradigm.feature_label_rewriter
     )
     wordforms = []
     for wordform in rewrite.lattice_to_strings(lattice):
-        if return_wordforms:
+        if action=='return' and parse:
+            parsed_wordform = feature_str_to_dict(wordform)
+            wordforms.append(parsed_wordform)
+        elif action=='return':
             wordforms.append(wordform)
         else:
             print(wordform)
-    if return_wordforms:
+    if action=='return':
         return wordforms
 
-def add_class_prefix(stem: pynini.Fst, class_agree: str) -> pynini.Fst:
-    return (paradigms.prefix(f"{class_agree}ə̀-", stem)@DELETE_SCHWA_BEFORE_VOWEL).optimize()
+def add_class_prefix(stem: pynini.Fst, class_agree: str, prefix_tone=LOW_TONE) -> pynini.Fst:
+    return (paradigms.prefix(f"{class_agree}ə{prefix_tone}-", stem)@DELETE_SCHWA_BEFORE_VOWEL).optimize()
 
 def add_class_prefixes_to_slots(slot_list):
     slots_w_class_prefixes = []
@@ -106,7 +109,7 @@ def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.
 
     inf_suffix = f"-{a_morphome}{HIGH_TONE}"
     inf_class = 'ð'
-    inf_stem = compose_stem(add_class_prefix(ALL_HIGH_TONE, inf_class))
+    inf_stem = compose_stem(add_class_prefix(ALL_HIGH_TONE, inf_class, prefix_tone=HIGH_TONE))
     inf_slot = [(paradigms.suffix(inf_suffix, inf_stem), INFINITIVE)]
 
     dep_it_suffix = f"-{e_morphome}{LOW_TONE}"
@@ -158,14 +161,14 @@ def inflect_random_verb(fv_class: Optional[str]=None):
         fv_class = random.choice(FV_CLASSES)
     root = random.choice(get_roots_for_class(fv_class))
     print(root, fv_class)
-    print_forms(root, FV2PARADIGM[fv_class])
+    generate_forms(root, FV2PARADIGM[fv_class])
 
 def main():
     rows = []
     for stem, fv_class in get_all_verb_roots_and_fvs():
         if fv_class=='IRREG':
             continue
-        rows.extend(print_forms(stem, FV2PARADIGM[fv_class], return_wordforms=True))
+        rows.extend(generate_forms(stem, FV2PARADIGM[fv_class], return_wordforms=True))
     df = pd.DataFrame(rows)
     df.to_csv(INFLECTED_VERBS_PATH, index=False)
 
