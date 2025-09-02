@@ -92,6 +92,16 @@ HLSTAR = (HTONE_SYLL + LTONE_SYLL.closure()).optimize()
 ALL_HIGH_TONE = HTONE_SYLL.closure()
 ALL_LOW_TONE = LTONE_SYLL.closure().optimize()
 
+compose_tone = lambda tone_fst: ADD_TBU_MARKER@\
+    REMOVE_TBU_MARKER_AFTER_ONSET_C@\
+    REMOVE_TBU_MARKER_AFTER_CODA_C@\
+    tone_fst@\
+    CLEAN_TBU_MARKERS
+
+HLSTAR_RULE = compose_tone(HLSTAR)
+ALL_HIGH_TONE_RULE = compose_tone(ALL_HIGH_TONE)
+ALL_LOW_TONE = compose_tone(ALL_LOW_TONE)
+
 DELETE_SCHWA_BEFORE_VOWEL = pynini.cdrewrite(
     tau=pynutil.delete("ə"+T),
     l='',
