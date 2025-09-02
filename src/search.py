@@ -3,7 +3,6 @@ from pynini.lib.edit_transducer import DEFAULT_INSERT_COST, DEFAULT_SUBSTITUTE_C
 
 def get_searchable_lexicon(
         lexicon,
-        edits,
         insertions,
         substitutions,
         deletions,
@@ -14,7 +13,6 @@ def get_searchable_lexicon(
     ...
 
 def get_edit_factors(
-        edits,
         insertions,
         substitutions,
         deletions,
