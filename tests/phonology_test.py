@@ -9,8 +9,9 @@ from pynini.lib import rewrite
     ("kr", "kŕ")
 ])
 def test_all_high_tone(atonal_str, tone_added_str):
-    lattice=rewrite.rewrite_lattice(atonal_str, ALL_HIGH_TONE)
+    lattice=rewrite.rewrite_lattice(atonal_str, ALL_HIGH_TONE_RULE)
     strings = rewrite.lattice_to_strings(lattice)
-    strings = list(strings)
+    strings = set(strings)
     assert len(strings)==1
-    assert strings[0]==tone_added_str
+    string=strings.pop()
+    assert string==tone_added_str
