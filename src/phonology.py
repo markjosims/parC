@@ -107,6 +107,13 @@ DELETE_SCHWA_BEFORE_VOWEL = pynini.cdrewrite(
     sigma_star=SIGMASTAR,
 ).optimize()
 
+ADD_PLACEHOLDER_TBU = pynini.cdrewrite(
+    tau=pynutil.insert(PLACEHOLDER_TBU),
+    l=C.plus,
+    r='[EOS]',
+    sigma_star=SIGMASTAR,
+).optimize()
+
 FLOAT_TONE_RULE = SIGMASTAR.copy()
 for tone in TIRA_TONES:
     dock_floating_tone = pynini.cdrewrite(
