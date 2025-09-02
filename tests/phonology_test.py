@@ -15,3 +15,31 @@ def test_all_high_tone(atonal_str, tone_added_str):
     assert len(strings)==1
     string=strings.pop()
     assert string==tone_added_str
+
+@pytest.mark.parametrize("atonal_str,tone_added_str", [
+    ("rn", "r̀n"),
+    ("tutɔ", "tùtɔ̀"),
+    ("kaŋt̪ɛt̪iŋi", "kàŋt̪ɛ̀t̪ìŋì"),
+    ("kr", "kr̀")
+])
+def test_all_low_tone(atonal_str, tone_added_str):
+    lattice=rewrite.rewrite_lattice(atonal_str, ALL_LOW_TONE_RULE)
+    strings = rewrite.lattice_to_strings(lattice)
+    strings = set(strings)
+    assert len(strings)==1
+    string=strings.pop()
+    assert string==tone_added_str
+
+@pytest.mark.parametrize("atonal_str,tone_added_str", [
+    ("rn", "ŕn"),
+    ("tutɔ", "tútɔ̀"),
+    ("kaŋt̪ɛt̪iŋi", "káŋt̪ɛ̀t̪ìŋì"),
+    ("kr", "kŕ")
+])
+def test_all_hlstar(atonal_str, tone_added_str):
+    lattice=rewrite.rewrite_lattice(atonal_str, HLSTAR_RULE)
+    strings = rewrite.lattice_to_strings(lattice)
+    strings = set(strings)
+    assert len(strings)==1
+    string=strings.pop()
+    assert string==tone_added_str
