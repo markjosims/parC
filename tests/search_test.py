@@ -28,14 +28,12 @@ def test_edit_factors():
         substitutions=substitutions,
         deletions=deletions,
         sigma=sigma,
+        bound=10,
     )
     query = "tə"
     target = "ta"
     output_fst = (query@left_factor)@(right_factor@target)
-    strings = rewrite.lattice_to_strings(output_fst)
-    strings = set(strings)
-    assert len(strings)==1
-    string = strings.pop()
+    string = pynini.shortestpath(output_fst).string()
     assert string == target
 
 def test_searchable_lexicon():
@@ -45,7 +43,13 @@ def test_searchable_lexicon():
         substitutions=substitutions,
         deletions=deletions,
         sigma=sigma,
+        bound=10,
     )
-    query = "ta"
+    query = "po"
     output_fst = query@left_factor@searchable_lexicon
-    assert rewrite.lattice_to_strings(output_fst)
+    strings = rewrite.lattice_to_strings(output_fst)
+    strings = set(strings)
+    assert strings == set(lexicon)
+
+    best_string = pynini.shortestpath(output_fst).string()
+    assert best_string == "ko"
