@@ -38,7 +38,7 @@ RISE_TONE = '\u030c'
 TIRA_TONES = [HIGH_TONE, LOW_TONE, FALL_TONE, RISE_TONE]
 
 PLACEHOLDER_TBU = 'x'
-TIRA_TBUS = TIRA_VOWELS + TIRA_NASALS + TIRA_SONORANTS + [PLACEHOLDER_TBU]
+TIRA_TBUS = TIRA_VOWELS + TIRA_NASALS + TIRA_SONORANTS
 
 BOUNDARY_STR = '-'
 BOUNDARY=pynini.accep(BOUNDARY_STR)
@@ -53,16 +53,37 @@ V = pynini.union(*TIRA_VOWELS).optimize()
 T = pynini.union(*TIRA_TONES).optimize()
 TBU = pynini.union(*TIRA_TBUS).optimize()
 SIGMA = pynini.union(C,V,T,BOUNDARY,PLACEHOLDER_TBU).optimize()
+SIGMA_EXCEPT_PLACEHOLDER = pynini.union(C,V,T,BOUNDARY).optimize()
 SIGMASTAR = SIGMA.closure().optimize()
+SIGMASTAR_EXCEPT_PLACEHOLDER = SIGMA_EXCEPT_PLACEHOLDER.closure().optimize()
 STEM = paradigms.make_byte_star_except_boundary(BOUNDARY)
 
 # phonological processes
 
-HTONE_SYLL = (C.closure() + TBU + pynutil.insert(HIGH_TONE) + C.closure()).optimize()
-LTONE_SYLL = (C.closure() + TBU + pynutil.insert(LOW_TONE) + C.closure()).optimize()
+ADD_TBU_MARKER = pynini.cdrewrite(
+    tau=pynutil.insert(PLACEHOLDER_TBU),
+    l=TBU,
+    r='',
+    sigma_star=SIGMASTAR
+)
+REMOVE_TBU_MARKER_AFTER_ONSET_C = pynini.cdrewrite(
+    tau=pynutil.delete(PLACEHOLDER_TBU),
+    l=C@TBU,
+    r=V,
+    sigma_star=SIGMASTAR,
+)
+CLEAN_TBU_MARKERS = pynini.cdrewrite(
+    tau=pynutil.delete(PLACEHOLDER_TBU),
+    l='',
+    r='',
+    sigma_star=SIGMASTAR
+)
+
+HTONE_SYLL = (SIGMASTAR_EXCEPT_PLACEHOLDER + PLACEHOLDER_TBU + pynutil.insert(HIGH_TONE) + SIGMASTAR_EXCEPT_PLACEHOLDER).optimize()
+LTONE_SYLL = (SIGMASTAR_EXCEPT_PLACEHOLDER + PLACEHOLDER_TBU + pynutil.insert(LOW_TONE) + SIGMASTAR_EXCEPT_PLACEHOLDER).optimize()
 
 HLSTAR = (HTONE_SYLL + LTONE_SYLL.closure()).optimize()
-ALL_HIGH_TONE = HTONE_SYLL.closure().optimize()
+ALL_HIGH_TONE = HTONE_SYLL.closure()
 ALL_LOW_TONE = LTONE_SYLL.closure().optimize()
 
 DELETE_SCHWA_BEFORE_VOWEL = pynini.cdrewrite(
