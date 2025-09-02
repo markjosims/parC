@@ -1,8 +1,10 @@
 import pynini
+from pynini.lib import rewrite
 from src.search import *
 
 vowel = pynini.union(*"aeiouə")
 consonant = pynini.union(*"ptk")
+sigma = pynini.union(vowel, consonant)
 substitutions = [
     (vowel, "ə", 0.5),
 ]
@@ -24,9 +26,14 @@ def test_edit_factors():
     left_factor, right_factor = get_edit_factors(
         insertions=insertions,
         substitutions=substitutions,
-        deletions=deletions
+        deletions=deletions,
+        sigma=sigma,
     )
     query = "tə"
     target = "ta"
     output_fst = (query@left_factor)@(right_factor@target)
-    assert output_fst.string() == target
+    strings = rewrite.lattice_to_strings(output_fst)
+    strings = set(strings)
+    assert len(strings)==1
+    string = strings.pop()
+    assert string == target
