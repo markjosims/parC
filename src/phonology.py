@@ -44,6 +44,7 @@ BOUNDARY_STR = '-'
 BOUNDARY=pynini.accep(BOUNDARY_STR)
 
 TIRA_SYMBOL_TABLE = pynini.SymbolTable(name="Tira phones")
+TIRA_SYMBOL_TABLE.add_symbol('<eps>')
 for phone in TIRA_CONSONANTS+TIRA_VOWELS+TIRA_TONES+[BOUNDARY_STR]:
     TIRA_SYMBOL_TABLE.add_symbol(phone)
 TIRA_SYMBOL_TABLE
