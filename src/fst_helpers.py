@@ -75,13 +75,13 @@ def decode_fst_string(
     return str_w_tone_diacs
 
 def fst(
-        fst_input: Union[str, Sequence[str], pynini.Fst],
+        fst_input: Union[str, Sequence[str], pynini.Fst, None]=None,
         fst_output: Union[str, Sequence[str], pynini.Fst, None] = None,
         weight: pynini.WeightLike = None,
     ) -> pynini.Fst:
     """
     Arguments:
-        fst_input:  String or list of strings to be accepted by the FST (or an FSA)
+        fst_input:  (Optional) string or list of strings to be accepted by the FST (or an FSA)
         fst_output: (Optional) string or list of strings to be output by the FST (or an FSA)
         weight:     (Optional) weight value for FST
     Returns:
@@ -95,9 +95,13 @@ def fst(
     For both input and output, if an FST is passed the only modification done is adding
     the specified weight. All FSTs passed to this function must have their symbol table
     set already.
+
+    If input is null, return an FST accepting epsilon (useful for defining unconditioned rules).
     """
     if type(fst_input) is str:
         f = pynini.accep(encode_fst_string(fst_input), token_type=TIRA_SYMBOL_TABLE, weight=weight)
+    elif fst_input is None:
+        return fst(fst_input='', fst_output=fst_output, weight=weight)
     elif type(fst_input) is pynini.Fst:
         f = fst_input + fst('', weight=weight)
     else:
@@ -178,6 +182,7 @@ def draw_svg(fst: pynini.Fst, filepath: str = 'tmp/tmp.svg', title: Optional[str
     (defaults to `filepath`).
     """
     stem = os.path.splitext(filepath)[0]
+    fst = set_symbols(fst)
     dotfile = stem+'.dot'
     fst.draw(
         source=dotfile,
