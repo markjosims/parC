@@ -2,7 +2,7 @@ import pynini
 from pynini.lib import rewrite
 from src.search import *
 import pytest
-from src.fst_helpers import fst, get_decoded_strings, draw_svg, decode_fst_string
+from src.fst_helpers import *
 from src.phonology import V, SIGMA
 
 substitutions = [
@@ -59,12 +59,12 @@ def test_searchable_lexicon():
     # p>k preferred over other consonant changes
     assert best_string == "ko"
 
-@pytest.mark.parametrize("query,top_string,top_n_strings", [
-    ("tka", "ka", ["ta", "ka"]),      # cheaper to delete /t/ than /k/
-    ("a", "ɾa", ["ɾa", "ka", "ta"]),  # cheaper to insert /ɾ/ than /k/ or /t/
-    ("tə", "ta", ["ta", "pə"]),       # cheaper to substitute a>ə than t>p
+@pytest.mark.parametrize("query,top_string,expected_weight,top_n_strings", [
+    ("tka", "ka", 0.5, ["ta", "ka"]),      # cheaper to delete /t/ than /k/
+    ("a", "ɾa", 0.5,  ["ɾa", "ka", "ta"]),  # cheaper to insert /ɾ/ than /k/ or /t/
+    ("tə", "ta", 0.5, ["ta", "pə"]),       # cheaper to substitute a>ə than t>p
 ])
-def test_edit_weight(query, top_string, top_n_strings):
+def test_edit_weight(query, top_string, expected_weight, top_n_strings):
     left_factor, searchable_lexicon = get_searchable_lexicon(
         lexicon=lexicon,
         insertions=insertions,
@@ -76,6 +76,9 @@ def test_edit_weight(query, top_string, top_n_strings):
     output_fst = (fst(query)@left_factor)@searchable_lexicon
     predicted_top_string = decode_fst_string(pynini.shortestpath(output_fst))
     assert predicted_top_string == top_string
+
+    predicted_weight = get_min_path_weight(output_fst)
+    assert predicted_weight == expected_weight
 
     predicted_top_n_strings = get_decoded_strings(fst(query)@left_factor@searchable_lexicon, nshortest=len(top_n_strings))
     assert set(predicted_top_n_strings) == set(top_n_strings)
