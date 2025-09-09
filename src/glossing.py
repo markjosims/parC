@@ -2,14 +2,15 @@ import pynini
 from pynini.lib import pynutil
 import string
 from src.phonology import SIGMA
+from src.fst_helpers import fst, delete_fst
 from typing import *
 import re
 
-DIGIT = pynini.union(*string.digits)
+DIGIT = fst(string.digits)
 HOMOPHONE_TAG = "("+DIGIT+")"
-SIGMASTAR_W_TAG = pynini.union(SIGMA, DIGIT, "(", ")").closure().optimize()
+SIGMASTAR_W_TAG = fst([SIGMA, DIGIT, "(", ")"]).closure().optimize()
 REMOVE_HOMOPHONE_TAG = pynini.cdrewrite(
-    pynutil.delete(HOMOPHONE_TAG),
+    delete_fst(HOMOPHONE_TAG),
     '',
     '',
     sigma_star=SIGMASTAR_W_TAG,
