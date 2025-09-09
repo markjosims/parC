@@ -7,21 +7,37 @@ import pydot
 # symbol table wrappers
 
 def set_symbols(fst: pynini.Fst) -> pynini.Fst:
+    """
+    Set input and output symbols to `TIRA_SYMBOL_TABLE`.
+    """
     fst.set_input_symbols(TIRA_SYMBOL_TABLE)
     fst.set_output_symbols(TIRA_SYMBOL_TABLE)
     return fst
 
 def tone2diac(tone_str: str) -> str:
+    """
+    Replace all tone symbols with combining diacritics,
+    i.e. \<H> --> \u0301
+    """
     for tone_symbol, tone_diac in SYMBOL2DIAC.items():
         tone_str = tone_str.replace(tone_symbol, tone_diac)
     return tone_str
 
 def tone2symbol(tone_str: str) -> str:
+    """
+    Replace all tone combining diacritics with symbols,
+    i.e. \u0301 --> \<H>
+    """
     for tone_diac, tone_symbol in DIAC2SYMBOL.items():
         tone_str = tone_str.replace(tone_diac, tone_symbol)
     return tone_str
 
 def collapse_multichar_tokens(encoded_string: str) -> str:
+    """
+    For all multicharacter tokens in `MULTICHAR_TOKENS`
+    remove spaces added during encoding, i.e.
+    < d e l e t e > --> \<delete>.
+    """
     for token in MULTICHAR_TOKENS:
         expanded_token = ' '.join(token)
         encoded_string = encoded_string.replace(expanded_token, token)
@@ -75,6 +91,10 @@ def fst(
     Input and output may be string or list of strings. If only input is passed,
     returns an FSA over the input string or unin of strings. If output is passed,
     return an FST transducing input to output.
+    
+    For both input and output, if an FST is passed the only modification done is adding
+    the specified weight. All FSTs passed to this function must have their symbol table
+    set already.
     """
     if type(fst_input) is str:
         f = pynini.accep(encode_fst_string(fst_input), token_type=TIRA_SYMBOL_TABLE, weight=weight)
@@ -153,6 +173,10 @@ def get_decoded_strings(
     return decoded_strings
 
 def draw_svg(fst: pynini.Fst, filepath: str = 'tmp/tmp.svg', title: Optional[str]=None):
+    """
+    Saves .dot and .svg representations of `fst`, with an optionally specified `title`
+    (defaults to `filepath`).
+    """
     stem = os.path.splitext(filepath)[0]
     dotfile = stem+'.dot'
     fst.draw(
