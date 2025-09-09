@@ -80,6 +80,10 @@ MULTICHAR_TOKENS = [
     DENTAL_D, DENTAL_T, EPSILON_SYMBOL, INSERT, DELETE, SUBSTITUTE
 ]
 
+################
+# symbol table #
+################
+
 TIRA_SYMBOL_TABLE = pynini.SymbolTable(name="Tira phones")
 TIRA_SYMBOL_TABLE.add_symbol(EPSILON_SYMBOL)
 for symbol in SPECIAL_SYMBOLS:
