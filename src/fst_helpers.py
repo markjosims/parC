@@ -153,15 +153,15 @@ def get_decoded_strings(
     return decoded_strings
 
 def draw_svg(fst: pynini.Fst, filepath: str = 'tmp/tmp.svg', title: Optional[str]=None):
-    basename = os.path.basename(filepath)
-    dotfile = basename+'.dot'
+    stem = os.path.splitext(filepath)[0]
+    dotfile = stem+'.dot'
     fst.draw(
         source=dotfile,
         show_weight_one=True,
         isymbols=fst.input_symbols(),
         osymbols=fst.output_symbols(),
         portrait=True,
-        title=title or basename,
+        title=title or stem,
     )
     graph = pydot.graph_from_dot_file(dotfile)[0]
     graph.write_svg(filepath)
