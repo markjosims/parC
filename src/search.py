@@ -1,23 +1,19 @@
 import pynini
 from pynini.lib import pynutil
-from pynini.lib.edit_transducer import (
-    EditTransducer,
-    DEFAULT_INSERT_COST,
-    DEFAULT_SUBSTITUTE_COST,
-    DEFAULT_DELETE_COST
-)
-from typing import *
 
-INSERT = EditTransducer.INSERT
-DELETE = EditTransducer.DELETE
-SUBSTITUTE = EditTransducer.SUBSTITUTE
+from typing import *
+from src.phonology import fst
+from src.constants import (
+    INSERT, DELETE, SUBSTITUTE,
+    DEFAULT_INSERT_COST, DEFAULT_DELETE_COST, DEFAULT_SUBSTITUTE_COST,  
+)
 
 def get_searchable_lexicon(
         lexicon: Union[List[str], pynini.FstLike],
         **edit_factor_kwargs,
     ):
     if type(lexicon) is list:
-        lexicon = pynini.union(*lexicon)
+        lexicon = fst(lexicon)
     left_factor, right_factor = get_edit_factors(**edit_factor_kwargs)
     searchable_lexicon = right_factor@lexicon
     return left_factor, searchable_lexicon
@@ -80,7 +76,7 @@ def _get_insertion_graph(
     Builds right factor as a map of insertion symbol to each element on the alphabet with a weight
     as defined by `insertions` where applicable, else `insert_cost`.
     """
-    insert_inputs = pynini.union(*[insert[0] for insert in insertions])
+    insert_inputs = fst([insert[0] for insert in insertions])
     sigma_except_custom = sigma-insert_inputs
     sigma_except_custom_weighted = sigma_except_custom + pynini.accep('', insert_cost)
     insert_symbol = f"[{INSERT}]"
