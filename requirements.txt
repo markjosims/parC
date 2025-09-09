@@ -8,3 +8,4 @@ pynini
 ipykernel
 pytest
 graphviz
+pydot
