@@ -7,6 +7,7 @@ import pynini
 from pynini.lib import features, paradigms, rewrite, pynutil
 import pandas as pd
 from src.phonology import *
+from src.fst_helpers import *
 from src.features import *
 from src.lexicon import get_roots_for_class, get_all_verb_roots_and_fvs
 from src.glossing import REMOVE_HOMOPHONE_TAG, feature_str_to_dict
@@ -18,7 +19,7 @@ import random
 
 def generate_forms(stem: str, paradigm: paradigms.Paradigm, action: Literal['print', 'return']='print', parse: bool=False):
     lattice = rewrite.rewrite_lattice(
-        stem,
+        fst(stem),
         paradigm.stems_to_forms @ paradigm.feature_label_rewriter
     )
     wordforms = []
@@ -34,7 +35,8 @@ def generate_forms(stem: str, paradigm: paradigms.Paradigm, action: Literal['pri
         return wordforms
 
 def add_class_prefix(stem: pynini.Fst, class_agree: str, prefix_tone=LOW_TONE) -> pynini.Fst:
-    return (paradigms.prefix(f"{class_agree}ə{prefix_tone}-", stem)@DELETE_SCHWA_BEFORE_VOWEL).optimize()
+    prefix_acceptor = fst(f"{class_agree}ə{prefix_tone}-")
+    return (paradigms.prefix(prefix_acceptor, stem)@DELETE_SCHWA_BEFORE_VOWEL).optimize()
 
 def add_class_prefixes_to_slots(slot_list):
     slots_w_class_prefixes = []
@@ -62,9 +64,9 @@ FV_CLASSES = list(CLASS2FV.keys())
 
 # prefixes/auxiliaries
 
-IPFV_AUX = lambda stem: paradigms.prefix("á-", stem).optimize()
-PFV_IT_AUX = lambda stem: paradigms.prefix("à-", stem).optimize()
-INFINITIVE_PREFIX = lambda stem: paradigms.prefix("ðə́-", stem).optimize()
+IPFV_AUX = lambda stem: paradigms.prefix(fst("á-"), stem).optimize()
+PFV_IT_AUX = lambda stem: paradigms.prefix(fst("à-"), stem).optimize()
+INFINITIVE_PREFIX = lambda stem: paradigms.prefix(fst("ðə́-"), stem).optimize()
 
 # slots for verb paradigms
 
@@ -78,8 +80,8 @@ def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.
 
     compose_stem = lambda stem_rule: prepare_root_for_inflection@stem_rule@finalize_form
 
-    imp_it_suffix=f"-{o_morphome}{HIGH_TONE}"
-    imp_vent_suffix=f"-{a_morphome}{HIGH_TONE}"
+    imp_it_suffix=fst(f"-{o_morphome}{HIGH_TONE}")
+    imp_vent_suffix=fst(f"-{a_morphome}{HIGH_TONE}")
     imp_it_stem=compose_stem(ALL_HIGH_TONE)
     imp_vent_stem=compose_stem(ALL_LOW_TONE)
     imp_slots = [
@@ -87,9 +89,9 @@ def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.
         (paradigms.suffix(imp_vent_suffix, imp_vent_stem), IMP_VENT),
     ]
 
-    ipfv_it_suffix=f"-{a_morphome}{LOW_TONE}"
+    ipfv_it_suffix=fst(f"-{a_morphome}{LOW_TONE}")
     ipfv_it_stem = compose_stem(IPFV_AUX(HLSTAR))
-    ipfv_vent_suffix=f"-{o_morphome}{HIGH_TONE}"
+    ipfv_vent_suffix=fst(f"-{o_morphome}{HIGH_TONE}")
     ipfv_vent_stem = compose_stem(IPFV_AUX(ALL_LOW_TONE))
     ipfv_slots = [
         (paradigms.suffix(ipfv_it_suffix, ipfv_it_stem), IPFV_IT),
@@ -97,7 +99,7 @@ def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.
     ]
     ipfv_slots = add_class_prefixes_to_slots(ipfv_slots)
 
-    pfv_it_suffix = f"-{e_morphome}{LOW_TONE}"
+    pfv_it_suffix = fst(f"-{e_morphome}{LOW_TONE}")
     pfv_it_stem = compose_stem(PFV_IT_AUX(HLSTAR))
     pfv_vent_suffix = ipfv_vent_suffix
     pfv_vent_stem = compose_stem(ALL_LOW_TONE)
@@ -107,13 +109,13 @@ def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.
     ]
     pfv_slots = add_class_prefixes_to_slots(pfv_slots)
 
-    inf_suffix = f"-{a_morphome}{HIGH_TONE}"
+    inf_suffix = fst(f"-{a_morphome}{HIGH_TONE}")
     inf_class = 'ð'
     inf_stem = compose_stem(add_class_prefix(ALL_HIGH_TONE, inf_class, prefix_tone=HIGH_TONE))
     inf_slot = [(paradigms.suffix(inf_suffix, inf_stem), INFINITIVE)]
 
-    dep_it_suffix = f"-{e_morphome}{LOW_TONE}"
-    dep_vent_suffix = f"-{a_morphome}{LOW_TONE}"
+    dep_it_suffix = fst(f"-{e_morphome}{LOW_TONE}")
+    dep_vent_suffix = fst(f"-{a_morphome}{LOW_TONE}")
     dep_stem = compose_stem(ALL_LOW_TONE)
     dep_slots = [
         (paradigms.suffix(dep_it_suffix, dep_stem), DEP_IT),

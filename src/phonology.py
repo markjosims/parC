@@ -41,13 +41,13 @@ REMOVE_TBU_MARKER_AFTER_ONSET_C = pynini.cdrewrite(
 REMOVE_TBU_MARKER_AFTER_CODA_C = pynini.cdrewrite(
     tau=delete_fst(TONE_SLOT_STR),
     l=TONE_SLOT+C@TBU,
-    r='',
+    r=fst(),
     sigma_star=SIGMASTAR,
 )
 CLEAN_TBU_MARKERS = pynini.cdrewrite(
     tau=delete_fst(TONE_SLOT_STR),
-    l='',
-    r='',
+    l=fst(),
+    r=fst(),
     sigma_star=SIGMASTAR
 )
 
@@ -67,8 +67,8 @@ ALL_HIGH_TONE_RULE = compose_tone(ALL_HIGH_TONE)
 ALL_LOW_TONE_RULE = compose_tone(ALL_LOW_TONE)
 
 DELETE_SCHWA_BEFORE_VOWEL = pynini.cdrewrite(
-    tau=pynutil.delete(fst("ə")+T),
-    l='',
+    tau=pynutil.delete(fst("ə")+T.ques),
+    l=fst(),
     r=BOUNDARY.ques+V,
     sigma_star=SIGMASTAR,
 ).optimize()
@@ -85,13 +85,13 @@ for tone in TIRA_TONE_DIACS:
     dock_floating_tone = pynini.cdrewrite(
         tau=insert_fst(tone),
         l=TONE_PLACEHOLDER+tone+pynini.closure(C)+TBU,
-        r='',
+        r=fst(),
         sigma_star=SIGMASTAR
     )
     delete_floating_tone = pynini.cdrewrite(
         tau=delete_fst(TONE_PLACEHOLDER_STR+tone),
-        l='',
-        r='',
+        l=fst(),
+        r=fst(),
         sigma_star=SIGMASTAR
     )
     rule = dock_floating_tone@delete_floating_tone
@@ -106,7 +106,7 @@ COMBINE_TONES = pynini.union(*[
 ])
 COMBINE_TONES_RULE = pynini.cdrewrite(
     tau=COMBINE_TONES,
-    l='',
-    r='',
+    l=fst(),
+    r=fst(),
     sigma_star=SIGMASTAR,
 )

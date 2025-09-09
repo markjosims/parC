@@ -6,13 +6,13 @@ from src.fst_helpers import fst, delete_fst
 from typing import *
 import re
 
-DIGIT = fst(string.digits)
-HOMOPHONE_TAG = "("+DIGIT+")"
-SIGMASTAR_W_TAG = fst([SIGMA, DIGIT, "(", ")"]).closure().optimize()
+DIGIT = fst(list(string.digits))
+HOMOPHONE_TAG = fst("(")+DIGIT+fst(")")
+SIGMASTAR_W_TAG = fst([SIGMA, DIGIT, fst("("), fst(")")]).closure().optimize()
 REMOVE_HOMOPHONE_TAG = pynini.cdrewrite(
     delete_fst(HOMOPHONE_TAG),
-    '',
-    '',
+    fst(),
+    fst(),
     sigma_star=SIGMASTAR_W_TAG,
 ).optimize()
 
