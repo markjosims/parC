@@ -1,6 +1,7 @@
 import os
 import pynini
 from pynini.lib import edit_transducer
+from string import digits
 
 ###############
 # Tira phonemes
@@ -76,7 +77,7 @@ EPSILON_SYMBOL = '<eps>'
 
 SPECIAL_SYMBOLS = [
     BOUNDARY_STR, WORD_BOUNDARY_STR, TONE_SLOT_STR, TONE_PLACEHOLDER_STR,
-    INSERT, DELETE, SUBSTITUTE, *  BRACKETS
+    INSERT, DELETE, SUBSTITUTE, *BRACKETS, *digits
 ]
 MULTICHAR_TOKENS = [
     DENTAL_D, DENTAL_T, EPSILON_SYMBOL, INSERT, DELETE, SUBSTITUTE
