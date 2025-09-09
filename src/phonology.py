@@ -15,8 +15,8 @@ C = fst(TIRA_CONSONANTS)
 V = fst(TIRA_VOWELS)
 T = fst(TIRA_TONE_DIACS)
 TBU = fst(TIRA_TBUS)
-PLACEHOLDER_TBU = fst(PLACEHOLDER_TBU_STR)
-SIGMA = C|V|T|BOUNDARY|PLACEHOLDER_TBU
+TONE_SLOT = fst(TONE_SLOT_STR)
+SIGMA = C|V|T|BOUNDARY|TONE_SLOT
 SIGMA_EXCEPT_PLACEHOLDER = C|V|T|BOUNDARY
 SIGMASTAR = pynini.closure(SIGMA).optimize()
 SIGMASTAR_EXCEPT_PLACEHOLDER = pynini.closure(SIGMA_EXCEPT_PLACEHOLDER).optimize()
@@ -25,25 +25,25 @@ STEM = paradigms.make_byte_star_except_boundary(BOUNDARY)
 # phonological processes
 
 ADD_TBU_MARKER = pynini.cdrewrite(
-    tau=insert_fst(PLACEHOLDER_TBU_STR),
+    tau=insert_fst(TONE_SLOT_STR),
     l=TBU,
     r=fst(''),
     sigma_star=SIGMASTAR
 )
 REMOVE_TBU_MARKER_AFTER_ONSET_C = pynini.cdrewrite(
-    tau=delete_fst(PLACEHOLDER_TBU_STR),
+    tau=delete_fst(TONE_SLOT_STR),
     l=C@TBU,
     r=V,
     sigma_star=SIGMASTAR,
 )
 REMOVE_TBU_MARKER_AFTER_CODA_C = pynini.cdrewrite(
-    tau=delete_fst(PLACEHOLDER_TBU_STR),
-    l=PLACEHOLDER_TBU+C@TBU,
+    tau=delete_fst(TONE_SLOT_STR),
+    l=TONE_SLOT+C@TBU,
     r='',
     sigma_star=SIGMASTAR,
 )
 CLEAN_TBU_MARKERS = pynini.cdrewrite(
-    tau=delete_fst(PLACEHOLDER_TBU_STR),
+    tau=delete_fst(TONE_SLOT_STR),
     l='',
     r='',
     sigma_star=SIGMASTAR
@@ -53,8 +53,8 @@ PREPARE_TONE = ADD_TBU_MARKER@REMOVE_TBU_MARKER_AFTER_ONSET_C@REMOVE_TBU_MARKER_
 FINALIZE_TONE = CLEAN_TBU_MARKERS
 compose_tone = lambda tone_fst: PREPARE_TONE@tone_fst@FINALIZE_TONE
 
-HTONE_SYLL = (SIGMASTAR_EXCEPT_PLACEHOLDER + PLACEHOLDER_TBU + insert_fst(HIGH_TONE) + SIGMASTAR_EXCEPT_PLACEHOLDER).optimize()
-LTONE_SYLL = (SIGMASTAR_EXCEPT_PLACEHOLDER + PLACEHOLDER_TBU + insert_fst(LOW_TONE) + SIGMASTAR_EXCEPT_PLACEHOLDER).optimize()
+HTONE_SYLL = (SIGMASTAR_EXCEPT_PLACEHOLDER + TONE_SLOT + insert_fst(HIGH_TONE) + SIGMASTAR_EXCEPT_PLACEHOLDER).optimize()
+LTONE_SYLL = (SIGMASTAR_EXCEPT_PLACEHOLDER + TONE_SLOT + insert_fst(LOW_TONE) + SIGMASTAR_EXCEPT_PLACEHOLDER).optimize()
 
 HLSTAR = (HTONE_SYLL + pynini.closure(LTONE_SYLL)).optimize()
 ALL_HIGH_TONE = pynini.closure(HTONE_SYLL).optimize()
@@ -72,7 +72,7 @@ DELETE_SCHWA_BEFORE_VOWEL = pynini.cdrewrite(
 ).optimize()
 
 ADD_PLACEHOLDER_TBU = pynini.cdrewrite(
-    tau=insert_fst(PLACEHOLDER_TBU_STR),
+    tau=insert_fst(TONE_PLACEHOLDER_STR),
     l=C.plus,
     r='[EOS]',
     sigma_star=SIGMASTAR,
@@ -82,12 +82,12 @@ FLOAT_TONE_RULE = SIGMASTAR.copy()
 for tone in TIRA_TONE_DIACS:
     dock_floating_tone = pynini.cdrewrite(
         tau=insert_fst(tone),
-        l=PLACEHOLDER_TBU+tone+pynini.closure(C)+TBU,
+        l=TONE_SLOT+tone+pynini.closure(C)+TBU,
         r='',
         sigma_star=SIGMASTAR
     )
     delete_floating_tone = pynini.cdrewrite(
-        tau=delete_fst(PLACEHOLDER_TBU_STR+tone),
+        tau=delete_fst(TONE_SLOT_STR+tone),
         l='',
         r='',
         sigma_star=SIGMASTAR
