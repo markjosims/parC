@@ -84,12 +84,12 @@ FLOAT_TONE_RULE = SIGMASTAR.copy()
 for tone in TIRA_TONE_DIACS:
     dock_floating_tone = pynini.cdrewrite(
         tau=insert_fst(tone),
-        l=TONE_SLOT+tone+pynini.closure(C)+TBU,
+        l=TONE_PLACEHOLDER+tone+pynini.closure(C)+TBU,
         r='',
         sigma_star=SIGMASTAR
     )
     delete_floating_tone = pynini.cdrewrite(
-        tau=delete_fst(TONE_SLOT_STR+tone),
+        tau=delete_fst(TONE_PLACEHOLDER_STR+tone),
         l='',
         r='',
         sigma_star=SIGMASTAR
