@@ -124,9 +124,7 @@ def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.
     dep_slots = add_class_prefixes_to_slots(dep_slots)
 
     slots = [*imp_slots, *ipfv_slots, *pfv_slots, *inf_slot, *dep_slots]
-
     return slots
-
 
 def get_paradigm_for_class(fv_class: str):
     slots = make_verb_slots(fv_class)
@@ -157,6 +155,16 @@ FV2PARADIGM = {
     "ɔu": OU_PARADIGM,
     "ɔi": OI_PARADIGM,
 }
+
+def debug_paradigm(stem, paradigm):
+    if type(paradigm) is str:
+        paradigm = FV2PARADIGM[paradigm]
+    for rule, feature_vector in paradigm.slots:
+        try:
+            form = decode_fst_string(fst(stem)@rule)
+            print(f"Successfully generated {form} from stem {stem} with values {feature_vector.values}")
+        except:
+            print(f"Error when generating {stem} with values {feature_vector.values}")
 
 def inflect_random_verb(fv_class: Optional[str]=None):
     if fv_class is None:
