@@ -8,7 +8,6 @@ from pynini.lib import features, paradigms, rewrite, pynutil
 import pandas as pd
 from src.phonology import *
 from src.fst_helpers import *
-from src.features import *
 from src.lexicon import get_roots_for_class, get_all_verb_roots_and_fvs
 from src.glossing import REMOVE_HOMOPHONE_TAG, feature_str_to_dict
 from src.constants import INFLECTED_VERBS_PATH
@@ -20,10 +19,11 @@ import random
 def generate_forms(stem: str, paradigm: paradigms.Paradigm, action: Literal['print', 'return']='print', parse: bool=False):
     lattice = rewrite.rewrite_lattice(
         fst(stem),
-        paradigm.stems_to_forms @ paradigm.feature_label_rewriter
+        paradigm.stems_to_forms @ paradigm.feature_label_rewriter,
+        token_type=TIRA_SYMBOL_TABLE,
     )
     wordforms = []
-    for wordform in rewrite.lattice_to_strings(lattice):
+    for wordform in rewrite.lattice_to_strings(lattice, token_type=TIRA_SYMBOL_TABLE):
         if action=='return' and parse:
             parsed_wordform = feature_str_to_dict(wordform)
             wordforms.append(parsed_wordform)
