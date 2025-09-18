@@ -15,4 +15,5 @@ def test_compile_regular_paradigms(verb_root, fv_class):
         raise error
 
 @pytest.mark.parametrize("verb_root,fv_class", get_all_verb_roots_and_fvs())
-def test_
+def test_gold_forms()
+    ...
