@@ -89,17 +89,17 @@ def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.
 
     imp_it_suffix=fst(f"-{o_morphome}{HIGH_TONE}")
     imp_vent_suffix=fst(f"-{a_morphome}{HIGH_TONE}")
-    imp_it_stem=compose_stem(ALL_HIGH_TONE)
-    imp_vent_stem=compose_stem(ALL_LOW_TONE)
+    imp_it_stem=compose_stem(ALL_HIGH_TONE_RULE)
+    imp_vent_stem=compose_stem(ALL_LOW_TONE_RULE)
     imp_slots = [
         (paradigms.suffix(imp_it_suffix, imp_it_stem), IMP_IT),
         (paradigms.suffix(imp_vent_suffix, imp_vent_stem), IMP_VENT),
     ]
 
     ipfv_it_suffix=fst(f"-{a_morphome}{LOW_TONE}")
-    ipfv_it_stem = compose_stem(IPFV_AUX(HLSTAR))
+    ipfv_it_stem = compose_stem(IPFV_AUX(HLSTAR_RULE))
     ipfv_vent_suffix=fst(f"-{o_morphome}{HIGH_TONE}")
-    ipfv_vent_stem = compose_stem(IPFV_AUX(ALL_LOW_TONE))
+    ipfv_vent_stem = compose_stem(IPFV_AUX(ALL_LOW_TONE_RULE))
     ipfv_slots = [
         (paradigms.suffix(ipfv_it_suffix, ipfv_it_stem), IPFV_IT),
         (paradigms.suffix(ipfv_vent_suffix, ipfv_vent_stem), IPFV_VENT),
@@ -107,9 +107,9 @@ def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.
     ipfv_slots = add_class_prefixes_to_slots(ipfv_slots)
 
     pfv_it_suffix = fst(f"-{e_morphome}{LOW_TONE}")
-    pfv_it_stem = compose_stem(PFV_IT_AUX(HLSTAR))
+    pfv_it_stem = compose_stem(PFV_IT_AUX(HLSTAR_RULE))
     pfv_vent_suffix = ipfv_vent_suffix
-    pfv_vent_stem = compose_stem(ALL_LOW_TONE)
+    pfv_vent_stem = compose_stem(ALL_LOW_TONE_RULE)
     pfv_slots = [
         (paradigms.suffix(pfv_it_suffix, pfv_it_stem), PFV_IT),
         (paradigms.suffix(pfv_vent_suffix, pfv_vent_stem), PFV_VENT),
@@ -118,12 +118,12 @@ def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.
 
     inf_suffix = fst(f"-{a_morphome}{HIGH_TONE}")
     inf_class = 'ð'
-    inf_stem = compose_stem(add_class_prefix(ALL_HIGH_TONE, inf_class, prefix_tone=HIGH_TONE))
+    inf_stem = compose_stem(add_class_prefix(ALL_HIGH_TONE_RULE, inf_class, prefix_tone=HIGH_TONE))
     inf_slot = [(paradigms.suffix(inf_suffix, inf_stem), INFINITIVE)]
 
     dep_it_suffix = fst(f"-{e_morphome}{LOW_TONE}")
     dep_vent_suffix = fst(f"-{a_morphome}{LOW_TONE}")
-    dep_stem = compose_stem(ALL_LOW_TONE)
+    dep_stem = compose_stem(ALL_LOW_TONE_RULE)
     dep_slots = [
         (paradigms.suffix(dep_it_suffix, dep_stem), DEP_IT),
         (paradigms.suffix(dep_vent_suffix, dep_stem), DEP_VENT),
