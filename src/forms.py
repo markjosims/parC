@@ -81,52 +81,113 @@ def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.
     a_morphome = CLASS2FV[fv_class]["a_morphome"]
     o_morphome = CLASS2FV[fv_class]["o_morphome"]
     e_morphome = CLASS2FV[fv_class]["e_morphome"]
+
+    is_OV = a_morphome == 'ɔ'
     
     prepare_root_for_inflection = REMOVE_HOMOPHONE_TAG@ADD_PLACEHOLDER_TBU
     finalize_form = FLOAT_TONE_RULE@COMBINE_TONES_RULE
 
     compose_stem = lambda stem_rule: prepare_root_for_inflection@stem_rule@finalize_form
+    compose_stem_harmony = lambda stem_rule: prepare_root_for_inflection\
+        @ROUNDING_HARMONY\
+        @stem_rule\
+        @finalize_form
+
+    ####################
+    # Imperative forms #
+    ####################
 
     imp_it_suffix=fst(f"-{o_morphome}{HIGH_TONE}")
+    if is_OV and o_morphome == 'ɔ':
+        imp_it_stem=compose_stem_harmony(ALL_HIGH_TONE_RULE)
+    else:
+        imp_it_stem=compose_stem(ALL_HIGH_TONE_RULE)
+
     imp_vent_suffix=fst(f"-{a_morphome}{HIGH_TONE}")
-    imp_it_stem=compose_stem(ALL_HIGH_TONE_RULE)
-    imp_vent_stem=compose_stem(ALL_LOW_TONE_RULE)
+    if is_OV:
+        imp_vent_stem=compose_stem_harmony(ALL_LOW_TONE_RULE)
+    else:
+        imp_vent_stem=compose_stem(ALL_LOW_TONE_RULE)
     imp_slots = [
         (paradigms.suffix(imp_it_suffix, imp_it_stem), IMP_IT),
         (paradigms.suffix(imp_vent_suffix, imp_vent_stem), IMP_VENT),
     ]
 
+    ######################
+    # Imperfective forms #
+    ######################
+
     ipfv_it_suffix=fst(f"-{a_morphome}{LOW_TONE}")
-    ipfv_it_stem = compose_stem(IPFV_AUX(HLSTAR_RULE))
+    if is_OV:
+        ipfv_it_stem = compose_stem_harmony(IPFV_AUX(HLSTAR_RULE))
+    else:
+        ipfv_it_stem = compose_stem(IPFV_AUX(HLSTAR_RULE))
+
     ipfv_vent_suffix=fst(f"-{o_morphome}{HIGH_TONE}")
-    ipfv_vent_stem = compose_stem(IPFV_AUX(ALL_LOW_TONE_RULE))
+    if is_OV and o_morphome == 'ɔ':
+        ipfv_vent_stem = compose_stem_harmony(IPFV_AUX(ALL_LOW_TONE_RULE))
+    else:
+        ipfv_vent_stem = compose_stem(IPFV_AUX(ALL_LOW_TONE_RULE))
     ipfv_slots = [
         (paradigms.suffix(ipfv_it_suffix, ipfv_it_stem), IPFV_IT),
         (paradigms.suffix(ipfv_vent_suffix, ipfv_vent_stem), IPFV_VENT),
     ]
     ipfv_slots = add_class_prefixes_to_slots(ipfv_slots)
 
+    ####################
+    # Perfective forms #
+    ####################
+
     pfv_it_suffix = fst(f"-{e_morphome}{LOW_TONE}")
     pfv_it_stem = compose_stem(PFV_IT_AUX(HLSTAR_RULE))
+
     pfv_vent_suffix = ipfv_vent_suffix
-    pfv_vent_stem = compose_stem(ALL_LOW_TONE_RULE)
+    if is_OV and o_morphome == 'ɔ':
+        pfv_vent_stem = compose_stem_harmony(ALL_LOW_TONE_RULE)
+    else:
+        pfv_vent_stem = compose_stem(ALL_LOW_TONE_RULE)
     pfv_slots = [
         (paradigms.suffix(pfv_it_suffix, pfv_it_stem), PFV_IT),
         (paradigms.suffix(pfv_vent_suffix, pfv_vent_stem), PFV_VENT),
     ]
     pfv_slots = add_class_prefixes_to_slots(pfv_slots)
 
+    ##############
+    # Infinitive #
+    ###############
+
     inf_suffix = fst(f"-{a_morphome}{HIGH_TONE}")
     inf_class = 'ð'
-    inf_stem = compose_stem(add_class_prefix(ALL_HIGH_TONE_RULE, inf_class, prefix_tone=HIGH_TONE))
+    if is_OV:
+        inf_stem = compose_stem_harmony(add_class_prefix(
+            ALL_HIGH_TONE_RULE,
+            inf_class,
+            prefix_tone=HIGH_TONE,
+        ))
+    else:
+        inf_stem = compose_stem(add_class_prefix(
+            ALL_HIGH_TONE_RULE,
+            inf_class,
+            prefix_tone=HIGH_TONE,
+        ))
     inf_slot = [(paradigms.suffix(inf_suffix, inf_stem), INFINITIVE)]
 
+    ###################
+    # Dependent forms #
+    ###################
+
     dep_it_suffix = fst(f"-{e_morphome}{LOW_TONE}")
+    dep_it_stem = compose_stem(ALL_LOW_TONE_RULE)
+
     dep_vent_suffix = fst(f"-{a_morphome}{LOW_TONE}")
-    dep_stem = compose_stem(ALL_LOW_TONE_RULE)
+    if is_OV:
+        dep_vent_stem = compose_stem_harmony(ALL_LOW_TONE_RULE)
+    else:
+        dep_vent_stem = dep_it_stem
+
     dep_slots = [
-        (paradigms.suffix(dep_it_suffix, dep_stem), DEP_IT),
-        (paradigms.suffix(dep_vent_suffix, dep_stem), DEP_VENT),
+        (paradigms.suffix(dep_it_suffix, dep_it_stem), DEP_IT),
+        (paradigms.suffix(dep_vent_suffix, dep_vent_stem), DEP_VENT),
     ]
     dep_slots = add_class_prefixes_to_slots(dep_slots)
 

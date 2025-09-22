@@ -73,6 +73,16 @@ DELETE_SCHWA_BEFORE_VOWEL = pynini.cdrewrite(
     sigma_star=SIGMASTAR,
 ).optimize()
 
+ROUNDING_HARMONY_TARGET = fst("ɛ") | fst("a") | fst("ɜ")
+ROUNDING_HARMONY_TRIGGER = fst("ɔ")
+
+ROUNDING_HARMONY = pynini.cdrewrite(
+    tau=pynini.cross(ROUNDING_HARMONY_TARGET, ROUNDING_HARMONY_TRIGGER),
+    l=fst(''),
+    r=fst(''),
+    sigma_star=SIGMASTAR,
+).optimize()
+
 ADD_PLACEHOLDER_TBU = pynini.cdrewrite(
     tau=insert_fst(TONE_PLACEHOLDER_STR),
     l=C,

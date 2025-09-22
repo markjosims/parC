@@ -65,3 +65,17 @@ def test_hlstar(atonal_str, tone_added_str):
     strings = get_decoded_strings(lattice)
     assert len(strings)==1
     assert strings[0]==tone_added_str
+
+@pytest.mark.parametrize("unround_str,round_str", [
+    ("ɜ̀d", "ɔ̀d"),
+    ("kât̪", "kɔ̂t̪"),
+    ("pɛ̌c", "pɔ̌c"),
+    ("r̀lɛ̀ɲ", "r̀lɔ̀ɲ"),
+    ("îɾcɛ́cɛ̀c", "îɾcɔ́cɔ̀c"),
+    ("ɜ̌dɛ̀ŋnàt̪", "ɔ̌dɔ̀ŋnɔ̀t̪"),
+])
+def test_rounding_harmony(unround_str,round_str):
+    lattice=rewrite.rewrite_lattice(fst(unround_str), ROUNDING_HARMONY)
+    strings = get_decoded_strings(lattice)
+    assert len(strings)==1
+    assert strings[0]==round_str
