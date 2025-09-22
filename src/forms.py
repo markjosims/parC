@@ -39,6 +39,9 @@ def generate_forms(
         return wordforms
 
 def add_class_prefix(stem: pynini.Fst, class_agree: str, prefix_tone=LOW_TONE) -> pynini.Fst:
+    if class_agree == 'g':
+        # 'g' class phonetically realized as [k]
+        class_agree = 'k'
     prefix_acceptor = fst(f"{class_agree}ə{prefix_tone}-")
     return (paradigms.prefix(prefix_acceptor, stem)@DELETE_SCHWA_BEFORE_VOWEL).optimize()
 
