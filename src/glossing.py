@@ -23,10 +23,10 @@ def feature_str_to_dict(feature_str: str, decode_stem: bool=True) -> Dict[str, s
     If `decode_stem` is True, call `decode_byte_str` on stem.
     """
     items = feature_str.split(sep='[')
-    stem = items[0]
+    form = items[0]
     if decode_stem:
-        stem = decode_byte_str(stem)
-    feature_dict = {"stem": stem}
+        form = decode_byte_str(form)
+    feature_dict = {"form": form}
     for item in items[1:]:
         item = item.removesuffix(']')
         feature, value = item.split('=')
