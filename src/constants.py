@@ -166,6 +166,7 @@ DEFAULT_DELETE_COST = edit_transducer.DEFAULT_DELETE_COST
 
 VERB_ROOTS_PATH = 'data/verb_roots_final.csv'
 INFLECTED_VERBS_PATH = 'data/inflected_verb_forms.csv'
+GOLD_VERBS_PATH = 'data/gold_verbs.csv'
 
 FST_DIR = "fst/"
 ROOT2GLOSS_FST_PATH = os.path.join(FST_DIR, "root2gloss.fst")

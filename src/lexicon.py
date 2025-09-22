@@ -5,12 +5,17 @@ stems to glosses and to principal parts.
 
 import pynini
 import pandas as pd
-from src.constants import VERB_ROOTS_PATH, ROOT2FV_FST_PATH, ROOT2GLOSS_FST_PATH
+from src.constants import (
+    VERB_ROOTS_PATH,
+    ROOT2FV_FST_PATH,
+    ROOT2GLOSS_FST_PATH,
+    GOLD_VERBS_PATH,
+)
 from src.fst_helpers import fst
 from typing import *
 
 VERBS_DF = pd.read_csv(VERB_ROOTS_PATH)
-
+GOLD_VERBS_DF = pd.read_csv(GOLD_VERBS_PATH)
 
 def get_root2gloss_fst() -> pynini.Fst:
     root2gloss_strs = [list(t) for t in zip(
@@ -42,6 +47,9 @@ def get_all_verb_roots_and_fvs() -> List[Tuple[str, str]]:
     verb_roots = VERBS_DF['verb_root'].tolist()
     verb_fvs = VERBS_DF['root_fv'].tolist()
     return list(zip(verb_roots, verb_fvs))
+
+def get_all_gold_forms() -> List[Dict[str, str]]:
+    return GOLD_VERBS_DF.to_dict(orient='records')
 
 def main() -> int:
     root2gloss = get_root2gloss_fst()
