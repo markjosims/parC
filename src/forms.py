@@ -204,7 +204,7 @@ def get_paradigm_for_class(fv_class: str):
         slots=slots,
         lemma_feature_vector=VERB_ROOT,
         stems=get_roots_for_class(fv_class, wrap_w_fsa=True),
-        boundary=BOUNDARY_STR,
+        boundary=fst(BOUNDARY_STR),
     )
     return fv_paradigm
 
