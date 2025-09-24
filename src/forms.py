@@ -34,6 +34,9 @@ def generate_forms(
         elif action=='return':
             wordforms.append(wordform)
         else:
+            byte_word = wordform.split('[')[0]
+            word = decode_byte_str(byte_word)
+            wordform = wordform.replace(byte_word, word)
             print(wordform)
     if action=='return':
         return wordforms
