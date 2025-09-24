@@ -115,7 +115,13 @@ NONFINITE_TAM = [
     "infinitive",
 ]
 
-TAM = features.Feature("tam", *SUBJECT_AND_DEIXIS_MARKED_TAM, *DEIXIS_MARKED_TAM, *NONFINITE_TAM)
+TAM = features.Feature(
+    "tam",
+    "unmarked",
+    *SUBJECT_AND_DEIXIS_MARKED_TAM,
+    *DEIXIS_MARKED_TAM,
+    *NONFINITE_TAM,
+)
 
 DEIXIS_VALUES = ["ventive", "itive"]
 DEIXIS = features.Feature("deixis", "unmarked", *DEIXIS_VALUES)
@@ -139,6 +145,7 @@ DEP_IT = features.FeatureVector(INFLECTED_VERB, "tam=dependent", "deixis=itive")
 DEP_VENT = features.FeatureVector(INFLECTED_VERB, "tam=dependent", "deixis=ventive")
 IMP_IT = features.FeatureVector(INFLECTED_VERB, "tam=imperative", "deixis=itive", "class=unmarked")
 IMP_VENT = features.FeatureVector(INFLECTED_VERB, "tam=imperative", "deixis=ventive", "class=unmarked")
+VERB_ROOT = features.FeatureVector(INFLECTED_VERB, "tam=unmarked", "deixis=unmarked", "class=unmarked")
 
 ################
 # symbol table #

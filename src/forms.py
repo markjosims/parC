@@ -78,6 +78,8 @@ INFINITIVE_PREFIX = lambda stem: paradigms.prefix(fst("ðə́-"), stem).optimize
 # slots for verb paradigms
 
 def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.FeatureVector]]]:
+    root_slot = (STEM, VERB_ROOT)
+
     a_morphome = CLASS2FV[fv_class]["a_morphome"]
     o_morphome = CLASS2FV[fv_class]["o_morphome"]
     e_morphome = CLASS2FV[fv_class]["e_morphome"]
@@ -191,7 +193,7 @@ def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.
     ]
     dep_slots = add_class_prefixes_to_slots(dep_slots)
 
-    slots = [*imp_slots, *ipfv_slots, *pfv_slots, *inf_slot, *dep_slots]
+    slots = [root_slot, *imp_slots, *ipfv_slots, *pfv_slots, *inf_slot, *dep_slots]
     return slots
 
 def get_paradigm_for_class(fv_class: str):
@@ -200,7 +202,7 @@ def get_paradigm_for_class(fv_class: str):
         category=INFLECTED_VERB,
         name=f"{fv_class} class",
         slots=slots,
-        lemma_feature_vector=INFINITIVE,
+        lemma_feature_vector=VERB_ROOT,
         stems=get_roots_for_class(fv_class, wrap_w_fsa=True),
         boundary=BOUNDARY_STR,
     )
