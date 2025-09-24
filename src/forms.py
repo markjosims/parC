@@ -246,6 +246,14 @@ def inflect_verb_with_features(
         paradigm: Union[paradigms.Paradigm, str],
         features: Dict[str, str]
     ) -> str:
+    """
+    Arguments:
+        root:       str indicating verb root to inflect
+        paradigm:   Paradigm object or str of FV class shorthand e.g. 'aɔ'
+        features:   dict mapping feature labels to values
+    Returns:
+        form:       str of root verb inflected with given features
+    """
     if type(paradigm) is str:
         paradigm = FV2PARADIGM[paradigm]
     slot_for_features = [slot for slot in paradigm.slots if slot[1].values == features][0]
@@ -253,6 +261,20 @@ def inflect_verb_with_features(
     form = decode_fst_string(fst(root)@rule)
 
     return form
+
+def parse_inflected_verb(
+        form: str,
+        paradigm: Union[paradigms.Paradigm, str],
+) -> Dict[str, str]:
+    """
+    Arguments:
+        form:       str of inflected verb form
+        paradigm:   Paradigm object or str of FV class shorthand e.g. 'aɔ'
+    Returns:        dict of shape {'root': root, 'feature': feature_value}
+    """
+    if type(paradigm) is str:
+        paradigm = FV2PARADIGM[paradigm]
+    
 
 def main():
     rows = []
