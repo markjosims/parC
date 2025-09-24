@@ -17,6 +17,12 @@ from typing import *
 VERBS_DF = pd.read_csv(VERB_ROOTS_PATH)
 GOLD_VERBS_DF = pd.read_csv(GOLD_VERBS_PATH)
 
+class LexemeNotFoundError(Exception):
+    """
+    Raised when a root is not found in a given paradigm.
+    """
+    pass
+
 def get_root2gloss_fst() -> pynini.Fst:
     root2gloss_strs = [list(t) for t in zip(
         VERBS_DF['verb_root'].tolist(),
