@@ -20,10 +20,11 @@ def index():
 def handle_parse():
     """Handles the parsing form submission."""
     inflected_form = request.form.get('inflected_form', '')
+    fv_class = request.form.get('fv_class')
     if not inflected_form:
         result = {"error": "Please enter a verb form."}
     else:
-        result = parse_inflected_verb(inflected_form)
+        result = parse_inflected_verb(inflected_form, fv_class)
     return render_template(
         "index.html",
         parse_result=result,
