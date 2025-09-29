@@ -9,3 +9,4 @@ ipykernel
 pytest
 graphviz
 pydot
+flask
