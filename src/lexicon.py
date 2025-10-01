@@ -39,6 +39,12 @@ def get_root2fv_fst() -> pynini.Fst:
     root2fv = pynini.string_map(root2fv_strs)
     return root2fv
 
+def get_gloss_for_verb(verb_root: str) -> str:
+    root_mask = VERBS_DF['verb_root']==verb_root
+    gloss = VERBS_DF.loc[root_mask, 'root_sense'].item()
+    return gloss
+
+
 def get_roots_for_class(fv_class: str, wrap_w_fsa: bool=False) -> List[str]:
     fv_mask = VERBS_DF['root_fv']==fv_class
     roots = VERBS_DF.loc[fv_mask, 'verb_root'].tolist()
@@ -53,6 +59,12 @@ def get_all_verb_roots_and_fvs() -> List[Tuple[str, str]]:
     verb_roots = VERBS_DF['verb_root'].tolist()
     verb_fvs = VERBS_DF['root_fv'].tolist()
     return list(zip(verb_roots, verb_fvs))
+
+def get_all_verb_data() -> List[Tuple[str, str, str]]:
+    verb_roots = VERBS_DF['verb_root'].tolist()
+    verb_fvs = VERBS_DF['root_fv'].tolist()
+    verb_senses = VERBS_DF['root_sense']
+    return list(zip(verb_roots, verb_fvs, verb_senses)) 
 
 def get_all_gold_forms() -> List[Dict[str, str]]:
     return GOLD_VERBS_DF.to_dict(orient='records')

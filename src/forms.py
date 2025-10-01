@@ -8,7 +8,7 @@ from pynini.lib import features, paradigms, rewrite, pynutil
 import pandas as pd
 from src.phonology import *
 from src.fst_helpers import *
-from src.lexicon import get_roots_for_class, get_all_verb_roots_and_fvs
+from src.lexicon import get_roots_for_class, get_all_verb_roots_and_fvs, get_gloss_for_verb
 from src.glossing import REMOVE_HOMOPHONE_TAG, feature_str_to_dict
 from src.constants import INFLECTED_VERBS_PATH
 from typing import *
@@ -270,6 +270,7 @@ def inflect_verb_with_features(
 def parse_inflected_verb(
         form: str,
         paradigm: Union[paradigms.Paradigm, str],
+        add_gloss: bool=True,
 ) -> Dict[str, str]:
     """
     Arguments:
@@ -283,6 +284,8 @@ def parse_inflected_verb(
     root = decode_byte_str(root)
     parse = feature_vec.values
     parse['root'] = root
+    if add_gloss:
+        parse['gloss']=get_gloss_for_verb(root)
     return parse
     
 
