@@ -17,11 +17,7 @@
     <div class="mb-4">
         {% include '_fv_dropdown.html' %}
     </div>
-    <button type="submit"
-            name="submit_parse"
-            class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 ease-in-out">
-        Parse
-    </button>
+
 
     {% if mode == 'test' %}
 
@@ -30,4 +26,10 @@
     {% include '_verb_feature_dropdowns.html' %}
 
     {% endif %}
+
+    <button type="submit"
+            name="submit_parse"
+            class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 ease-in-out">
+        Parse
+    </button>
 </form>
