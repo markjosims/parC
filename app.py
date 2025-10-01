@@ -64,11 +64,14 @@ def handle_test_parse(form):
     else:
         status = "Failure"
 
-    return {"test_parse_result": {
+    return {
+        "test_parse_result": {
             "status": status,
             "expected": expected,
             "actual": actual,
-        }}
+        },
+        "parse_input": parse_input,
+    }
 
 def handle_inflect(form):
     """Handles the inflection form submission."""
