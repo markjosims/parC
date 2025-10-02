@@ -8,7 +8,7 @@ from src.forms import (
 )
 from src.lexicon import get_all_verb_data
 from src.constants import VERB_FEATURE_VALUES
-from src.database import get_elan_analyses
+from src.sentences import get_elan_analyses
 import pynini
 from unicodedata import normalize
 
