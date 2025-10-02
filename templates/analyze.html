@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+
+{% block main_class %}bg-white p-6 rounded-lg shadow{% endblock %}
+
+{% block content %}
+    <h2 class="text-2xl font-semibold mb-4">Analyze Sentences</h2>
+    
+    <div class="overflow-x-auto">
+        <table class="result-table w-full min-w-full">
+            <thead class="bg-gray-100">
+                <tr>
+                    <th class="p-3 text-left font-semibold text-gray-700">Sentence</th>
+                    <th class="p-3 text-left font-semibold text-gray-700">Gloss</th>
+                    <th class="p-3 text-left font-semibold text-gray-700">Translation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sentence, translation, gloss in sentences %}
+                <tr class="border-t">
+                    <td class="p-3 font-mono align-top">
+                        <code>{{ sentence }}</code>
+                    </td>
+                    <td class="p-3 align-top">
+                        {{ gloss }}
+                    </td>
+                    <td class="p-3 align-top">
+                        <em>{{ translation }}</em>
+                    </td>
+                </tr>
+                {% else %}
+                <tr class="border-t">
+                    <td colspan="3" class="p-3 text-center text-gray-500">No sentences found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+{% endblock %}

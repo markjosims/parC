@@ -8,6 +8,7 @@ from src.forms import (
 )
 from src.lexicon import get_all_verb_data
 from src.constants import VERB_FEATURE_VALUES
+from src.database import get_elan_analyses
 import pynini
 from unicodedata import normalize
 
@@ -157,6 +158,14 @@ def paradigms_page():
         context['paradigm']=get_inflected_paradigm_for_verb(verb_root, fv)
         context['inflect_input']=verb_row
     return render_template('paradigms.html', **TEMPLATE_DEFAULTS, **context)
+
+@app.route('/analyze')
+def analyze_page():
+    """
+    Handles the analysis page, displaying sentences from the database.
+    """
+    sentences_data = get_elan_analyses()
+    return render_template('analyze.html', sentences=sentences_data)
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,0 +1,12 @@
+from src.constants import ANALYSES_PATH
+import pandas as pd
+from typing import *
+
+ANALYSES_DF = pd.read_csv(ANALYSES_PATH, keep_default_na=False)
+
+def get_elan_analyses() -> List[Tuple[str,str]]:
+    elan_mask = ANALYSES_DF['source']=='elan'
+    transcriptions = ANALYSES_DF.loc[elan_mask, 'text'].tolist()
+    translations = ANALYSES_DF.loc[elan_mask, 'Translation'].tolist()
+    gloss = ANALYSES_DF.loc[elan_mask, 'Gloss'].tolist()
+    return list(zip(transcriptions, translations, gloss))

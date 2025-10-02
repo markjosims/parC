@@ -398,7 +398,6 @@ def ingress_excel_verbs() -> pd.DataFrame:
     analyses_df = pd.DataFrame(data=analyses)
     return analyses_df
 
-
 def main() -> int:
     df = pd.read_csv(LIST_PATH, keep_default_na=False)
     print(len(df))
