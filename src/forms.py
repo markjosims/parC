@@ -10,7 +10,7 @@ from src.phonology import *
 from src.fst_helpers import *
 from src.lexicon import get_roots_for_class, get_all_verb_roots_and_fvs, get_gloss_for_verb
 from src.glossing import REMOVE_HOMOPHONE_TAG, feature_str_to_dict
-from src.constants import INFLECTED_VERBS_PATH
+from src.constants import INFLECTED_VERBS_PATH, INFLECTED_VERB
 from typing import *
 import random
 
@@ -228,6 +228,7 @@ FV2PARADIGM = {
     "ɔu": OU_PARADIGM,
     "ɔi": OI_PARADIGM,
 }
+PARADIGM2FV = {v:k for v,k in FV2PARADIGM.items()}
 
 def debug_paradigm(root, paradigm):
     if type(paradigm) is str:
@@ -261,11 +262,60 @@ def inflect_verb_with_features(
     """
     if type(paradigm) is str:
         paradigm = FV2PARADIGM[paradigm]
-    slot_for_features = [slot for slot in paradigm.slots if slot[1].values == features][0]
-    rule, features = slot_for_features
+    expected_keys = [feature.name for feature in INFLECTED_VERB.features]
+    features_filtered = {k:v for k,v in features.items() if k in expected_keys}
+    slot_for_features = [slot for slot in paradigm.slots if slot[1].values == features_filtered][0]
+    rule, _ = slot_for_features
     form = decode_fst_string(fst(root)@rule)
 
     return form
+
+def get_inflected_paradigm_for_verb(
+        root: str,
+        paradigm: Union[paradigms.Paradigm, str],
+) -> Dict[str, Any]:
+    """
+    Arguments:
+        root:               str indicating verb root to inflect
+        paradigm:           Paradigm object or str of FV class shorthand e.g. 'aɔ'
+    Returns:
+        inflected_paradigm: dict mapping feature values to inflected forms of the verb
+    """
+    if type(paradigm) is str:
+        fv_class = paradigm
+        paradigm = FV2PARADIGM[paradigm]
+    else:
+        fv_class = PARADIGM2FV[paradigm]
+    gloss = get_gloss_for_verb(root)
+    inflected_paradigm = {"root": root, "fv": fv_class, "gloss": gloss}
+
+    finite_class = "l"
+    for tam_value in DEIXIS_MARKED_TAM+SUBJECT_AND_DEIXIS_MARKED_TAM:
+        inflected_paradigm[tam_value]={}
+        class_value = finite_class
+        if tam_value == 'imperative':
+            class_value = 'unmarked'
+        for deixis_value in DEIXIS_VALUES:
+            form = inflect_verb_with_features(
+                root=root,
+                paradigm=paradigm,
+                features={
+                    "tam": tam_value,
+                    "deixis": deixis_value,
+                    "class": class_value,
+                }
+            )
+            inflected_paradigm[tam_value][deixis_value]=form
+    inflected_paradigm['infinitive']=inflect_verb_with_features(
+        root=root,
+        paradigm=paradigm,
+        features={
+            "tam": "infinitive",
+            "deixis": "unmarked",
+            "class": "ð",
+        }
+    )
+    return inflected_paradigm
 
 def parse_inflected_verb(
         form: str,

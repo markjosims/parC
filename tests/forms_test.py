@@ -1,6 +1,6 @@
 import pytest
 from src.forms import *
-from src.lexicon import get_all_verb_roots_and_fvs, get_all_gold_forms
+from src.lexicon import get_all_verb_roots_and_fvs, get_all_gold_forms, get_gold_paradigms
 
 @pytest.mark.parametrize("verb_root,fv_class", get_all_verb_roots_and_fvs())
 def test_compile_regular_paradigms(verb_root, fv_class):
@@ -34,3 +34,10 @@ def test_gold_forms2features(gold_verb):
     assert root == predicted_parse.pop('root')
     assert predicted_parse == gold_verb
     
+@pytest.mark.parametrize("inflected_paradigm", get_gold_paradigms())
+def test_gold_paradigms(inflected_paradigm):
+    root = inflected_paradigm.pop('root')
+    fv = inflected_paradigm.pop('fv')
+
+    predicted_paradigm = get_inflected_paradigm_for_verb(root, fv)
+    assert predicted_paradigm == inflected_paradigm

@@ -10,9 +10,11 @@ from src.constants import (
     ROOT2FV_FST_PATH,
     ROOT2GLOSS_FST_PATH,
     GOLD_VERBS_PATH,
+    GOLD_PARADIGMS_PATH,
 )
 from src.fst_helpers import fst
 from typing import *
+import json
 
 VERBS_DF = pd.read_csv(VERB_ROOTS_PATH)
 GOLD_VERBS_DF = pd.read_csv(GOLD_VERBS_PATH)
@@ -68,6 +70,11 @@ def get_all_verb_data() -> List[Tuple[str, str, str]]:
 
 def get_all_gold_forms() -> List[Dict[str, str]]:
     return GOLD_VERBS_DF.to_dict(orient='records')
+
+def get_gold_paradigms() -> List[Dict[str, Any]]:
+    with open(GOLD_PARADIGMS_PATH) as f:
+        gold_paradigms = json.load(f)
+    return gold_paradigms
 
 def main() -> int:
     root2gloss = get_root2gloss_fst()
