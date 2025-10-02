@@ -1,6 +1,11 @@
 import flask
 from flask import Flask, render_template, request
-from src.forms import parse_inflected_verb, inflect_verb_with_features, FV_CLASSES
+from src.forms import (
+    parse_inflected_verb,
+    inflect_verb_with_features,
+    get_inflected_paradigm_for_verb,
+    FV_CLASSES
+)
 from src.lexicon import get_all_verb_data
 from src.constants import VERB_FEATURE_VALUES
 import pynini
@@ -135,6 +140,16 @@ def lexicon_page():
     Fetches all verb data and displays it in a table.
     """
     return render_template('lexicon.html', **TEMPLATE_DEFAULTS)
+
+@app.route('/paradigms', methods=['GET', 'POST'])
+def paradigms_page():
+    context = {'paradigm': None, 'inflect_input': None}
+    if request.method == 'POST':
+        verb_row = request.form.get('verb_root', '')
+        verb_root, fv, _ = verb_row.split()
+        context['paradigm']=get_inflected_paradigm_for_verb(verb_root, fv)
+        context['inflect_input']=verb_row
+    return render_template('paradigms.html', **TEMPLATE_DEFAULTS, **context)
 
 if __name__ == '__main__':
     app.run(debug=True)

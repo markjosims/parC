@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+
+
+{% block main_class %}bg-white p-6 rounded-lg shadow{% endblock %}
+
+{% block content %}
+    <h2 class="text-2xl font-semibold mb-4">Generate Verb Paradigm</h2>
+    <p class="mb-6 text-gray-600">Enter a verb root and its FV class to generate its inflectional paradigm.</p>
+    
+
+    <form method="post" class="max-w-xl mb-8">
+        <div class="flex items-end space-x-2">
+            {% include "_verb_root_dropdown.html" %}
+            <button type="submit" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700 h-10">Generate</button>
+        </div>
+    </form>
+
+    {% if paradigm %}
+        {% if paradigm.error %}
+            <div class="mt-6 p-4 rounded-lg border bg-red-50 border-red-300 text-red-800">
+                <strong>Error:</strong> {{ paradigm.error }}
+            </div>
+        {% else %}
+            <div class="mt-6">
+                <h3 class="text-xl font-bold mb-4">Paradigm for: <code class="bg-gray-200 p-1 rounded">{{ paradigm.root }}</code> (FV: <code class="bg-gray-200 p-1 rounded">{{ paradigm.fv }}</code>) '{{ paradigm.gloss }}'</h3>
+                <div class="overflow-x-auto">
+                    <table class="result-table w-full min-w-full">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="p-3 text-left font-semibold text-gray-700">TAM</th>
+                                <th class="p-3 text-left font-semibold text-gray-700">Ventive</th>
+                                <th class="p-3 text-left font-semibold text-gray-700">Itive</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set tam_order = ['imperative', 'imperfective', 'perfective', 'dependent', 'infinitive'] %}
+                            
+                            {% for tam in tam_order %}
+                            <tr class="border-t">
+                                <td class="p-3 font-medium text-gray-600">{{ tam | capitalize }}</td>
+                                
+                                {% if tam == 'infinitive' %}
+                                    <td colspan="2" class="p-3 text-center">
+                                        <code class="bg-gray-200 p-1 rounded">{{ paradigm.infinitive }}</code>
+                                    </td>
+                                {% else %}
+                                    <td class="p-3"><code class="bg-gray-200 p-1 rounded">{{ paradigm[tam].ventive }}</code></td>
+                                    <td class="p-3"><code class="bg-gray-200 p-1 rounded">{{ paradigm[tam].itive }}</code></td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+    {% endif %}
+{% endblock %}
