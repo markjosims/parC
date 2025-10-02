@@ -9,6 +9,7 @@ from src.forms import (
 from src.lexicon import get_all_verb_data
 from src.constants import VERB_FEATURE_VALUES
 import pynini
+from unicodedata import normalize
 
 app = Flask(__name__)
 
@@ -39,7 +40,10 @@ def index():
 
 def handle_parse(form):
     """Handles the parsing form submission."""
+    normalize_parse_input = lambda s: normalize("NFKD", s).replace('-', '')
     parse_input = form.get('parse_input', '')
+    parse_input = normalize_parse_input(parse_input)
+
     fv_class = form.get('fv_class')
     if not parse_input:
         result = {"error": "Please enter a verb form."}
@@ -112,7 +116,10 @@ def handle_test_inflect(form):
         'deixis': form.get('deixis'),
         'class': form.get('class')
     }
+    normalize_inflect_input = lambda s: normalize("NFKD", s)
     expected = form.get('expected_inflected_form', '').strip()
+    expected = normalize_inflect_input(expected)
+
     actual = inflect_verb_with_features(verb_root, fv, features)
 
     if actual == expected:
