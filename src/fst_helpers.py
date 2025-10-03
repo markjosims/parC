@@ -59,6 +59,7 @@ def encode_fst_string(input_string: Union[str, Sequence[str]]) -> Union[str, Lis
 
 def decode_fst_string(
         input_string: Union[str, Sequence[str], pynini.Fst],
+        is_byte_str: bool=False,
     ) -> Union[str, List[str]]:
     """
     Condense all separated characters, replaces `WORD_BOUNDARY_STR` symbol (default "|")
