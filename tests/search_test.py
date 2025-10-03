@@ -4,6 +4,8 @@ from src.search import *
 import pytest
 from src.fst_helpers import *
 from src.phonology import V, SIGMA
+from src.lexicon import get_all_gold_forms
+import math
 
 substitutions = [
     ("ə", V-fst("ə"), 0.5),
@@ -82,3 +84,34 @@ def test_edit_weight(query, top_string, expected_weight, top_n_strings):
 
     predicted_top_n_strings = get_decoded_strings(fst(query)@left_factor@searchable_lexicon, nshortest=len(top_n_strings))
     assert set(predicted_top_n_strings) == set(top_n_strings)
+
+@pytest.mark.parametrize("string_map_list,nbest", [
+    ([("ðoo", "bar", 0.5), ("bar", "bað", 0.3)], 1),
+    ([("ðoo", "bar", 1.0), ("bar", "bað", 0.3), ("bað", "baðð", 0.5)], 2),
+    ([("ðoo", "bar", 0.1), ("bar", "bað", 0.3), ("bað", "baðð", 0.5), ("bað", "barð", 1.0)], 3),
+])
+def test_nbest_strs_and_weights(string_map_list: list, nbest: int):
+    string_map_list.sort(key=lambda t:t[-1])
+    nbest_gold = string_map_list[:nbest]
+    string_map_lattice = pynini.union(*[fst(*triple) for triple in string_map_list])
+    nbest_predicted = get_nbest_strs_and_weights(string_map_lattice, nbest)
+    
+    for gold_triple, predicted_triple in zip(nbest_gold, nbest_predicted):
+        gold_intab, gold_outtab, gold_weight = gold_triple
+        predicted_intab, predicted_outtab, predicted_weight = predicted_triple
+
+        assert gold_intab == predicted_intab
+        assert gold_outtab == predicted_outtab
+        assert math.isclose(gold_weight, predicted_weight, rel_tol=0.001)
+
+@pytest.mark.parametrize("gold_verb", get_all_gold_forms())
+def test_search_verb_form(gold_verb):
+    gold_form = gold_verb['form']
+    fuzzy_form = gold_verb['fuzzy_form']
+    num_hits = 5
+    
+    hits = search_verb_form(fuzzy_form, num_hits=num_hits)
+
+    assert len(hits) == num_hits
+    top_parse = hits[0][0]
+    assert top_parse['form'] == gold_form
