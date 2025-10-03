@@ -11,6 +11,9 @@ from src.constants import VERB_FEATURE_VALUES
 from src.sentences import get_elan_analyses
 import pynini
 from unicodedata import normalize
+from sqlalchemy.orm import joinedload
+from src.database import SessionLocal
+from src.models import Sentence, SentenceWord
 
 app = Flask(__name__)
 
@@ -162,11 +165,32 @@ def paradigms_page():
 @app.route('/sentences')
 def sentences_page():
     """
-    Handles the sentences page,
-    displaying sentences from the database.
+    Displays the list of all sentences from the database.
     """
-    sentences_data = get_elan_analyses()
+    db = SessionLocal()
+    # Query all sentences, ordered by their ID.
+    sentences_data = db.query(Sentence).order_by(Sentence.id).all()
+    db.close()
     return render_template('sentences.html', sentences=sentences_data)
+
+@app.route('/analyze/<int:sentence_id>')
+def analyze_page(sentence_id):
+    """
+    Displays a single sentence for analysis.
+    """
+    db = SessionLocal()
+    sentence = db.query(Sentence).options(
+        joinedload(Sentence.words).joinedload(SentenceWord.wordform)
+    ).filter(Sentence.id == sentence_id).first()
+    db.close()
+
+    if not sentence:
+        return "Sentence not found", 404
+    
+    words_in_order = sorted(sentence.words, key=lambda w: w.position)
+    print(words_in_order)
+
+    return render_template('analyze.html', sentence=sentence, words=words_in_order)
 
 if __name__ == '__main__':
     app.run(debug=True)

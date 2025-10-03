@@ -3,7 +3,8 @@
 {% block main_class %}bg-white p-6 rounded-lg shadow{% endblock %}
 
 {% block content %}
-    <h2 class="text-2xl font-semibold mb-4">ELAN Sentences</h2>
+    <h2 class="text-2xl font-semibold mb-4">Sentence Corpus</h2>
+    <p class="mb-6 text-gray-600">This table displays all sentences from the database. Click 'Analyze' to begin parsing a specific sentence.</p>
     
     <div class="overflow-x-auto">
         <table class="result-table w-full min-w-full">
@@ -12,24 +13,30 @@
                     <th class="p-3 text-left font-semibold text-gray-700">Sentence</th>
                     <th class="p-3 text-left font-semibold text-gray-700">Gloss</th>
                     <th class="p-3 text-left font-semibold text-gray-700">Translation</th>
+                    <!-- New Column for Links -->
+                    <th class="p-3 text-left font-semibold text-gray-700">Actions</th>
                 </tr>
             </thead>
             <tbody>
-                {% for sentence, translation, gloss in sentences %}
+                {% for sentence in sentences %}
                 <tr class="border-t">
                     <td class="p-3 font-mono align-top">
-                        <code>{{ sentence }}</code>
+                        <code>{{ sentence.elan_sentence }}</code>
+                    </td>
+                    <td class="p-3 align-top text-gray-600">
+                        {{ sentence.elan_gloss or 'N/A' }}
                     </td>
                     <td class="p-3 align-top">
-                        {{ gloss }}
+                        <em>{{ sentence.translation }}</em>
                     </td>
+                    <!-- New Cell with Link -->
                     <td class="p-3 align-top">
-                        <em>{{ translation }}</em>
+                        <a href="{{ url_for('analyze_page', sentence_id=sentence.id) }}" class="font-semibold text-blue-600 hover:underline">Analyze</a>
                     </td>
                 </tr>
                 {% else %}
                 <tr class="border-t">
-                    <td colspan="3" class="p-3 text-center text-gray-500">No sentences found.</td>
+                    <td colspan="4" class="p-3 text-center text-gray-500">No sentences found in the database.</td>
                 </tr>
                 {% endfor %}
             </tbody>
