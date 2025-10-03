@@ -238,3 +238,53 @@ def get_min_path_weight(f: pynini.Fst) -> float:
         if final_weight != pynini.Weight.zero(weight_type):
             path_weight+=float(final_weight)
     return path_weight
+
+def get_nbest_strs_and_weights(
+        lattice: pynini.Fst,
+        n: int=5,
+    ) -> List[Tuple[str, str, float]]:
+    """
+    Arguments:
+        lattice:    pynini.Fst with multiple output strings.
+        n:          int indicating number of strings to fetch.
+    Returns:
+        hits:       List of triples `[(intab, outtab, cost), ...]`
+    
+    Finds n best strings from the output vocabulary of the given lattice
+    and returns as a list of triples containing the input string, output string
+    and cost for each path.
+
+    Finding n best unique strings from the lattice requires projecting the output
+    and then performing epsilon removal. We then compose each output str with the lattice
+    in order to compute the shortest distance as well as the associated input str
+    to obtain the output str.
+    """
+    lattice_acceptor = pynini.project(lattice, 'output')
+    lattice_acceptor.optimize()
+    nbest_paths = pynini.shortestpath(lattice_acceptor, nshortest=n).paths()
+    nbest_strs = nbest_paths.ostrings()
+    nbest_strs = [
+        decode_fst_string(byte_str, is_byte_str=True)
+        for byte_str in nbest_strs
+    ]
+    # sanity check
+    assert len(nbest_strs) == n
+
+    nbest_triples = []
+    for hit_str in nbest_strs:
+        hit_transducer = lattice@fst(hit_str)
+        hit_shortestpath = pynini.shortestpath(hit_transducer)
+        hit_triple = list(
+            hit_shortestpath.paths(
+                input_token_type=TIRA_SYMBOL_TABLE,               
+                output_token_type=TIRA_SYMBOL_TABLE,               
+            ).items())
+        # another sanity check
+        assert len(hit_triple)==1
+        hit_triple = hit_triple[0]
+        intab, outtab, weight = hit_triple
+        intab = decode_fst_string(intab)
+        outtab = decode_fst_string(outtab)
+        weight = float(weight)
+        nbest_triples.append((intab, outtab, weight))
+    return nbest_triples
