@@ -24,7 +24,9 @@ SIGMASTAR = pynini.closure(SIGMA).optimize()
 SIGMASTAR_EXCEPT_PLACEHOLDER = pynini.closure(SIGMA_EXCEPT_PLACEHOLDER).optimize()
 STEM = paradigms.make_byte_star_except_boundary(BOUNDARY)
 
-# phonological processes
+# ---------------------- #
+# phonological processes #
+# ---------------------- #
 
 ADD_TBU_MARKER = pynini.cdrewrite(
     tau=insert_fst(TONE_SLOT_STR),
@@ -120,3 +122,54 @@ COMBINE_TONES_RULE = pynini.cdrewrite(
     r=fst(),
     sigma_star=SIGMASTAR,
 )
+
+# ---------- #
+# edit costs #
+# ---------- #
+
+INSERTION_COSTS = [
+    ('ə', 0.5),
+    (V, 0.7),
+    (T, 0.5),
+]
+DELETION_COSTS = [
+    ('ə', 0.5),
+    (V, 0.7),
+    (T, 0.5),
+]
+SUBSTITUTION_COSTS = [
+    ('ə', V, 0.5),      # underlying vowel reduced to schwa
+    ('ɛ', 'ə', 0.5),    # underlying schwa fronted to /ɛ/
+
+    ('ɜ', 'ɛ', 0.5),    # ɜ~ɛ interchange
+    ('ɛ', 'ɜ', 0.5),
+
+    ('ɜ', 'a', 0.5),    # ɜ~a interchange
+    ('a', 'ɜ', 0.5),
+
+    ('ɜ', 'ə', 0.5),    # ɜ~ə interchange
+    ('ə', 'ɜ', 0.5),
+
+    ('ɛ', 'e', 0.5),    # ɛ~e interchange
+    ('e', 'ɛ', 0.5),
+
+    ('ɪ', 'e', 0.5),    # ɪ~ɛ interchange
+    ('e', 'ɪ', 0.5),
+
+    ('o', 'u', 0.5),    # o~u interchange
+    ('u', 'o', 0.5),
+
+    ('ɔ', 'o', 0.5),    # o~ɔ interchange
+    ('o', 'ɔ', 0.5),
+
+    ('ʊ', 'o', 0.5),    # o~ʊ interchange
+    ('o', 'ʊ', 0.5),
+
+    (T, T, 0.5),        # tone interchange
+
+    ('d', DENTAL_D, 0.5),   # dental stop written as alveolar
+    ('t', DENTAL_T, 0.5),
+
+    ('g', 'k', 0.2),        # g~k interchange
+    ('k', 'g', 0.2),
+]
