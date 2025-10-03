@@ -64,11 +64,17 @@ def decode_fst_string(
     Condense all separated characters, replaces `WORD_BOUNDARY_STR` symbol (default "|")
     with a space, and changes tone symbols back to diacritics.
     If `input_string` is an FST, call `Fst.string()` first.
+    If `is_byte_str` is passed, call `decode_byte_str` first.
     """
     if type(input_string) is pynini.Fst:
         input_string = input_string.string(token_type=TIRA_SYMBOL_TABLE)
     elif type(input_string) is not str:
-        return [decode_fst_string(input_element) for input_element in input_string]
+        return [
+            decode_fst_string(input_element, is_byte_str)
+            for input_element in input_string
+        ]
+    if is_byte_str:
+        input_string = decode_byte_str(input_string)
     detokenized_str = input_string.replace(' ', '')
     str_w_word_spaces = detokenized_str.replace(WORD_BOUNDARY_STR, ' ')
     str_w_tone_diacs = tone2diac(str_w_word_spaces)
