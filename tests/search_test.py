@@ -107,11 +107,14 @@ def test_nbest_strs_and_weights(string_map_list: list, nbest: int):
 @pytest.mark.parametrize("gold_verb", get_all_gold_forms())
 def test_search_verb_form(gold_verb):
     gold_form = gold_verb['form']
+    gold_form = gold_form.replace('-', '')
     fuzzy_form = gold_verb['fuzzy_form']
+    gold_fv = gold_verb['fv']
     num_hits = 5
     
     hits = search_verb_form(fuzzy_form, num_hits=num_hits)
 
     assert len(hits) == num_hits
-    top_parse = hits[0][0]
-    assert top_parse['form'] == gold_form
+    top_form, top_fv, _ = hits[0]
+    assert top_form == gold_form
+    assert top_fv == gold_fv
