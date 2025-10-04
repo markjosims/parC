@@ -243,31 +243,52 @@ def get_min_path_weight(f: pynini.Fst) -> float:
 def get_nbest_strs_and_weights(
         lattice: pynini.Fst,
         n: int=5,
+        return_input_strs: bool=True,
+        use_byte_tokens: bool=False,
     ) -> List[Tuple[str, str, float]]:
     """
     Arguments:
-        lattice:    pynini.Fst with multiple output strings.
-        n:          int indicating number of strings to fetch.
+        lattice:            pynini.Fst with multiple output strings.
+        n:                  int indicating number of strings to fetch.
+        return_input_strs:  bool indicating whether input strings ('intabs')
+                            should be returned.
+        use_byte_tokens:    bool indicating whether `lattice` uses  byte tokens
+                            or symbol table (default)
     Returns:
-        hits:       List of triples `[(intab, outtab, cost), ...]`
+        hits:       List of tuples `[(intab?, outtab, cost), ...]`
     
     Finds n best strings from the output vocabulary of the given lattice
-    and returns as a list of triples containing the input string, output string
+    and returns as a list of 2/3-tuples containing the (input string?), output string
     and cost for each path.
 
     Finding n best unique strings from the lattice requires projecting the output
-    and then performing epsilon removal. We then compose each output str with the lattice
+    and then performing epsilon removal. If only output strs are requested, return
+    the strs and weight from the nbest paths from the output projection.
+    If `return_input_strs=True`, then we need to compose each output str with the lattice
     in order to compute the shortest distance as well as the associated input str
-    to obtain the output str.
+    which obtains the output str.
     """
     lattice_acceptor = pynini.project(lattice, 'output')
     lattice_acceptor.optimize()
-    nbest_paths = pynini.shortestpath(lattice_acceptor, nshortest=n).paths()
-    nbest_strs = nbest_paths.ostrings()
-    nbest_strs = [
-        decode_fst_string(byte_str, is_byte_str=True)
-        for byte_str in nbest_strs
-    ]
+    nbest_paths = pynini.shortestpath(lattice_acceptor, nshortest=n, unique=True).paths()
+    if not return_input_strs:
+        # don't need to map output strs to best input
+        nbest_couples = []
+        for _, outtab, weight in nbest_paths.items():
+            outtab = decode_fst_string(outtab, is_byte_str=use_byte_tokens)
+            weight = float(weight)
+            nbest_couples.append((outtab, weight))
+        return nbest_couples
+
+    nbest_strs = list(nbest_paths.ostrings())
+    # pass opposite value of `use_byte_tokens here`
+    # since string will be composed with the lattice directly
+    # therefore they need to be of the same type
+    # nbest_strs = [
+    #     decode_byte_str(byte_str, is_byte_str=not use_byte_tokens)
+    #     for byte_str in nbest_strs
+    # ]
+    nbest_strs = [decode_byte_str(byte_str) for byte_str in nbest_strs]
     # sanity check
     assert len(nbest_strs) == n
 
@@ -284,8 +305,8 @@ def get_nbest_strs_and_weights(
         assert len(hit_triple)==1
         hit_triple = hit_triple[0]
         intab, outtab, weight = hit_triple
-        intab = decode_fst_string(intab)
-        outtab = decode_fst_string(outtab)
+        intab = decode_fst_string(intab, is_byte_str=use_byte_tokens)
+        outtab = decode_fst_string(outtab, is_byte_str=use_byte_tokens)
         weight = float(weight)
         nbest_triples.append((intab, outtab, weight))
     return nbest_triples
