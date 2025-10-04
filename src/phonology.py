@@ -127,49 +127,56 @@ COMBINE_TONES_RULE = pynini.cdrewrite(
 # edit costs #
 # ---------- #
 
+REDUCED_EDIT_COST = 0.2
+
 INSERTION_COSTS = [
-    ('ə', 0.5),
-    (V, 0.7),
-    (T, 0.5),
+    ('ə', REDUCED_EDIT_COST),
+    (V, REDUCED_EDIT_COST),
+    (T, REDUCED_EDIT_COST),
 ]
 DELETION_COSTS = [
-    ('ə', 0.5),
-    (V, 0.7),
-    (T, 0.5),
+    ('ə', REDUCED_EDIT_COST),
+    (V, REDUCED_EDIT_COST),
+    (T, REDUCED_EDIT_COST),
 ]
 SUBSTITUTION_COSTS = [
-    ('ə', V, 0.5),      # underlying vowel reduced to schwa
-    ('ɛ', 'ə', 0.5),    # underlying schwa fronted to /ɛ/
+    ('ə', V, REDUCED_EDIT_COST),      # underlying vowel reduced to schwa
+    ('ɛ', 'ə', REDUCED_EDIT_COST),    # underlying schwa fronted to /ɛ/
 
-    ('ɜ', 'ɛ', 0.5),    # ɜ~ɛ interchange
-    ('ɛ', 'ɜ', 0.5),
+    ('ɜ', 'ɛ', REDUCED_EDIT_COST),    # ɜ~ɛ interchange
+    ('ɛ', 'ɜ', REDUCED_EDIT_COST),
 
-    ('ɜ', 'a', 0.5),    # ɜ~a interchange
-    ('a', 'ɜ', 0.5),
+    ('ɜ', 'a', REDUCED_EDIT_COST),    # ɜ~a interchange
+    ('a', 'ɜ', REDUCED_EDIT_COST),
 
-    ('ɜ', 'ə', 0.5),    # ɜ~ə interchange
-    ('ə', 'ɜ', 0.5),
+    ('ɜ', 'ə', REDUCED_EDIT_COST),    # ɜ~ə interchange
+    ('ə', 'ɜ', REDUCED_EDIT_COST),
 
-    ('ɛ', 'e', 0.5),    # ɛ~e interchange
-    ('e', 'ɛ', 0.5),
+    ('ɛ', 'e', REDUCED_EDIT_COST),    # ɛ~e interchange
+    ('e', 'ɛ', REDUCED_EDIT_COST),
 
-    ('ɪ', 'e', 0.5),    # ɪ~ɛ interchange
-    ('e', 'ɪ', 0.5),
+    ('ɪ', 'e', REDUCED_EDIT_COST),    # ɪ~ɛ interchange
+    ('e', 'ɪ', REDUCED_EDIT_COST),
 
-    ('o', 'u', 0.5),    # o~u interchange
-    ('u', 'o', 0.5),
+    ('o', 'u', REDUCED_EDIT_COST),    # o~u interchange
+    ('u', 'o', REDUCED_EDIT_COST),
 
-    ('ɔ', 'o', 0.5),    # o~ɔ interchange
-    ('o', 'ɔ', 0.5),
+    ('ɔ', 'o', REDUCED_EDIT_COST),    # o~ɔ interchange
+    ('o', 'ɔ', REDUCED_EDIT_COST),
 
-    ('ʊ', 'o', 0.5),    # o~ʊ interchange
-    ('o', 'ʊ', 0.5),
+    ('ʊ', 'o', REDUCED_EDIT_COST),    # o~ʊ interchange
+    ('o', 'ʊ', REDUCED_EDIT_COST),
 
-    (T, T, 0.5),        # tone interchange
+    ('d', DENTAL_D, REDUCED_EDIT_COST),   # dental stop written as alveolar
+    ('t', DENTAL_T, REDUCED_EDIT_COST),
 
-    ('d', DENTAL_D, 0.5),   # dental stop written as alveolar
-    ('t', DENTAL_T, 0.5),
+    ('g', 'k', REDUCED_EDIT_COST),        # g~k interchange
+    ('k', 'g', REDUCED_EDIT_COST),
 
-    ('g', 'k', 0.2),        # g~k interchange
-    ('k', 'g', 0.2),
+    ('r', 'ɾ', REDUCED_EDIT_COST),        # tap written as trill
 ]
+for intab_tone in TIRA_TONE_DIACS:
+    for outtab_tone in TIRA_TONE_DIACS:
+        if intab_tone == outtab_tone:
+            continue
+        SUBSTITUTION_COSTS.append((intab_tone, outtab_tone, REDUCED_EDIT_COST))
