@@ -1,12 +1,24 @@
-from src.constants import ANALYSES_PATH
-import pandas as pd
-from typing import *
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
-ANALYSES_DF = pd.read_csv(ANALYSES_PATH, keep_default_na=False)
+password = os.getenv("POSTGRES_PASSWORD", "password")
 
-def get_elan_analyses() -> List[Tuple[str,str]]:
-    elan_mask = ANALYSES_DF['source']=='elan'
-    transcriptions = ANALYSES_DF.loc[elan_mask, 'text'].tolist()
-    translations = ANALYSES_DF.loc[elan_mask, 'Translation'].tolist()
-    gloss = ANALYSES_DF.loc[elan_mask, 'Gloss'].tolist()
-    return list(zip(transcriptions, translations, gloss))
+SQLALCHEMY_DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    f"postgresql://postgres:{password}@localhost/tira_db"
+)
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

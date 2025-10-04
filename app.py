@@ -8,9 +8,13 @@ from src.forms import (
 )
 from src.lexicon import get_all_verb_data
 from src.constants import VERB_FEATURE_VALUES
-from src.database import get_elan_analyses
+from src.sentences import get_elan_analyses
 import pynini
 from unicodedata import normalize
+from sqlalchemy.orm import joinedload
+from src.database import SessionLocal
+from src.models import Sentence, SentenceWord
+import math
 
 app = Flask(__name__)
 
@@ -159,13 +163,51 @@ def paradigms_page():
         context['inflect_input']=verb_row
     return render_template('paradigms.html', **TEMPLATE_DEFAULTS, **context)
 
-@app.route('/analyze')
-def analyze_page():
+@app.route('/sentences')
+def sentences_page():
     """
-    Handles the analysis page, displaying sentences from the database.
+    Displays the list of all sentences from the database with pagination.
     """
-    sentences_data = get_elan_analyses()
-    return render_template('analyze.html', sentences=sentences_data)
+    # Get the page number from the URL query, defaulting to 1
+    page = request.args.get('page', 1, type=int)
+    per_page = 10  # Sentences to display per page
+
+    db = SessionLocal()
+    
+    # Get the total number of sentences to calculate total pages
+    total_sentences = db.query(Sentence).count()
+    
+    # Fetch only the sentences for the current page
+    sentences_data = db.query(Sentence).order_by(Sentence.id).limit(per_page).offset((page - 1) * per_page).all()
+    
+    db.close()
+    
+    # Calculate the total number of pages
+    total_pages = math.ceil(total_sentences / per_page)
+    
+    return render_template('sentences.html', 
+                           sentences=sentences_data,
+                           page=page,
+                           total_pages=total_pages)
+
+@app.route('/analyze/<int:sentence_id>')
+def analyze_page(sentence_id):
+    """
+    Displays a single sentence for analysis.
+    """
+    db = SessionLocal()
+    sentence = db.query(Sentence).options(
+        joinedload(Sentence.words).joinedload(SentenceWord.wordform)
+    ).filter(Sentence.id == sentence_id).first()
+    db.close()
+
+    if not sentence:
+        return "Sentence not found", 404
+    
+    words_in_order = sorted(sentence.words, key=lambda w: w.position)
+    print(words_in_order)
+
+    return render_template('analyze.html', sentence=sentence, words=words_in_order)
 
 if __name__ == '__main__':
     app.run(debug=True)
