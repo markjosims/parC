@@ -150,6 +150,23 @@ IMP_IT = features.FeatureVector(INFLECTED_VERB, "tam=imperative", "deixis=itive"
 IMP_VENT = features.FeatureVector(INFLECTED_VERB, "tam=imperative", "deixis=ventive", "class=unmarked")
 VERB_ROOT = features.FeatureVector(INFLECTED_VERB, "tam=unmarked", "deixis=unmarked", "class=unmarked")
 
+#################
+# noun features #
+#################
+
+NOUN_CASE_VALUES = ["nominative", "accusative"]
+NOUN_NUMBER_VALUES = ["singular", "plural"]
+
+NOUN_CASE = features.Feature("case", *NOUN_CASE_VALUES)
+NOUN_NUMBER = features.Feature("number", *NOUN_NUMBER_VALUES)
+NOUN = features.Category(NOUN_CASE, NOUN_NUMBER)
+
+NOMSG = features.FeatureVector(NOUN, "case=nominative", "number=singular")
+NOMPL = features.FeatureVector(NOUN, "case=nominative", "number=plural")
+
+ACCSG = features.FeatureVector(NOUN, "case=accusative", "number=singular")
+ACCPL = features.FeatureVector(NOUN, "case=accusative", "number=plural")
+
 ################
 # symbol table #
 ################
