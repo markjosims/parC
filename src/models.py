@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, JSON, Boolean
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, JSON, Boolean, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -36,6 +36,7 @@ class Parse(Base):
 
     wordform_id = Column(Integer, ForeignKey('wordforms.id'), nullable=False)
     lexeme_id = Column(Integer, ForeignKey('lexemes.id'), nullable=False)
+    edits = Column(Float, nullable=True)
 
     analysis = Column(JSONB, nullable=False)
 
