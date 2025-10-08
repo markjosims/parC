@@ -12,6 +12,7 @@ from src.constants import (
     GOLD_VERBS_PATH,
     GOLD_PARADIGMS_PATH,
     NOUNS_PATH,
+    FUZZY_NOUNS_PATH,
 )
 from src.fst_helpers import fst
 from typing import *
@@ -78,6 +79,15 @@ def get_gold_paradigms() -> List[Dict[str, Any]]:
     with open(GOLD_PARADIGMS_PATH) as f:
         gold_paradigms = json.load(f)
     return gold_paradigms
+
+def get_fuzzy_nouns() -> List[Dict[str, str]]:
+    return FUZZY_NOUNS_DF.to_dict(orient='records')
+
+def get_noun_lemmata(wrap_w_fsa: bool=False) -> List[str]:
+    lemmata = NOUNS_DF['lemma'].tolist()
+    if wrap_w_fsa:
+        lemmata = [fst(lemma) for lemma in lemmata]
+    return lemmata
 
 def main() -> int:
     root2gloss = get_root2gloss_fst()
