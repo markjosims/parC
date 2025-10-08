@@ -9,8 +9,8 @@ from src.constants import (
     DEFAULT_EDIT_BOUND,
 )
 from src.phonology import SIGMA, INSERTION_COSTS, DELETION_COSTS, SUBSTITUTION_COSTS, INSERT_HYPHEN_RULE
-from src.verb_forms import FV2PARADIGM
-from src.noun_forms import NOUN_PARADIGM
+from src.verb_forms import FV2PARADIGM, parse_inflected_verb
+from src.noun_forms import NOUN_PARADIGM, parse_noun
 
 # ----------------------------------- #
 # functions for building search graph #
@@ -238,13 +238,14 @@ def search_verb_form(
         verb_form: str,
         num_hits: int = 5,
         edit_bound: int = 5,
+        return_parse: bool = True,
     ) -> List[Tuple[Dict[str, Any], float]]:
     """
     Arguments:
         verb_form:  str of verb form to query parses for
         num_hits:   int, number of parses to return
     Returns:
-        parses:     list of tuples, each of shape `(parse: dict, prob: float)`
+        hits:       list of tuples, each of shape `(parse: dict, prob: float)`
     
     Performs fuzzy search mapping a queried verb form to possible parses
     as defined by verb paradigm FSTs. Returns list of couples of (`form`, `weight`).
@@ -280,8 +281,10 @@ def search_verb_form(
             return_input_strs=False,
             use_byte_tokens=True,
         )
-        
-        hits.extend([(hit, fv, weight) for hit, weight in hits_for_paradigm])
+        if return_parse:
+            hits.extend([(parse_inflected_verb(hit, fv), weight) for hit, weight in hits_for_paradigm])
+        else:
+            hits.extend([({'form': hit, 'fv': fv}, weight) for hit, weight in hits_for_paradigm])
     hits.sort(key=lambda hit_tuple: hit_tuple[-1])
     nbest_hits = hits[:num_hits]
     return nbest_hits
@@ -290,6 +293,7 @@ def search_noun_form(
         noun_form: str,
         num_hits: int = 5,
         edit_bound: int = 5,
+        return_parse: bool = True,
     ) -> List[Tuple[Dict[str, Any], float]]:
     """
     Arguments:
@@ -334,8 +338,31 @@ def search_noun_form(
     )
         
     hits.sort(key=lambda hit_tuple: hit_tuple[-1])
-    nbest_hits = hits[:num_hits]
+    if return_parse:
+        hits = [(parse_noun(hit), weight) for hit, weight in hits]
+    else:
+        hits = [({'form': hit}, weight) for hit, weight in hits]
+    return hits
+
+def search_parse(
+        form: str,
+        num_hits: int = 5,
+        edit_bound: int = 5,
+    ) -> List[Tuple[Dict[str, Any], float]]:
+    """
+    Arguments:
+        form:       str of form to query parses for
+        num_hits:   int, number of parses to return
+    Returns:
+        parses:     list of tuples, each of shape `(parse: dict, prob: float)`
+    """
+    verb_hits = search_verb_form(form, num_hits=num_hits, edit_bound=edit_bound, return_parse=True)
+    noun_hits = search_noun_form(form, num_hits=num_hits, edit_bound=edit_bound, return_parse=True)
+    all_hits = verb_hits + noun_hits
+    all_hits.sort(key=lambda hit_tuple: hit_tuple[-1])
+    nbest_hits = all_hits[:num_hits]
     return nbest_hits
+
 
 def search_for_hyphenated_form(
         unparsed_form: str,

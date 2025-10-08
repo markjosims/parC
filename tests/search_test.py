@@ -112,10 +112,11 @@ def test_search_verb_form(gold_verb):
     gold_fv = gold_verb['fv']
     num_hits = 5
     
-    hits = search_verb_form(fuzzy_form, num_hits=num_hits)
+    hits = search_verb_form(fuzzy_form, num_hits=num_hits, return_parse=False)
 
     assert len(hits) == num_hits
-    top_form, top_fv, _ = hits[0]
+    top_form = hits[0][0]['form']
+    top_fv = hits[0][0]['fv']
     assert top_form == gold_form
     assert top_fv == gold_fv
 
@@ -126,10 +127,10 @@ def test_search_noun_form(gold_noun):
     fuzzy_form = gold_noun['fuzzy_noun']
     num_hits = 3
     
-    hits = search_noun_form(fuzzy_form, num_hits=num_hits)
+    hits = search_noun_form(fuzzy_form, num_hits=num_hits, return_parse=False)
 
     assert len(hits) == num_hits
-    top_form, _ = hits[0]
+    top_form = hits[0][0]['form']
     assert top_form == gold_form
 
 @pytest.mark.parametrize("unhyphenated_str,hyphenated_str", [
