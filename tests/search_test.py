@@ -4,7 +4,7 @@ from src.search import *
 import pytest
 from src.fst_helpers import *
 from src.phonology import V, SIGMA
-from src.lexicon import get_gold_verbs
+from src.lexicon import get_fuzzy_nouns, get_gold_verbs
 import math
 
 substitutions = [
@@ -119,16 +119,15 @@ def test_search_verb_form(gold_verb):
     assert top_form == gold_form
     assert top_fv == gold_fv
 
-@pytest.mark.parametrize("gold_noun", get_all_gold_forms())
-def test_search_verb_form(gold_noun):
-    gold_form = gold_noun['form']
+@pytest.mark.parametrize("gold_noun", get_fuzzy_nouns())
+def test_search_noun_form(gold_noun):
+    gold_form = gold_noun['gold_noun']
     gold_form = gold_form.replace('-', '')
-    fuzzy_form = gold_noun['fuzzy_form']
-    num_hits = 5
+    fuzzy_form = gold_noun['fuzzy_noun']
+    num_hits = 3
     
-    hits = search_verb_form(fuzzy_form, num_hits=num_hits)
+    hits = search_noun_form(fuzzy_form, num_hits=num_hits)
 
     assert len(hits) == num_hits
-    top_form, top_fv, _ = hits[0]
+    top_form, _ = hits[0]
     assert top_form == gold_form
-    assert top_fv == gold_fv
