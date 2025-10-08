@@ -48,6 +48,10 @@ def main() -> int:
 
     assert ~has_eng.all()
     df=df.rename(columns=COLMAPPER)
+    df['lemma']=df['nom.sg']
+    for feature in ['acc.sg', 'nom.pl', 'acc.pl']:
+        no_lemma = df['lemma']==''
+        df.loc[no_lemma, 'lemma']=df.loc[no_lemma, feature]
 
     df.to_csv(NOUN_CSV_PATH, index=False)
     return 0
