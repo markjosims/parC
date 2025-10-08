@@ -20,6 +20,7 @@ import json
 VERBS_DF = pd.read_csv(VERB_ROOTS_PATH, keep_default_na=False)
 GOLD_VERBS_DF = pd.read_csv(GOLD_VERBS_PATH, keep_default_na=False)
 NOUNS_DF = pd.read_csv(NOUNS_PATH, keep_default_na=False)
+FUZZY_NOUNS_DF = pd.read_csv(FUZZY_NOUNS_PATH, keep_default_na=False)
 
 class LexemeNotFoundError(Exception):
     """
