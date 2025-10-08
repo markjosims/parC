@@ -47,6 +47,10 @@ def get_root2fv_fst() -> pynini.Fst:
 
 def get_gloss_for_verb(verb_root: str) -> str:
     root_mask = VERBS_DF['verb_root']==verb_root
+    if root_mask.sum()==0:
+        raise LexemeNotFoundError(f"Root {verb_root} not found in verb lexicon.")
+    if root_mask.sum()>1:
+        raise LexemeNotFoundError(f"Root {verb_root} found multiple times in verb lexicon.")
     gloss = VERBS_DF.loc[root_mask, 'root_sense'].item()
     return gloss
 
@@ -91,6 +95,10 @@ def get_noun_lemmata(wrap_w_fsa: bool=False) -> List[str]:
 
 def get_gloss_for_noun(lemma: str) -> str:
     lemma_mask = NOUNS_DF['lemma']==lemma
+    if lemma_mask.sum()==0:
+        raise LexemeNotFoundError(f"Lemma {lemma} not found in noun lexicon.")
+    if lemma_mask.sum()>1:
+        raise LexemeNotFoundError(f"Lemma {lemma} found multiple times in noun lexicon.")
     gloss = NOUNS_DF.loc[lemma_mask, 'gloss'].item()
     return gloss
 
