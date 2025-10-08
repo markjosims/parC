@@ -167,6 +167,16 @@ NOMPL = features.FeatureVector(NOUN, "case=nominative", "number=plural")
 ACCSG = features.FeatureVector(NOUN, "case=accusative", "number=singular")
 ACCPL = features.FeatureVector(NOUN, "case=accusative", "number=plural")
 
+NOUN_FEATURE_ABBREVIATION_TO_VECTOR = {
+    "nom.sg": NOMSG,
+    "nom.pl": NOMPL,
+    "acc.sg": ACCSG,
+    "acc.pl": ACCPL,
+}
+NOUN_FEATURE_VECTOR_TO_ABBREVIATION = {
+    value: key for key, value in NOUN_FEATURE_ABBREVIATION_TO_VECTOR.items()
+}
+
 ################
 # symbol table #
 ################
