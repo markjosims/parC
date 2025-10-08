@@ -330,9 +330,14 @@ def parse_inflected_verb(
     if type(paradigm) is str:
         paradigm = FV2PARADIGM[paradigm]
     root, feature_vec = paradigm.lemmatize(fst(form))[0]
+    analyzed_form, _ = paradigm.analyze(fst(form))[0]
+    
     root = decode_byte_str(root)
+    analyzed_form = decode_byte_str(analyzed_form)
+
     parse = feature_vec.values
     parse['root'] = root
+    parse['analyzed_form'] = analyzed_form
     if add_gloss:
         parse['gloss']=get_gloss_for_verb(root)
     return parse

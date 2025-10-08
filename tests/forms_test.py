@@ -32,12 +32,13 @@ def test_gold_features2forms(gold_verb):
 @pytest.mark.parametrize("gold_verb", get_gold_verbs())
 def test_gold_forms2features(gold_verb):
     root = gold_verb.pop('root')
-    form = gold_verb.pop('form')
-    form = form.replace('-', '')
+    analyzed_form = gold_verb.pop('form')
+    gold_verb['analyzed_form']= analyzed_form
+    form = analyzed_form.replace('-', '')
     fv = gold_verb.pop('fv')
     gold_verb_filtered = {
         k: v for k,v in gold_verb.items()
-        if k in VERB_FEATURE_VALUES or k=='gloss'
+        if k in list(VERB_FEATURE_VALUES.keys())+['gloss', 'analyzed_form']
     }
 
     predicted_parse = parse_inflected_verb(form, fv)
