@@ -8,7 +8,7 @@ from src.constants import (
     DEFAULT_INSERT_COST, DEFAULT_DELETE_COST, DEFAULT_SUBSTITUTE_COST,
     DEFAULT_EDIT_BOUND,
 )
-from src.phonology import SIGMA, INSERTION_COSTS, DELETION_COSTS, SUBSTITUTION_COSTS
+from src.phonology import SIGMA, INSERTION_COSTS, DELETION_COSTS, SUBSTITUTION_COSTS, INSERT_HYPHEN_RULE
 from src.verb_forms import FV2PARADIGM
 from src.noun_forms import NOUN_PARADIGM
 
@@ -335,4 +335,25 @@ def search_noun_form(
         
     hits.sort(key=lambda hit_tuple: hit_tuple[-1])
     nbest_hits = hits[:num_hits]
+    return nbest_hits
+
+def search_for_hyphenated_form(
+        unparsed_form: str,
+        lattice: pynini.Fst,
+        num_hits: int = 5,
+) -> str:
+    """
+    Arguments:
+        unparsed_form:  str of form to search for
+        lattice:        FST representing the lexicon to search
+    """
+    query_fst = fst(unparsed_form)@INSERT_HYPHEN_RULE
+    search_lattice = query_fst@lattice
+    search_lattice.optimize()
+    nbest_hits = get_nbest_strs_and_weights(
+        search_lattice,
+        n=num_hits,
+        return_input_strs=False,
+        use_byte_tokens=True,
+    )
     return nbest_hits

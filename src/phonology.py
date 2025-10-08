@@ -180,3 +180,15 @@ for intab_tone in TIRA_TONE_DIACS:
         if intab_tone == outtab_tone:
             continue
         SUBSTITUTION_COSTS.append((intab_tone, outtab_tone, REDUCED_EDIT_COST))
+
+# ------------ #
+# search rules #
+# ------------ #
+
+INSERT_HYPHEN_RULE = pynini.cdrewrite(
+    tau=insert_fst('-').ques,
+    l=SIGMA,
+    r=SIGMA,
+    sigma_star=SIGMASTAR,
+)
+INSERT_HYPHEN_RULE = INSERT_HYPHEN_RULE.optimize()

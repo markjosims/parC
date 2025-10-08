@@ -131,3 +131,15 @@ def test_search_noun_form(gold_noun):
     assert len(hits) == num_hits
     top_form, _ = hits[0]
     assert top_form == gold_form
+
+@pytest.mark.parametrize("unhyphenated_str,hyphenated_str", [
+    ("katə", "ka-tə"),
+    ("katəɾa", "ka-tə-ɾa"),
+    ("katəɾapə", "ka-tə-ɾa-pə")
+])
+def test_search_for_hyphenated_form_simple(unhyphenated_str, hyphenated_str):
+    lexicon = fst(hyphenated_str)
+    hits = search_for_hyphenated_form(unhyphenated_str, lattice=lexicon)
+    assert len(hits) > 0
+    top_form, _ = hits[0]
+    assert top_form == hyphenated_str
