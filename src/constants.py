@@ -207,6 +207,7 @@ GOLD_VERBS_PATH = 'data/gold_verbs.csv'
 GOLD_PARADIGMS_PATH = 'data/gold_paradigms.json'
 ANALYSES_PATH = 'data/analyses.csv'
 NOUNS_PATH = 'data/nouns.csv'
+FUZZY_NOUNS_PATH = 'data/fuzzy_nouns.csv'
 
 FST_DIR = "fst/"
 ROOT2GLOSS_FST_PATH = os.path.join(FST_DIR, "root2gloss.fst")
