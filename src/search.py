@@ -233,12 +233,10 @@ def search_verb_form(
         parses:     list of tuples, each of shape `(parse: dict, prob: float)`
     
     Performs fuzzy search mapping a queried verb form to possible parses
-    as defined by verb paradigm FSTs. Returns list of couples of (`parse`, `prob`).
+    as defined by verb paradigm FSTs. Returns list of couples of (`parse`, `weight`).
     `parse` is output of `parse_inflected_verb`
-    and `prob` is a normalized weight indicating the probability
-    of the given parse relative to other parses, calculated using
-    a softmax over the inverse cost of each hit. List is sorted
-    by probability in descending order so that most likely hit is the first item.
+    and `weight` is the number of edits per hit. List is sorted
+    by weight in ascending order so that least costly hit is the first item.
     """
 
     hits = []
