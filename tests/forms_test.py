@@ -1,6 +1,6 @@
 import pytest
 from src.verb_forms import *
-from src.lexicon import get_all_verb_roots_and_fvs, get_all_gold_forms, get_gold_paradigms
+from src.lexicon import get_all_verb_roots_and_fvs, get_gold_verbs, get_gold_paradigms
 from src.constants import VERB_FEATURE_VALUES
 
 @pytest.mark.parametrize("verb_root,fv_class", get_all_verb_roots_and_fvs())
@@ -15,7 +15,7 @@ def test_compile_regular_paradigms(verb_root, fv_class):
         print(verb_root, fv_class)
         raise error
 
-@pytest.mark.parametrize("gold_verb", get_all_gold_forms())
+@pytest.mark.parametrize("gold_verb", get_gold_verbs())
 def test_gold_features2forms(gold_verb):
     root = gold_verb.pop('root')
     form = gold_verb.pop('form')
@@ -29,7 +29,7 @@ def test_gold_features2forms(gold_verb):
 
     assert form == predicted_form
 
-@pytest.mark.parametrize("gold_verb", get_all_gold_forms())
+@pytest.mark.parametrize("gold_verb", get_gold_verbs())
 def test_gold_forms2features(gold_verb):
     root = gold_verb.pop('root')
     form = gold_verb.pop('form')
