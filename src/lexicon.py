@@ -70,7 +70,7 @@ def get_all_verb_data() -> List[Tuple[str, str, str]]:
     verb_senses = VERBS_DF['root_sense']
     return list(zip(verb_roots, verb_fvs, verb_senses)) 
 
-def get_all_gold_forms() -> List[Dict[str, str]]:
+def get_gold_verbs() -> List[Dict[str, str]]:
     return GOLD_VERBS_DF.to_dict(orient='records')
 
 def get_gold_paradigms() -> List[Dict[str, Any]]:

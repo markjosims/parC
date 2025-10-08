@@ -4,7 +4,7 @@ from src.search import *
 import pytest
 from src.fst_helpers import *
 from src.phonology import V, SIGMA
-from src.lexicon import get_all_gold_forms
+from src.lexicon import get_gold_verbs
 import math
 
 substitutions = [
@@ -104,7 +104,7 @@ def test_nbest_strs_and_weights(string_map_list: list, nbest: int):
         assert gold_outtab == predicted_outtab
         assert math.isclose(gold_weight, predicted_weight, rel_tol=0.001)
 
-@pytest.mark.parametrize("gold_verb", get_all_gold_forms())
+@pytest.mark.parametrize("gold_verb", get_gold_verbs())
 def test_search_verb_form(gold_verb):
     gold_form = gold_verb['form']
     gold_form = gold_form.replace('-', '')
