@@ -357,7 +357,11 @@ def search_parse(
         parses:     list of tuples, each of shape `(parse: dict, prob: float)`
     """
     verb_hits = search_verb_form(form, num_hits=num_hits, edit_bound=edit_bound, return_parse=True)
+    for parse, _ in verb_hits:
+        parse['part_of_speech'] = 'verb'
     noun_hits = search_noun_form(form, num_hits=num_hits, edit_bound=edit_bound, return_parse=True)
+    for parse, _ in noun_hits:
+        parse['part_of_speech'] = 'noun'
     all_hits = verb_hits + noun_hits
     all_hits.sort(key=lambda hit_tuple: hit_tuple[-1])
     nbest_hits = all_hits[:num_hits]
