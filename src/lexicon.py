@@ -17,8 +17,9 @@ from src.fst_helpers import fst
 from typing import *
 import json
 
-VERBS_DF = pd.read_csv(VERB_ROOTS_PATH)
-GOLD_VERBS_DF = pd.read_csv(GOLD_VERBS_PATH)
+VERBS_DF = pd.read_csv(VERB_ROOTS_PATH, keep_default_na=False)
+GOLD_VERBS_DF = pd.read_csv(GOLD_VERBS_PATH, keep_default_na=False)
+NOUNS_DF = pd.read_csv(NOUNS_PATH, keep_default_na=False)
 
 class LexemeNotFoundError(Exception):
     """
