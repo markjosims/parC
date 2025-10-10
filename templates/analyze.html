@@ -6,6 +6,10 @@
     <!-- Section 1: Sentence Display -->
     <div class="bg-white p-6 rounded-lg shadow">
         <h2 class="text-2xl font-semibold mb-4">Sentence Analysis (#{{ sentence.id }})</h2>
+        <div>
+            <span class="font-semibold text-gray-500">Sentence:</span>
+            <p id="sentence-display" class="text-lg font-mono p-2 bg-gray-50 rounded-md"><code>{{ sentence.updated_sentence }}</code></p>
+        </div>
         <div class="mb-2">
             <span class="font-bold">Translation:</span>
             <em class="text-gray-700">{{ sentence.translation }}</em>
@@ -52,6 +56,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const interactiveSentence = document.getElementById('interactive-sentence');
     const wordFormContainer = document.getElementById('word-form-container');
+    const sentenceDisplay = document.getElementById('sentence-display');
     let selectedWordToken = null;
 
     interactiveSentence.addEventListener('click', (event) => {
@@ -72,13 +77,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const wordId = wordElement.dataset.wordId;
         const wordText = wordElement.dataset.wordText;
         wordFormContainer.innerHTML = `
-            <div class="text-left">
-                <h3 class="text-2xl font-semibold mb-4">Analyzing: <code class="bg-gray-200 p-1 rounded">${wordText}</code></h3>
-                <p><strong>Sentence Word ID:</strong> ${wordId}</p>
+            <div class="text-left space-y-4">
+                <div>
+                    <h3 class="text-2xl font-semibold">Analyzing: <code class="bg-gray-200 p-1 rounded">${wordText}</code></h3>
+                    <p><strong>Sentence Word ID:</strong> ${wordId}</p>
+                </div>
                 <div>
                     <label for="parse-select" class="block font-medium text-gray-700">Choose Parse:</label>
                     <select id="parse-select" name="parse-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
                 </div>
+                <div>
+                    <button id="set-parse-btn" class="w-full px-4 py-2 bg-blue-600 text-white font-bold rounded-md shadow-sm hover:bg-blue-700 transition-colors">
+                        Set as Chosen Parse
+                    </button>
+                </div>
+                <div id="status-message" class="text-sm"></div>
             </div>`;
 
         const selectElement = document.getElementById('parse-select');
@@ -102,6 +115,53 @@ document.addEventListener('DOMContentLoaded', () => {
         createNewOption.textContent = '— Add new parse —';
         selectElement.appendChild(createNewOption);
     }
+
+    // Use event delegation for the dynamically created button
+    wordFormContainer.addEventListener('click', async (event) => {
+        if (event.target.id === 'set-parse-btn') {
+            const selectElement = document.getElementById('parse-select');
+            const parseId = selectElement.value;
+            const wordId = selectedWordToken.dataset.wordId;
+            const statusMessage = document.getElementById('status-message');
+
+            if (!parseId || parseId === 'new' || parseId === '') {
+                statusMessage.textContent = 'Please select a valid parse.';
+                statusMessage.className = 'text-red-600';
+                return;
+            }
+
+            statusMessage.textContent = 'Saving...';
+            statusMessage.className = 'text-gray-600';
+
+            try {
+                const response = await fetch(`/api/sentence_words/${wordId}/set_parse`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ parse_id: parseInt(parseId) })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to set parse.');
+                }
+
+                statusMessage.textContent = 'Success! Parse has been set.';
+                statusMessage.className = 'text-green-600 font-semibold';
+                
+                // Update the sentence display with the new string from the server
+                sentenceDisplay.innerHTML = `<code>${result.updated_sentence}</code>`;
+                
+                // Add a visual indicator to the word token
+                selectedWordToken.classList.add('border-2', 'border-green-500');
+
+            } catch (error) {
+                statusMessage.textContent = `Error: ${error.message}`;
+                statusMessage.className = 'text-red-600';
+                console.error('Error setting parse:', error);
+            }
+        }
+    });
 });
 </script>
 {% endblock %}

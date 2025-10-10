@@ -1,5 +1,5 @@
 import flask
-from flask import Flask, render_template, request
+from flask import Flask, jsonify, render_template, request
 from src.verb_forms import (
     parse_inflected_verb,
     inflect_verb_with_features,
@@ -11,7 +11,7 @@ from src.constants import VERB_FEATURE_VALUES
 from src.sentences import get_elan_analyses
 import pynini
 from unicodedata import normalize
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from src.database import SessionLocal
 from src.models import Sentence, SentenceWord, Wordform
 import math
@@ -197,9 +197,9 @@ def analyze_page(sentence_id):
     """
     db = SessionLocal()
     sentence = db.query(Sentence).options(
-        joinedload(Sentence.words).joinedload(SentenceWord.wordform)
-    ).options(
-        joinedload(Sentence.words).joinedload(SentenceWord.wordform).joinedload(Wordform.parses)
+        selectinload(Sentence.words).joinedload(SentenceWord.wordform),
+        selectinload(Sentence.words).joinedload(SentenceWord.chosen_parse),
+        selectinload(Sentence.words).joinedload(SentenceWord.wordform).joinedload(Wordform.parses)
     ).filter(Sentence.id == sentence_id).first()
     db.close()
     print(sentence.words[0].wordform.parses)
@@ -212,6 +212,50 @@ def analyze_page(sentence_id):
 
     return render_template('analyze.html', sentence=sentence, words=words_in_order)
 
+@app.route('/api/sentence_words/<int:sentence_word_id>/set_parse', methods=['POST'])
+def set_chosen_parse(sentence_word_id):
+    data = request.get_json()
+    parse_id = data.get('parse_id')
+
+    if not parse_id:
+        return jsonify({"error": "parse_id is required"}), 400
+
+    db = SessionLocal()
+    
+    # Find the specific word in the sentence to update
+    sentence_word = db.query(SentenceWord).filter(SentenceWord.id == sentence_word_id).first()
+
+    if not sentence_word:
+        db.close()
+        return jsonify({"error": "SentenceWord not found"}), 404
+
+    # Update the chosen parse ID
+    sentence_word.chosen_parse_id = parse_id
+    
+    parent_sentence = db.query(Sentence).options(
+        selectinload(Sentence.words).joinedload(SentenceWord.wordform),
+        selectinload(Sentence.words).joinedload(SentenceWord.chosen_parse),
+        selectinload(Sentence.words).joinedload(SentenceWord.wordform).joinedload(Wordform.parses)
+    ).filter(Sentence.id == sentence_word.sentence_id).first()
+
+    words_in_order = sorted(parent_sentence.words, key=lambda w: w.position)
+
+    new_sentence_parts = []
+    for word in words_in_order:
+        if word.chosen_parse and word.chosen_parse.updated_form:
+            new_sentence_parts.append(word.chosen_parse.updated_form)
+        else:
+            new_sentence_parts.append(word.wordform.text)
+    
+    parent_sentence.updated_sentence = " ".join(new_sentence_parts)
+
+    db.commit()
+    
+    response_data = {"message": "Parse chosen successfully", "updated_sentence": parent_sentence.updated_sentence}
+    
+    db.close()
+
+    return jsonify(response_data), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
