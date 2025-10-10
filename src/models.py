@@ -10,7 +10,7 @@ class Sentence(Base):
     elan_sentence = Column(Text, nullable=False)
     updated_sentence = Column(Text, nullable=False)
     translation = Column(Text, nullable=False)
-    elan_gloss = Column(Text, nullable=True) # Can be empty
+    elan_gloss = Column(Text, nullable=True)
 
     words = relationship("SentenceWord", back_populates="sentence", cascade="all, delete-orphan")
 
@@ -45,12 +45,9 @@ class Parse(Base):
     wordform = relationship("Wordform")
     lexeme = relationship("Lexeme")
 
-
-
 class SentenceWord(Base):
     """
-    This is the association table that links words to sentences in a specific order.
-    It represents a single word in a specific context.
+    Association table that links words to sentences in a specific order.
     """
     __tablename__ = 'sentence_words'
     id = Column(Integer, primary_key=True, index=True)
