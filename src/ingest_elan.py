@@ -1,9 +1,11 @@
 import pandas as pd
 from src.database import engine, SessionLocal, Base
 from src.constants import ANALYSES_PATH
-from src.models import Sentence, Wordform, SentenceWord
+from src.models import Sentence, Wordform, SentenceWord, Parse, Lexeme
 from sqlalchemy.orm import Session
 from tqdm import tqdm
+from src.search import search_parse
+import traceback
 
 def ingest_data(df: pd.DataFrame, db: Session):
     num_rows = len(df)
@@ -34,6 +36,26 @@ def ingest_data(df: pd.DataFrame, db: Session):
                     db.add(wordform)
                     db.flush()
                 wordform_cache[word_str] = wordform
+
+                parses = search_parse(word_str)
+                for parse, weight in parses:
+                    part_of_speech = parse['part_of_speech']
+                    lexeme = db.query(Lexeme).filter(
+                        Lexeme.root == parse['root'],
+                        Lexeme.part_of_speech == part_of_speech,
+                    ).first()
+                    if not lexeme:
+                        raise ValueError(f"Lexeme not found for root {parse['root']} and part_of_speech {part_of_speech}")
+
+                    new_parse = Parse(
+                        wordform_id=wordform.id,
+                        lexeme_id=lexeme.id,
+                        updated_form=parse['form'],
+                        analysis={k: v for k, v in parse.items() if k !='form'},
+                        edits=weight,
+                    )
+                    db.add(new_parse)
+                db.flush()
         
             sentence_word_link = SentenceWord(
                 sentence_id=new_sentence.id,
@@ -58,6 +80,7 @@ def main() -> int:
 
     except Exception as e:
         print(f"Error occurred: {e}")
+        traceback.print_exc()
         print("Rolling back changes to database.")
     finally:
         db.close()

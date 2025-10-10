@@ -19,6 +19,8 @@ class Wordform(Base):
     id = Column(Integer, primary_key=True, index=True)
     text = Column(Text, unique=True, index=True, nullable=False)
 
+    parses = relationship("Parse", back_populates="wordform")
+
 class Lexeme(Base):
     __tablename__ = 'lexemes'
     id = Column(Integer, primary_key=True, index=True)
