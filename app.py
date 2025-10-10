@@ -231,6 +231,7 @@ def set_chosen_parse(sentence_word_id):
 
     # Update the chosen parse ID
     sentence_word.chosen_parse_id = parse_id
+    db.flush()
     
     parent_sentence = db.query(Sentence).options(
         selectinload(Sentence.words).joinedload(SentenceWord.wordform),
