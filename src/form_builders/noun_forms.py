@@ -56,12 +56,15 @@ def parse_noun(noun_form: str, add_gloss: bool=True) -> Dict[str, str]:
     Returns:
         parse:      dict with keys 'form', 'lemma', and feature names
     """
-    root, feature_vec = NOUN_PARADIGM.lemmatize(fst(noun_form))[0]
-    root = decode_byte_str(root)
+    parses = []
+    lemmata = NOUN_PARADIGM.lemmatize(fst(noun_form))
+    for root, feature_vec in lemmata:
+        root = decode_byte_str(root)
 
-    parse = feature_vec.values
-    parse['root'] = root
-    parse['form'] = noun_form
-    if add_gloss:
-        parse['gloss']=get_gloss_for_noun(root)
-    return parse
+        parse = feature_vec.values
+        parse['root'] = root
+        parse['form'] = noun_form
+        if add_gloss:
+            parse['gloss']=get_gloss_for_noun(root)
+        parses.append(parse)
+    return parses

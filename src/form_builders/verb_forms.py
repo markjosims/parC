@@ -274,7 +274,7 @@ def get_inflected_paradigm_for_verb(
 
 def parse_inflected_verb(
         form: str,
-        paradigm: Union[paradigms.Paradigm, str],
+        paradigm: Union[paradigms.Paradigm, str, None]=None,
         add_gloss: bool=True,
 ) -> Dict[str, str]:
     """
@@ -283,22 +283,33 @@ def parse_inflected_verb(
         paradigm:   Paradigm object or str of FV class shorthand e.g. 'aɔ'
     Returns:        dict of shape {'root': root, '$feature': feature_value}
     """
+    parses = []
+
+    if paradigm is None:
+        for _, paradigm in FV2PARADIGM.items():
+            parses_for_fv = parse_inflected_verb(form, paradigm, add_gloss)
+            parses.extend(parses_for_fv)
     if type(paradigm) is str:
         paradigm = FV2PARADIGM[paradigm]
-    root, feature_vec = paradigm.lemmatize(fst(form))[0]
-    analyzed_form, _ = paradigm.analyze(fst(form))[0]
-    
-    root = decode_byte_str(root)
-    analyzed_form = decode_byte_str(analyzed_form)
 
-    parse = feature_vec.values
-    parse['root'] = root
-    parse['analyzed_form'] = analyzed_form
-    parse['form'] = form
-    if add_gloss:
-        parse['gloss']=get_gloss_for_verb(root)
-    return parse
-    
+    lemmata = paradigm.lemmatize(fst(form))
+    analyzed_forms = paradigm.analyze(fst(form))
+    for lemma, analyzed_form in zip(lemmata, analyzed_forms):
+        root, feature_vec = lemma
+        root = decode_byte_str(root)
+
+        analyzed_form = analyzed_form[0]
+        analyzed_form = decode_byte_str(analyzed_form)
+
+        parse = feature_vec.values
+        parse['root'] = root
+        parse['analyzed_form'] = analyzed_form
+        parse['form'] = form
+        if add_gloss:
+            parse['gloss'] = get_gloss_for_verb(root)
+        parses.append(parse)
+    return parses
+
 
 def main():
     rows = []

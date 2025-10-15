@@ -1,7 +1,8 @@
 from src.glossing import REMOVE_HOMOPHONE_TAG
-from src.fst_helpers import fst, decode_fst_string
+from src.fst_helpers import decode_byte_str, fst, decode_fst_string
 from src.lexicon import get_pos_and_gloss_for_uninflected_word, get_uninflected_word_data
 import pynini
+from pynini.lib import rewrite
 from typing import *
 import pandas as pd
 
@@ -23,20 +24,30 @@ def build_uninflected_word_fst() -> pynini.Fst:
 
 UNINFLECTED_WORD_FST = build_uninflected_word_fst()
 
-def parse_uninflected_word(form: str) -> Dict[str, str]:
+def parse_uninflected_word(form: str) -> List[Dict[str, str]]:
     """
     Wraps `get_pos_and_gloss_for_uninflected_word` to provide a consistent
-    interface with other parse functions.
+    interface with other parse functions. The 'form' key is equivalent to the
+    'root' key without homophone tags, if applicable.
 
     Arguments:
         form:  The uninflected word to parse.
     
     Returns:
-        parse:  A dictionary with keys 'word', 'part_of_speech', and 'gloss'.
+        parse:  A dictionary with keys 'root', 'form', 'part_of_speech', and 'gloss'.
     """
-    pos, gloss = get_pos_and_gloss_for_uninflected_word(form)
-    return {
-        'word': form,
-        'part_of_speech': pos,
-        'gloss': gloss
-    }
+    parses = []
+    lattice = (fst(form) @ UNINFLECTED_WORD_FST).project('output')
+    roots = rewrite.lattice_to_strings(lattice)
+    for root in roots:
+        root = decode_byte_str(root)
+        pos, gloss = get_pos_and_gloss_for_uninflected_word(root)
+        root_parse = {
+            'form': form,
+            'root': root,
+            'part_of_speech': pos,
+            'gloss': gloss
+        }
+        parses.append(root_parse)
+
+    return parses

@@ -34,19 +34,25 @@ def parse_adjective(form: str, add_gloss: bool=True) -> Dict[str, str]:
         form:       str of inflected adjective form
     Returns:        dict of shape {'root': root, '$feature': feature_value}
     """
-    root, feature_vec = ADJECTIVE_PARADIGM.lemmatize(fst(form))[0]
-    analyzed_form, _ = ADJECTIVE_PARADIGM.analyze(fst(form))[0]
+    parses = []
 
-    root = decode_byte_str(root)
-    analyzed_form = decode_byte_str(analyzed_form)
+    lemmata = ADJECTIVE_PARADIGM.lemmatize(fst(form))
+    analyzed_forms = ADJECTIVE_PARADIGM.analyze(fst(form))
+    for lemma, analyzed_form in zip(lemmata, analyzed_forms):
+        root, feature_vec = lemma
+        root = decode_byte_str(root)
 
-    parse = feature_vec.values
-    parse['root'] = root
-    parse['analyzed_form'] = analyzed_form
-    parse['form'] = form
-    if add_gloss:
-        parse['gloss']=get_gloss_for_adjective(root)
-    return parse
+        analyzed_form = analyzed_form[0]
+        analyzed_form = decode_byte_str(analyzed_form)
+
+        parse = feature_vec.values
+        parse['root'] = root
+        parse['analyzed_form'] = analyzed_form
+        parse['form'] = form
+        if add_gloss:
+            parse['gloss']=get_gloss_for_adjective(root)
+        parses.append(parse)
+    return parses
 
 def inflect_adjective_with_features(root: str, agree_class: str) -> str:
     """

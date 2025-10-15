@@ -40,7 +40,7 @@ def test_gold_forms2features(gold_verb):
     gold_verb['form']=form
     fv = gold_verb.pop('fv')
 
-    predicted_parse = parse_inflected_verb(form, fv)
+    predicted_parse = parse_inflected_verb(form, fv)[0]
     gold_verb_filtered = {
         k: v for k,v in gold_verb.items()
         if k in predicted_parse
@@ -72,7 +72,7 @@ def test_adjective_parsing(gold_adj):
     form = analyzed_form.replace('-', '')
     gold_adj['form']=form
 
-    predicted_parse = parse_adjective(form)
+    predicted_parse = parse_adjective(form)[0]
     gold_adj_filtered = {
         k: v for k,v in gold_adj.items()
         if k in predicted_parse
@@ -85,6 +85,6 @@ def test_uninflected_forms(uninflected_word):
     pos = uninflected_word['part_of_speech']
     gloss = uninflected_word['gloss']
 
-    parsed = parse_uninflected_word(word)
+    parsed = parse_uninflected_word(word)[0]
     assert parsed['part_of_speech'] == pos
     assert parsed['gloss'] == gloss

@@ -284,7 +284,9 @@ def search_verb_form(
             use_byte_tokens=True,
         )
         if return_parse:
-            hits.extend([(parse_inflected_verb(hit, fv), weight) for hit, weight in hits_for_paradigm])
+            parse_verb_fv = lambda form: parse_inflected_verb(form, fv)
+            fv_hits = _parse_hits(hits_for_paradigm, num_hits, parse_verb_fv)
+            hits.extend(fv_hits)
         else:
             hits.extend([({'form': hit, 'fv': fv}, weight) for hit, weight in hits_for_paradigm])
     hits.sort(key=lambda hit_tuple: hit_tuple[-1])
@@ -341,7 +343,7 @@ def search_noun_form(
         
     hits.sort(key=lambda hit_tuple: hit_tuple[-1])
     if return_parse:
-        hits = [(parse_noun(hit), weight) for hit, weight in hits]
+        hits = _parse_hits(hits, num_hits, parse_noun)
     else:
         hits = [({'form': hit}, weight) for hit, weight in hits]
     return hits
@@ -395,7 +397,7 @@ def search_adjective_form(
         
     hits.sort(key=lambda hit_tuple: hit_tuple[-1])
     if return_parse:
-        hits = [(parse_adjective(hit), weight) for hit, weight in hits]
+        hits = _parse_hits(hits, num_hits, parse_adjective)
     else:
         hits = [({'form': hit}, weight) for hit, weight in hits]
     return hits
@@ -448,9 +450,31 @@ def search_uninflected_word(
         
     hits.sort(key=lambda hit_tuple: hit_tuple[-1])
     if return_parse:
-        hits = [(parse_uninflected_word(hit), weight) for hit, weight in hits]
+        hits = _parse_hits(hits, num_hits, parse_uninflected_word)
     else:
-        hits = [({'form': hit}, weight) for hit, weight in hits]
+        hits = [({'form': hit_str}, weight) for hit_str, weight in hits]
+    return hits
+
+def _parse_hits(
+        hits: List[Tuple[str, float]],
+        num_hits: int,
+        parse_funct: Callable
+) -> List[Tuple[Dict[str, Any], float]]:
+    """
+    Arguments:
+        hits:       list of tuples, each of shape `(hit_str: str, weight: float)`
+        num_hits:   int, number of parses to return
+        parse_funct: Callable that takes a str and returns a list of dicts
+    Returns:
+        hits:       list of tuples, each of shape `(parse: dict, weight: float)`
+    
+    Parses each hit string using `parse_funct` and returns up to `num_hits` parses.
+    """
+    hit_parses = []
+    for hit_str, weight in hits:
+        for parse in parse_funct(hit_str):
+            hit_parses.append((parse, weight))
+    hits = hit_parses[:num_hits]
     return hits
 
 def search_parse(
