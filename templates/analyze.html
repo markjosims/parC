@@ -73,6 +73,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    function getFeatureStr(parse, pos) {
+        let feature_str = '';
+        if (pos === 'verb') {
+            feature_str += (parse.analysis.class != 'unmarked') ? "CL" + parse.analysis.class + " " : "";
+            feature_str += (parse.analysis.tam != 'unmarked') ? parse.analysis.tam + " " : "";
+            feature_str += (parse.analysis.deixis != 'unmarked') ? parse.analysis.deixis : "";
+        }
+        else if (pos === 'noun') {
+            feature_str += (parse.analysis.number != 'unmarked') ? parse.analysis.number + " " : "";
+            feature_str += (parse.analysis.case != 'unmarked') ? parse.analysis.case : "";
+        }
+        else if (pos === 'adjective') {
+            feature_str += (parse.analysis.class != 'unmarked') ? "CL" + parse.analysis.class : "";
+        }
+        return feature_str.trim();
+    }
+
     function updateAnalysisForm(wordElement) {
         const wordId = wordElement.dataset.wordId;
         const wordText = wordElement.dataset.wordText;
@@ -86,8 +103,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (parses.length > 0) {
             selectElement.innerHTML = `<option value="">-- Select a parse --</option>`;
             parses.forEach(parse => {
+                const pos = parse.analysis.part_of_speech || 'Unknown';
+                const feature_str = getFeatureStr(parse, pos);
                 const gloss = parse.analysis.gloss || 'N/A';
-                const label = `${parse.updated_form} (${gloss}) [Source: ${parse.source}]`;
+                const label = `${parse.updated_form} (${gloss}) ${feature_str} [Source: ${parse.source}]`;
                 const option = document.createElement('option');
                 option.value = parse.id;
                 option.textContent = label;
