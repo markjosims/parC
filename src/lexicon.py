@@ -12,7 +12,7 @@ from src.constants import (
     GOLD_VERBS_PATH,
     GOLD_PARADIGMS_PATH,
     NOUNS_PATH,
-    FUZZY_NOUNS_PATH,
+    GOLD_NOUNS_PATH,
 )
 from src.fst_helpers import fst
 from typing import *
@@ -21,7 +21,7 @@ import json
 VERBS_DF = pd.read_csv(VERB_ROOTS_PATH, keep_default_na=False)
 GOLD_VERBS_DF = pd.read_csv(GOLD_VERBS_PATH, keep_default_na=False)
 NOUNS_DF = pd.read_csv(NOUNS_PATH, keep_default_na=False)
-FUZZY_NOUNS_DF = pd.read_csv(FUZZY_NOUNS_PATH, keep_default_na=False)
+GOLD_NOUNS_DF = pd.read_csv(GOLD_NOUNS_PATH, keep_default_na=False)
 
 class LexemeNotFoundError(Exception):
     """
@@ -84,8 +84,8 @@ def get_gold_paradigms() -> List[Dict[str, Any]]:
         gold_paradigms = json.load(f)
     return gold_paradigms
 
-def get_fuzzy_nouns() -> List[Dict[str, str]]:
-    return FUZZY_NOUNS_DF.to_dict(orient='records')
+def get_gold_nouns() -> List[Dict[str, str]]:
+    return GOLD_NOUNS_DF.to_dict(orient='records')
 
 def get_noun_lemmata(wrap_w_fsa: bool=False) -> List[str]:
     lemmata = NOUNS_DF['lemma'].tolist()
