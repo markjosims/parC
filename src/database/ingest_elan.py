@@ -11,6 +11,7 @@ from random import choice
 ANNOTATORS = ['mark', 'jenny', 'gordon', 'james']
 
 def ingest_data(df: pd.DataFrame, db: Session):
+    df = df[:50]
     num_rows = len(df)
 
     wordform_cache = {}

@@ -1,5 +1,6 @@
 import flask
 from flask import Flask, jsonify, render_template, request
+from sqlalchemy import or_
 from src.form_builders.verb_forms import (
     parse_inflected_verb,
     inflect_verb_with_features,
@@ -15,6 +16,11 @@ from sqlalchemy.orm import joinedload, selectinload
 from src.database.database import SessionLocal
 from src.database.models import Sentence, SentenceWord, Wordform
 import math
+import logging
+
+logging.basicConfig()
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
 
 app = Flask(__name__)
 
@@ -170,25 +176,57 @@ def sentences_page():
     """
     # Get the page number from the URL query, defaulting to 1
     page = request.args.get('page', 1, type=int)
+    assigned_filter = request.args.get('assigned_to', type=str)
+    checked_filter = request.args.get('checked', type=str)
+
     per_page = 10  # Sentences to display per page
 
     db = SessionLocal()
     
-    # Get the total number of sentences to calculate total pages
-    total_sentences = db.query(Sentence).count()
+    query = db.query(Sentence)
+    filters = []
+
+    if assigned_filter:
+        filters.append(Sentence.assigned_to == assigned_filter)
     
+    if checked_filter is not None:
+        if checked_filter == 'true':
+            filters.append(Sentence.checked_by_annotator == True)
+        elif checked_filter == 'false':
+            # A sentence is "not checked" if the value is False OR NULL
+            filters.append(or_(Sentence.checked_by_annotator == False, Sentence.checked_by_annotator.is_(None)))
+
+    # Apply all collected filters to the query at once
+    if filters:
+        query = query.filter(*filters)
+
+    print(assigned_filter, checked_filter)
+
+    annotators_query = db.query(Sentence.assigned_to)\
+        .filter(Sentence.assigned_to.isnot(None)).distinct().all()
+    annotators = [a[0] for a in annotators_query]
+
+    # Get the total number of sentences to calculate total pages
+    total_sentences = query.count()
+
+
     # Fetch only the sentences for the current page
-    sentences_data = db.query(Sentence).order_by(Sentence.id).limit(per_page).offset((page - 1) * per_page).all()
+    sentences_data = query.order_by(Sentence.id).limit(per_page).offset((page - 1) * per_page).all()
     
     db.close()
     
     # Calculate the total number of pages
     total_pages = math.ceil(total_sentences / per_page)
     
-    return render_template('sentences.html', 
-                           sentences=sentences_data,
-                           page=page,
-                           total_pages=total_pages)
+    return render_template(
+        'sentences.html', 
+        sentences=sentences_data,
+        page=page,
+        total_pages=total_pages,
+        annotators=annotators,
+        assigned_filter=assigned_filter,
+        checked_filter=checked_filter,
+    )
 
 @app.route('/analyze/<int:sentence_id>')
 def analyze_page(sentence_id):
