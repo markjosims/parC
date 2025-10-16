@@ -11,6 +11,7 @@ class Sentence(Base):
     updated_sentence = Column(Text, nullable=False)
     translation = Column(Text, nullable=False)
     elan_gloss = Column(Text, nullable=True)
+    assigned_to = Column(String, nullable=True)
 
     words = relationship("SentenceWord", back_populates="sentence", cascade="all, delete-orphan")
 

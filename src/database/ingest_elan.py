@@ -6,19 +6,24 @@ from sqlalchemy.orm import Session
 from tqdm import tqdm
 from src.search import search_parse
 import traceback
+from random import choice
+
+ANNOTATORS = ['mark', 'jenny', 'gordon', 'james']
 
 def ingest_data(df: pd.DataFrame, db: Session):
     num_rows = len(df)
 
     wordform_cache = {}
 
-    for i, row in tqdm(df.iterrows(), total=num_rows):
+    for _, row in tqdm(df.iterrows(), total=num_rows):
         text = row['text']
+        annotator = choice(ANNOTATORS)
         new_sentence = Sentence(
             elan_sentence=text,
             updated_sentence=text,
             translation=row['Translation'],
             elan_gloss=row['Gloss'],
+            assigned_to=annotator,
         )
         db.add(new_sentence)
         db.flush()
