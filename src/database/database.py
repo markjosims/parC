@@ -4,10 +4,11 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 password = os.getenv("POSTGRES_PASSWORD", "password")
+user = os.getenv("POSTGRES_USER", "postgres")
 
 SQLALCHEMY_DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    f"postgresql://postgres:{password}@localhost/tira_db"
+    f"postgresql://{user}:{password}@localhost/tira_db"
 )
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
