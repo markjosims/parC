@@ -28,7 +28,7 @@ def add_class_prefix(stem: pynini.Fst, class_agree: str, prefix_tone=LOW_TONE) -
     return (paradigms.prefix(prefix_acceptor, stem)@DELETE_SCHWA_BEFORE_VOWEL).optimize()
 
 
-def add_class_prefixes_to_slots(slot_list):
+def add_class_prefixes_to_slots(slot_list, is_verb:bool=False):
     """
     Arguments:
         slot_list:  A list of (stem, feature_vector) tuples
@@ -37,14 +37,20 @@ def add_class_prefixes_to_slots(slot_list):
         for each class prefix in CLASS_PREFIXES.
     """
     slots_w_class_prefixes = []
+    prefixes = CLASS_PREFIXES
+    if is_verb:
+        prefixes.append('ŋg')
     for stem, feature_vector in slot_list:
         category = feature_vector.category
         feature_dict = feature_vector.values.copy()
         feature_dict.pop('class', None)  # remove any existing class feature
         feature_values = [f"{feature}={value}" for feature, value in feature_dict.items()]
         for class_agree in CLASS_PREFIXES:
+            prefix = class_agree
+            if class_agree == 'ŋg':
+                prefix = 'g'
             features_with_class = features.FeatureVector(category, f"class={class_agree}", *feature_values)
-            prefixed_verb = add_class_prefix(stem, class_agree)
+            prefixed_verb = add_class_prefix(stem, prefix)
             slots_w_class_prefixes.append((prefixed_verb, features_with_class))
     return slots_w_class_prefixes
 

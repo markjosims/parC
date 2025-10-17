@@ -35,6 +35,20 @@ INFINITIVE_PREFIX = lambda stem: paradigms.prefix(fst("ðə́-"), stem).optimize
 
 # slots for verb paradigms
 
+def add_imperfective_personal_markers(
+        slots: List[tuple[pynini.Fst, features.FeatureVector]]
+    ) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """
+    Adds personal markers to imperfective verb forms in the given slots.
+    Personal markers for imperfective verbs have the following forms:
+    Subject:
+        1sg: íŋ-g-
+        2sg: á-g-
+        3sg: ŋg-
+        
+
+    """
+
 def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.FeatureVector]]]:
     root_slot = (STEM, VERB_ROOT)
 
