@@ -32,11 +32,16 @@
                     }) %}
                 {% endfor %}
             <span 
-                class="word-token p-1 rounded cursor-pointer hover:bg-blue-200 transition-colors duration-150"
+                class="
+                    word-token p-1 rounded cursor-pointer hover:bg-blue-200 transition-colors duration-150
+                    {% if word.chosen_parse %}
+                        bg-blue-300 text-black shadow-inner
+                    {% endif %}
+                "
                 data-word-id="{{ word.id }}"
                 data-word-text="{{ word.wordform.text }}"
                 data-position="{{ word.position }}"
-                data-parses='{{ parsable_list | tojson }}'  {# 4. Serialize the list we just built. #}
+                data-parses='{{ parsable_list | tojson }}'
             >
                 {{ word.wordform.text }}
             </span>
