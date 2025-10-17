@@ -295,5 +295,25 @@ def set_chosen_parse(sentence_word_id):
 
     return jsonify(response_data), 200
 
+@app.route('/api/sentences/<int:sentence_id>/toggle_checked', methods=['PUT'])
+def toggle_sentence_checked(sentence_id):
+    """
+    Toggles the 'checked_by_annotator' status for a sentence.
+    """
+    db = SessionLocal()
+    sentence = db.query(Sentence).filter(Sentence.id == sentence_id).first()
+    if not sentence:
+        db.close()
+        return jsonify({"error": "Sentence not found"}), 404
+    
+    sentence.checked_by_annotator = not sentence.checked_by_annotator
+    
+    db.commit()
+    
+    new_status = sentence.checked_by_annotator
+    db.close()
+    
+    return jsonify({"success": True, "new_status": new_status})
+
 if __name__ == '__main__':
     app.run(debug=True)
