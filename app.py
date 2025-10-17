@@ -240,7 +240,6 @@ def analyze_page(sentence_id):
         selectinload(Sentence.words).joinedload(SentenceWord.wordform).joinedload(Wordform.parses)
     ).filter(Sentence.id == sentence_id).first()
     db.close()
-    print(sentence.words[0].wordform.parses)
 
     if not sentence:
         return "Sentence not found", 404
