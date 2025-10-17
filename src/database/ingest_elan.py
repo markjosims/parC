@@ -19,6 +19,10 @@ def ingest_data(df: pd.DataFrame, db: Session):
     for _, row in tqdm(df.iterrows(), total=num_rows):
         text = row['text']
         annotator = choice(ANNOTATORS)
+        existing_sentence = db.query(Sentence).filter(Sentence.elan_sentence == text).first()
+        if existing_sentence:
+            continue
+
         new_sentence = Sentence(
             elan_sentence=text,
             updated_sentence=text,
