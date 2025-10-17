@@ -8,7 +8,8 @@
         <h2 class="text-2xl font-semibold mb-4">Sentence Analysis (#{{ sentence.id }})</h2>
         <div>
             <span class="font-semibold text-gray-500">Sentence:</span>
-            <p id="sentence-display" class="text-lg font-mono p-2 bg-gray-50 rounded-md"><code>{{ sentence.updated_sentence }}</code></p>
+            <p id="sentence-display" class="text-lg font-mono p-2 {% if sentence.checked_by_pi %}bg-green-50{% elif sentence.checked_by_annotator %}bg-blue-50 rounded-md {% else %}bg-red-50 rounded-md{% endif %}"><code>{{ sentence.updated_sentence }}</code></p>
+            <p id="sentence-display" class="text-md font-mono p-2 bg-gray-50 text-gray-400 rounded-md"><code>{{ sentence.elan_sentence }}</code></p>
         </div>
         <div class="mb-2">
             <span class="font-bold">Translation:</span>
@@ -72,6 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const setParseBtn = event.target;
             const selectElement = document.getElementById('parse-select');
             const statusMessage = document.getElementById('status-message');
+            console.log('Status Message Element:', statusMessage);
+            console.log('Set Parse Button:', setParseBtn)
 
             const wordId = wordFormContainer.dataset.currentWordId;
             const parses = JSON.parse(wordFormContainer.dataset.currentParses);
@@ -100,23 +103,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update the clicked word's display
                 const selectedParse = parses.find(p => p.id == selectedParseId);
                 if (selectedParse && selectedWordToken) {
-                    const updatedFormSpan = selectedWordToken.querySelector('.updated-form');
-                    updatedFormSpan.textContent = selectedParse.updated_form;
+                    selectedWordToken.innerHTML = `
+                    <span class="updated-form text-lg font-semibold text-gray-800 leading-tight">
+                            ${selectedParse.updated_form}
+                    </span>
+                    <span class="original-form text-xs text-gray-400 line-through leading-tight">
+                        ${wordFormContainer.dataset.currentWordText}
+                    </span>`;
                     selectedWordToken.dataset.chosenParseId = selectedParseId;
                 }
                 
                 // Update the main sentence display at the top
                 const sentenceDisplay = document.getElementById('sentence-display').querySelector('code');
+                console.log('Updated Sentence:', result.updated_sentence);
+                console.log('Current Sentence Display:', sentenceDisplay.textContent);
                 sentenceDisplay.textContent = result.updated_sentence;
 
-                statusMessage.innerHTML = `<span class="text-green-600 font-semibold">Success!</span> The page will now reload to ensure full sync.`;
-                setTimeout(() => window.location.reload(), 1500);
+                statusMessage.innerHTML = `<span class="text-green-600 font-semibold">Success!</span>`;
+                // statusMessage.innerHTML = `<span class="text-green-600 font-semibold">Success!</span> The page will now reload to ensure full sync.`;
+                // setTimeout(() => window.location.reload(), 1500);
 
             } catch (error) {
                 console.error('Error setting parse:', error);
                 statusMessage.innerHTML = `<span class="text-red-600 font-semibold">Error:</span> ${error.message}`;
                 setParseBtn.disabled = false;
-                setParseBtn.textContent = 'Set as Final Parse';
+                setParseBtn.textContent = 'Set as Chosen Parse';
             }
         }
     });
@@ -168,6 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let chosenParseId = wordElement.dataset.chosenParseId;
 
         wordFormContainer.dataset.currentWordId = wordId;
+        wordFormContainer.dataset.currentWordText = wordText;
         wordFormContainer.dataset.currentParses = JSON.stringify(parses);
 
         wordFormContainer.innerHTML = `
