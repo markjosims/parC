@@ -7,11 +7,12 @@ from tqdm import tqdm
 from src.search import search_parse
 import traceback
 from random import choice
+import math
 
 ANNOTATORS = ['mark', 'jenny', 'gordon', 'james']
+BATCH_SIZE = 100
 
 def ingest_data(df: pd.DataFrame, db: Session):
-    df = df[:50]
     num_rows = len(df)
 
     wordform_cache = {}
@@ -84,6 +85,15 @@ def main() -> int:
     try:
         print(f"Reading ELAN data from {SENTENCES_PATH}")
         df = pd.read_csv(SENTENCES_PATH, keep_default_na=False)
+        elan_mask = df['source']=='elan'
+        df = df[elan_mask]
+        df = df.drop_duplicates(subset=['text'])
+        num_batches = math.ceil(len(df) / BATCH_SIZE)
+        for batch_i in tqdm(range(num_batches), desc="Ingesting batches"):
+            start_idx = batch_i * BATCH_SIZE
+            end_idx = min((batch_i + 1) * BATCH_SIZE, len(df))
+            batch_df = df.iloc[start_idx:end_idx]
+            ingest_data(batch_df, db)
         elan_mask = df['source']=='elan'
         df=df[elan_mask]
         ingest_data(df, db)
