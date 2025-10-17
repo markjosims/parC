@@ -22,29 +22,33 @@
         <!-- Interactive Sentence -->
         <div id="interactive-sentence" class="p-4 bg-gray-50 border rounded-lg flex flex-wrap gap-x-2 gap-y-1 text-2xl font-mono">
             {% for word in words %}
-                {% set parsable_list = [] %}
-                {% for p in word.wordform.parses %}
-                    {% set __ = parsable_list.append({
-                        'id': p.id,
-                        'updated_form': p.updated_form,
-                        'analysis': p.analysis,
-                        'source': p.source
-                    }) %}
-                {% endfor %}
-            <span 
-                class="
-                    word-token p-1 rounded cursor-pointer hover:bg-blue-200 transition-colors duration-150
-                    {% if word.chosen_parse %}
-                        bg-green-300 text-black shadow-inner
-                    {% endif %}
-                "
-                data-word-id="{{ word.id }}"
-                data-word-text="{{ word.wordform.text }}"
-                data-position="{{ word.position }}"
-                data-parses='{{ parsable_list | tojson }}'
-            >
-                {{ word.wordform.text }}
-            </span>
+                <div 
+                    class="word-slot flex flex-col items-center p-1 rounded cursor-pointer hover:bg-blue-200 transition-colors duration-150"
+                    data-word-id="{{ word.id }}"
+                    data-word-text="{{ word.wordform.text }}"
+                    data-position="{{ word.position }}"
+                    data-chosen-parse-id="{{ word.chosen_parse.id if word.chosen_parse else '' }}"
+                    data-parses='
+                        {%- set parses_list = [] -%}
+                        {%- for p in word.wordform.parses -%}
+                            {%- set _ = parses_list.append({"id": p.id, "updated_form": p.updated_form, "analysis": p.analysis, "source": p.source}) -%}
+                        {%- endfor -%}
+                        {{- parses_list | tojson -}}
+                    '
+                >
+                    <!-- Top Slot: The new, updated form -->
+                    <span class="updated-form text-lg font-semibold text-gray-800 leading-tight">
+                        {% if word.chosen_parse %}
+                            {{ word.chosen_parse.updated_form }}
+                        {% else %}
+                            <span class="inline-block h-5"></span>
+                        {% endif %}
+                    </span>
+                    <!-- Bottom Slot: The original form -->
+                    <span class="original-form text-xs text-gray-400 line-through leading-tight">
+                        {{ word.wordform.text }}
+                    </span>
+                </div>
             {% endfor %}
         </div>
     </div>
@@ -61,24 +65,86 @@
 document.addEventListener('DOMContentLoaded', () => {
     const interactiveSentence = document.getElementById('interactive-sentence');
     const wordFormContainer = document.getElementById('word-form-container');
-    const sentenceDisplay = document.getElementById('sentence-display');
     let selectedWordToken = null;
 
-    interactiveSentence.addEventListener('click', (event) => {
-        const target = event.target;
-        if (target.classList.contains('word-token')) {
-            if (selectedWordToken) {
-                selectedWordToken.classList.remove('bg-blue-300', 'text-black', 'shadow-inner');
-                selectedWordToken.classList.add('hover:bg-blue-200');
+    wordFormContainer.addEventListener('click', async (event) => {
+        if (event.target.id === 'set-parse-btn') {
+            const setParseBtn = event.target;
+            const selectElement = document.getElementById('parse-select');
+            const statusMessage = document.getElementById('status-message');
+
+            const wordId = wordFormContainer.dataset.currentWordId;
+            const parses = JSON.parse(wordFormContainer.dataset.currentParses);
+            const selectedParseId = selectElement.value;
+            console.log('Selected Parse ID:', selectedParseId);
+            console.log(JSON.stringify({ parse_id: selectedParseId }));
+
+            
+            if (!selectedParseId) return;
+
+            setParseBtn.disabled = true;
+            setParseBtn.textContent = 'Saving...';
+            statusMessage.textContent = '';
+
+            try {
+                const response = await fetch(`/api/sentence_words/${wordId}/set_parse`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ parse_id: selectedParseId })
+                });
+
+                if (!response.ok) throw new Error(await response.text());
+
+                const result = await response.json();
+                
+                // Update the clicked word's display
+                const selectedParse = parses.find(p => p.id == selectedParseId);
+                if (selectedParse && selectedWordToken) {
+                    const updatedFormSpan = selectedWordToken.querySelector('.updated-form');
+                    updatedFormSpan.textContent = selectedParse.updated_form;
+                    selectedWordToken.dataset.chosenParseId = selectedParseId;
+                }
+                
+                // Update the main sentence display at the top
+                const sentenceDisplay = document.getElementById('sentence-display').querySelector('code');
+                sentenceDisplay.textContent = result.updated_sentence;
+
+                statusMessage.innerHTML = `<span class="text-green-600 font-semibold">Success!</span> The page will now reload to ensure full sync.`;
+                setTimeout(() => window.location.reload(), 1500);
+
+            } catch (error) {
+                console.error('Error setting parse:', error);
+                statusMessage.innerHTML = `<span class="text-red-600 font-semibold">Error:</span> ${error.message}`;
+                setParseBtn.disabled = false;
+                setParseBtn.textContent = 'Set as Final Parse';
             }
-            target.classList.add('bg-blue-300', 'text-black', 'shadow-inner');
-            target.classList.remove('hover:bg-blue-200');
+        }
+    });
+
+    wordFormContainer.addEventListener('change', (event) => {
+        if (event.target.id === 'parse-select') {
+            const selectElement = event.target;
+            const setParseBtn = document.getElementById('set-parse-btn');
+            if (setParseBtn) {
+                setParseBtn.disabled = !selectElement.value;
+            }
+        }
+    });
+
+    interactiveSentence.addEventListener('click', (event) => {
+        const target = event.target.closest('.word-slot');
+        if (target) {
+            if (selectedWordToken) {
+                selectedWordToken.classList.remove('bg-blue-300');
+            }
             selectedWordToken = target;
-            updateAnalysisForm(target);
+            selectedWordToken.classList.add('bg-blue-300');
+            updateAnalysisForm(selectedWordToken);
         }
     });
 
     function getFeatureStr(parse, pos) {
+        // Construct a feature string for a given parse based on part of speech
         let feature_str = '';
         if (pos === 'verb') {
             feature_str += (parse.analysis.class != 'unmarked') ? "CL" + parse.analysis.class + " " : "";
@@ -98,17 +164,24 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateAnalysisForm(wordElement) {
         const wordId = wordElement.dataset.wordId;
         const wordText = wordElement.dataset.wordText;
+        const parses = JSON.parse(wordElement.dataset.parses);
+        let chosenParseId = wordElement.dataset.chosenParseId;
+
+        wordFormContainer.dataset.currentWordId = wordId;
+        wordFormContainer.dataset.currentParses = JSON.stringify(parses);
+
         wordFormContainer.innerHTML = `
             {% include 'partials/wordform_container.html' %}    
         `;
 
         const selectElement = document.getElementById('parse-select');
-        const parses = JSON.parse(wordElement.dataset.parses);
+        const setParseBtn = document.getElementById('set-parse-btn');
+
 
         if (parses.length > 0) {
             selectElement.innerHTML = `<option value="">-- Select a parse --</option>`;
             parses.forEach(parse => {
-                const pos = parse.analysis.part_of_speech || 'Unknown';
+                const pos = parse.analysis.part_of_speech || 'N/A';
                 const feature_str = getFeatureStr(parse, pos);
                 const gloss = parse.analysis.gloss || 'N/A';
                 const label = `${parse.updated_form} (${gloss}) ${feature_str} [Source: ${parse.source}]`;
@@ -120,58 +193,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             selectElement.innerHTML = `<option value="">-- No suggested parses found --</option>`;
         }
-        const createNewOption = document.createElement('option');
-        createNewOption.value = 'new';
-        createNewOption.textContent = '— Add new parse —';
-        selectElement.appendChild(createNewOption);
-    }
 
-    // Use event delegation for the dynamically created button
-    wordFormContainer.addEventListener('click', async (event) => {
-        if (event.target.id === 'set-parse-btn') {
-            const selectElement = document.getElementById('parse-select');
-            const parseId = selectElement.value;
-            const wordId = selectedWordToken.dataset.wordId;
-            const statusMessage = document.getElementById('status-message');
-
-            if (!parseId || parseId === 'new' || parseId === '') {
-                statusMessage.textContent = 'Please select a valid parse.';
-                statusMessage.className = 'text-red-600';
-                return;
-            }
-
-            statusMessage.textContent = 'Saving...';
-            statusMessage.className = 'text-gray-600';
-
-            try {
-                const response = await fetch(`/api/sentence_words/${wordId}/set_parse`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ parse_id: parseInt(parseId) })
-                });
-
-                const result = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(result.error || 'Failed to set parse.');
-                }
-
-                statusMessage.textContent = 'Success! Parse has been set.';
-                statusMessage.className = 'text-green-600 font-semibold';
-                
-                // Update the sentence display with the new string from the server
-                sentenceDisplay.innerHTML = `<code>${result.updated_sentence}</code>`;
-                
-                // Add a visual indicator to the word token
-                selectedWordToken.classList.add('border-2', 'border-green-500');
-
-            } catch (error) {
-                statusMessage.textContent = `Error: ${error.message}`;
-                statusMessage.className = 'text-red-600';
-                console.error('Error setting parse:', error);
-            }
+        // Pre-select the chosen parse if it exists
+        if (chosenParseId) {
+            selectElement.value = chosenParseId;
         }
-    });
+        setParseBtn.disabled = !selectElement.value;
+    }
 });
 </script>
 {% endblock %}
