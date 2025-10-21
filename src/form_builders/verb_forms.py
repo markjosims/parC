@@ -136,7 +136,7 @@ def add_imperative_object_markers(
 
 # slots for verb paradigms
 
-def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.FeatureVector]]]:
+def make_verb_slots(fv_class: str) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
     root_slot = (STEM, VERB_ROOT)
 
     a_morphome = CLASS2FV[fv_class]["a_morphome"]
