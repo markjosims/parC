@@ -29,8 +29,8 @@ FV_CLASSES = list(CLASS2FV.keys())
 
 # prefixes/auxiliaries
 
-IPFV_AUX = lambda stem: paradigms.prefix(fst("á-"), stem).optimize()
-PFV_IT_AUX = lambda stem: paradigms.prefix(fst("à-"), stem).optimize()
+ADD_IPFV_AUX = lambda stem: paradigms.prefix(fst("á-"), stem).optimize()
+ADD_PFV_IT_AUX = lambda stem: paradigms.prefix(fst("à-"), stem).optimize()
 INFINITIVE_PREFIX = lambda stem: paradigms.prefix(fst("ðə́-"), stem).optimize()
 
 # person marking
@@ -181,15 +181,15 @@ def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.
 
     ipfv_it_suffix=fst(f"-{a_morphome}{LOW_TONE}")
     if is_OV:
-        ipfv_it_stem = compose_stem_harmony(IPFV_AUX(HLSTAR_RULE))
+        ipfv_it_stem = compose_stem_harmony(ADD_IPFV_AUX(HLSTAR_RULE))
     else:
-        ipfv_it_stem = compose_stem(IPFV_AUX(HLSTAR_RULE))
+        ipfv_it_stem = compose_stem(ADD_IPFV_AUX(HLSTAR_RULE))
 
     ipfv_vent_suffix=fst(f"-{o_morphome}{HIGH_TONE}")
     if is_OV and o_morphome == 'ɔ':
-        ipfv_vent_stem = compose_stem_harmony(IPFV_AUX(ALL_LOW_TONE_RULE))
+        ipfv_vent_stem = compose_stem_harmony(ADD_IPFV_AUX(ALL_LOW_TONE_RULE))
     else:
-        ipfv_vent_stem = compose_stem(IPFV_AUX(ALL_LOW_TONE_RULE))
+        ipfv_vent_stem = compose_stem(ADD_IPFV_AUX(ALL_LOW_TONE_RULE))
     ipfv_slots = [
         (paradigms.suffix(ipfv_it_suffix, ipfv_it_stem), IPFV_IT),
         (paradigms.suffix(ipfv_vent_suffix, ipfv_vent_stem), IPFV_VENT),
@@ -201,7 +201,7 @@ def make_verb_slots(fv_class: str) -> Dict[str, List[Tuple[pynini.Fst, features.
     ####################
 
     pfv_it_suffix = fst(f"-{e_morphome}{LOW_TONE}")
-    pfv_it_stem = compose_stem(PFV_IT_AUX(HLSTAR_RULE))
+    pfv_it_stem = compose_stem(ADD_PFV_IT_AUX(HLSTAR_RULE))
 
     pfv_vent_suffix = ipfv_vent_suffix
     if is_OV and o_morphome == 'ɔ':
