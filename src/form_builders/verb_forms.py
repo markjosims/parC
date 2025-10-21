@@ -31,7 +31,6 @@ FV_CLASSES = list(CLASS2FV.keys())
 
 ADD_IPFV_AUX = lambda stem: paradigms.prefix(fst("á-"), stem).optimize()
 ADD_PFV_IT_AUX = lambda stem: paradigms.prefix(fst("à-"), stem).optimize()
-INFINITIVE_PREFIX = lambda stem: paradigms.prefix(fst("ðə́-"), stem).optimize()
 
 # person marking
 
