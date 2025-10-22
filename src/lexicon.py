@@ -11,6 +11,7 @@ from src.constants import (
     ROOT2FV_FST_PATH,
     ROOT2GLOSS_FST_PATH,
     GOLD_VERBS_PATH,
+    GOLD_AUXS_PATH,
     GOLD_PARADIGMS_PATH,
     NOUNS_PATH,
     GOLD_NOUNS_PATH,
@@ -24,6 +25,7 @@ import json
 
 VERBS_DF = pd.read_csv(VERB_ROOTS_PATH, keep_default_na=False)
 GOLD_VERBS_DF = pd.read_csv(GOLD_VERBS_PATH, keep_default_na=False)
+GOLD_AUXS_DF = pd.read_csv(GOLD_AUXS_PATH, keep_default_na=False)
 NOUNS_DF = pd.read_csv(NOUNS_PATH, keep_default_na=False)
 GOLD_NOUNS_DF = pd.read_csv(GOLD_NOUNS_PATH, keep_default_na=False)
 ADJECTIVES_DF = pd.read_csv(ADJECTIVES_PATH, keep_default_na=False)
@@ -93,6 +95,9 @@ def get_all_verb_data(
 
 def get_gold_verbs() -> List[Dict[str, str]]:
     return GOLD_VERBS_DF.to_dict(orient='records')
+
+def get_gold_auxs() -> List[Dict[str, str]]:
+    return GOLD_AUXS_DF.to_dict(orient='records')
 
 def get_gold_paradigms() -> List[Dict[str, Any]]:
     with open(GOLD_PARADIGMS_PATH) as f:

@@ -286,6 +286,32 @@ FV2PARADIGM = {
 }
 PARADIGM2FV = {v:k for v,k in FV2PARADIGM.items()}
 
+def make_aux_paradigm() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    ipfv_aux_form = insert_fst("á")
+    ipfv_aux_slot = (ipfv_aux_form, IPFV_AUX)
+    pfv_it_aux_form = insert_fst("à")
+    pfv_it_aux_slot = (pfv_it_aux_form, PFV_IT_AUX)
+    aux_slots = [ipfv_aux_slot, pfv_it_aux_slot]
+    aux_slots = add_class_prefixes_to_slots(aux_slots, is_verb=True)
+
+    # arbitarily set lemma to IPFV_AUX w/ g class
+    lemma_features = IPFV_AUX.values.copy()
+    lemma_features['class'] = 'g'
+    lemma_feature_strs = [f"{feature}={value}" for feature, value in lemma_features.items()]
+    aux_lemma = features.FeatureVector(INFLECTED_AUX, *lemma_feature_strs)
+
+    aux_paradigm = paradigms.Paradigm(
+        category=INFLECTED_AUX,
+        name="TAMD auxiliary",
+        slots=aux_slots,
+        lemma_feature_vector=aux_lemma,
+        stems=[fst("")],
+        boundary=fst(BOUNDARY_STR),
+    )
+    return aux_paradigm
+
+AUX_PARADIGM = make_aux_paradigm()
+
 def debug_paradigm(root, paradigm):
     if type(paradigm) is str:
         paradigm = FV2PARADIGM[paradigm]
@@ -307,24 +333,47 @@ def inflect_verb_with_features(
         root: str,
         paradigm: Union[paradigms.Paradigm, str],
         features: Dict[str, str]
-    ) -> str:
+    ) -> List[str]:
     """
     Arguments:
         root:       str indicating verb root to inflect
         paradigm:   Paradigm object or str of FV class shorthand e.g. 'aɔ'
         features:   dict mapping feature labels to values
     Returns:
-        form:       str of root verb inflected with given features
+        form:       list of strs of root verb inflected with given features
     """
     if type(paradigm) is str:
         paradigm = FV2PARADIGM[paradigm]
+    forms = []
     expected_keys = [feature.name for feature in INFLECTED_VERB.features]
     features_filtered = {k:v for k,v in features.items() if k in expected_keys}
-    slot_for_features = [slot for slot in paradigm.slots if slot[1].values == features_filtered][0]
-    rule, _ = slot_for_features
-    form = decode_fst_string(fst(root)@rule)
+    slot_for_features = [slot for slot in paradigm.slots if slot[1].values == features_filtered]
+    for slot in slot_for_features:
+        rule, _ = slot
+        form = decode_fst_string(fst(root)@rule)
+        forms.append(form)
 
-    return form
+    return forms
+
+def inflect_aux_with_features(
+        features: Dict[str, str]
+    ) -> List[str]:
+    """
+    Arguments:
+        features:   dict mapping feature labels to values
+    Returns:
+        form:       list of strs of auxiliary inflected with given features
+    """
+    forms = []
+    expected_keys = [feature.name for feature in INFLECTED_AUX.features]
+    features_filtered = {k:v for k,v in features.items() if k in expected_keys}
+    slot_for_features = [slot for slot in AUX_PARADIGM.slots if slot[1].values == features_filtered]
+    for slot in slot_for_features:
+        rule, _ = slot
+        form = decode_fst_string(fst("")@rule)
+        forms.append(form)
+
+    return forms
 
 def get_inflected_paradigm_for_verb(
         root: str,

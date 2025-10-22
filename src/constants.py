@@ -180,6 +180,14 @@ IMP_IT = features.FeatureVector(INFLECTED_VERB, "tam=imperative", "deixis=itive"
 IMP_VENT = features.FeatureVector(INFLECTED_VERB, "tam=imperative", "deixis=ventive", "class=unmarked")
 VERB_ROOT = features.FeatureVector(INFLECTED_VERB, "tam=unmarked", "deixis=unmarked", "class=unmarked")
 
+######################
+# auxiliary features #
+######################
+
+INFLECTED_AUX = features.Category(TAM, DEIXIS, CLASS_AGREE)
+IPFV_AUX = features.FeatureVector(INFLECTED_AUX, "tam=imperfective", "deixis=unmarked", "class=unmarked")
+PFV_IT_AUX = features.FeatureVector(INFLECTED_AUX, "tam=perfective", "deixis=itive", "class=unmarked")
+
 #################
 # noun features #
 #################
@@ -244,6 +252,7 @@ DEFAULT_EDIT_BOUND = 5
 VERB_ROOTS_PATH = 'data/lexicon/verb_roots.csv'
 INFLECTED_VERBS_PATH = 'data/lexicon/inflected_verb_forms.csv'
 GOLD_VERBS_PATH = 'data/test_cases/gold_verbs.csv'
+GOLD_AUXS_PATH = 'data/test_cases/gold_auxs.csv'
 GOLD_PARADIGMS_PATH = 'data/test_cases/gold_paradigms.json'
 SENTENCES_PATH = 'data/sentences/sentences.csv'
 NOUNS_PATH = 'data/lexicon/nouns.csv'

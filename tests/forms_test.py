@@ -61,9 +61,8 @@ def test_adjective_forms(gold_adj):
     form = gold_adj.pop('form')
     agree_class = gold_adj.pop('class')
 
-    predicted_form = inflect_adjective_with_features(root, agree_class)
-
-    assert form == predicted_form
+    predicted_forms = inflect_adjective_with_features(root, agree_class)
+    assert form in predicted_forms
 
 @pytest.mark.parametrize("gold_adj", get_gold_adjectives())
 def test_adjective_parsing(gold_adj):
@@ -88,3 +87,15 @@ def test_uninflected_forms(uninflected_word):
     parsed = parse_uninflected_word(word)[0]
     assert parsed['part_of_speech'] == pos
     assert parsed['gloss'] == gloss
+
+@pytest.mark.parametrize("aux", get_gold_auxs())
+def test_gold_auxs(aux):
+    form = aux.pop('form')
+
+    aux_filtered = {
+        k: v for k,v in aux.items()
+        if k in VERB_FEATURE_VALUES or k=='gloss'
+    }
+    predicted_forms = inflect_aux_with_features(features=aux_filtered)
+
+    assert form in predicted_forms

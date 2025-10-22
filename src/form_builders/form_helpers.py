@@ -48,7 +48,7 @@ def add_class_prefixes_to_slots(slot_list, is_verb:bool=False):
         for class_agree in CLASS_PREFIXES:
             prefix = class_agree
             if class_agree == 'ŋg':
-                prefix = 'g'
+                class_agree = 'g'
             features_with_class = features.FeatureVector(category, f"class={class_agree}", *feature_values)
             prefixed_verb = add_class_prefix(stem, prefix)
             slots_w_class_prefixes.append((prefixed_verb, features_with_class))
