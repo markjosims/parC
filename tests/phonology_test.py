@@ -83,6 +83,7 @@ def test_rounding_harmony(unround_str,round_str):
 @pytest.mark.parametrize("uncoalesced,coalesced", [
     ("káɔ̀", "kɔ̀"),
     ("là-ípɛ̀", "l-ɛ́pɛ̀"),
+    ("l-ɔ̀-ípɛ̀", "l-ɛ́pɛ̀"),
     ("ŋgɔ́-ìð", "ŋg-ɛ̀ð"),
     ("m-ɔ́-èɲà", "m-èɲà"),
 ])
