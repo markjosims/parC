@@ -79,3 +79,15 @@ def test_rounding_harmony(unround_str,round_str):
     strings = get_decoded_strings(lattice)
     assert len(strings)==1
     assert strings[0]==round_str
+
+@pytest.mark.parametrize("uncoalesced,coalesced", [
+    ("káɔ̀", "kɔ̀"),
+    ("là-ípɛ̀", "l-ɛ́pɛ̀"),
+    ("ŋgɔ́-ìð", "ŋg-ɛ̀ð"),
+    ("mɔ́-èɲà", "m-èɲà"),
+])
+def test_vowel_coalescence(uncoalesced,coalesced):
+    lattice=rewrite.rewrite_lattice(fst(uncoalesced), VOWEL_COALESCENCE_RULE)
+    strings = get_decoded_strings(lattice)
+    assert len(strings)==1
+    assert strings[0]==coalesced

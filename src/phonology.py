@@ -123,6 +123,37 @@ COMBINE_TONES_RULE = pynini.cdrewrite(
     sigma_star=SIGMASTAR,
 )
 
+# vowel coalescence
+# for now assuming that V[-high,-front]+i > ɛ
+# and any other V+V goes to the second V
+
+LOW_BACK_VOWEL = fst(["ɔ", "a", "ɜ"])
+HIGH_FRONT_VOWEL = fst("i")
+MID_FRONT_VOWEL = fst("ɛ")
+
+COALESCE_W_HIGH_FRONT_VOWEL = pynini.union(*[
+    fst(LOW_BACK_VOWEL+T.ques+HIGH_FRONT_VOWEL, MID_FRONT_VOWEL),
+])
+COALESCE_W_HIGH_FRONT_VOWEL_BOUNDARY = pynini.union(*[
+    fst(LOW_BACK_VOWEL+T.ques+BOUNDARY+HIGH_FRONT_VOWEL, BOUNDARY+MID_FRONT_VOWEL),
+])
+COALESCE_W_HIGH_FRONT_VOWEL_RULE = pynini.cdrewrite(
+    tau=COALESCE_W_HIGH_FRONT_VOWEL_BOUNDARY | COALESCE_W_HIGH_FRONT_VOWEL,
+    l=fst(),
+    r=fst(),
+    sigma_star=SIGMASTAR,
+).optimize()
+
+DELETE_VOWEL_IN_HIATUS = pynini.cdrewrite(
+    tau=delete_fst(V+T.ques),
+    l=fst(),
+    r=BOUNDARY.ques+V,
+    sigma_star=SIGMASTAR,
+).optimize()
+
+VOWEL_COALESCENCE_RULE = COALESCE_W_HIGH_FRONT_VOWEL_RULE@DELETE_VOWEL_IN_HIATUS
+    
+
 # ---------- #
 # edit costs #
 # ---------- #
