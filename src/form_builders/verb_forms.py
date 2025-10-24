@@ -570,11 +570,7 @@ def make_verb_slots(fv_class: str) -> List[Tuple[pynini.Fst, features.FeatureVec
     return slots
 
 def get_paradigm_for_class(fv_class: str):
-    start_time = time.time()
     slots = make_verb_slots(fv_class)
-    curr_time = time.time()
-    print(f"Time to make slots for class {fv_class}:", curr_time - start_time)
-    last_time = curr_time
 
     fv_paradigm = paradigms.Paradigm(
         category=INFLECTED_VERB,
@@ -585,9 +581,6 @@ def get_paradigm_for_class(fv_class: str):
         boundary=fst(BOUNDARY_STR),
         # rules=[VOWEL_COALESCENCE_RULE],
     )
-
-    curr_time = time.time()
-    print(f"Time to make paradigm for class {fv_class}:", curr_time - last_time)
 
     return fv_paradigm
 
