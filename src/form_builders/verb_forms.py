@@ -28,11 +28,6 @@ CLASS2FV = {
 }
 FV_CLASSES = list(CLASS2FV.keys())
 
-# prefixes/auxiliaries
-
-ADD_IPFV_AUX = lambda stem: paradigms.prefix(fst("á-"), stem).optimize()
-ADD_PFV_IT_AUX = lambda stem: paradigms.prefix(fst("à-"), stem).optimize()
-
 # person marking
 
 def build_imperfective_aux_forms() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
@@ -489,47 +484,51 @@ def make_verb_slots(fv_class: str) -> List[Tuple[pynini.Fst, features.FeatureVec
     # Imperfective forms #
     ######################
 
+    # no class or personal markers for imperfective forms
+
     ipfv_it_suffix=fst(f"-{a_morphome}{LOW_TONE}")
     if is_OV:
-        ipfv_it_stem = compose_stem_harmony(ADD_IPFV_AUX(HLSTAR_RULE))
+        ipfv_it_stem = compose_stem_harmony(HLSTAR_RULE)
     else:
-        ipfv_it_stem = compose_stem(ADD_IPFV_AUX(HLSTAR_RULE))
+        ipfv_it_stem = compose_stem(HLSTAR_RULE)
 
     ipfv_vent_suffix=fst(f"-{o_morphome}{HIGH_TONE}")
     if is_OV and o_morphome == 'ɔ':
-        ipfv_vent_stem = compose_stem_harmony(ADD_IPFV_AUX(ALL_LOW_TONE_RULE))
+        ipfv_vent_stem = compose_stem_harmony(ALL_LOW_TONE_RULE)
     else:
-        ipfv_vent_stem = compose_stem(ADD_IPFV_AUX(ALL_LOW_TONE_RULE))
+        ipfv_vent_stem = compose_stem(ALL_LOW_TONE_RULE)
     ipfv_slots = [
         (paradigms.suffix(ipfv_it_suffix, ipfv_it_stem), IPFV_IT),
         (paradigms.suffix(ipfv_vent_suffix, ipfv_vent_stem), IPFV_VENT),
     ]
-    ipfv_slots = add_class_prefixes_to_slots(ipfv_slots)
 
     ####################
     # Perfective forms #
     ####################
 
+    # perfective ventive has class and personal markers
+    # perfective itive does not
+
     pfv_it_suffix = fst(f"-{e_morphome}{LOW_TONE}")
-    pfv_it_stem = compose_stem(ADD_PFV_IT_AUX(HLSTAR_RULE))
+    pfv_it_stem = compose_stem(HLSTAR_RULE)
 
     pfv_vent_suffix = ipfv_vent_suffix
     if is_OV and o_morphome == 'ɔ':
         pfv_vent_stem = compose_stem_harmony(ALL_LOW_TONE_RULE)
     else:
         pfv_vent_stem = compose_stem(ALL_LOW_TONE_RULE)
-    
-    pfv_it_form=paradigms.suffix(pfv_it_suffix, pfv_it_stem)
-    # pfv_it_slots = add_perfective_itive_personal_markers(pfv_it_form)
+
+    pfv_it_slot=(paradigms.suffix(pfv_it_suffix, pfv_it_stem), PFV_IT)
     pfv_vent_form = paradigms.suffix(pfv_vent_suffix, pfv_vent_stem)
     pfv_vent_slots = add_perfective_ventive_personal_markers(pfv_vent_form)
 
-    # pfv_slots = pfv_it_slots + pfv_vent_slots
-    pfv_slots = []
+    pfv_slots = [*pfv_vent_slots, pfv_it_slot]
 
     ##############
     # Infinitive #
-    ###############
+    ##############
+
+    # only one form, no deixis, class or personal markers
 
     inf_suffix = fst(f"-{a_morphome}{HIGH_TONE}")
     inf_class = 'ð'
@@ -550,6 +549,9 @@ def make_verb_slots(fv_class: str) -> List[Tuple[pynini.Fst, features.FeatureVec
     ###################
     # Dependent forms #
     ###################
+
+    # dependent forms have specific personal markers
+    # TODO: replace class prefixes with personal markers
 
     dep_it_suffix = fst(f"-{e_morphome}{LOW_TONE}")
     dep_it_stem = compose_stem(ALL_LOW_TONE_RULE)
@@ -604,12 +606,6 @@ FV2PARADIGM = {
 PARADIGM2FV = {v:k for v,k in FV2PARADIGM.items()}
 
 def make_aux_paradigm() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
-    # ipfv_aux_form = insert_fst("á")
-    # ipfv_aux_slot = (ipfv_aux_form, IPFV_AUX)
-    # pfv_it_aux_form = insert_fst("à")
-    # pfv_it_aux_slot = (pfv_it_aux_form, PFV_IT_AUX)
-    # aux_slots = [ipfv_aux_slot, pfv_it_aux_slot]
-    # aux_slots = add_class_prefixes_to_slots(aux_slots, include_ng=True)
     aux_slots = []
     aux_slots.extend(build_itive_perfective_aux_forms())
     aux_slots.extend(build_imperfective_aux_forms())
@@ -627,11 +623,52 @@ def make_aux_paradigm() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
         lemma_feature_vector=aux_lemma,
         stems=[fst("")],
         boundary=fst(BOUNDARY_STR),
-        rules=[VOWEL_COALESCENCE_RULE],
     )
     return aux_paradigm
 
 AUX_PARADIGM = make_aux_paradigm()
+
+def make_verb_w_aux_paradigm(fv_class: str) -> paradigms.Paradigm:
+    verb_w_aux_slots = []
+    verb_paradigm = FV2PARADIGM[fv_class]
+    for aux_rule, feature_vector in AUX_PARADIGM.slots:
+        aux_features_wo_person = feature_vector.values.copy()
+        aux_features_wo_person['subject']='unmarked'
+        aux_features_wo_person['object']='unmarked'
+        verb_slot = [slot for slot in verb_paradigm.slots if slot[1].values == aux_features_wo_person]
+        assert len(verb_slot) == 1, f"Could not find verb slot for aux features {aux_features_wo_person}"
+        verb_rule, _ = verb_slot[0]
+        combined_rule = aux_rule+insert_fst(WORD_BOUNDARY_STR)+verb_rule
+        combined_rule = combined_rule@VOWEL_COALESCENCE_RULE@H_SPREAD_RULE
+        verb_w_aux_slots.append((combined_rule, feature_vector))
+    verb_w_aux_paradigm = paradigms.Paradigm(
+        category=INFLECTED_VERB,
+        name=f"{fv_class} class with TAMD auxiliary",
+        slots=verb_w_aux_slots,
+        lemma_feature_vector=verb_paradigm.lemma_feature_vector,
+        stems=verb_paradigm.stems,
+        boundary=fst(BOUNDARY_STR),
+    )
+    return verb_w_aux_paradigm
+
+AO_PARADIGM_W_AUX = make_verb_w_aux_paradigm("aɔ")
+AQ_PARADIGM_W_AUX = make_verb_w_aux_paradigm("ao")
+AU_PARADIGM_W_AUX = make_verb_w_aux_paradigm("au")
+AI_PARADIGM_W_AUX = make_verb_w_aux_paradigm("ai")
+OO_PARADIGM_W_AUX = make_verb_w_aux_paradigm("ɔɔ")
+OU_PARADIGM_W_AUX = make_verb_w_aux_paradigm("ɔu")
+OI_PARADIGM_W_AUX = make_verb_w_aux_paradigm("ɔi")
+
+FV2PARADIGM_W_AUX = {
+    "aɔ": AO_PARADIGM_W_AUX,
+    "ao": AQ_PARADIGM_W_AUX,
+    "au": AU_PARADIGM_W_AUX,
+    "ai": AI_PARADIGM_W_AUX,
+    "ɔɔ": OO_PARADIGM_W_AUX,
+    "ɔu": OU_PARADIGM_W_AUX,
+    "ɔi": OI_PARADIGM_W_AUX,
+}
+PARADIGM_W_AUX2FV = {v:k for v,k in FV2PARADIGM_W_AUX.items()}
 
 def debug_paradigm(root, paradigm):
     if type(paradigm) is str:
