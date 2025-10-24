@@ -197,9 +197,17 @@ for feature_bundle in VERB_FEATURE_BUNDLES:
 # auxiliary features #
 ######################
 
-INFLECTED_AUX = features.Category(TAM, DEIXIS, CLASS_AGREE)
-IPFV_AUX = features.FeatureVector(INFLECTED_AUX, "tam=imperfective", "deixis=unmarked", "class=unmarked")
-PFV_IT_AUX = features.FeatureVector(INFLECTED_AUX, "tam=perfective", "deixis=itive", "class=unmarked")
+INFLECTED_AUX = features.Category(*INFLECTED_VERB.features)
+IPFV_AUX = features.FeatureVector(INFLECTED_AUX, "tam=imperfective")
+PFV_IT_AUX = features.FeatureVector(INFLECTED_AUX, "tam=perfective", "deixis=itive")
+AUX_FEATURE_BUNDLES = [
+    IPFV_AUX,
+    PFV_IT_AUX,
+]
+for feature_bundle in AUX_FEATURE_BUNDLES:
+    for feature in VERB_FEATURE_VALUES.keys():
+        if feature not in feature_bundle.values:
+            feature_bundle.values[feature] = 'unmarked' 
 
 #################
 # noun features #

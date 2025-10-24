@@ -28,6 +28,13 @@ STEM = paradigms.make_byte_star_except_boundary(BOUNDARY)
 # phonological processes #
 # ---------------------- #
 
+REMOVE_DOUBLE_BOUNDARIES = pynini.cdrewrite(
+    tau=delete_fst(BOUNDARY),
+    l=fst(),
+    r=BOUNDARY,
+    sigma_star=SIGMASTAR,
+).optimize()
+
 ADD_TBU_MARKER = pynini.cdrewrite(
     tau=insert_fst(TONE_SLOT_STR),
     l=TBU,
@@ -152,13 +159,6 @@ DELETE_VOWEL_IN_HIATUS = pynini.cdrewrite(
 ).optimize()
 
 VOWEL_COALESCENCE_RULE = COALESCE_W_HIGH_FRONT_VOWEL_RULE@DELETE_VOWEL_IN_HIATUS
-
-REMOVE_DOUBLE_BOUNDARIES = pynini.cdrewrite(
-    tau=delete_fst(BOUNDARY),
-    l=fst(),
-    r=BOUNDARY,
-    sigma_star=SIGMASTAR,
-).optimize()
 
 VOWEL_COALESCENCE_RULE = VOWEL_COALESCENCE_RULE@REMOVE_DOUBLE_BOUNDARIES
 

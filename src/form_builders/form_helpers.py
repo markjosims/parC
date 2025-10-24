@@ -7,7 +7,7 @@ from typing import *
 from src.fst_helpers import decode_byte_str, fst
 from src.constants import CLASS_PREFIXES, LOW_TONE
 from src.glossing import feature_str_to_dict
-from src.phonology import DELETE_SCHWA_BEFORE_VOWEL, SIGMASTAR
+from src.phonology import DELETE_SCHWA_BEFORE_VOWEL, SIGMASTAR, REMOVE_DOUBLE_BOUNDARIES
 import pynini
 from pynini.lib import features, paradigms, rewrite
 
@@ -61,7 +61,7 @@ def add_class_prefix(stem: pynini.Fst, class_agree: str, prefix_tone=LOW_TONE) -
         # 'g' class phonetically realized as [k]
         class_agree = 'k'
     prefix_acceptor = fst(f"{class_agree}ə{prefix_tone}-")
-    return (paradigms.prefix(prefix_acceptor, stem)@DELETE_SCHWA_BEFORE_VOWEL).optimize()
+    return (paradigms.prefix(prefix_acceptor, stem)@REMOVE_DOUBLE_BOUNDARIES@DELETE_SCHWA_BEFORE_VOWEL).optimize()
 
 
 def add_class_prefixes_to_slots(slot_list, include_ng:bool=False):
