@@ -41,29 +41,29 @@ def build_imperfective_aux_forms() -> List[Tuple[pynini.Fst, features.FeatureVec
         1sg: íŋ-g-
         2sg: á-g-
         3sg: ŋg-
-        1du.incl: á-l-
-        1pl.incl: á-l- -ŕ
-        1pl.excl: ɲà-l-
-        2pl: ɲá-l-
+        1du.incl: á-l
+        1pl.incl: á-l -ŕ
+        1pl.excl: ɲà-l
+        2pl: ɲá-l
         3pl: l-
     Subject w/ 3sg object (takes place of or includes Aux /a/):
         1sg:  CL-ɛ́
         2sg:  CL-á
-        3sg:  CL-á-l̀
-        1du.incl:  CL-á-l̀
-        1pl.incl:  CL-á-l̀- -ŕ
+        3sg:  CL-á-l
+        1du.incl:  CL-á-l
+        1pl.incl:  CL-á-l- -ŕ
         1pl.excl:  CL-éɲâ (blocks H-tone spreading onto verb)
         2pl:  CL-éɲá
-        3pl:  CL-á-l̀- (blocks H-tone spreading onto verb)
+        3pl:  CL-á-l- (blocks H-tone spreading onto verb)
     Subject w/ 3pl object (takes place of or includes Aux /a/):
-        1sg: l- ɛ́- ĺ-
-        2sg: l- á- ĺ-
-        3sg: l- á- ŋə́- ĺ-
-        1du.incl: l- á- ló-
-        1pl.incl: l- á- ló- -ŕ
+        1sg: l- ɛ́- ĺ
+        2sg: l- á- ĺ
+        3sg: l- á- ŋə́- ĺ
+        1du.incl: l- á- ló
+        1pl.incl: l- á- ló -ŕ
         1pl.excl: l- éɲâ- ĺ
-        2pl: l- éɲá- ĺ-
-        3pl: l- á- l̀- ló-
+        2pl: l- éɲá- ĺ
+        3pl: l- á- l- ló
     Object: (takes place of Aux /a/)
         1sg: -á-ŋɛ̂-
         2sg: -á-ŋâ-
@@ -100,12 +100,12 @@ def build_imperfective_aux_forms() -> List[Tuple[pynini.Fst, features.FeatureVec
     subject_suffixes_3sg_obj = [
         (insert_fst("ɛ́"), get_features(sbj='1sg', obj='3sg')),
         (insert_fst("á"), get_features(sbj='2sg', obj='3sg')),
-        (insert_fst("á-l̀"), get_features(sbj='3sg', obj='3sg')),
-        (insert_fst("á-l̀"), get_features(sbj='1du.incl', obj='3sg')),
-        (insert_fst("á-l̀"), get_features(sbj='1pl.incl', obj='3sg')),
+        (insert_fst("á-l"), get_features(sbj='3sg', obj='3sg')),
+        (insert_fst("á-l"), get_features(sbj='1du.incl', obj='3sg')),
+        (insert_fst("á-l"), get_features(sbj='1pl.incl', obj='3sg')),
         (insert_fst("éɲâ"), get_features(sbj='1pl.excl', obj='3sg')),
         (insert_fst("éɲá"), get_features(sbj='2pl', obj='3sg')),
-        (insert_fst("á-l̀"), get_features(sbj='3pl', obj='3sg')),
+        (insert_fst("á-l"), get_features(sbj='3pl', obj='3sg')),
     ]
     subject_suffixes_3sg_obj_slots = add_class_prefixes_to_slots(subject_suffixes_3sg_obj, include_ng=True)
 
@@ -118,7 +118,7 @@ def build_imperfective_aux_forms() -> List[Tuple[pynini.Fst, features.FeatureVec
         (insert_fst("á-ló"), get_features(sbj='1pl.incl', obj='3pl')),
         (insert_fst("éɲâ-ĺ"), get_features(sbj='1pl.excl', obj='3pl')),
         (insert_fst("éɲá-ĺ"), get_features(sbj='2pl', obj='3pl')),
-        (insert_fst("á-l̀-ló"), get_features(sbj='3pl', obj='3pl')),
+        (insert_fst("á-l-ló"), get_features(sbj='3pl', obj='3pl')),
     ]
     subject_suffixes_3pl_obj_slots = add_class_prefixes_to_slots(subject_suffixes_3pl_obj, include_ng=True)
 
@@ -130,7 +130,7 @@ def build_imperfective_aux_forms() -> List[Tuple[pynini.Fst, features.FeatureVec
         (suffix("-tɛ́"), get_features(obj='1pl.incl')),
         (suffix("-éɲár"), get_features(obj='1pl.excl')),
         (suffix("-tɛ́"), get_features(obj='2pl')),
-        (suffix("-ĺ-")|suffix("-ló-"), get_features(obj='3pl')),
+        (suffix("-ĺ")|suffix("-"), get_features(obj='3pl')),
     ]
     object_slots = [
         (insert_fst('á')@rule@VOWEL_COALESCENCE_RULE, features_vec)
@@ -145,6 +145,12 @@ def build_imperfective_aux_forms() -> List[Tuple[pynini.Fst, features.FeatureVec
             subject_feature = sbj_features_vec.values['subject']
             class_feature = sbj_features_vec.values['class']
             object_feature = obj_features_vec.values['object']
+            if subject_feature.startswith('1') and object_feature.startswith('1'):
+                # avoid duplicating 1st person markers
+                continue
+            if subject_feature.startswith('2') and object_feature.startswith('2'):
+                # avoid duplicating 2nd person markers
+                continue
             combined_features_vec = get_features(
                 sbj=subject_feature,
                 obj=object_feature,
@@ -184,21 +190,21 @@ def build_itive_perfective_aux_forms() -> List[Tuple[pynini.Fst, features.Featur
     Subject w/ 3sg object (takes place of or includes Aux /a/):
         1sg:  CL-ɛ̀
         2sg:  CL-à
-        3sg:  CL-à-l̀
-        1du.incl:  CL-á-l̀
-        1pl.incl:  CL-á-l̀- -ŕ
+        3sg:  CL-à-l
+        1du.incl:  CL-á-l
+        1pl.incl:  CL-á-l- -ŕ
         1pl.excl:  CL-éɲâ (blocks H-tone spreading onto verb)
         2pl:  CL-éɲá
-        3pl:  CL-á-l̀- (blocks H-tone spreading onto verb)
+        3pl:  CL-á-l- (blocks H-tone spreading onto verb)
     Subject w/ 3pl object (takes place of or includes Aux /a/):
-        1sg: l- ɛ̀- ĺ-
-        2sg: l- à- ĺ-
-        3sg: l- à- ŋə́- ĺ-
-        1du.incl: l- á- ló-
-        1pl.incl: l- á- ló- -ŕ
+        1sg: l- ɛ̀- ĺ
+        2sg: l- à- ĺ
+        3sg: l- à- ŋə́- ĺ
+        1du.incl: l- á- ló
+        1pl.incl: l- á- ló -ŕ
         1pl.excl: l- éɲâ- ĺ
-        2pl: l- éɲá- ĺ-
-        3pl: l- á- l̀- ló-
+        2pl: l- éɲá- ĺ
+        3pl: l- á- l- ló
     Object: (takes place of Aux /a/)
         1sg: -à-ŋɛ̂-
         2sg: -à-ŋâ-
@@ -235,12 +241,12 @@ def build_itive_perfective_aux_forms() -> List[Tuple[pynini.Fst, features.Featur
     subject_suffixes_3sg_obj = [
         (insert_fst("ɛ̀"), get_features(sbj='1sg', obj='3sg')),
         (insert_fst("à"), get_features(sbj='2sg', obj='3sg')),
-        (insert_fst("à-l̀"), get_features(sbj='3sg', obj='3sg')),
-        (insert_fst("á-l̀"), get_features(sbj='1du.incl', obj='3sg')),
-        (insert_fst("á-l̀"), get_features(sbj='1pl.incl', obj='3sg')),
+        (insert_fst("à-l"), get_features(sbj='3sg', obj='3sg')),
+        (insert_fst("á-l"), get_features(sbj='1du.incl', obj='3sg')),
+        (insert_fst("á-l"), get_features(sbj='1pl.incl', obj='3sg')),
         (insert_fst("éɲâ"), get_features(sbj='1pl.excl', obj='3sg')),
         (insert_fst("éɲá"), get_features(sbj='2pl', obj='3sg')),
-        (insert_fst("à-l̀"), get_features(sbj='3pl', obj='3sg')),
+        (insert_fst("à-l"), get_features(sbj='3pl', obj='3sg')),
     ]
     subject_suffixes_3sg_obj_slots = add_class_prefixes_to_slots(subject_suffixes_3sg_obj, include_ng=True)
 
@@ -253,7 +259,7 @@ def build_itive_perfective_aux_forms() -> List[Tuple[pynini.Fst, features.Featur
         (insert_fst("á-ló"), get_features(sbj='1pl.incl', obj='3pl')),
         (insert_fst("éɲâ-ĺ"), get_features(sbj='1pl.excl', obj='3pl')),
         (insert_fst("éɲá-ĺ"), get_features(sbj='2pl', obj='3pl')),
-        (insert_fst("à-l̀-ló"), get_features(sbj='3pl', obj='3pl')),
+        (insert_fst("à-l-ló"), get_features(sbj='3pl', obj='3pl')),
     ]
     subject_suffixes_3pl_obj_slots = add_class_prefixes_to_slots(subject_suffixes_3pl_obj, include_ng=True)
 
@@ -265,7 +271,7 @@ def build_itive_perfective_aux_forms() -> List[Tuple[pynini.Fst, features.Featur
         (suffix("-tɛ́"), get_features(obj='1pl.incl')),
         (suffix("-éɲár"), get_features(obj='1pl.excl')),
         (suffix("-tɛ́"), get_features(obj='2pl')),
-        (suffix("-ĺ-")|suffix("-ló-"), get_features(obj='3pl')),
+        (suffix("-ĺ")|suffix("-ló"), get_features(obj='3pl')),
     ]
     object_slots = [
         (insert_fst('à')@rule@VOWEL_COALESCENCE_RULE, features_vec)
@@ -280,6 +286,12 @@ def build_itive_perfective_aux_forms() -> List[Tuple[pynini.Fst, features.Featur
             subject_feature = sbj_features_vec.values['subject']
             class_feature = sbj_features_vec.values['class']
             object_feature = obj_features_vec.values['object']
+            if subject_feature.startswith('1') and object_feature.startswith('1'):
+                # avoid duplicating 1st person markers
+                continue
+            if subject_feature.startswith('2') and object_feature.startswith('2'):
+                # avoid duplicating 2nd person markers
+                continue
             combined_features_vec = get_features(
                 sbj=subject_feature,
                 obj=object_feature,
@@ -379,8 +391,11 @@ def add_perfective_ventive_personal_markers(
         (suffix("-ɜ́l"), get_features(sbj='3pl', obj='3sg')),
     ]
     # object marking handled w class prefixes
-    subject_suffixes_3sg_obj = add_class_prefixes_to_slots(subject_suffixes_3sg_obj, include_ng=False)
-    subject_suffixes_3sg_obj_slots = [(form_fst@rule@VOWEL_COALESCENCE_RULE, features_vec) for rule, features_vec in subject_suffixes_3sg_obj]
+    subject_suffixes_3sg_obj_slots = [
+        (form_fst@rule@VOWEL_COALESCENCE_RULE, features_vec)
+        for rule, features_vec in subject_suffixes_3sg_obj
+    ]
+    subject_suffixes_3sg_obj_slots = add_class_prefixes_to_slots(subject_suffixes_3sg_obj_slots, include_ng=False)
 
     # subject with 3pl object
     subject_suffixes_3pl_obj = [
@@ -415,6 +430,12 @@ def add_perfective_ventive_personal_markers(
         for obj_rule, obj_features_vec in object_suffixes:
             subject_feature = sbj_features_vec.values['subject']
             object_feature = obj_features_vec.values['object']
+            if subject_feature.startswith('1') and object_feature.startswith('1'):
+                # avoid duplicating 1st person markers
+                continue
+            if subject_feature.startswith('2') and object_feature.startswith('2'):
+                # avoid duplicating 2nd person markers
+                continue
             combined_features_vec = get_features(sbj=subject_feature, obj=object_feature)
             subject_object_slots.append((form_fst@sbj_rule@obj_rule, combined_features_vec))
 
@@ -430,12 +451,26 @@ def add_perfective_ventive_personal_markers(
     
     return slots_w_markers
 
+def add_1pl_incl_r_suffix(slots: List[Tuple[pynini.Fst, features.FeatureVector]]
+) -> List[Tuple[pynini.Fst, features.FeatureVector]]:   
+    """
+    Adds -ŕ suffix for 1pl.incl forms in the given slots.
+    """
+    for rule, features_vec in slots[:]:
+        new_rule = rule@suffix('-ŕ')
+        for role in ['subject', 'object']:
+            new_features = features_vec.values.copy()
+            new_features[role] = '1pl.incl'
+            new_features_vec = features.FeatureVector(INFLECTED_VERB, *[f"{k}={v}" for k, v in new_features.items()])
+            slots.append((new_rule, new_features_vec))
+    return slots
+
 def add_imperative_object_markers(
     slots: List[tuple[pynini.Fst, features.FeatureVector]]
 ) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
     """
     Object:
-        3pl: -l̀
+        3pl: -l
     """
 
     
@@ -501,6 +536,7 @@ def make_verb_slots(fv_class: str) -> List[Tuple[pynini.Fst, features.FeatureVec
         (paradigms.suffix(ipfv_it_suffix, ipfv_it_stem), IPFV_IT),
         (paradigms.suffix(ipfv_vent_suffix, ipfv_vent_stem), IPFV_VENT),
     ]
+    ipfv_slots = add_1pl_incl_r_suffix(ipfv_slots)
 
     ####################
     # Perfective forms #
@@ -518,11 +554,11 @@ def make_verb_slots(fv_class: str) -> List[Tuple[pynini.Fst, features.FeatureVec
     else:
         pfv_vent_stem = compose_stem(ALL_LOW_TONE_RULE)
 
-    pfv_it_slot=(paradigms.suffix(pfv_it_suffix, pfv_it_stem), PFV_IT)
+    pfv_it_slots=[(paradigms.suffix(pfv_it_suffix, pfv_it_stem), PFV_IT)]
+    pfv_it_slots = add_1pl_incl_r_suffix(pfv_it_slots)
     pfv_vent_form = paradigms.suffix(pfv_vent_suffix, pfv_vent_stem)
     pfv_vent_slots = add_perfective_ventive_personal_markers(pfv_vent_form)
-
-    pfv_slots = [*pfv_vent_slots, pfv_it_slot]
+    pfv_slots = [*pfv_vent_slots, *pfv_it_slots]
 
     ##############
     # Infinitive #
@@ -580,7 +616,7 @@ def get_paradigm_for_class(fv_class: str):
         slots=slots,
         lemma_feature_vector=VERB_ROOT,
         stems=get_roots_for_class(fv_class, wrap_w_fsa=True),
-        boundary=fst(BOUNDARY_STR),
+        boundary=BOUNDARY,
     )
 
     return fv_paradigm
@@ -621,7 +657,7 @@ def make_aux_paradigm() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
         slots=aux_slots,
         lemma_feature_vector=aux_lemma,
         stems=[fst("")],
-        boundary=fst(BOUNDARY_STR),
+        boundary=BOUNDARY,
     )
     return aux_paradigm
 
@@ -631,22 +667,54 @@ def make_verb_w_aux_paradigm(fv_class: str) -> paradigms.Paradigm:
     verb_w_aux_slots = []
     verb_paradigm = FV2PARADIGM[fv_class]
     for aux_rule, feature_vector in AUX_PARADIGM.slots:
-        aux_features_wo_person = feature_vector.values.copy()
-        aux_features_wo_person['subject']='unmarked'
-        aux_features_wo_person['object']='unmarked'
-        verb_slot = [slot for slot in verb_paradigm.slots if slot[1].values == aux_features_wo_person]
-        assert len(verb_slot) == 1, f"Could not find verb slot for aux features {aux_features_wo_person}"
-        verb_rule, _ = verb_slot[0]
-        combined_rule = aux_rule+insert_fst(WORD_BOUNDARY_STR)+verb_rule
-        combined_rule = combined_rule@VOWEL_COALESCENCE_RULE@H_SPREAD_RULE
-        verb_w_aux_slots.append((combined_rule, feature_vector))
+        new_feature_values = feature_vector.values.copy()
+        # certain pronouns can trigger H-tone spreading from aux to ventive verbs
+        ventive_allows_hspread = (
+            (new_feature_values['object'] in ['1du.incl', '1pl.incl', '1pl.excl', '2pl']) or
+            (
+                new_feature_values['subject'] in ['1du.incl', '1pl.incl', '2pl'] and
+                new_feature_values['object'].startswith('3')
+            )
+        )
+        deixis_values = [new_feature_values['deixis']]
+        if deixis_values[0] == 'unmarked':
+            deixis_values = DEIXIS_VALUES
+        for deixis in deixis_values:
+            new_feature_values['deixis']=deixis
+            new_feature_vector = features.FeatureVector(
+                INFLECTED_VERB,
+                *(f"{k}={v}" for k,v in new_feature_values.items())
+            )
+            features_to_match = new_feature_values.copy()
+
+            # set unmarked for subject, object, class to find verb slot
+            # except for 1pl.incl, as this is marked on the verb with -ŕ
+            if features_to_match['subject'] != '1pl.incl':
+                features_to_match['subject']='unmarked'
+            if features_to_match['object'] != '1pl.incl':
+                features_to_match['object']='unmarked'
+            features_to_match['class']= 'unmarked'
+
+            verb_slot = [slot for slot in verb_paradigm.slots if slot[1].values == features_to_match]
+            assert len(verb_slot) == 1, f"Could not find verb slot for aux features {features_to_match}"
+            verb_rule, _ = verb_slot[0]
+            combined_rule = aux_rule+insert_fst(WORD_BOUNDARY_STR)+verb_rule
+            combined_rule = combined_rule@FALL_BLOCKS_H_RULE@VOWEL_COALESCENCE_RULE
+            if deixis == 'itive' or ventive_allows_hspread:
+                combined_rule = combined_rule@H_SPREAD_RULE
+            combined_rule.optimize()
+            verb_w_aux_slots.append((combined_rule, new_feature_vector))
+
+    lemma_slot = (SIGMASTAR, VERB_ROOT)
+    verb_w_aux_slots.append(lemma_slot)
+
     verb_w_aux_paradigm = paradigms.Paradigm(
         category=INFLECTED_VERB,
         name=f"{fv_class} class with TAMD auxiliary",
         slots=verb_w_aux_slots,
-        lemma_feature_vector=verb_paradigm.lemma_feature_vector,
+        lemma_feature_vector=VERB_ROOT,
         stems=verb_paradigm.stems,
-        boundary=fst(BOUNDARY_STR),
+        boundary=BOUNDARY,
     )
     return verb_w_aux_paradigm
 
@@ -690,22 +758,39 @@ def inflect_verb_with_features(
         root: str,
         paradigm: Union[paradigms.Paradigm, str],
         features: Dict[str, str],
-        include_aux: bool=False,
+        expected_verb_type: Literal['stem', 'stem_and_aux', 'auto']='auto',
     ) -> List[str]:
     """
     Arguments:
         root:           str indicating verb root to inflect
         paradigm:       Paradigm object or str of FV class shorthand e.g. 'aɔ'
         features:       dict mapping feature labels to values
-        include_aux:    bool indicating whether to use verb w/ aux paradigm
+        expected_verb_type: Literal['stem', 'stem_and_aux', 'auto']='auto',
                         (if paradigm is `Paradigm` object, this is ignored)
     Returns:
         form:       list of strs of root verb inflected with given features
     """
-    if type(paradigm) is str and include_aux:
+    if type(paradigm) is paradigms.Paradigm:
+        pass
+    elif type(paradigm) is str and expected_verb_type == 'stem_and_aux':
         paradigm = FV2PARADIGM_W_AUX[paradigm]
-    elif type(paradigm) is str and not include_aux:
+    elif type(paradigm) is str and expected_verb_type == 'stem':
         paradigm = FV2PARADIGM[paradigm]
+    else:
+        forms_stem = inflect_verb_with_features(
+            root,
+            FV2PARADIGM[paradigm],
+            features,
+            expected_verb_type='stem'
+        )
+        forms_aux = inflect_verb_with_features(
+            root,
+            FV2PARADIGM_W_AUX[paradigm],
+            features,
+            expected_verb_type='stem_and_aux'
+        )
+        forms = [*forms_stem, *forms_aux]
+        return forms
     forms = []
     expected_keys = [feature.name for feature in INFLECTED_VERB.features]
     features_filtered = {k:v for k,v in features.items() if k in expected_keys}
@@ -821,7 +906,10 @@ def parse_inflected_verb(
             parses.extend(parses_for_type)
         return parses
 
-    lemmata = paradigm.lemmatize(fst(form))
+    try:
+        lemmata = paradigm.lemmatize(fst(form))
+    except pynini.lib.rewrite.Error:
+        return parses
     analyzed_forms = paradigm.analyze(fst(form))
     for lemma, analyzed_form in zip(lemmata, analyzed_forms):
         root, feature_vec = lemma

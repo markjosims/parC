@@ -94,12 +94,12 @@ def add_class_prefixes_to_slots(slot_list, include_ng:bool=False):
 def generate_forms(
         stem: str,
         paradigm: paradigms.Paradigm,
-        action: Literal['print', 'return']='print',
+        action: Literal['print', 'return', 'save_to_tmp']='print',
         parse: bool=False
 ):
     """
     Arguments:
-        stem:       The stem to be inflected
+        stem:      The stem to be inflected
         paradigm:  The paradigm to use for inflection
         action:    Whether to print the generated forms or return them as a list
         parse:     Whether to return the generated forms as feature dictionaries (if action is 'return')
@@ -113,13 +113,18 @@ def generate_forms(
         if action=='return' and parse:
             parsed_wordform = feature_str_to_dict(wordform)
             wordforms.append(parsed_wordform)
-        elif action=='return':
-            wordforms.append(wordform)
-        else:
-            byte_word = wordform.split('[')[0]
-            word = decode_byte_str(byte_word)
-            wordform = wordform.replace(byte_word, word)
+            continue
+
+        byte_word = wordform.split('[')[0]
+        word = decode_byte_str(byte_word)
+        wordform = wordform.replace(byte_word, word)
+        if action=='print':
             print(wordform)
-    if action=='return':
+        else:
+            wordforms.append(wordform)
+    if action=='save_to_tmp':
+        with open(f'tmp/{stem}_forms.txt', 'w') as f:
+            f.write("\n".join(wordforms))
+    elif action=='return':
         return wordforms
 

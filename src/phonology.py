@@ -134,10 +134,18 @@ COMBINE_TONES_RULE = pynini.cdrewrite(
 
 H_SPREAD_RULE = pynini.cdrewrite(
     tau=fst(T, HIGH_TONE),
-    l=fst([HIGH_TONE, RISE_TONE])+pynini.closure(C)+WORD_BOUNDARY+pynini.closure(SEGMENT),
+    l=fst([HIGH_TONE, RISE_TONE])+pynini.closure(C|BOUNDARY)+WORD_BOUNDARY+pynini.closure(SEGMENT),
     r=fst(),
     sigma_star=SIGMASTAR,
 )
+
+# used in perfective itive forms where prefix fall blocks H docking
+FALL_BLOCKS_H_RULE = pynini.cdrewrite(
+    tau=fst(HIGH_TONE, LOW_TONE),
+    l=fst(FALL_TONE)+pynini.closure(C|BOUNDARY)+WORD_BOUNDARY+pynini.closure(SEGMENT),
+    r=fst(),
+    sigma_star=SIGMASTAR,
+).optimize()
 
 # vowel coalescence
 # for now assuming that V[-high,-front]+i > ɛ

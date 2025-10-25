@@ -103,3 +103,14 @@ def test_h_spread(pre_hts, w_hts):
     strings = get_decoded_strings(lattice)
     assert len(strings)==1
     assert strings[0]==w_hts
+
+@pytest.mark.parametrize("fall_tone_str,blocked_h_str", [
+    ("kápɾî jícə̀lò", "kápɾî jìcə̀lò"),
+    ("ŋg-éɲâ və́lɛ̀ð-ɛ̀", "ŋg-éɲâ və̀lɛ̀ð-ɛ̀"),
+    ("j-à-ŋâ mɛ́ð-ɛ̀", "j-à-ŋâ mɛ̀ð-ɛ̀"),
+])
+def test_fall_blocks_h(fall_tone_str, blocked_h_str):
+    lattice=rewrite.rewrite_lattice(fst(fall_tone_str), FALL_BLOCKS_H_RULE)
+    strings = get_decoded_strings(lattice)
+    assert len(strings)==1
+    assert strings[0]==blocked_h_str
