@@ -736,6 +736,12 @@ FV2PARADIGM_W_AUX = {
 }
 PARADIGM_W_AUX2FV = {v:k for v,k in FV2PARADIGM_W_AUX.items()}
 
+ALL_VERB_PARADIGMS = {
+    'aux': AUX_PARADIGM,
+    **{k+'_aux':v for k, v in FV2PARADIGM_W_AUX.items()},
+    **FV2PARADIGM,
+}
+
 def debug_paradigm(root, paradigm):
     if type(paradigm) is str:
         paradigm = FV2PARADIGM[paradigm]
