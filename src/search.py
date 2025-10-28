@@ -11,7 +11,7 @@ from src.constants import (
     DEFAULT_EDIT_BOUND,
 )
 from src.phonology import SIGMA, INSERTION_COSTS, DELETION_COSTS, SUBSTITUTION_COSTS, INSERT_HYPHEN_RULE
-from src.form_builders.verb_forms import FV2PARADIGM, parse_inflected_verb
+from src.form_builders.verb_forms import ALL_VERB_PARADIGMS, AUX_PARADIGM, FV2PARADIGM, FV2PARADIGM_W_AUX, parse_inflected_verb
 from src.form_builders.noun_forms import NOUN_PARADIGM, parse_noun
 
 # ----------------------------------- #
@@ -241,6 +241,7 @@ def search_verb_form(
         num_hits: int = 5,
         edit_bound: int = 5,
         return_parse: bool = True,
+        expected_verb_type: Literal['stem', 'aux', 'stem_and_aux', 'auto']='auto',
     ) -> List[Tuple[Dict[str, Any], float]]:
     """
     Arguments:
@@ -269,7 +270,17 @@ def search_verb_form(
     hits = []
     query_fst = fst(verb_form)@left_factor
     query_fst.optimize()
-    for fv, paradigm in FV2PARADIGM.items():
+
+    if expected_verb_type == 'auto':
+        paradigms_to_search = ALL_VERB_PARADIGMS
+    elif expected_verb_type == 'aux':
+        paradigms_to_search = {'aux': AUX_PARADIGM}
+    elif expected_verb_type == 'stem_and_aux':
+        paradigms_to_search = FV2PARADIGM_W_AUX
+    else:  # 'stem'
+        paradigms_to_search = FV2PARADIGM
+
+    for paradigm_tag, paradigm in paradigms_to_search.items():
         # since we cannot know ahead of time what paradigm nbest hits will come from
         # get nbest hits for each paradigm individually, then filter later
         paradigm_lattice = paradigm.lemmatizer
@@ -284,10 +295,11 @@ def search_verb_form(
             use_byte_tokens=True,
         )
         if return_parse:
-            parse_verb_fv = lambda form: parse_inflected_verb(form, fv)
-            fv_hits = _parse_hits(hits_for_paradigm, num_hits, parse_verb_fv)
+            parse_verb_funct = lambda form: parse_inflected_verb(form, paradigm=paradigm)
+            fv_hits = _parse_hits(hits_for_paradigm, num_hits, parse_verb_funct)
             hits.extend(fv_hits)
         else:
+            fv = paradigm_tag.split('_')[0]
             hits.extend([({'form': hit, 'fv': fv}, weight) for hit, weight in hits_for_paradigm])
     hits.sort(key=lambda hit_tuple: hit_tuple[-1])
     nbest_hits = hits[:num_hits]
