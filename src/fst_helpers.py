@@ -79,7 +79,7 @@ def decode_fst_string(
             for input_element in input_string
         ]
     if is_byte_str:
-        input_string = decode_byte_str(input_string)
+        return decode_byte_str(input_string)
     detokenized_str = input_string.replace(' ', '')
     str_w_word_spaces = detokenized_str.replace(WORD_BOUNDARY_STR, ' ')
     str_w_tone_diacs = tone2diac(str_w_word_spaces)
