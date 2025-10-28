@@ -117,7 +117,11 @@ def test_search_verb_form(gold_verb):
     gold_fv = gold_verb['fv']
     num_hits = 10
     
-    hits = search_verb_form(fuzzy_form, num_hits=num_hits, return_parse=False)
+    expected_verb_type = 'stem'
+    if ' ' in gold_form:
+        expected_verb_type = 'stem_and_aux'
+
+    hits = search_verb_form(fuzzy_form, num_hits=num_hits, return_parse=False, expected_verb_type=expected_verb_type)
 
     # assert len(hits) == num_hits # verb forms can get long
     # so make the tests less strict
