@@ -696,7 +696,6 @@ def make_verb_w_aux_paradigm(fv_class: str) -> paradigms.Paradigm:
             if features_to_match['object'] != '1pl.incl':
                 features_to_match['object']='unmarked'
             features_to_match['class']= 'unmarked'
-
             verb_slot = [slot for slot in verb_paradigm.slots if slot[1].values == features_to_match]
             assert len(verb_slot) == 1, f"Could not find verb slot for aux features {features_to_match}"
             verb_rule, _ = verb_slot[0]
@@ -916,9 +915,9 @@ def parse_inflected_verb(
 
     try:
         lemmata = paradigm.lemmatize(fst(form))
+        analyzed_forms = paradigm.analyze(fst(form))
     except pynini.lib.rewrite.Error:
         return parses
-    analyzed_forms = paradigm.analyze(fst(form))
     for lemma, analyzed_form in zip(lemmata, analyzed_forms):
         root, feature_vec = lemma
         root = decode_byte_str(root)
