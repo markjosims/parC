@@ -274,10 +274,47 @@ for feature_bundle in AUX_FEATURE_BUNDLES:
 CAUS_STR = 'ij'
 PASS_STR = 'in'
 ANTIP_STR = 'ið'
+BEN_STR = 'it̪'
 LOC_AV_STR = 'at̪'
 LOC_OV_STR = 'ɛt̪'
 LOC_AI_STR = 'ac'
 LOC_OI_STR = 'ɛc'
+LOC_STRS = [LOC_AV_STR, LOC_OV_STR, LOC_AI_STR, LOC_OI_STR]
+
+EXTENSION_MAP = {
+    'causative': (CAUS_STR, 'ɔi'),
+    'passive': (PASS_STR, 'ɔɔ'),
+    'antipassive': {
+        'aɔ': (ANTIP_STR, 'ao'),
+        'ao': (ANTIP_STR, 'ao'),
+        'au': (ANTIP_STR, 'au'),
+        'ɔɔ': (ANTIP_STR, 'ɔu'),
+        'ɔi': (ANTIP_STR, 'ɔu'),
+        'ɔu': (ANTIP_STR, 'ɔu'),
+    },
+    'benefactive': (BEN_STR, 'ɔɔ'),
+    'locative': {
+        'aɔ': (LOC_AV_STR, 'aɔ'),
+        'ao': (LOC_AV_STR, 'aɔ'),
+        'au': (LOC_AV_STR, 'aɔ'),
+        'ɔɔ': (LOC_OV_STR, 'ɔɔ'),
+        'ɔu': (LOC_OV_STR, 'ɔɔ'),
+        'ai': (LOC_AI_STR, 'ai'),
+        'ɔi': (LOC_OI_STR, 'ɔi'),
+    }
+}
+
+EXTENSION2ABBREVIATION = {
+    'causative': 'caus',
+    'passive': 'pass',
+    'antipassive': 'antip',
+    'benefactive': 'ben',
+    'locative': 'loc',
+}
+
+ABBREVIATION2EXTENSION = {
+    v: k for k, v in EXTENSION2ABBREVIATION.items()
+}
 
 #################
 # noun features #
@@ -343,6 +380,8 @@ DEFAULT_EDIT_BOUND = 5
 VERB_ROOTS_PATH = 'data/lexicon/verb_roots.csv'
 INFLECTED_VERBS_PATH = 'data/local/inflected_verb_forms.csv'
 GOLD_VERBS_PATH = 'data/test_cases/gold_verbs.csv'
+GOLD_PERSON_MARKING_PATH = 'data/test_cases/gold_person_marking.csv'
+GOLD_VERBS_DERIVED_PATH = 'data/test_cases/gold_verbs_derived.csv'
 GOLD_AUXS_PATH = 'data/test_cases/gold_auxs.csv'
 GOLD_PARADIGMS_PATH = 'data/test_cases/gold_paradigms.json'
 SENTENCES_PATH = 'data/sentences/sentences.csv'
