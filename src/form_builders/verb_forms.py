@@ -725,7 +725,7 @@ def make_verb_w_aux_paradigm(
 
     verb_w_aux_paradigm = paradigms.Paradigm(
         category=INFLECTED_VERB,
-        name=f"{fv_class} class with TAMD auxiliary",
+        name=f"{verb_paradigm} class with TAMD auxiliary",
         slots=verb_w_aux_slots,
         lemma_feature_vector=VERB_ROOT,
         stems=verb_paradigm.stems,
