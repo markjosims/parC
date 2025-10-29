@@ -1,4 +1,4 @@
-tam,deixis,root,gloss,subj,obj,fuzzy_form,form
+tam,deixis,root,gloss,subj,obj,fuzzy_form,matched_form,generated_form
 perfective,ventive,vəlɛð,pull,1sg,2sg,jɛ́-və̀lɛ̀ð-á-ŋà,jə̀-və̀lɛ̀ð-áŋà
 perfective,ventive,vəlɛð,pull,1sg,3sg,kə̀-və̀lɛ̀ð-ɛ́-ŋí,kə̀-və̀lɛ̀ð-ɛ́ŋí
 perfective,ventive,vəlɛð,pull,1sg,2pl,jɛ́-və̀lɛ̀ð-á-tɛ́,jə̀-və̀lɛ̀ð-átɛ́
@@ -63,81 +63,81 @@ perfective,ventive,vəlɛð,pull,2pl,1sg,ɲáláŋîvə̀lɛ̀ðɔ́,
 perfective,ventive,vəlɛð,pull,2pl,3sg,ŋ̀géɲávə́lɛ̂ðɔ́,
 perfective,ventive,vəlɛð,pull,2pl,1pl.excl,ɲárvə́lɛ̂ðɔ́,ɲá-və̀lɛ̀ð-ɔ́
 perfective,ventive,vəlɛð,pull,2pl,3pl,lěɲálvə́lɛ̂ðɔ́,
-perfective,itive,vəlɛð,pull,1sg,2sg,íŋ-g-á-ŋâ və̀lɛ̀ð-ɛ̀,íŋ-g-à-ŋâ və̀lɛ̀ð-ɛ̀
+perfective,itive,vəlɛð,pull,1sg,2sg,íŋg-á-ŋâ və̀lɛ̀ð-ɛ̀,íŋg-à-ŋâ və̀lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,1sg,3sg,ŋ̀-g-é və́lɛ̂ð-ɛ̀,ŋg-ɛ̀ və́lɛ̀ð-ɛ̀
-perfective,itive,vəlɛð,pull,1sg,1du.incl,íŋ-g-á-tɛ́ və́lɛ̂ð-ɛ̀,íŋ-g-à-tɛ́ və́lɛ̀ð-ɛ̀
-perfective,itive,vəlɛð,pull,1sg,1pl.incl,íŋ-g-á-tɛ́ və́lɛ̂ð-ɛ̌-r,íŋ-g-à-tɛ́ və́lɛ̀ð-ɛ̀
-perfective,itive,vəlɛð,pull,1sg,2pl,íŋ-g-á-tɛ́ və́lɛ̂ð-ɛ̀,íŋ-g-à-tɛ́ və́lɛ̀ð-ɛ̀
+perfective,itive,vəlɛð,pull,1sg,1du.incl,íŋg-á-tɛ́ və́lɛ̂ð-ɛ̀,íŋg-à-tɛ́ və́lɛ̀ð-ɛ̀
+perfective,itive,vəlɛð,pull,1sg,1pl.incl,íŋg-á-tɛ́ və́lɛ̂ð-ɛ̌-r,íŋg-à-tɛ́ və́lɛ̀ð-ɛ̀
+perfective,itive,vəlɛð,pull,1sg,2pl,íŋg-á-tɛ́ və́lɛ̂ð-ɛ̀,íŋg-à-tɛ́ və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,1sg,3pl,l-ɛ̀-l və́lɛ̂ð-ɛ̀,l-ɛ̀-ĺ və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,2sg,1sg,á-g-á-ŋî və̀lɛ̀ð-ɛ̀,á-g-à-ŋɛ̂ və̀lɛ̀ð-ɛ̀
-perfective,itive,vəlɛð,pull,2sg,3sg,ŋ-g-á və́lɛ̂ð-ɛ̀,ŋg-à və́lɛ̀ð-ɛ̀
+perfective,itive,vəlɛð,pull,2sg,3sg,ŋg-á və́lɛ̂ð-ɛ̀,ŋg-à və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,2sg,1du.incl,á-g-á-tɛ́ və́lɛ̂ð-ɛ̀,á-g-à-tɛ́ və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,2sg,1pl.incl,á-g-á-tɛ́ və́lɛ̂ð-ɛ̌-r,á-g-à-tɛ́ və́lɛ̀ð-ɛ̀-ŕ
 perfective,itive,vəlɛð,pull,2sg,1pl.excl,á-g-í-ɲár və́lɛ̂ð-ɛ̀,á-g-éɲár və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,2sg,3pl,l-à-l və́lɛ̂ð-ɛ̀,l-à-l və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,3sg,1sg,k-à-ŋî və̀lɛ̀ð-ɛ̀,k-à-ŋɛ̂ və̀lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,3sg,2sg,k-á-ŋâ və̀lɛ̀ð-ɛ̀,k-à-ŋâ və̀lɛ̀ð-ɛ̀
-perfective,itive,vəlɛð,pull,3sg,3sg,ŋ-g-á-ŋ və́lɛ̂ð-ɛ̀,ŋg-à-ŋɛ̂ və̀lɛ̀ð-ɛ̀
+perfective,itive,vəlɛð,pull,3sg,3sg,ŋg-á-ŋ və́lɛ̂ð-ɛ̀,ŋg-à-ŋɛ̂ və̀lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,3sg,1du.incl,k-à-tɛ́ və́lɛ̂ð-ɛ̀,k-à-tɛ́ və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,3sg,1pl.incl,k-à-tɛ́ və́lɛ̂ð-ɛ̌-r,k-à-tɛ́ və́lɛ̀ð-ɛ̀-ŕ
 perfective,itive,vəlɛð,pull,3sg,1pl.excl,k-ì-ɲár və́lɛ̂ð-ɛ̀,k-éɲár və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,3sg,2pl,k-à-tɛ́ və́lɛ̂ð-ɛ̀,k-à-tɛ́ və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,3sg,3pl,l-à-ŋ-lú və́lɛ̂ðɛ̀,l-à-ŋə́-ĺ və́lɛ̀ð-ɛ̀
-perfective,itive,vəlɛð,pull,1du.incl,3sg,ŋ-g-á-l və́lɛ̂ð-ɛ̀,ŋg-á-l və́lɛ̀ð-ɛ̀
+perfective,itive,vəlɛð,pull,1du.incl,3sg,ŋg-á-l və́lɛ̂ð-ɛ̀,ŋg-á-l və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,1du.incl,3pl,l-à-l-lú və́lɛ̂ð-ɛ̀,l-à-l-ló və́lɛ̀ð-ɛ̀
-perfective,itive,vəlɛð,pull,1pl.incl,3sg,ŋ-g-á-l və́lɛ̂ð-ɛ̀-ŕ,ŋg-á-l və́lɛ̀ð-ɛ̀-ŕ
+perfective,itive,vəlɛð,pull,1pl.incl,3sg,ŋg-á-l və́lɛ̂ð-ɛ̀-ŕ,ŋg-á-l və́lɛ̀ð-ɛ̀-ŕ
 perfective,itive,vəlɛð,pull,1pl.incl,3pl,l-à-l-lí və́lɛ̂ð-ɛ́-r-lu,
 perfective,itive,vəlɛð,pull,1pl.excl,2sg,ɲà-l-á-ŋâ və̀lɛ̀ð-ɛ̀,ɲà-l-à-ŋâ və̀lɛ̀ð-ɛ̀
-perfective,itive,vəlɛð,pull,1pl.excl,3sg,ŋ-g-é-ɲâ və̀lɛ̀ð-ɛ̀,ŋg-éɲâ və̀lɛ̀ð-ɛ̀
+perfective,itive,vəlɛð,pull,1pl.excl,3sg,ŋg-é-ɲâ və̀lɛ̀ð-ɛ̀,ŋg-éɲâ və̀lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,1pl.excl,2pl,ɲà-l-á-tɛ́ və́lɛ̂ð-ɛ̀,ɲà-l-à-tɛ́ və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,1pl.excl,3pl,l-é-ɲà-l´ və́lɛ̂ð-ɛ̀,l-éɲá-ĺ və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,2pl,1sg,ɲá-l-á-ŋî və̀lɛ̀ð-ɛ̀,ɲá-l-à-ŋɛ̂ və̀lɛ̀ð-ɛ̀
-perfective,itive,vəlɛð,pull,2pl,3sg,ŋ-g-é-ɲá və́lɛ̂ð-ɛ̀,ŋg-éɲá və́lɛ̀ð-ɛ̀
+perfective,itive,vəlɛð,pull,2pl,3sg,ŋg-é-ɲá və́lɛ̂ð-ɛ̀,ŋg-éɲá və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,2pl,1pl.incl,ɲá-l-á-tɛ́ və́lɛ̂ð-ɛ̌-r,ɲá-l-à-tɛ́ və́lɛ̀ð-ɛ̀-ŕ
 perfective,itive,vəlɛð,pull,2pl,1pl.excl,ɲár və́lɛ̂ð-ɛ̀,ɲ-á-l və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,2pl,3pl,l-è-ɲá-l və́lɛ̂ð-ɛ̀,l-éɲá-ĺ və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,3pl,1sg,l-à-ŋî və̀lɛ̀ð-ɛ̀,l-à-ŋɛ̂ və̀lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,3pl,2sg,l-à-ŋâ və̀lɛ̀ð-ɛ̀,l-à-ŋâ və̀lɛ̀ð-ɛ̀
-perfective,itive,vəlɛð,pull,3pl,3sg,ŋ-g-á-l və̀lɛ̀ð-ɛ̀,ŋg-á-l və́lɛ̀ð-ɛ̀
+perfective,itive,vəlɛð,pull,3pl,3sg,ŋg-á-l və̀lɛ̀ð-ɛ̀,ŋg-á-l və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,3pl,1du.incl,l-à-tɛ́ və́lɛ̂ð-ɛ̀,l-à-tɛ́ və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,3pl,1pl.incl,l-à-tɛ́ və́lɛ̂ð-ɛ̌-r,l-à-tɛ́ və́lɛ̀ð-ɛ̀-ŕ
 perfective,itive,vəlɛð,pull,3pl,1pl.excl,l-ì-ɲár və́lɛ̂ð-ɛ̀,l-éɲár və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,3pl,2pl,l-à-tɛ́ və́lɛ̂ð-ɛ̀,l-à-tɛ́ və́lɛ̀ð-ɛ̀
 perfective,itive,vəlɛð,pull,3pl,3pl,l-ǎ-l-lú və́lɛ̂ð-ɛ̀,l-à-l-ló və́lɛ̀ð-ɛ̀
-perfective,itive,vəlɛð,pull,1sg,2sg,íŋ-g-á-ŋâ və̀lɛ̀ð-à,íŋ-g-á-ŋâ və̀lɛ̀ð-à
-perfective,itive,vəlɛð,pull,1sg,3sg,ŋ-g-é və́lɛ̀ð-à,ŋg-ɛ́ və́lɛ̀ð-à
-perfective,itive,vəlɛð,pull,1sg,2pl,íŋ-g-á-tɛ́ və́lɛ̂ð-à,íŋ-g-á-tɛ́ və́lɛ̀ð-à
+perfective,itive,vəlɛð,pull,1sg,2sg,íŋg-á-ŋâ və̀lɛ̀ð-à,íŋg-á-ŋâ və̀lɛ̀ð-à
+perfective,itive,vəlɛð,pull,1sg,3sg,ŋg-é və́lɛ̀ð-à,ŋg-ɛ́ və́lɛ̀ð-à
+perfective,itive,vəlɛð,pull,1sg,2pl,íŋg-á-tɛ́ və́lɛ̂ð-à,íŋg-á-tɛ́ və́lɛ̀ð-à
 perfective,itive,vəlɛð,pull,1sg,3pl,l-ɛ́-l və́lɛ̂ð-à-lǒ,l-ɛ́-ĺ və́lɛ̀ð-à
 perfective,itive,vəlɛð,pull,2sg,1sg,á-g-á-ŋî və̀lɛ̀ð-à,á-g-á-ŋɛ̂ və̀lɛ̀ð-à
-perfective,itive,vəlɛð,pull,2sg,3sg,ŋ-g-á və́lɛ̀ð-à,ŋg-á və́lɛ̀ð-à
+perfective,itive,vəlɛð,pull,2sg,3sg,ŋg-á və́lɛ̀ð-à,ŋg-á və́lɛ̀ð-à
 perfective,itive,vəlɛð,pull,2sg,1pl.excl,á-g-í-ɲár və́lɛ̀ð-à,á-g-éɲár və́lɛ̀ð-à
 perfective,itive,vəlɛð,pull,2sg,3pl,l-á-l və́lɛ̂ð-à-ló,l-á-l və́lɛ̀ð-à-ŕ
-perfective,itive,vəlɛð,pull,3sg,1sg,ŋ-g-á-ŋî və̀lɛ̀ð-à,ŋg-á-ŋɛ̂ və̀lɛ̀ð-à
-perfective,itive,vəlɛð,pull,3sg,2sg,ŋ-g-á-ŋâ və̀lɛ̀ð-à,ŋg-á-ŋâ və̀lɛ̀ð-à
-perfective,itive,vəlɛð,pull,3sg,3sg,ŋ-g-á-ŋ və́lɛ̂ð-à,ŋg-á-ŋɛ̂ və̀lɛ̀ð-à
-perfective,itive,vəlɛð,pull,3sg,1du.incl,ŋ-g-á-tɛ́ və́lɛ̂ð-à,ŋg-á-tɛ́ və́lɛ̀ð-à
-perfective,itive,vəlɛð,pull,3sg,1pl.incl,ŋ-g-á-tɛ́ və́lɛ̂ð-à-r,ŋg-á-tɛ́ və́lɛ̀ð-à-ŕ
-perfective,itive,vəlɛð,pull,3sg,1pl.excl,ŋ-g-é-ɲár və́lɛ̂ð-à,ŋg-éɲár və́lɛ̀ð-à
-perfective,itive,vəlɛð,pull,3sg,2pl,ŋ-g-á-tɛ́ və́lɛ̂ð-à,ŋg-á-tɛ́ və́lɛ̀ð-à
+perfective,itive,vəlɛð,pull,3sg,1sg,ŋg-á-ŋî və̀lɛ̀ð-à,ŋg-á-ŋɛ̂ və̀lɛ̀ð-à
+perfective,itive,vəlɛð,pull,3sg,2sg,ŋg-á-ŋâ və̀lɛ̀ð-à,ŋg-á-ŋâ və̀lɛ̀ð-à
+perfective,itive,vəlɛð,pull,3sg,3sg,ŋg-á-ŋ və́lɛ̂ð-à,ŋg-á-ŋɛ̂ və̀lɛ̀ð-à
+perfective,itive,vəlɛð,pull,3sg,1du.incl,ŋg-á-tɛ́ və́lɛ̂ð-à,ŋg-á-tɛ́ və́lɛ̀ð-à
+perfective,itive,vəlɛð,pull,3sg,1pl.incl,ŋg-á-tɛ́ və́lɛ̂ð-à-r,ŋg-á-tɛ́ və́lɛ̀ð-à-ŕ
+perfective,itive,vəlɛð,pull,3sg,1pl.excl,ŋg-é-ɲár və́lɛ̂ð-à,ŋg-éɲár və́lɛ̀ð-à
+perfective,itive,vəlɛð,pull,3sg,2pl,ŋg-á-tɛ́ və́lɛ̂ð-à,ŋg-á-tɛ́ və́lɛ̀ð-à
 perfective,itive,vəlɛð,pull,3sg,3pl,l-á-ŋ-ló və́lɛ̂ð-à-ló,l-á-ló və́lɛ̀ð-à-ŕ
 perfective,itive,vəlɛð,pull,3sg,3pl,l-á-ŋə́-l və́lɛ̂ð-à-ló,l-á-ŋə́-ĺ və́lɛ̀ð-à
-perfective,itive,vəlɛð,pull,1du.incl,3sg,ŋ-g-á-l və́lɛ̂ð-à,ŋg-á-l və́lɛ̀ð-à
+perfective,itive,vəlɛð,pull,1du.incl,3sg,ŋg-á-l və́lɛ̂ð-à,ŋg-á-l və́lɛ̀ð-à
 perfective,itive,vəlɛð,pull,1du.incl,3pl,l-á-ló və́lɛ̂ð-à-ló,l-á-ló və́lɛ̀ð-à-ŕ
-perfective,itive,vəlɛð,pull,1pl.incl,3sg,ŋ-g-á-l və́lɛ̂ðà-ŕ,ŋg-á-l və́lɛ̀ð-à-ŕ
-perfective,itive,vəlɛð,pull,1pl.incl,3sg,ŋ-g-á-l-r və́lɛ̂ð-à-ŕ,ŋg-á-l və́lɛ̀ð-à-ŕ
+perfective,itive,vəlɛð,pull,1pl.incl,3sg,ŋg-á-l və́lɛ̂ðà-ŕ,ŋg-á-l və́lɛ̀ð-à-ŕ
+perfective,itive,vəlɛð,pull,1pl.incl,3sg,ŋg-á-l-r və́lɛ̂ð-à-ŕ,ŋg-á-l və́lɛ̀ð-à-ŕ
 perfective,itive,vəlɛð,pull,1pl.incl,3pl,l-á-ló və́lɛ̂ð-à-r-ló,l-á-ló və́lɛ̀ð-à-ŕ
 perfective,itive,vəlɛð,pull,1pl.excl,2sg,ɲà-l-á-ŋâ və̀lɛ̀ð-à,ɲà-l-á-ŋâ və̀lɛ̀ð-à
-perfective,itive,vəlɛð,pull,1pl.excl,3sg,ŋ-g-é-ɲâ və̀lɛ̀ð-á,ŋg-éɲâ və̀lɛ̀ð-à
+perfective,itive,vəlɛð,pull,1pl.excl,3sg,ŋg-é-ɲâ və̀lɛ̀ð-á,ŋg-éɲâ və̀lɛ̀ð-à
 perfective,itive,vəlɛð,pull,1pl.excl,2pl,ɲà-l-á-tɛ́ və́lɛ̂ð-à,ɲà-l-á-tɛ́ və́lɛ̀ð-à
 perfective,itive,vəlɛð,pull,1pl.excl,3pl,l-é-ɲǎ-l və̀lɛ̀ð-à-ló,l-éɲâ və̀lɛ̀ð-à
 perfective,itive,vəlɛð,pull,1pl.excl,3pl,l-é-ɲà-lɛ́ və̀lɛ̀ð-à-ló,
 perfective,itive,vəlɛð,pull,2pl,1sg,ɲá-l-á-ŋê və̀lɛ̀ð-à,ɲá-l-á-ŋɛ̂ və̀lɛ̀ð-à
-perfective,itive,vəlɛð,pull,2pl,3sg,ŋ-g-é-ɲá və́lɛ̂ð-à,ŋg-éɲá və́lɛ̀ð-à
+perfective,itive,vəlɛð,pull,2pl,3sg,ŋg-é-ɲá və́lɛ̂ð-à,ŋg-éɲá və́lɛ̀ð-à
 perfective,itive,vəlɛð,pull,2pl,1pl.excl,ɲá-lé-ɲár və́lɛ̀ð-à,ɲá-l-éɲár və́lɛ̀ð-à
 perfective,itive,vəlɛð,pull,2pl,3pl,l-é-ɲá-l və́lɛ̂ð-à-ló,l-éɲá-ĺ və́lɛ̀ð-à
 perfective,itive,vəlɛð,pull,3pl,1sg,l-á-ŋê və̀lɛ̀ð-à,l-á-ŋɛ̂ və̀lɛ̀ð-à
 perfective,itive,vəlɛð,pull,3pl,2sg,l-á-ŋâ və̀lɛ̀ð-à,l-á-ŋâ və̀lɛ̀ð-à
-perfective,itive,vəlɛð,pull,3pl,3sg,ŋ-g-á-l və̀lɛ̀ð-à,ŋg-á-l və́lɛ̀ð-à
+perfective,itive,vəlɛð,pull,3pl,3sg,ŋg-á-l və̀lɛ̀ð-à,ŋg-á-l və́lɛ̀ð-à
 perfective,itive,vəlɛð,pull,3pl,1du.incl,l-á-tɛ́ və́lɛ̂ð-à,l-á-tɛ́ və́lɛ̀ð-à
 perfective,itive,vəlɛð,pull,3pl,1pl.incl,l-á-tɛ́ və́lɛ̂ð-à-ŕ,l-á-tɛ́ və́lɛ̀ð-à-ŕ
 perfective,itive,vəlɛð,pull,3pl,1pl.excl,l-é-ɲár və́lɛ̂ð-à,l-éɲár və́lɛ̀ð-à
