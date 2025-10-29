@@ -54,6 +54,7 @@ def test_derived_verbs(verb):
     root = verb.pop('root')
     extension_str = verb.pop('extension')
     extensions = extension_str.split('+')
+    fv = verb.pop('fv')
 
     verb_filtered = {
         k: v for k,v in verb.items()
@@ -62,8 +63,9 @@ def test_derived_verbs(verb):
 
     predicted_forms = inflect_verb_with_extension(
         root=root,
+        fv=fv,
         features=verb_filtered,
-        extension_seq=extensions
+        extension_seq=extensions,
     )
 
     assert form in predicted_forms
