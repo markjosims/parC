@@ -651,7 +651,7 @@ FV2PARADIGM = {
 }
 PARADIGM2FV = {v:k for v,k in FV2PARADIGM.items()}
 
-@paradigm_cache(__file__)
+@output_cache(__file__)
 def make_aux_paradigm() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
     aux_slots = []
     aux_slots.extend(build_itive_perfective_aux_forms())
