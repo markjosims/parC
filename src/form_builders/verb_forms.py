@@ -491,8 +491,8 @@ def make_verb_slots(fv_class: str) -> List[Tuple[pynini.Fst, features.FeatureVec
 
     compose_stem = lambda stem_rule: prepare_root_for_inflection@stem_rule@finalize_form
     compose_stem_harmony = lambda stem_rule: prepare_root_for_inflection\
-        @ROUNDING_HARMONY\
         @stem_rule\
+        @ROUNDING_HARMONY\
         @finalize_form
 
     ####################
