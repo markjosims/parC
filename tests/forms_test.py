@@ -3,6 +3,7 @@ from src.form_builders.adjective_forms import ADJECTIVE_PARADIGM, inflect_adject
 from src.form_builders.form_helpers import generate_forms
 from src.form_builders.uninflected_forms import parse_uninflected_word
 from src.form_builders.verb_forms import *
+from src.form_builders.derived_verb_forms import inflect_verb_with_extension
 from src.lexicon import *
 from src.constants import VERB_FEATURE_VALUES
 
@@ -46,7 +47,27 @@ def test_verb_parsing(gold_verb):
         if any(k in parse for parse in predicted_parse)
     }
     assert gold_verb_filtered in predicted_parse
-    
+
+@pytest.mark.parametrize("verb", get_gold_derived_verbs())
+def test_derived_verbs(verb):
+    form = verb.pop('form')
+    root = verb.pop('root')
+    extension_str = verb.pop('extension')
+    extensions = extension_str.split('+')
+
+    verb_filtered = {
+        k: v for k,v in verb.items()
+        if k in VERB_FEATURE_VALUES
+    }
+
+    predicted_forms = inflect_verb_with_extension(
+        root=root,
+        features=verb_filtered,
+        extension_seq=extensions
+    )
+
+    assert form in predicted_forms
+
 @pytest.mark.parametrize("inflected_paradigm", get_gold_paradigms())
 def test_gold_paradigms(inflected_paradigm):
     root = inflected_paradigm['root']
