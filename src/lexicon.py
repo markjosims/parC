@@ -6,12 +6,14 @@ stems to glosses and to principal parts.
 import pynini
 import pandas as pd
 from src.constants import (
+    GOLD_PERSON_MARKING_PATH,
     GOLD_UNINFLECTED_WORDS_PATH,
     VERB_ROOTS_PATH,
     ROOT2FV_FST_PATH,
     ROOT2GLOSS_FST_PATH,
     GOLD_VERBS_PATH,
     GOLD_AUXS_PATH,
+    GOLD_VERBS_DERIVED_PATH,
     GOLD_PARADIGMS_PATH,
     NOUNS_PATH,
     GOLD_NOUNS_PATH,
@@ -23,9 +25,14 @@ from src.fst_helpers import fst
 from typing import *
 import json
 
+# TODO: kinda stupid that I'm loading all this data at import time
+# change to use lazy loading
+
 VERBS_DF = pd.read_csv(VERB_ROOTS_PATH, keep_default_na=False)
 GOLD_VERBS_DF = pd.read_csv(GOLD_VERBS_PATH, keep_default_na=False)
 GOLD_AUXS_DF = pd.read_csv(GOLD_AUXS_PATH, keep_default_na=False)
+GOLD_PERSON_MARKING_DF = pd.read_csv(GOLD_PERSON_MARKING_PATH, keep_default_na=False)
+GOLD_DERIVED_VERBS_DF = pd.read_csv(GOLD_VERBS_DERIVED_PATH, keep_default_na=False)
 NOUNS_DF = pd.read_csv(NOUNS_PATH, keep_default_na=False)
 GOLD_NOUNS_DF = pd.read_csv(GOLD_NOUNS_PATH, keep_default_na=False)
 ADJECTIVES_DF = pd.read_csv(ADJECTIVES_PATH, keep_default_na=False)
@@ -98,6 +105,12 @@ def get_gold_verbs() -> List[Dict[str, str]]:
 
 def get_gold_auxs() -> List[Dict[str, str]]:
     return GOLD_AUXS_DF.to_dict(orient='records')
+
+def get_gold_person_marking() -> List[Dict[str, str]]:
+    return GOLD_PERSON_MARKING_DF.to_dict(orient='records')
+
+def get_gold_derived_verbs() -> List[Dict[str, str]]:
+    return GOLD_DERIVED_VERBS_DF.to_dict(orient='records')
 
 def get_gold_paradigms() -> List[Dict[str, Any]]:
     with open(GOLD_PARADIGMS_PATH) as f:
