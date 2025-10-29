@@ -85,12 +85,12 @@ DELETE_SCHWA_BEFORE_VOWEL = pynini.cdrewrite(
 ).optimize()
 
 ROUNDING_HARMONY_TARGET = fst("ɛ") | fst("a") | fst("ɜ")
-ROUNDING_HARMONY_TRIGGER = fst("ɔ")
+ROUNDING_HARMONY_OUTPUT = fst("ɔ")
 BLOCKING_VOWELS = fst(["i", "ɪ", "e"])
 ROUNDING_RIGHT_CONTEXT = pynini.closure(SIGMA-BLOCKING_VOWELS)
 
 ROUNDING_HARMONY = pynini.cdrewrite(
-    tau=pynini.cross(ROUNDING_HARMONY_TARGET, ROUNDING_HARMONY_TRIGGER),
+    tau=pynini.cross(ROUNDING_HARMONY_TARGET, ROUNDING_HARMONY_OUTPUT),
     l=fst(''),
     r=ROUNDING_RIGHT_CONTEXT+'[EOS]',
     sigma_star=SIGMASTAR,
