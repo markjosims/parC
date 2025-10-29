@@ -94,7 +94,7 @@ def build_paradigm_for_extension(
     """
     derived_stem, derived_fv = get_derived_stem_and_fv(root, fv, extension_seq)
     paradigm_no_aux = get_paradigm_for_class(stems=derived_stem, fv_class=derived_fv)
-    paradigm_w_aux = make_verb_w_aux_paradigm(paradigm_no_aux, derived_fv)
+    paradigm_w_aux = make_verb_w_aux_paradigm(paradigm_no_aux)
     return paradigm_no_aux, paradigm_w_aux
 
 def inflect_verb_with_extension(
