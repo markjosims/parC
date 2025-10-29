@@ -288,6 +288,7 @@ EXTENSION_MAP = {
         'aɔ': (ANTIP_STR, 'ao'),
         'ao': (ANTIP_STR, 'ao'),
         'au': (ANTIP_STR, 'au'),
+        'ai': (ANTIP_STR, 'au'),
         'ɔɔ': (ANTIP_STR, 'ɔu'),
         'ɔi': (ANTIP_STR, 'ɔu'),
         'ɔu': (ANTIP_STR, 'ɔu'),
