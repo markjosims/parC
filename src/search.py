@@ -10,7 +10,10 @@ from src.constants import (
     DEFAULT_INSERT_COST, DEFAULT_DELETE_COST, DEFAULT_SUBSTITUTE_COST,
     DEFAULT_EDIT_BOUND,
 )
-from src.phonology import SIGMA, INSERTION_COSTS, DELETION_COSTS, SUBSTITUTION_COSTS, INSERT_HYPHEN_RULE
+from src.phonology import (
+    SIGMA, INSERTION_COSTS, DELETION_COSTS, SUBSTITUTION_COSTS,
+    INSERT_HYPHEN_RULE
+)
 from src.form_builders.verb_forms import parse_inflected_verb, get_verb_stem_paradigm, get_aux_paradigm, get_verb_paradigm_w_aux
 from src.form_builders.noun_forms import get_noun_paradigm, parse_noun
 
@@ -39,14 +42,14 @@ def get_searchable_lexicon(
 
 @output_cache(__file__)
 def get_edit_factors(
-        insertions: List[Tuple[pynini.FstLike, pynini.WeightLike]],
-        substitutions: List[Tuple[pynini.FstLike, pynini.FstLike, pynini.WeightLike]],
-        deletions: List[Tuple[pynini.FstLike, pynini.WeightLike]],
-        sigma: pynini.FstLike,
+        insertions: List[Tuple[pynini.FstLike, pynini.WeightLike]]=INSERTION_COSTS,
+        substitutions: List[Tuple[pynini.FstLike, pynini.FstLike, pynini.WeightLike]]=SUBSTITUTION_COSTS,
+        deletions: List[Tuple[pynini.FstLike, pynini.WeightLike]]=DELETION_COSTS,
+        sigma: pynini.FstLike=SIGMA,
         insert_cost: float=DEFAULT_INSERT_COST,
         sub_cost: float=DEFAULT_SUBSTITUTE_COST,
         delete_cost: float=DEFAULT_DELETE_COST,
-        bound: Optional[int]=None,
+        bound: Optional[int]=DEFAULT_EDIT_BOUND,
     ) -> Tuple[pynini.Fst, pynini.Fst]:
     """
     Arguments:
@@ -61,8 +64,9 @@ def get_edit_factors(
         sigma:          FST representing the alphabet of the lexicon.
         insert_cost:    Default cost for inserting any element not specified in `insertions`.
         delete_cost:    Default cost for deleting any element not specified in `deletions`.
-        sub_cost:       Default cost for substituting any element not specified in `substiutions`.
-        bound:          Integer indicating the number of edits allowed when searching. Defaults to unbounded (infinite edits allowed)
+        sub_cost:       Default cost for substituting any element not specified in `substitutions`.
+        bound:          Integer indicating the number of edits allowed when searching. Defaults to `DEFAULT_EDIT_BOUND`.
+                        Pass `None` for unbounded edits.
 
     Returns:
         (left_factor, right_factor):    FSTs for the left and right factors.
