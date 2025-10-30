@@ -611,6 +611,8 @@ def make_verb_slots(
     dep_slots = add_class_prefixes_to_slots(dep_slots)
 
     slots = [root_slot, *imp_slots, *ipfv_slots, *pfv_slots, *inf_slot, *dep_slots]
+    for rule, _ in slots:
+        rule.optimize()
     return slots
 
 def generate_dependent_forms(a_morphome, e_morphome, is_OV, compose_stem, compose_stem_harmony):
