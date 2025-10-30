@@ -323,6 +323,39 @@ def cache_is_updated(current_file: str, cache_path: str) -> bool:
         return cache_date >= file_date
     return False
 
+def get_hashable_args_str(args, kwargs):
+    """
+    Arguments:
+        args:   Positional arguments to be hashed.
+        kwargs: Keyword arguments to be hashed.
+    Returns:
+        args_str:  String representation of hashable arguments.
+    Raises:
+        TypeError: If any argument is not hashable.
+    """
+    args_for_key = args[:]
+    kwargs_for_key = kwargs.copy()
+    for i, arg in enumerate(args_for_key[:]):
+        if type(arg) is list:
+            arg = tuple(sorted(arg))
+        if type(arg) is paradigms.Paradigm:
+                # Paradigm objects are not hashable, so use their name
+            arg = arg.name
+            args_for_key[i] = arg
+        if not isinstance(arg, (str, int, float, bool)):
+            raise TypeError
+    for key, value in kwargs_for_key.items():
+        if type(value) is list:
+            value = tuple(sorted(value))
+            kwargs_for_key[key] = value
+        if type(value) is paradigms.Paradigm:
+                # Paradigm objects are not hashable, so use their name
+            kwargs_for_key[key] = value.name
+        if not isinstance(value, (str, int, float, bool)):
+            raise TypeError
+    args_str = str(args_for_key)+str(kwargs_for_key)
+    return args_str
+
 def fst_cache(current_file: str, cache_dir=".cache/") -> pynini.Fst:
     """
     Arguments:
@@ -375,27 +408,36 @@ def output_cache(current_file: str, cache_dir=".cache/") -> Any:
         @wraps(func)
         def wrapper(*args, **kwargs):
             os.makedirs(cache_dir, exist_ok=True)
-            args_str = str(args)+str(kwargs)
-            cache_key = hashlib.md5((func.__name__ + args_str).encode()).hexdigest()
-            cache_path = os.path.join(
-                cache_dir,
-                f"{cache_key}.output"
-            )
-            if cache_is_updated(current_file, cache_path):
-                with open(cache_path, 'rb') as f:
+            try:
+                args_str = get_hashable_args_str(args, kwargs)
+                cache_key = hashlib.md5((func.__name__ + args_str).encode()).hexdigest()
+                cache_path = os.path.join(
+                    cache_dir,
+                    f"{cache_key}.output"
+                )
+                if cache_is_updated(current_file, cache_path):
+                    with open(cache_path, 'rb') as f:
+                        print(
+                            f"Loaded output for function {func.__name__} "+\
+                            f"with args {args_str} from cache {cache_path}"
+                        )
+                        out = pickle.load(f)
+                else:
                     print(
-                        f"Loaded output for function {func.__name__} "+\
-                        f"with args {args_str} from cache {cache_path}"
+                        f"Building output for function {func.__name__} "+\
+                        f"with args {args_str} and cache {cache_path}"
                     )
-                    out = pickle.load(f)
-            else:
+                    out = func(*args, **kwargs)
+                    with open(cache_path, 'wb') as f:
+                        pickle.dump(out, f)
+                return out
+            except TypeError:
+                # if args are not hashable, skip caching
                 print(
                     f"Building output for function {func.__name__} "+\
-                    f"with args {args_str} and cache {cache_path}"
+                    f"with args {args} and kwargs {kwargs} without caching (unhashable args)"
                 )
                 out = func(*args, **kwargs)
-                with open(cache_path, 'wb') as f:
-                    pickle.dump(out, f)
-            return out
+                return out
         return wrapper
     return decorator
