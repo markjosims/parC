@@ -686,6 +686,7 @@ def get_verb_stem_paradigm(
         fv_class: str,
         stems: Union[str, pynini.Fst, None]=None,
         skip_suffixes: bool=False,
+        paradigm_name: Optional[str]=None,
 ) -> paradigms.Paradigm:
     slots = make_verb_slots(fv_class, skip_suffixes=skip_suffixes)
     if type(stems) is str:
@@ -696,9 +697,12 @@ def get_verb_stem_paradigm(
     elif stems is None:
         stems = get_roots_for_class(fv_class, wrap_w_fsa=True)
 
+    if paradigm_name is None:
+        paradigm_name = f"{fv_class} class"
+
     fv_paradigm = paradigms.Paradigm(
         category=INFLECTED_VERB,
-        name=f"{fv_class} class",
+        name=paradigm_name,
         slots=slots,
         lemma_feature_vector=VERB_ROOT,
         stems=stems,
@@ -709,11 +713,14 @@ def get_verb_stem_paradigm(
 
 def get_verb_dstem_paradigm(
         fv_class: str,
+        paradigm_name: Optional[str]=None
 ) -> paradigms.Paradigm:
     """
     Wraps `get_verb_stem_paradigm` to generate a verb paradigm with $d$-stem forms only.
     """
-    return get_verb_stem_paradigm(fv_class, skip_suffixes=True)
+    if paradigm_name is None:
+        paradigm_name = f"{fv_class} class d-stem"
+    return get_verb_stem_paradigm(fv_class, skip_suffixes=True, paradigm_name=paradigm_name)
 
 @output_cache(__file__)
 def get_aux_paradigm() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
@@ -739,7 +746,7 @@ def get_aux_paradigm() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
 
 @output_cache(__file__)
 def get_verb_paradigm_w_aux(
-        verb_paradigm: Union[str, paradigms.Paradigm]
+        verb_paradigm: Union[str, paradigms.Paradigm],
 ) -> paradigms.Paradigm:
     aux_paradigm = get_aux_paradigm()
     verb_w_aux_slots = []
@@ -788,7 +795,7 @@ def get_verb_paradigm_w_aux(
 
     verb_w_aux_paradigm = paradigms.Paradigm(
         category=INFLECTED_VERB,
-        name=f"{verb_paradigm} class with TAMD auxiliary",
+        name=f"{verb_paradigm.name} + TAMD auxiliary",
         slots=verb_w_aux_slots,
         lemma_feature_vector=VERB_ROOT,
         stems=verb_paradigm.stems,
