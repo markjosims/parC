@@ -339,11 +339,13 @@ def get_hashable_args_str(args, kwargs):
         if type(arg) is list:
             arg = tuple(sorted(arg))
         elif type(arg) is paradigms.Paradigm:
-                # Paradigm objects are not hashable, so use their name
+            # Paradigm objects are not hashable, so use their name
             arg = arg.name
-            args_for_key[i] = arg
-        if not isinstance(arg, (str, int, float, bool)):
-            raise TypeError
+        args_for_key[i] = arg
+        try:
+            hash(arg)
+        except TypeError:
+            raise TypeError(f"Type {type(arg)} of arg {arg} is not hashable")
     for key, value in kwargs.items():
         if type(value) is list:
             value = tuple(sorted(value))
@@ -351,8 +353,10 @@ def get_hashable_args_str(args, kwargs):
         if type(value) is paradigms.Paradigm:
                 # Paradigm objects are not hashable, so use their name
             kwargs_for_key[key] = value.name
-        if not isinstance(value, (str, int, float, bool)):
-            raise TypeError
+        try:
+            hash(value)
+        except TypeError:
+            raise TypeError(f"Type {type(value)} of kwarg {key}={value} is not hashable")
     args_str = str(args_for_key)+str(kwargs_for_key)
     return args_str
 
