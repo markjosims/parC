@@ -791,7 +791,7 @@ def inflect_aux_with_features(
     aux_paradigm = get_aux_paradigm()
     expected_keys = [feature.name for feature in INFLECTED_AUX.features]
     features_filtered = {k:v for k,v in features.items() if k in expected_keys}
-    slot_for_features = [slot for slot in aux_paradigm if slot[1].values == features_filtered]
+    slot_for_features = [slot for slot in aux_paradigm.slots if slot[1].values == features_filtered]
     for slot in slot_for_features:
         rule, _ = slot
         form = decode_fst_string(fst("")@rule)
