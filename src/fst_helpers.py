@@ -371,7 +371,16 @@ def fst_cache(current_file: str, cache_dir=".cache/") -> pynini.Fst:
         @wraps(func)
         def wrapper(*args, **kwargs):
             os.makedirs(cache_dir, exist_ok=True)
-            args_str = str(args)+str(kwargs)
+            try:
+                args_str = get_hashable_args_str(args, kwargs)
+            except TypeError:
+                # if args are not hashable, skip caching
+                print(
+                    f"Building FST for function {func.__name__} "+\
+                    f"with args {args} and kwargs {kwargs} without caching (unhashable args)"
+                )
+                f = func(*args, **kwargs)
+                return f
             cache_key = hashlib.md5((func.__name__ + args_str).encode()).hexdigest()
             cache_path = os.path.join(
                 cache_dir,
@@ -410,27 +419,6 @@ def output_cache(current_file: str, cache_dir=".cache/") -> Any:
             os.makedirs(cache_dir, exist_ok=True)
             try:
                 args_str = get_hashable_args_str(args, kwargs)
-                cache_key = hashlib.md5((func.__name__ + args_str).encode()).hexdigest()
-                cache_path = os.path.join(
-                    cache_dir,
-                    f"{cache_key}.output"
-                )
-                if cache_is_updated(current_file, cache_path):
-                    with open(cache_path, 'rb') as f:
-                        print(
-                            f"Loaded output for function {func.__name__} "+\
-                            f"with args {args_str} from cache {cache_path}"
-                        )
-                        out = pickle.load(f)
-                else:
-                    print(
-                        f"Building output for function {func.__name__} "+\
-                        f"with args {args_str} and cache {cache_path}"
-                    )
-                    out = func(*args, **kwargs)
-                    with open(cache_path, 'wb') as f:
-                        pickle.dump(out, f)
-                return out
             except TypeError:
                 # if args are not hashable, skip caching
                 print(
@@ -439,5 +427,26 @@ def output_cache(current_file: str, cache_dir=".cache/") -> Any:
                 )
                 out = func(*args, **kwargs)
                 return out
+            cache_key = hashlib.md5((func.__name__ + args_str).encode()).hexdigest()
+            cache_path = os.path.join(
+                cache_dir,
+                f"{cache_key}.output"
+            )
+            if cache_is_updated(current_file, cache_path):
+                with open(cache_path, 'rb') as f:
+                    print(
+                        f"Loaded output for function {func.__name__} "+\
+                        f"with args {args_str} from cache {cache_path}"
+                    )
+                    out = pickle.load(f)
+            else:
+                print(
+                    f"Building output for function {func.__name__} "+\
+                    f"with args {args_str} and cache {cache_path}"
+                )
+                out = func(*args, **kwargs)
+                with open(cache_path, 'wb') as f:
+                    pickle.dump(out, f)
+            return out
         return wrapper
     return decorator
