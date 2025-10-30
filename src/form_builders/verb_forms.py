@@ -313,10 +313,13 @@ def build_itive_perfective_aux_forms() -> List[Tuple[pynini.Fst, features.Featur
 
 def add_perfective_ventive_personal_markers(
     form_fst: pynini.Fst,
+    skip_suffixes: bool=False
 ) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
     """
     Arguments:
-        form_fst: FST representing a perfective ventive verb form
+        form_fst:       FST representing a perfective ventive verb form
+        skip_suffixes:  If True, skip adding suffixes
+                        (used for generating $d$-stem FST)
     Returns:
         slots_w_markers: List of Tuples of (FST, FeatureVector) with personal and class markers added
 
@@ -377,6 +380,12 @@ def add_perfective_ventive_personal_markers(
         (prefix("ɲá-"), get_features(sbj='2pl')),
     ]
     subject_prefix_slots = [(form_fst@rule, features_vec) for rule, features_vec in subject_prefixes]
+
+    if skip_suffixes:
+        slots = non_pronominal_slots + subject_prefix_slots
+        for rule, _ in slots:
+            rule.optimize()
+        return slots
 
     # subject with 3sg object
     subject_suffixes_3sg_obj = [
@@ -477,7 +486,10 @@ def add_imperative_object_markers(
 # slots for verb paradigms
 
 @output_cache(__file__)
-def make_verb_slots(fv_class: str) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+def make_verb_slots(
+    fv_class: str,
+    skip_suffixes: bool=False
+) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
     root_slot = (STEM, VERB_ROOT)
 
     a_morphome = CLASS2FV[fv_class]["a_morphome"]
@@ -499,21 +511,21 @@ def make_verb_slots(fv_class: str) -> List[Tuple[pynini.Fst, features.FeatureVec
     # Imperative forms #
     ####################
 
-    imp_it_suffix=fst(f"-{o_morphome}{HIGH_TONE}")
-    if is_OV and o_morphome == 'ɔ':
-        imp_it_stem=compose_stem_harmony(ALL_HIGH_TONE_RULE)
+    imp_it_suffix, imp_it_stem, imp_vent_suffix, imp_vent_stem =\
+        generate_imperative_forms(
+            a_morphome, o_morphome, is_OV, compose_stem, compose_stem_harmony
+        )
+    
+    if not skip_suffixes:
+        imp_slots = [
+            (paradigms.suffix(imp_it_suffix, imp_it_stem), IMP_IT),
+            (paradigms.suffix(imp_vent_suffix, imp_vent_stem), IMP_VENT),
+        ]
     else:
-        imp_it_stem=compose_stem(ALL_HIGH_TONE_RULE)
-
-    imp_vent_suffix=fst(f"-{a_morphome}{HIGH_TONE}")
-    if is_OV:
-        imp_vent_stem=compose_stem_harmony(ALL_LOW_TONE_RULE)
-    else:
-        imp_vent_stem=compose_stem(ALL_LOW_TONE_RULE)
-    imp_slots = [
-        (paradigms.suffix(imp_it_suffix, imp_it_stem), IMP_IT),
-        (paradigms.suffix(imp_vent_suffix, imp_vent_stem), IMP_VENT),
-    ]
+        imp_slots = [
+            (imp_it_stem, IMP_IT),
+            (imp_vent_stem, IMP_VENT),
+        ]
 
     ######################
     # Imperfective forms #
@@ -521,22 +533,21 @@ def make_verb_slots(fv_class: str) -> List[Tuple[pynini.Fst, features.FeatureVec
 
     # no class or personal markers for imperfective forms
 
-    ipfv_it_suffix=fst(f"-{a_morphome}{LOW_TONE}")
-    if is_OV:
-        ipfv_it_stem = compose_stem_harmony(HLSTAR_RULE)
+    ipfv_it_suffix, ipfv_it_stem, ipfv_vent_suffix, ipfv_vent_stem =\
+        generate_ipfv_forms(
+            a_morphome, o_morphome, is_OV, compose_stem, compose_stem_harmony
+        )
+    if not skip_suffixes:
+        ipfv_slots = [
+            (paradigms.suffix(ipfv_it_suffix, ipfv_it_stem), IPFV_IT),
+            (paradigms.suffix(ipfv_vent_suffix, ipfv_vent_stem), IPFV_VENT),
+        ]
+        ipfv_slots = add_1pl_incl_r_suffix(ipfv_slots)
     else:
-        ipfv_it_stem = compose_stem(HLSTAR_RULE)
-
-    ipfv_vent_suffix=fst(f"-{o_morphome}{HIGH_TONE}")
-    if is_OV and o_morphome == 'ɔ':
-        ipfv_vent_stem = compose_stem_harmony(ALL_LOW_TONE_RULE)
-    else:
-        ipfv_vent_stem = compose_stem(ALL_LOW_TONE_RULE)
-    ipfv_slots = [
-        (paradigms.suffix(ipfv_it_suffix, ipfv_it_stem), IPFV_IT),
-        (paradigms.suffix(ipfv_vent_suffix, ipfv_vent_stem), IPFV_VENT),
-    ]
-    ipfv_slots = add_1pl_incl_r_suffix(ipfv_slots)
+        ipfv_slots = [
+            (ipfv_it_stem, IPFV_IT),
+            (ipfv_vent_stem, IPFV_VENT),
+        ]
 
     ####################
     # Perfective forms #
@@ -545,19 +556,21 @@ def make_verb_slots(fv_class: str) -> List[Tuple[pynini.Fst, features.FeatureVec
     # perfective ventive has class and personal markers
     # perfective itive does not
 
-    pfv_it_suffix = fst(f"-{e_morphome}{LOW_TONE}")
-    pfv_it_stem = compose_stem(HLSTAR_RULE)
+    pfv_it_suffix, pfv_it_stem, pfv_vent_suffix, pfv_vent_stem =\
+        generate_pfv_forms(
+            o_morphome, e_morphome, is_OV, compose_stem, compose_stem_harmony, ipfv_vent_suffix
+        )
 
-    pfv_vent_suffix = ipfv_vent_suffix
-    if is_OV and o_morphome == 'ɔ':
-        pfv_vent_stem = compose_stem_harmony(ALL_LOW_TONE_RULE)
+    if not skip_suffixes:
+        pfv_it_slots=[(paradigms.suffix(pfv_it_suffix, pfv_it_stem), PFV_IT)]
+        pfv_it_slots = add_1pl_incl_r_suffix(pfv_it_slots)
+        pfv_vent_form = paradigms.suffix(pfv_vent_suffix, pfv_vent_stem)
     else:
-        pfv_vent_stem = compose_stem(ALL_LOW_TONE_RULE)
+        pfv_it_slots=[(pfv_it_stem, PFV_IT)]
 
-    pfv_it_slots=[(paradigms.suffix(pfv_it_suffix, pfv_it_stem), PFV_IT)]
-    pfv_it_slots = add_1pl_incl_r_suffix(pfv_it_slots)
-    pfv_vent_form = paradigms.suffix(pfv_vent_suffix, pfv_vent_stem)
-    pfv_vent_slots = add_perfective_ventive_personal_markers(pfv_vent_form)
+    pfv_vent_slots = add_perfective_ventive_personal_markers(
+        pfv_vent_form, skip_suffixes=skip_suffixes
+    )
     pfv_slots = [*pfv_vent_slots, *pfv_it_slots]
 
     ##############
@@ -566,6 +579,52 @@ def make_verb_slots(fv_class: str) -> List[Tuple[pynini.Fst, features.FeatureVec
 
     # only one form, no deixis, class or personal markers
 
+    inf_suffix, inf_stem = generate_inf_forms(
+        a_morphome, is_OV, compose_stem, compose_stem_harmony
+    )
+    if not skip_suffixes:
+        inf_slot = [(paradigms.suffix(inf_suffix, inf_stem), INFINITIVE)]
+    else:
+        inf_slot = [(inf_stem, INFINITIVE)]
+
+    ###################
+    # Dependent forms #
+    ###################
+
+    # dependent forms have specific personal markers
+    # TODO: replace class prefixes with personal markers
+
+    dep_it_suffix, dep_it_stem, dep_vent_suffix, dep_vent_stem = generate_dependent_forms(
+        a_morphome, e_morphome, is_OV, compose_stem, compose_stem_harmony
+    )
+
+    if not skip_suffixes:
+        dep_slots = [
+            (paradigms.suffix(dep_it_suffix, dep_it_stem), DEP_IT),
+            (paradigms.suffix(dep_vent_suffix, dep_vent_stem), DEP_VENT),
+        ]
+    else:
+        dep_slots = [
+            (dep_it_stem, DEP_IT),
+            (dep_vent_stem, DEP_VENT),
+        ]
+    dep_slots = add_class_prefixes_to_slots(dep_slots)
+
+    slots = [root_slot, *imp_slots, *ipfv_slots, *pfv_slots, *inf_slot, *dep_slots]
+    return slots
+
+def generate_dependent_forms(a_morphome, e_morphome, is_OV, compose_stem, compose_stem_harmony):
+    dep_it_suffix = fst(f"-{e_morphome}{LOW_TONE}")
+    dep_it_stem = compose_stem(ALL_LOW_TONE_RULE)
+
+    dep_vent_suffix = fst(f"-{a_morphome}{LOW_TONE}")
+    if is_OV:
+        dep_vent_stem = compose_stem_harmony(ALL_LOW_TONE_RULE)
+    else:
+        dep_vent_stem = dep_it_stem
+    return dep_it_suffix,dep_it_stem,dep_vent_suffix,dep_vent_stem
+
+def generate_inf_forms(a_morphome, is_OV, compose_stem, compose_stem_harmony):
     inf_suffix = fst(f"-{a_morphome}{HIGH_TONE}")
     inf_class = 'ð'
     if is_OV:
@@ -580,39 +639,55 @@ def make_verb_slots(fv_class: str) -> List[Tuple[pynini.Fst, features.FeatureVec
             inf_class,
             prefix_tone=HIGH_TONE,
         ))
-    inf_slot = [(paradigms.suffix(inf_suffix, inf_stem), INFINITIVE)]
+        
+    return inf_suffix,inf_stem
 
-    ###################
-    # Dependent forms #
-    ###################
+def generate_pfv_forms(o_morphome, e_morphome, is_OV, compose_stem, compose_stem_harmony, ipfv_vent_suffix):
+    pfv_it_suffix = fst(f"-{e_morphome}{LOW_TONE}")
+    pfv_it_stem = compose_stem(HLSTAR_RULE)
 
-    # dependent forms have specific personal markers
-    # TODO: replace class prefixes with personal markers
-
-    dep_it_suffix = fst(f"-{e_morphome}{LOW_TONE}")
-    dep_it_stem = compose_stem(ALL_LOW_TONE_RULE)
-
-    dep_vent_suffix = fst(f"-{a_morphome}{LOW_TONE}")
-    if is_OV:
-        dep_vent_stem = compose_stem_harmony(ALL_LOW_TONE_RULE)
+    pfv_vent_suffix = ipfv_vent_suffix
+    if is_OV and o_morphome == 'ɔ':
+        pfv_vent_stem = compose_stem_harmony(ALL_LOW_TONE_RULE)
     else:
-        dep_vent_stem = dep_it_stem
+        pfv_vent_stem = compose_stem(ALL_LOW_TONE_RULE)
+    return pfv_it_suffix,pfv_it_stem,pfv_vent_suffix,pfv_vent_stem
 
-    dep_slots = [
-        (paradigms.suffix(dep_it_suffix, dep_it_stem), DEP_IT),
-        (paradigms.suffix(dep_vent_suffix, dep_vent_stem), DEP_VENT),
-    ]
-    dep_slots = add_class_prefixes_to_slots(dep_slots)
+def generate_ipfv_forms(a_morphome, o_morphome, is_OV, compose_stem, compose_stem_harmony):
+    ipfv_it_suffix=fst(f"-{a_morphome}{LOW_TONE}")
+    if is_OV:
+        ipfv_it_stem = compose_stem_harmony(HLSTAR_RULE)
+    else:
+        ipfv_it_stem = compose_stem(HLSTAR_RULE)
 
-    slots = [root_slot, *imp_slots, *ipfv_slots, *pfv_slots, *inf_slot, *dep_slots]
-    return slots
+    ipfv_vent_suffix=fst(f"-{o_morphome}{HIGH_TONE}")
+    if is_OV and o_morphome == 'ɔ':
+        ipfv_vent_stem = compose_stem_harmony(ALL_LOW_TONE_RULE)
+    else:
+        ipfv_vent_stem = compose_stem(ALL_LOW_TONE_RULE)
+    return ipfv_it_suffix,ipfv_it_stem,ipfv_vent_suffix,ipfv_vent_stem
+
+def generate_imperative_forms(a_morphome, o_morphome, is_OV, compose_stem, compose_stem_harmony):
+    imp_it_suffix=fst(f"-{o_morphome}{HIGH_TONE}")
+    if is_OV and o_morphome == 'ɔ':
+        imp_it_stem=compose_stem_harmony(ALL_HIGH_TONE_RULE)
+    else:
+        imp_it_stem=compose_stem(ALL_HIGH_TONE_RULE)
+
+    imp_vent_suffix=fst(f"-{a_morphome}{HIGH_TONE}")
+    if is_OV:
+        imp_vent_stem=compose_stem_harmony(ALL_LOW_TONE_RULE)
+    else:
+        imp_vent_stem=compose_stem(ALL_LOW_TONE_RULE)
+    return imp_it_suffix,imp_it_stem,imp_vent_suffix,imp_vent_stem
 
 @output_cache(__file__)
 def get_verb_stem_paradigm(
         fv_class: str,
-        stems: Union[str, pynini.Fst, None]=None
+        stems: Union[str, pynini.Fst, None]=None,
+        skip_suffixes: bool=False,
 ) -> paradigms.Paradigm:
-    slots = make_verb_slots(fv_class)
+    slots = make_verb_slots(fv_class, skip_suffixes=skip_suffixes)
     if type(stems) is str:
         stems = [stems]
     
@@ -631,6 +706,14 @@ def get_verb_stem_paradigm(
     )
 
     return fv_paradigm
+
+def get_verb_dstem_paradigm(
+        fv_class: str,
+) -> paradigms.Paradigm:
+    """
+    Wraps `get_verb_stem_paradigm` to generate a verb paradigm with $d$-stem forms only.
+    """
+    return get_verb_stem_paradigm(fv_class, skip_suffixes=True)
 
 @output_cache(__file__)
 def get_aux_paradigm() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
