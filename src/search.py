@@ -249,13 +249,7 @@ def search_verb_form(
     List is sorted by weight in ascending order so that least costly hit is the first item.
     """
 
-    left_factor, right_factor = get_edit_factors(
-        sigma=SIGMA,
-        insertions=INSERTION_COSTS,
-        substitutions=SUBSTITUTION_COSTS,
-        deletions=DELETION_COSTS,
-        bound=edit_bound,
-    )
+    left_factor, right_factor = get_edit_factors(edit_bound=edit_bound)
 
     hits = []
     query_fst = fst(verb_form)@left_factor
@@ -318,13 +312,7 @@ def search_noun_form(
     by weight in ascending order so that least costly hit is the first item.
     """
 
-    left_factor, right_factor = get_edit_factors(
-        sigma=SIGMA,
-        insertions=INSERTION_COSTS,
-        substitutions=SUBSTITUTION_COSTS,
-        deletions=DELETION_COSTS,
-        bound=edit_bound,
-    )
+    left_factor, right_factor = get_edit_factors(edit_bound=edit_bound)
 
     query_fst = fst(noun_form)@left_factor
     query_fst.optimize()
@@ -370,13 +358,7 @@ def search_adjective_form(
     and `weight` is the number of edits per hit. List is sorted
     by weight in ascending order so that least costly hit is the first item.
     """
-    left_factor, right_factor = get_edit_factors(
-        sigma=SIGMA,
-        insertions=INSERTION_COSTS,
-        substitutions=SUBSTITUTION_COSTS,
-        deletions=DELETION_COSTS,
-        bound=edit_bound,
-    )
+    left_factor, right_factor = get_edit_factors(edit_bound=edit_bound)
 
     query_fst = fst(adj_form)@left_factor
     query_fst.optimize()
@@ -421,13 +403,7 @@ def search_uninflected_word(
     `form` is the predicted uninflected form and `weight` is the number of edits per hit.
     List is sorted by weight in ascending order so that least costly hit is the first item.
     """
-    left_factor, right_factor = get_edit_factors(
-        sigma=SIGMA,
-        insertions=INSERTION_COSTS,
-        substitutions=SUBSTITUTION_COSTS,
-        deletions=DELETION_COSTS,
-        bound=edit_bound,
-    )
+    left_factor, right_factor = get_edit_factors(bound=edit_bound)
 
     query_fst = fst(form)@left_factor
     query_fst.optimize()
