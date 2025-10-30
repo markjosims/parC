@@ -11,6 +11,8 @@ from itertools import product
 from typing import *
 from pynini.lib import paradigms
 
+from src.fst_helpers import decode_fst_string
+
 def get_possible_extension_seqs() -> List[Union[str, Tuple[str, str]]]:
     """
     Returns:
@@ -124,6 +126,7 @@ def inflect_verb_with_extension(
         root, fv, extension_seq
     )
     derived_stem = paradigm_no_aux.stems[0]
+    derived_stem = decode_fst_string(derived_stem)
     if expected_verb_type == 'stem':
         return inflect_verb_with_features(derived_stem, paradigm_no_aux, features=features)
     elif expected_verb_type == 'stem_and_aux':
