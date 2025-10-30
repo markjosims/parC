@@ -96,6 +96,13 @@ ROUNDING_HARMONY = pynini.cdrewrite(
     sigma_star=SIGMASTAR,
 ).optimize()
 
+LOCATIVE_ROUNDING_RULE = pynini.cdrewrite(
+    tau=fst("a", "ɔ")|fst("a"),
+    l=fst("ɔ")+T.ques+(C|BOUNDARY).plus,
+    r=T.ques+fst(DENTAL_T),
+    sigma_star=SIGMASTAR,
+).optimize()
+
 ADD_PLACEHOLDER_TBU = pynini.cdrewrite(
     tau=insert_fst(TONE_PLACEHOLDER_STR),
     l=C,

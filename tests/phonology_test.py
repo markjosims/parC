@@ -117,3 +117,21 @@ def test_fall_blocks_h(fall_tone_str, blocked_h_str):
     strings = get_decoded_strings(lattice)
     assert len(strings)==1
     assert strings[0]==blocked_h_str
+
+@pytest.mark.parametrize("unround_str,round_str,do_round", [
+    ("tɔ̀t-át̪", "tɔ̀t-ɔ́t̪", True),
+    ("tɔ̀t-áp", "tɔ̀t-ɔ́p", False),
+    ("kɔ́t̪-àt̪", "kɔ́t̪-ɔ̀t̪", True),
+    ("ɔ̀d-ɛ́t̪", "ɔ̀d-ɔ́t̪", False),
+    ("pát̪-át̪", "pát̪-ɔ́t̪", False),
+])
+def test_locative_rounding(unround_str,round_str,do_round):
+    lattice=rewrite.rewrite_lattice(fst(unround_str), LOCATIVE_ROUNDING_RULE)
+    strings = get_decoded_strings(lattice)
+    if do_round:
+        assert len(strings)==2
+        assert round_str in strings
+        assert unround_str in strings
+    else:
+        assert len(strings)==1
+        assert strings[0]==unround_str
