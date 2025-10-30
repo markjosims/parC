@@ -12,7 +12,8 @@ from src.constants import (
 )
 from typing import *
 
-def build_noun_forms() -> paradigms.Paradigm:
+@output_cache(__file__)
+def get_noun_paradigm() -> paradigms.Paradigm:
     """
     Create Paradigm object for Tira nouns.
     """
@@ -45,8 +46,6 @@ def build_noun_forms() -> paradigms.Paradigm:
     )
     return noun_paradigm
 
-NOUN_PARADIGM = build_noun_forms()
-
 def parse_noun(noun_form: str, add_gloss: bool=True) -> Dict[str, str]:
     """
     Parse an inflected noun form into its lemma and feature values.
@@ -57,7 +56,8 @@ def parse_noun(noun_form: str, add_gloss: bool=True) -> Dict[str, str]:
         parse:      dict with keys 'form', 'lemma', and feature names
     """
     parses = []
-    lemmata = NOUN_PARADIGM.lemmatize(fst(noun_form))
+    noun_paradigm = get_noun_paradigm()
+    lemmata = noun_paradigm.lemmatize(fst(noun_form))
     for root, feature_vec in lemmata:
         root = decode_byte_str(root)
 

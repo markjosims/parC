@@ -6,7 +6,7 @@ search functions to determine if a given verb form matches a particular extensio
 """
 
 from src.constants import EXTENSION_MAP, ABBREVIATION2EXTENSION, BOUNDARY_STR
-from src.form_builders.verb_forms import get_paradigm_for_class, make_verb_w_aux_paradigm, inflect_verb_with_features
+from src.form_builders.verb_forms import get_verb_stem_paradigm, get_verb_paradigm_w_aux, inflect_verb_with_features
 from itertools import product
 from typing import *
 from pynini.lib import paradigms
@@ -93,8 +93,8 @@ def build_paradigm_for_extension(
     Build the full paradigm for a verb with the specified extensions applied.
     """
     derived_stem, derived_fv = get_derived_stem_and_fv(root, fv, extension_seq)
-    paradigm_no_aux = get_paradigm_for_class(stems=derived_stem, fv_class=derived_fv)
-    paradigm_w_aux = make_verb_w_aux_paradigm(paradigm_no_aux)
+    paradigm_no_aux = get_verb_stem_paradigm(stems=derived_stem, fv_class=derived_fv)
+    paradigm_w_aux = get_verb_paradigm_w_aux(paradigm_no_aux)
     return paradigm_no_aux, paradigm_w_aux
 
 def inflect_verb_with_extension(

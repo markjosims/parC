@@ -1,5 +1,5 @@
 import pytest
-from src.form_builders.adjective_forms import ADJECTIVE_PARADIGM, inflect_adjective_with_features, parse_adjective
+from src.form_builders.adjective_forms import get_adjective_paradigm, inflect_adjective_with_features, parse_adjective
 from src.form_builders.form_helpers import generate_forms
 from src.form_builders.uninflected_forms import parse_uninflected_word
 from src.form_builders.verb_forms import *
@@ -13,7 +13,7 @@ def test_compile_regular_paradigms(verb_root, fv_class):
         # skipping irregular verbs for now
         return
     try:
-        forms = generate_forms(verb_root, FV2PARADIGM[fv_class], action='return')
+        forms = generate_forms(verb_root, get_verb_stem_paradigm(fv_class), action='return')
         assert len(forms) >= VERB_PARADIGM_SIZE
     except Exception as error:
         print(verb_root, fv_class)

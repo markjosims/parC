@@ -10,7 +10,7 @@ from src.phonology import *
 from src.fst_helpers import *
 from src.lexicon import get_roots_for_class, get_all_verb_roots_and_fvs, get_gloss_for_verb
 from src.glossing import REMOVE_HOMOPHONE_TAG
-from src.constants import INFLECTED_VERBS_PATH, INFLECTED_VERB
+from src.constants import INFLECTED_VERBS_PATH, INFLECTED_VERB, FV_CLASSES
 from typing import *
 import random
 
@@ -608,7 +608,7 @@ def make_verb_slots(fv_class: str) -> List[Tuple[pynini.Fst, features.FeatureVec
     return slots
 
 @output_cache(__file__)
-def get_paradigm_for_class(
+def get_verb_stem_paradigm(
         fv_class: str,
         stems: Union[str, pynini.Fst, None]=None
 ) -> paradigms.Paradigm:
@@ -632,27 +632,8 @@ def get_paradigm_for_class(
 
     return fv_paradigm
 
-AO_PARADIGM = get_paradigm_for_class("aɔ")
-AQ_PARADIGM = get_paradigm_for_class("ao")
-AU_PARADIGM = get_paradigm_for_class("au")
-AI_PARADIGM = get_paradigm_for_class("ai")
-OO_PARADIGM = get_paradigm_for_class("ɔɔ")
-OU_PARADIGM = get_paradigm_for_class("ɔu")
-OI_PARADIGM = get_paradigm_for_class("ɔi")
-
-FV2PARADIGM = {
-    "aɔ": AO_PARADIGM,
-    "ao": AQ_PARADIGM,
-    "au": AU_PARADIGM,
-    "ai": AI_PARADIGM,
-    "ɔɔ": OO_PARADIGM,
-    "ɔu": OU_PARADIGM,
-    "ɔi": OI_PARADIGM,
-}
-PARADIGM2FV = {v:k for v,k in FV2PARADIGM.items()}
-
 @output_cache(__file__)
-def make_aux_paradigm() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+def get_aux_paradigm() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
     aux_slots = []
     aux_slots.extend(build_itive_perfective_aux_forms())
     aux_slots.extend(build_imperfective_aux_forms())
@@ -673,16 +654,15 @@ def make_aux_paradigm() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
     )
     return aux_paradigm
 
-AUX_PARADIGM = make_aux_paradigm()
-
 @output_cache(__file__)
-def make_verb_w_aux_paradigm(
+def get_verb_paradigm_w_aux(
         verb_paradigm: Union[str, paradigms.Paradigm]
 ) -> paradigms.Paradigm:
+    aux_paradigm = get_aux_paradigm()
     verb_w_aux_slots = []
     if type(verb_paradigm) is str:
-        verb_paradigm = FV2PARADIGM[verb_paradigm]
-    for aux_rule, feature_vector in AUX_PARADIGM.slots:
+        verb_paradigm = get_verb_stem_paradigm(verb_paradigm)
+    for aux_rule, feature_vector in aux_paradigm.slots:
         new_feature_values = feature_vector.values.copy()
         # certain pronouns can trigger H-tone spreading from aux to ventive verbs
         ventive_allows_hspread = (
@@ -733,34 +713,9 @@ def make_verb_w_aux_paradigm(
     )
     return verb_w_aux_paradigm
 
-AO_PARADIGM_W_AUX = make_verb_w_aux_paradigm("aɔ")
-AQ_PARADIGM_W_AUX = make_verb_w_aux_paradigm("ao")
-AU_PARADIGM_W_AUX = make_verb_w_aux_paradigm("au")
-AI_PARADIGM_W_AUX = make_verb_w_aux_paradigm("ai")
-OO_PARADIGM_W_AUX = make_verb_w_aux_paradigm("ɔɔ")
-OU_PARADIGM_W_AUX = make_verb_w_aux_paradigm("ɔu")
-OI_PARADIGM_W_AUX = make_verb_w_aux_paradigm("ɔi")
-
-FV2PARADIGM_W_AUX = {
-    "aɔ": AO_PARADIGM_W_AUX,
-    "ao": AQ_PARADIGM_W_AUX,
-    "au": AU_PARADIGM_W_AUX,
-    "ai": AI_PARADIGM_W_AUX,
-    "ɔɔ": OO_PARADIGM_W_AUX,
-    "ɔu": OU_PARADIGM_W_AUX,
-    "ɔi": OI_PARADIGM_W_AUX,
-}
-PARADIGM_W_AUX2FV = {v:k for v,k in FV2PARADIGM_W_AUX.items()}
-
-ALL_VERB_PARADIGMS = {
-    'aux': AUX_PARADIGM,
-    **{k+'_aux':v for k, v in FV2PARADIGM_W_AUX.items()},
-    **FV2PARADIGM,
-}
-
 def debug_paradigm(root, paradigm):
     if type(paradigm) is str:
-        paradigm = FV2PARADIGM[paradigm]
+        paradigm = get_verb_stem_paradigm(paradigm)
     for rule, feature_vector in paradigm.slots:
         try:
             form = decode_fst_string(fst(root)@rule)
@@ -773,7 +728,7 @@ def inflect_random_verb(fv_class: Optional[str]=None):
         fv_class = random.choice(FV_CLASSES)
     root = random.choice(get_roots_for_class(fv_class))
     print(root, fv_class)
-    generate_forms(root, FV2PARADIGM[fv_class])
+    generate_forms(root, get_verb_stem_paradigm(fv_class))
 
 def inflect_verb_with_features(
         root: str,
@@ -794,19 +749,19 @@ def inflect_verb_with_features(
     if type(paradigm) is paradigms.Paradigm:
         pass
     elif type(paradigm) is str and expected_verb_type == 'stem_and_aux':
-        paradigm = FV2PARADIGM_W_AUX[paradigm]
+        paradigm = get_verb_paradigm_w_aux(paradigm)
     elif type(paradigm) is str and expected_verb_type == 'stem':
-        paradigm = FV2PARADIGM[paradigm]
+        paradigm = get_verb_stem_paradigm(paradigm)
     else:
         forms_stem = inflect_verb_with_features(
             root,
-            FV2PARADIGM[paradigm],
+            get_verb_stem_paradigm(paradigm),
             features,
             expected_verb_type='stem'
         )
         forms_aux = inflect_verb_with_features(
             root,
-            FV2PARADIGM_W_AUX[paradigm],
+            get_verb_paradigm_w_aux(paradigm),
             features,
             expected_verb_type='stem_and_aux'
         )
@@ -833,9 +788,10 @@ def inflect_aux_with_features(
         form:       list of strs of auxiliary inflected with given features
     """
     forms = []
+    aux_paradigm = get_aux_paradigm()
     expected_keys = [feature.name for feature in INFLECTED_AUX.features]
     features_filtered = {k:v for k,v in features.items() if k in expected_keys}
-    slot_for_features = [slot for slot in AUX_PARADIGM.slots if slot[1].values == features_filtered]
+    slot_for_features = [slot for slot in aux_paradigm if slot[1].values == features_filtered]
     for slot in slot_for_features:
         rule, _ = slot
         form = decode_fst_string(fst("")@rule)
@@ -846,19 +802,20 @@ def inflect_aux_with_features(
 def get_inflected_paradigm_for_verb(
         root: str,
         paradigm: Union[paradigms.Paradigm, str],
+        fv_class: Optional[str]=None,
 ) -> Dict[str, Any]:
     """
     Arguments:
         root:               str indicating verb root to inflect
         paradigm:           Paradigm object or str of FV class shorthand e.g. 'aɔ'
+        fv_class:           Optional str of FV class shorthand e.g. 'aɔ'. If given, overrides
+                            the fv_class inferred from the paradigm.
     Returns:
         inflected_paradigm: dict mapping feature values to inflected forms of the verb
     """
     if type(paradigm) is str:
         fv_class = paradigm
-        paradigm = FV2PARADIGM[paradigm]
-    else:
-        fv_class = PARADIGM2FV[paradigm]
+        paradigm = get_verb_stem_paradigm(paradigm)
     gloss = get_gloss_for_verb(root)
     inflected_paradigm = {"root": root, "fv": fv_class, "gloss": gloss}
 
@@ -911,15 +868,15 @@ def parse_inflected_verb(
 
     if expected_verb_type == 'aux':
         # only one paradigm for auxiliaries
-        paradigm = AUX_PARADIGM
+        paradigm = get_aux_paradigm()
     elif paradigm is None:
-        for fv in FV2PARADIGM.keys():
+        for fv in FV_CLASSES:
             parses_for_fv = parse_inflected_verb(form, fv, add_gloss, expected_verb_type)
             parses.extend(parses_for_fv)
     if type(paradigm) is str and expected_verb_type == 'stem':
-        paradigm = FV2PARADIGM[paradigm]
+        paradigm = get_verb_stem_paradigm(paradigm)
     elif type(paradigm) is str and expected_verb_type == 'stem_and_aux':
-        paradigm = FV2PARADIGM_W_AUX[paradigm]
+        paradigm = get_verb_paradigm_w_aux(paradigm)
     elif type(paradigm) is str and expected_verb_type == 'auto':
         # try all possible verb types
         for verb_type in ['stem', 'aux', 'stem_and_aux']:
@@ -956,7 +913,7 @@ def main():
     for stem, fv_class in get_all_verb_roots_and_fvs():
         if fv_class=='IRREG':
             continue
-        wordforms = generate_forms(stem, FV2PARADIGM[fv_class], action='return', parse=True)
+        wordforms = generate_forms(stem, get_verb_stem_paradigm(fv_class), action='return', parse=True)
         rows.extend(wordforms)
     df = pd.DataFrame(rows)
     df.to_csv(INFLECTED_VERBS_PATH, index=False)

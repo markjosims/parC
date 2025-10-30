@@ -1,12 +1,13 @@
 from src.glossing import REMOVE_HOMOPHONE_TAG
-from src.fst_helpers import decode_byte_str, fst, decode_fst_string
+from src.fst_helpers import decode_byte_str, fst, cache_fst
 from src.lexicon import get_pos_and_gloss_for_uninflected_word, get_uninflected_word_data
 import pynini
 from pynini.lib import rewrite
 from typing import *
 import pandas as pd
 
-def build_uninflected_word_fst() -> pynini.Fst:
+@cache_fst(__file__)
+def get_uninflected_word_fst() -> pynini.Fst:
     """
     Build an FST accepting uninflected words and mapping homophones
     to strings with homophone tags.
@@ -22,8 +23,6 @@ def build_uninflected_word_fst() -> pynini.Fst:
     word_fst = pynini.union(*word_fsts).optimize()
     return word_fst
 
-UNINFLECTED_WORD_FST = build_uninflected_word_fst()
-
 def parse_uninflected_word(form: str) -> List[Dict[str, str]]:
     """
     Wraps `get_pos_and_gloss_for_uninflected_word` to provide a consistent
@@ -37,7 +36,8 @@ def parse_uninflected_word(form: str) -> List[Dict[str, str]]:
         parse:  A dictionary with keys 'root', 'form', 'part_of_speech', and 'gloss'.
     """
     parses = []
-    lattice = (fst(form) @ UNINFLECTED_WORD_FST).project('output')
+    uninflected_word_fst = get_uninflected_word_fst()
+    lattice = (fst(form) @ uninflected_word_fst).project('output')
     roots = rewrite.lattice_to_strings(lattice)
     for root in roots:
         root = decode_byte_str(root)

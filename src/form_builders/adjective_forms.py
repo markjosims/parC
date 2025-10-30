@@ -4,10 +4,11 @@ from src.lexicon import get_adjective_roots, get_gloss_for_adjective, get_all_ad
 from src.form_builders.form_helpers import add_class_prefix, add_class_prefixes_to_slots
 from src.constants import ADJECTIVE, ADJECTIVE_ROOT, ADJECTIVE_CLASS_VALUES, BOUNDARY_STR
 from src.phonology import ALL_LOW_TONE_RULE, SIGMASTAR
-from src.fst_helpers import decode_byte_str, decode_fst_string, fst
+from src.fst_helpers import decode_byte_str, decode_fst_string, fst, output_cache
 import pandas as pd
 
-def build_adjective_forms() -> paradigms.Paradigm:
+@output_cache(__file__)
+def get_adjective_paradigm() -> paradigms.Paradigm:
     adj_df = get_all_adjective_data(return_type=pd.DataFrame)
     adj_lemmata = get_adjective_roots(wrap_w_fsa=True)
 
@@ -26,8 +27,6 @@ def build_adjective_forms() -> paradigms.Paradigm:
     )
     return adj_paradigm
 
-ADJECTIVE_PARADIGM = build_adjective_forms()
-
 def parse_adjective(form: str, add_gloss: bool=True) -> Dict[str, str]:
     """
     Arguments:
@@ -36,8 +35,9 @@ def parse_adjective(form: str, add_gloss: bool=True) -> Dict[str, str]:
     """
     parses = []
 
-    lemmata = ADJECTIVE_PARADIGM.lemmatize(fst(form))
-    analyzed_forms = ADJECTIVE_PARADIGM.analyze(fst(form))
+    adjective_paradigm = get_adjective_paradigm()
+    lemmata = adjective_paradigm.lemmatize(fst(form))
+    analyzed_forms = adjective_paradigm.analyze(fst(form))
     for lemma, analyzed_form in zip(lemmata, analyzed_forms):
         root, feature_vec = lemma
         root = decode_byte_str(root)
@@ -62,8 +62,9 @@ def inflect_adjective_with_features(root: str, agree_class: str) -> str:
     Returns:
         form:       str of root adjective inflected with given features
     """
+    adjective_paradigm = get_adjective_paradigm()
     slot_for_class = [
-        slot for slot in ADJECTIVE_PARADIGM.slots if slot[1].values['class'] == agree_class
+        slot for slot in adjective_paradigm.slots if slot[1].values['class'] == agree_class
     ][0]
     rule, _ = slot_for_class
     form = decode_fst_string(fst(root)@rule)
