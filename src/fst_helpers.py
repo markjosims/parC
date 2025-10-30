@@ -333,18 +333,18 @@ def get_hashable_args_str(args, kwargs):
     Raises:
         TypeError: If any argument is not hashable.
     """
-    args_for_key = args[:]
+    args_for_key = list(args)
     kwargs_for_key = kwargs.copy()
-    for i, arg in enumerate(args_for_key[:]):
+    for i, arg in enumerate(args):
         if type(arg) is list:
             arg = tuple(sorted(arg))
-        if type(arg) is paradigms.Paradigm:
+        elif type(arg) is paradigms.Paradigm:
                 # Paradigm objects are not hashable, so use their name
             arg = arg.name
             args_for_key[i] = arg
         if not isinstance(arg, (str, int, float, bool)):
             raise TypeError
-    for key, value in kwargs_for_key.items():
+    for key, value in kwargs.items():
         if type(value) is list:
             value = tuple(sorted(value))
             kwargs_for_key[key] = value
