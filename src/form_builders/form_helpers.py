@@ -94,7 +94,7 @@ def add_class_prefixes_to_slots(slot_list, include_ng:bool=False):
 def generate_forms(
         stem: str,
         paradigm: paradigms.Paradigm,
-        action: Literal['print', 'return', 'save_to_tmp']='print',
+        action: Literal['print', 'return', 'save_to_tmp']='save_to_tmp',
         parse: bool=False
 ):
     """
