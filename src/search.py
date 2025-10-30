@@ -249,24 +249,24 @@ def search_verb_form(
     List is sorted by weight in ascending order so that least costly hit is the first item.
     """
 
-    left_factor, right_factor = get_edit_factors(edit_bound=edit_bound)
+    left_factor, right_factor = get_edit_factors(bound=edit_bound)
 
     hits = []
     query_fst = fst(verb_form)@left_factor
     query_fst.optimize()
 
-    stem_paradigms = {fv: lambda: get_verb_stem_paradigm(fv) for fv in FV_CLASSES}
-    stem_and_aux_paradigms = {fv: lambda: get_verb_paradigm_w_aux(fv) for fv in FV_CLASSES}
+    stem_paradigms = [lambda: get_verb_stem_paradigm(fv) for fv in FV_CLASSES]
+    stem_and_aux_paradigms = [lambda: get_verb_paradigm_w_aux(fv) for fv in FV_CLASSES]
     if expected_verb_type == 'auto':
-        paradigms_to_search = {**stem_paradigms, **stem_and_aux_paradigms, 'aux': get_aux_paradigm}
+        paradigms_to_search = [*stem_paradigms, *stem_and_aux_paradigms, get_aux_paradigm]
     elif expected_verb_type == 'aux':
-        paradigms_to_search = {'aux': get_aux_paradigm}
+        paradigms_to_search = [get_aux_paradigm]
     elif expected_verb_type == 'stem_and_aux':
         paradigms_to_search = stem_and_aux_paradigms
     else:  # 'stem'
         paradigms_to_search = stem_paradigms
 
-    for paradigm_tag, paradigm_f in paradigms_to_search.items():
+    for paradigm_f in paradigms_to_search:
         paradigm = paradigm_f()
         # since we cannot know ahead of time what paradigm nbest hits will come from
         # get nbest hits for each paradigm individually, then filter later
@@ -286,7 +286,9 @@ def search_verb_form(
             fv_hits = _parse_hits(hits_for_paradigm, num_hits, parse_verb_funct)
             hits.extend(fv_hits)
         else:
-            fv = paradigm_tag.split('_')[0]
+            paradigm_name_parts = paradigm.name.split()
+            fv_part = [part for part in paradigm_name_parts if part.startswith('fv=')]
+            fv = fv_part[0].split('=')[1] if fv_part else None
             hits.extend([({'form': hit, 'fv': fv}, weight) for hit, weight in hits_for_paradigm])
     hits.sort(key=lambda hit_tuple: hit_tuple[-1])
     nbest_hits = hits[:num_hits]
@@ -312,7 +314,7 @@ def search_noun_form(
     by weight in ascending order so that least costly hit is the first item.
     """
 
-    left_factor, right_factor = get_edit_factors(edit_bound=edit_bound)
+    left_factor, right_factor = get_edit_factors(bound=edit_bound)
 
     query_fst = fst(noun_form)@left_factor
     query_fst.optimize()
@@ -358,7 +360,7 @@ def search_adjective_form(
     and `weight` is the number of edits per hit. List is sorted
     by weight in ascending order so that least costly hit is the first item.
     """
-    left_factor, right_factor = get_edit_factors(edit_bound=edit_bound)
+    left_factor, right_factor = get_edit_factors(bound=edit_bound)
 
     query_fst = fst(adj_form)@left_factor
     query_fst.optimize()
@@ -477,7 +479,7 @@ def search_parse(
         hits = search_function(
             form,
             num_hits=num_hits,
-            edit_bound=edit_bound,
+            bound=edit_bound,
             return_parse=True,
         )
         if pos!='uninflected':
