@@ -56,7 +56,7 @@ def ingest_data(df: pd.DataFrame, db: Session):
                         Lexeme.part_of_speech == part_of_speech,
                     ).first()
                     if not lexeme:
-                        raise ValueError(f"Lexeme not found for root {parse['root']} and part_of_speech {part_of_speech}")
+                        raise ValueError(f"PostgreSQL: Lexeme not found for root {parse['root']} and part_of_speech {part_of_speech}")
 
                     new_parse = Parse(
                         wordform_id=wordform.id,
