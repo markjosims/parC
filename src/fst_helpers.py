@@ -8,6 +8,7 @@ from functools import wraps
 import hashlib
 import pickle
 import unicodedata
+from time import time
 
 # symbol table wrappers
 
@@ -420,6 +421,7 @@ def output_cache(current_file: str, cache_dir=".cache/") -> Any:
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            start_time = time()
             os.makedirs(cache_dir, exist_ok=True)
             try:
                 args_str = get_hashable_args_str(args, kwargs)
@@ -430,6 +432,8 @@ def output_cache(current_file: str, cache_dir=".cache/") -> Any:
                     f"with args {args} and kwargs {kwargs} without caching (unhashable args): {e}"
                 )
                 out = func(*args, **kwargs)
+                end_time = time()
+                print(f"Function {func.__name__} took {end_time - start_time} seconds")
                 return out
             cache_key = hashlib.md5((func.__name__ + args_str).encode()).hexdigest()
             cache_path = os.path.join(
@@ -443,12 +447,16 @@ def output_cache(current_file: str, cache_dir=".cache/") -> Any:
                         f"with args {args_str} from cache {cache_path}"
                     )
                     out = pickle.load(f)
+                    end_time = time()
+                    print(f"Loading cache took {end_time - start_time} seconds")
             else:
                 print(
                     f"Building output for function {func.__name__} "+\
                     f"with args {args_str} and cache {cache_path}"
                 )
                 out = func(*args, **kwargs)
+                end_time = time()
+                print(f"Function {func.__name__} took {end_time - start_time} seconds")
                 with open(cache_path, 'wb') as f:
                     pickle.dump(out, f)
             return out
