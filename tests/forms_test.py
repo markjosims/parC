@@ -13,7 +13,7 @@ def test_compile_regular_paradigms(verb_root, fv_class):
         # skipping irregular verbs for now
         return
     try:
-        forms = generate_forms(verb_root, get_verb_stem_paradigm(fv_class), action='return')
+        forms = generate_forms(verb_root, get_verb_stem_paradigm(fv_class))
         assert len(forms) >= VERB_PARADIGM_SIZE
     except Exception as error:
         print(verb_root, fv_class)
