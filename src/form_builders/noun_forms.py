@@ -1,6 +1,7 @@
 import pandas as pd
 import pynini
 from pynini.lib import features, paradigms, rewrite, pynutil
+from src.cache_decorators import output_cache
 from src.phonology import *
 from src.fst_helpers import *
 from src.lexicon import NOUNS_DF, get_all_noun_data, get_noun_lemmata, get_gloss_for_noun

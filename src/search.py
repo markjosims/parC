@@ -2,6 +2,7 @@ import pynini
 from pynini.lib import pynutil
 
 from typing import *
+from src.cache_decorators import output_cache
 from src.form_builders.adjective_forms import get_adjective_paradigm, parse_adjective
 from src.form_builders.uninflected_forms import get_uninflected_word_fst, parse_uninflected_word
 from src.form_builders.verb_forms import (
