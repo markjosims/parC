@@ -5,6 +5,7 @@ import pytest
 from src.fst_helpers import *
 from src.phonology import V, SIGMA
 from src.lexicon import (
+    get_gold_derived_verbs,
     get_gold_nouns,
     get_gold_verbs,
     get_gold_uninflected_words,
@@ -131,6 +132,55 @@ def test_search_verb_form(gold_verb):
     top_fvs = [hit_obj['fv'] for hit_obj in hit_objs]
     assert gold_form in top_forms
     assert gold_fv in top_fvs
+
+@pytest.mark.parametrize("gold_verb", get_gold_derived_verbs())
+def test_search_dstem(gold_verb):
+    gold_root = gold_verb['root']
+    gold_form = gold_verb['form']
+    gold_form = gold_form.replace('-', '')
+    fuzzy_form = gold_verb['fuzzy_form']
+    num_hits = 10
+
+    # first test if we can match the root from the gold derived form
+    hits = search_verb_form(gold_form, num_hits=num_hits, return_parse=False, expected_verb_type='d-stem')
+
+    assert len(hits) >= 1
+    hit_objs = [hit[0] for hit in hits]
+    top_roots = [hit_obj['root'] for hit_obj in hit_objs]
+    assert gold_root in top_roots
+
+    # now test if we can match the fuzzy form
+    hits = search_verb_form(fuzzy_form, num_hits=num_hits, return_parse=False, expected_verb_type='d-stem')
+    
+    assert len(hits) >= 1
+    hit_objs = [hit[0] for hit in hits]
+    top_roots = [hit_obj['root'] for hit_obj in hit_objs]
+    assert gold_root in top_roots
+
+@pytest.mark.parametrize("gold_verb", get_gold_derived_verbs())
+def test_search_derived_verb(gold_verb):
+    gold_form = gold_verb['form']
+    gold_form = gold_form.replace('-', '')
+    fuzzy_form = gold_verb['fuzzy_form']
+    num_hits = 10
+
+    if ' ' in gold_form:
+        expected_verb_type = 'derived_stem_and_aux'
+    else:
+        expected_verb_type = 'derived_stem'
+
+    hits = search_verb_form(
+        fuzzy_form,
+        num_hits=num_hits,
+        return_parse=False,
+        expected_verb_type='auto'
+    )
+
+    assert len(hits) >= 1
+    hit_objs = [hit[0] for hit in hits]
+    top_forms = [hit_obj['form'] for hit_obj in hit_objs]
+    assert gold_form in top_forms
+    breakpoint()
 
 @pytest.mark.parametrize("gold_noun", get_gold_nouns())
 def test_search_noun_form(gold_noun):

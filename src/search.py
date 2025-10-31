@@ -10,6 +10,8 @@ from src.form_builders.verb_forms import (
     get_aux_paradigm, get_verb_paradigm_w_aux,
     get_verb_dstem_paradigm, get_verb_dstem_paradigm_w_aux,
 )
+from src.form_builders.noun_forms import get_noun_paradigm, parse_noun
+from src.form_builders.derived_verb_forms import get_paradigms_for_all_extensions
 from src.fst_helpers import *
 from src.constants import (
     INSERT, DELETE, SUBSTITUTE,
@@ -17,10 +19,9 @@ from src.constants import (
     DEFAULT_EDIT_BOUND, FV_CLASSES,
 )
 from src.phonology import (
-    SIGMA, INSERTION_COSTS, DELETION_COSTS, SIGMASTAR, SUBSTITUTION_COSTS,
+    SIGMA, INSERTION_COSTS, DELETION_COSTS, SUBSTITUTION_COSTS,
     INSERT_HYPHEN_RULE
 )
-from src.form_builders.noun_forms import get_noun_paradigm, parse_noun
 
 # ----------------------------------- #
 # functions for building search graph #
@@ -236,16 +237,33 @@ def _get_substitution_graph(
 
 def retrieve_verb_paradigms(expected_verb_type):
     if expected_verb_type == 'd-stem':
-        d_stem_paradigms = [lambda: get_verb_dstem_paradigm(fv) for fv in FV_CLASSES]
-        d_stem_paradigms_w_aux = [lambda: get_verb_dstem_paradigm_w_aux(fv) for fv in FV_CLASSES]
-        return [*d_stem_paradigms, *d_stem_paradigms_w_aux]
+        stem_paradigms = (get_verb_dstem_paradigm(fv) for fv in FV_CLASSES)
+        stem_and_aux_paradigms = (get_verb_dstem_paradigm_w_aux(fv) for fv in FV_CLASSES)
+        return (*stem_paradigms, *stem_and_aux_paradigms)
 
-    stem_paradigms = [lambda: get_verb_stem_paradigm(fv) for fv in FV_CLASSES]
-    stem_and_aux_paradigms = [lambda: get_verb_paradigm_w_aux(fv) for fv in FV_CLASSES]
+    stem_paradigms = (get_verb_stem_paradigm(fv) for fv in FV_CLASSES)
+    stem_and_aux_paradigms = (get_verb_paradigm_w_aux(fv) for fv in FV_CLASSES)
+    derived_verb_paradigms = get_paradigms_for_all_extensions()
+    derived_stem_paradigms = (
+        stem_paradigm for stem_paradigm, _ in derived_verb_paradigms.values()
+    )
+    derived_stem_and_aux_paradigms = (
+        stem_and_aux_paradigm for _, stem_and_aux_paradigm in derived_verb_paradigms.values()
+    )
     if expected_verb_type == 'auto':
-        paradigms_to_search = [*stem_paradigms, *stem_and_aux_paradigms, get_aux_paradigm]
+        paradigms_to_search = (
+            *stem_paradigms,
+            *stem_and_aux_paradigms,
+            *derived_stem_paradigms,
+            *derived_stem_and_aux_paradigms,
+            get_aux_paradigm()
+    )
     elif expected_verb_type == 'aux':
-        paradigms_to_search = [get_aux_paradigm]
+        paradigms_to_search = (get_aux_paradigm(),)
+    elif expected_verb_type == 'derived_stem':
+        paradigms_to_search = derived_stem_paradigms
+    elif expected_verb_type == 'derived_stem_and_aux':
+        paradigms_to_search = derived_stem_and_aux_paradigms
     elif expected_verb_type == 'stem_and_aux':
         paradigms_to_search = stem_and_aux_paradigms
     else:  # 'stem'
@@ -258,7 +276,9 @@ def search_verb_form(
         edit_bound: int = 5,
         return_parse: bool = True,
         expected_verb_type: Literal[
-            'stem', 'aux', 'stem_and_aux', 'auto', 'd-stem'
+            'stem', 'aux', 'stem_and_aux',
+            'derived_stem', 'derived_stem_and_aux',
+            'auto', 'd-stem',
         ]='auto',
     ) -> List[Tuple[Dict[str, Any], float]]:
     """
@@ -281,15 +301,18 @@ def search_verb_form(
     query_fst.optimize()
 
     paradigms_to_search = retrieve_verb_paradigms(expected_verb_type)
-
-    for paradigm_f in paradigms_to_search:
-        paradigm = paradigm_f()
+    for paradigm in paradigms_to_search:
         # since we cannot know ahead of time what paradigm nbest hits will come from
         # get nbest hits for each paradigm individually, then filter later
         paradigm_lattice = paradigm.lemmatizer
         paradigm_lattice = pynini.project(paradigm_lattice, 'input')
         if expected_verb_type == 'd-stem':
-            paradigm_lattice+=SIGMASTAR  # allow for d-stem extensions
+            weighted_sigmastar = fst(SIGMA, weight=1).closure()
+            insert_separator_lattice=paradigm_lattice+insert_fst(SEARCH_SEPARATOR_STR)+weighted_sigmastar
+            trim_separator_lattice=paradigm_lattice+delete_fst(SEARCH_SEPARATOR_STR)+delete_fst(SIGMA).closure()
+            insert_separator_lattice.optimize()
+            trim_separator_lattice.optimize()
+            paradigm_lattice+=weighted_sigmastar
         paradigm_lattice.optimize()
         search_lattice = query_fst@right_factor@paradigm_lattice
         search_lattice.optimize()
@@ -300,14 +323,30 @@ def search_verb_form(
             use_byte_tokens=True,
         )
         if return_parse:
-            parse_verb_funct = lambda form: parse_inflected_verb(form, paradigm=paradigm)
+            parse_verb_funct = lambda form: parse_inflected_verb(
+                form,
+                paradigm=paradigm,
+                expected_verb_type=expected_verb_type,
+            )
             fv_hits = _parse_hits(hits_for_paradigm, num_hits, parse_verb_funct)
             hits.extend(fv_hits)
         else:
             paradigm_name_parts = paradigm.name.split()
             fv_part = [part for part in paradigm_name_parts if part.startswith('fv=')]
             fv = fv_part[0].split('=')[1] if fv_part else None
-            hits.extend([({'form': hit, 'fv': fv}, weight) for hit, weight in hits_for_paradigm])
+            hits_w_fv = [({'form': hit, 'fv': fv}, weight) for hit, weight in hits_for_paradigm]
+            if expected_verb_type == 'd-stem':
+                for hit in hits_w_fv:
+                    form = hit[0]['form']
+                    separated_dstem_fsa = fst(form)@insert_separator_lattice
+                    separated_dstem_fsa.project('output')
+                    trimmed_dstem_fsa = separated_dstem_fsa@trim_separator_lattice
+                    trimmed_dstem = decode_fst_string(pynini.shortestpath(trimmed_dstem_fsa))
+                    lemmata = paradigm.lemmatize(fst(trimmed_dstem))
+                    lemma, _ = lemmata[0] # take first lemma
+                    root = decode_byte_str(lemma)
+                    hit[0]['root'] = root
+            hits.extend(hits_w_fv)
     hits.sort(key=lambda hit_tuple: hit_tuple[-1])
     nbest_hits = hits[:num_hits]
     return nbest_hits
