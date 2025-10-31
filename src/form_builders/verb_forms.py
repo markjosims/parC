@@ -567,6 +567,7 @@ def make_verb_slots(
         pfv_vent_form = paradigms.suffix(pfv_vent_suffix, pfv_vent_stem)
     else:
         pfv_it_slots=[(pfv_it_stem, PFV_IT)]
+        pfv_vent_form = pfv_vent_stem
 
     pfv_vent_slots = add_perfective_ventive_personal_markers(
         pfv_vent_form, skip_suffixes=skip_suffixes
@@ -713,17 +714,6 @@ def get_verb_stem_paradigm(
 
     return fv_paradigm
 
-def get_verb_dstem_paradigm(
-        fv_class: str,
-        paradigm_name: Optional[str]=None
-) -> paradigms.Paradigm:
-    """
-    Wraps `get_verb_stem_paradigm` to generate a verb paradigm with $d$-stem forms only.
-    """
-    if paradigm_name is None:
-        paradigm_name = f"fv={fv_class} stem=d-stem"
-    return get_verb_stem_paradigm(fv_class, skip_suffixes=True, paradigm_name=paradigm_name)
-
 @output_cache(__file__)
 def get_aux_paradigm() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
     aux_slots = []
@@ -749,11 +739,12 @@ def get_aux_paradigm() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
 @output_cache(__file__)
 def get_verb_paradigm_w_aux(
         verb_paradigm: Union[str, paradigms.Paradigm],
+        **paradigm_kwargs,
 ) -> paradigms.Paradigm:
     aux_paradigm = get_aux_paradigm()
     verb_w_aux_slots = []
     if type(verb_paradigm) is str:
-        verb_paradigm = get_verb_stem_paradigm(verb_paradigm)
+        verb_paradigm = get_verb_stem_paradigm(verb_paradigm, **paradigm_kwargs)
     for aux_rule, feature_vector in aux_paradigm.slots:
         new_feature_values = feature_vector.values.copy()
         # certain pronouns can trigger H-tone spreading from aux to ventive verbs
@@ -805,6 +796,33 @@ def get_verb_paradigm_w_aux(
         boundary=BOUNDARY,
     )
     return verb_w_aux_paradigm
+
+def get_verb_dstem_paradigm(
+        fv_class: str,
+        paradigm_name: Optional[str]=None
+) -> paradigms.Paradigm:
+    """
+    Wraps `get_verb_stem_paradigm` to generate a verb paradigm with $d$-stem forms only.
+    """
+    if paradigm_name is None:
+        paradigm_name = f"fv={fv_class} stem=d-stem"
+    return get_verb_stem_paradigm(fv_class, skip_suffixes=True, paradigm_name=paradigm_name)
+
+def get_verb_dstem_paradigm_w_aux(
+        fv_class: str,
+        paradigm_name: Optional[str]=None
+) -> paradigms.Paradigm:
+    """
+    Wraps `get_verb_paradigm_w_aux` to generate a verb paradigm with $d$-stem forms only.
+    """
+    if paradigm_name is None:
+        paradigm_name = f"fv={fv_class} stem=d-stem"
+    return get_verb_paradigm_w_aux(
+        fv_class,
+        stems=None,
+        skip_suffixes=True,
+        paradigm_name=paradigm_name
+    )
 
 def debug_paradigm(root, paradigm):
     if type(paradigm) is str:
