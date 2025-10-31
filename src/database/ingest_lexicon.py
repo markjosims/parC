@@ -26,6 +26,21 @@ def ingest_verbs(df: pd.DataFrame, db: Session):
         db.add(new_lexeme)
         num_added += 1
         db.flush()
+    # special case: add TAMD aux
+    existing_tamd = db.query(Lexeme).filter(
+        Lexeme.root == 'ŋgá',
+        Lexeme.part_of_speech == 'verb',
+    ).first()
+    if not existing_tamd:
+        tamd_lexeme = Lexeme(
+            root='ŋgá',
+            part_of_speech='verb',
+            gloss='aux',
+            lexical_info={},
+        )
+        db.add(tamd_lexeme)
+        num_added += 1
+        db.flush()
     db.commit()
     print(f"{num_added} verbs added successfully")
 
