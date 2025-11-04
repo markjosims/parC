@@ -48,24 +48,7 @@ def ingest_data(df: pd.DataFrame, db: Session):
                     db.flush()
                 wordform_cache[word_str] = wordform
 
-                parses = search_parse(word_str)
-                for parse, weight in parses:
-                    part_of_speech = parse['part_of_speech']
-                    lexeme = db.query(Lexeme).filter(
-                        Lexeme.root == parse['root'],
-                        Lexeme.part_of_speech == part_of_speech,
-                    ).first()
-                    if not lexeme:
-                        raise ValueError(f"PostgreSQL: Lexeme not found for root {parse['root']} and part_of_speech {part_of_speech}")
-
-                    new_parse = Parse(
-                        wordform_id=wordform.id,
-                        lexeme_id=lexeme.id,
-                        updated_form=parse['form'],
-                        analysis={k: v for k, v in parse.items() if k !='form'},
-                        edits=weight,
-                    )
-                    db.add(new_parse)
+                add_parses_for_word(db, word_str, wordform)
                 db.flush()
         
             sentence_word_link = SentenceWord(
@@ -76,6 +59,26 @@ def ingest_data(df: pd.DataFrame, db: Session):
             db.add(sentence_word_link)
     db.commit()
     print("Data ingestion successful")
+
+def add_parses_for_word(db, word_str, wordform):
+    parses = search_parse(word_str)
+    for parse, weight in parses:
+        part_of_speech = parse['part_of_speech']
+        lexeme = db.query(Lexeme).filter(
+                        Lexeme.root == parse['root'],
+                        Lexeme.part_of_speech == part_of_speech,
+                    ).first()
+        if not lexeme:
+            raise ValueError(f"PostgreSQL: Lexeme not found for root {parse['root']} and part_of_speech {part_of_speech}")
+
+        new_parse = Parse(
+                        wordform_id=wordform.id,
+                        lexeme_id=lexeme.id,
+                        updated_form=parse['form'],
+                        analysis={k: v for k, v in parse.items() if k !='form'},
+                        edits=weight,
+                    )
+        db.add(new_parse)
 
 
 def main() -> int:
@@ -94,9 +97,6 @@ def main() -> int:
             end_idx = min((batch_i + 1) * BATCH_SIZE, len(df))
             batch_df = df.iloc[start_idx:end_idx]
             ingest_data(batch_df, db)
-        elan_mask = df['source']=='elan'
-        df=df[elan_mask]
-        ingest_data(df, db)
 
     except Exception as e:
         print(f"Error occurred: {e}")
