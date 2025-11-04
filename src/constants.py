@@ -356,6 +356,16 @@ ADJECTIVE_CLASS = features.Feature("class", "unmarked", *ADJECTIVE_CLASS_VALUES)
 ADJECTIVE = features.Category(ADJECTIVE_CLASS)
 ADJECTIVE_ROOT = features.FeatureVector(ADJECTIVE, "class=unmarked")
 
+####################
+# lexical features #
+####################
+
+# 'features' used to distinguish lexical classes
+# useful for the unified parser
+
+POS_TAG = features.Feature("pos", "unmarked", "noun", "verb", "adjective")
+POS = features.Category(POS_TAG)
+
 ################
 # symbol table #
 ################
