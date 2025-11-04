@@ -1,5 +1,5 @@
 import pynini
-from pynini.lib import pynutil, rewrite
+from pynini.lib import pynutil, rewrite, features
 from src.constants import *
 from typing import *
 import pydot
@@ -16,13 +16,7 @@ def set_symbols(fst: pynini.Fst) -> pynini.Fst:
     return fst
 
 def tone2diac(tone_str: str) -> str:
-    """
-    Replace all tone symbols with combining diacritics,
-    i.e. \<H> --> \u0301
-    """
-    for tone_symbol, tone_diac in SYMBOL2DIAC.items():
-        tone_str = tone_str.replace(tone_symbol, tone_diac)
-    return tone_str
+    raise DeprecationWarning
 
 def tone2symbol(tone_str: str) -> str:
     """
@@ -60,28 +54,9 @@ def encode_fst_string(input_string: Union[str, Sequence[str]]) -> Union[str, Lis
     return str_w_collapsed_dentals
 
 def decode_fst_string(
-        input_string: Union[str, Sequence[str], pynini.Fst],
-        is_byte_str: bool=False,
+        input_string: Union[str, Sequence[str]],
     ) -> Union[str, List[str]]:
-    """
-    Condense all separated characters, replaces `WORD_BOUNDARY_STR` symbol (default "|")
-    with a space, and changes tone symbols back to diacritics.
-    If `input_string` is an FST, call `Fst.string()` first.
-    If `is_byte_str` is passed, call `decode_byte_str` first.
-    """
-    if type(input_string) is pynini.Fst:
-        input_string = input_string.string(token_type=TIRA_SYMBOL_TABLE)
-    elif type(input_string) is not str:
-        return [
-            decode_fst_string(input_element, is_byte_str)
-            for input_element in input_string
-        ]
-    if is_byte_str:
-        return decode_byte_str(input_string)
-    detokenized_str = input_string.replace(' ', '')
-    str_w_word_spaces = detokenized_str.replace(WORD_BOUNDARY_STR, ' ')
-    str_w_tone_diacs = tone2diac(str_w_word_spaces)
-    return str_w_tone_diacs
+    raise DeprecationWarning
 
 def fst(
         fst_input: Union[str, Sequence[str], pynini.Fst, None]=None,
@@ -165,45 +140,118 @@ def delete_fst(
     f = set_symbols(f)
     return f
 
+def get_feature_fsa(feature_dict: Dict[str, str]) -> pynini.Fst:
+    """
+    Arguments:
+        feature_dict:   Dict mapping feature names to feature values
+    Returns:
+        f:              FSA accepting the feature string encoded from `feature_dict`
+    
+    Creates an FSA accepting the feature string encoded from `feature_dict`.
+    Resulting FSA accepts a language of the shape "feature1=value1 feature2=value2 ...".
+    The features are sorted so that lexeme-specific features come first, then lexical
+    flags.
+    """
+    lexeme_vector, lexical_flag_vector = feature_dict_to_vector(feature_dict)
+    acceptor = lexeme_vector.acceptor + lexical_flag_vector.acceptor
+    return acceptor
+
+def feature_dict_to_vector(
+        feature_dict: Dict[str, str]
+) -> Tuple[features.FeatureVector, features.FeatureVector]:
+    """
+    Arguments:
+        feature_dict:   Dict mapping feature names to feature values
+    Returns:
+        lexeme_vector:          FeatureVector containing lexeme-specific features
+        lexical_flag_vector:    FeatureVector containing lexical flags
+    
+    """
+    pos = feature_dict['pos']
+    category = POS2CATEGORY[pos]
+    lexeme_features = []
+    lexical_flags = []
+
+    for feature in category.features:
+        feature_value = feature_dict.get(feature.name, 'unmarked')
+        feature_str = f"[{feature.name}={feature_value}]"
+        lexeme_features.append(feature_str)
+    for feature in LEXEME.features:
+        feature_value = feature_dict.get(feature.name, 'unmarked')
+        feature_str = f"[{feature.name}={feature_value}]"
+        lexical_flags.append(feature_str)
+    
+    lexeme_vector = features.FeatureVector(category, *lexeme_features)
+    lexical_flag_vector = features.FeatureVector(LEXEME, *lexical_flags)
+    return lexeme_vector, lexical_flag_vector
+
 def decode_fst_lattice(
         lattice: pynini.Fst,
         project_type: Literal['input', 'output']='output',
         unique_only: bool=True,
         nshortest: Optional[int]=None,
-    ) -> List[str]:
+        to_feature_vectors: bool=False,
+    ) -> List[
+        Tuple[
+            str,
+            Union[Dict[str, str], Tuple[features.FeatureVector, features.FeatureVector]]
+        ]
+    ]:
     """
-    Wraps `rewrite.lattice_to_strings`. Sets `TIRA_SYMBOL_TABLE`
-    and calls `decode_fst_string` on output. If `nshortest` is passed,
-    call `rewrite.lattice_to_nshortest` first.
+    Arguments:
+        lattice:        pynini.Fst with multiple output strings.
+        project_type:   'input' or 'output' indicating which side to project
+                        before decoding (default 'output').
+        unique_only:    bool indicating whether to return only unique strings
+                        (default True).
+        nshortest:      (Optional) int indicating number of shortest paths to
+                        consider before decoding (default None, i.e. all paths).
+        to_feature_vectors:  bool indicating whether to return feature dicts
+                            as FeatureVectors (default False).
+    Returns:
+        decoded_outputs:    List of decoded strings and feature dicts/vectors
+                            from the lattice.
+
+    Decodes all strings from the given `lattice` FST.
+    Code based off `Paradigm._parse_lattice` in `pynini.lib.paradigms`.
+    If `nshortest` is passed, call `rewrite.lattice_to_nshortest` first.
     """
     lattice = pynini.project(lattice, project_type=project_type)
     if nshortest is not None:
         lattice = rewrite.lattice_to_nshortest(lattice, nshortest=nshortest)
-    tokenized_strings =  rewrite.lattice_to_strings(lattice, token_type=TIRA_SYMBOL_TABLE)
-    decoded_strings = decode_fst_string(tokenized_strings)
-    if unique_only:
-        return list(set(decoded_strings))
-    return decoded_strings
+
+    decoded_outputs = []
+    path_iter = lattice.paths()
+    while not path_iter.done():
+        word = ''
+        features = {}
+        for label in path_iter.olabels():
+            if label < TIRA_NUM_SYMBOLS:
+                symbol = TIRA_SYMBOL_TABLE.find(label)
+                char = TIRA_SYMBOL_TO_CHAR.get(symbol, symbol)
+                word += char
+            else:
+                feature_str = GENERATED_SYMBOLS.get(label)
+                feature, value = feature_str.strip('[]').split('=')
+                features[feature] = value
+        
+        path_iter.next()
+        if unique_only and word in [w for w,_ in decoded_outputs]:
+            continue
+        if to_feature_vectors:
+            features = feature_dict_to_vector(features)
+        decoded_outputs.append((word, features))
+
+    return decoded_outputs
 
 def decode_byte_str(byte_str: str) -> str:
-    """
-    Arguments:
-        byte_str:       String of encoded Tira symbol indices
-    Returns:
-        decoded_string: `byte_str` decoded using TIRA_SYMBOL_TABLE
-    
-    Decodes a string the byte value of each character is the index of
-    a symbol in TIRA_SYMBOL_TABLE. This occurs when an FST with the
-    symbol table set is combined with an FST using byte tokens, as is the
-    case when using FST graphs generated by the `paradigms` module of Pynini.
-    """
-    byte_values = [ord(char) for char in byte_str]
-    symbols = [TIRA_SYMBOL_TABLE.find(i) for i in byte_values]
-    symbol_str = ' '.join(symbols)
-    decoded_string = decode_fst_string(symbol_str)
-    return decoded_string
+    raise DeprecationWarning
 
-def draw_svg(fst: pynini.Fst, filepath: str = 'tmp/tmp.svg', title: Optional[str]=None):
+def draw_svg(
+    fst: pynini.Fst, filepath: str = 'tmp/tmp.svg',
+    title: Optional[str]=None,
+    use_union_table: bool=True,
+):
     """
     Saves .dot and .svg representations of `fst`, with an optionally specified `title`
     (defaults to `filepath`).
@@ -211,6 +259,8 @@ def draw_svg(fst: pynini.Fst, filepath: str = 'tmp/tmp.svg', title: Optional[str
     stem = os.path.splitext(filepath)[0]
     fst = set_symbols(fst)
     dotfile = stem+'.dot'
+    input_table = UNION_TABLE if use_union_table else fst.input_symbols()
+    output_table = UNION_TABLE if use_union_table else fst.output_symbols()
     fst.draw(
         source=dotfile,
         show_weight_one=True,
