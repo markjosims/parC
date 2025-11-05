@@ -231,12 +231,18 @@ def decode_fst_lattice(
         project_type: Literal['input', 'output']='output',
         unique_only: bool=True,
         nshortest: Optional[int]=None,
+        strings_only: bool=False,
         to_feature_vectors: bool=False,
     ) -> List[
-        Tuple[
+        Union[
             str,
-            Union[Dict[str, str], Tuple[features.FeatureVector, features.FeatureVector]]
-        ]
+            Tuple[
+                str,
+                Union[
+                    Dict[str, str],
+                    Tuple[features.FeatureVector, features.FeatureVector]
+                ]
+            ]]
     ]:
     """
     Arguments:
@@ -247,6 +253,8 @@ def decode_fst_lattice(
                         (default True).
         nshortest:      (Optional) int indicating number of shortest paths to
                         consider before decoding (default None, i.e. all paths).
+        strings_only:   bool indicating whether to return only decoded strings
+                        (default False).
         to_feature_vectors:  bool indicating whether to return feature dicts
                             as FeatureVectors (default False).
     Returns:
@@ -256,6 +264,11 @@ def decode_fst_lattice(
     Decodes all strings from the given `lattice` FST.
     Code based off `Paradigm._parse_lattice` in `pynini.lib.paradigms`.
     If `nshortest` is passed, call `rewrite.lattice_to_nshortest` first.
+
+    By default, return a list of tuples of decoded strings and feature dicts.
+    If `strings_only=True`, return only the decoded strings.
+    If `to_feature_vectors=True`, convert the feature dicts to FeatureVectors
+    before returning.
     """
     lattice = pynini.project(lattice, project_type=project_type)
     if nshortest is not None:
@@ -271,9 +284,16 @@ def decode_fst_lattice(
                 symbol = TIRA_SYMBOL_TABLE.find(label)
                 char = TIRA_SYMBOL_TO_CHAR.get(symbol, symbol)
                 word += char
+            elif chr(label) in '[]' and strings_only:
+                word += chr(label)
+            elif chr(label) in '[]':
+                continue
+            elif strings_only:
+                feature_str = GENERATED_SYMBOLS.find(label)
+                word += feature_str
             else:
-                feature_str = GENERATED_SYMBOLS.get(label)
-                feature, value = feature_str.strip('[]').split('=')
+                feature_str = GENERATED_SYMBOLS.find(label)
+                feature, value = feature_str.split('=')
                 features[feature] = value
         
         path_iter.next()
@@ -281,12 +301,45 @@ def decode_fst_lattice(
             continue
         if to_feature_vectors:
             features = feature_dict_to_vector(features)
-        decoded_outputs.append((word, features))
+        if strings_only:
+            decoded_outputs.append(word)
+        else:
+            decoded_outputs.append((word, features))
 
     return decoded_outputs
 
+def decode_feature_label_rewriter(
+        lattice: pynini.Fst,
+):
+    """
+    Arguments:
+        lattice: FST corresponding Paradigm.feature_label_rewriter
+    Returns:
+        decoded_strs: List of decoded strings from the output side of `lattice`
+    `feature_label_rewriter` maps doesn't use GENERATED_SYMBOLS, so we need a
+    custom decoder here.
+    """
+    strings = rewrite.lattice_to_strings(lattice)
+    decoded_strs = []
+    for lattice_output in strings:
+        parts = lattice_output.split('[')
+        wordform = parts[0]
+        wordform = decode_byte_str(wordform)
+        features = {'wordform': wordform}
+        for feature_part in parts[1:]:
+            feature_part = feature_part.rstrip(']')
+            feature, value = feature_part.split('=')
+            features[feature] = value
+        decoded_strs.append(features)
+    return decoded_strs
+
 def decode_byte_str(byte_str: str) -> str:
-    raise DeprecationWarning
+    decoded_str = ''
+    for token in byte_str:
+        i = ord(token)
+        char = TIRA_SYMBOL_TABLE.find(i)
+        decoded_str += TIRA_SYMBOL_TO_CHAR.get(char, char)
+    return decoded_str
 
 def draw_svg(
     fst: pynini.Fst, filepath: str = 'tmp/tmp.svg',
