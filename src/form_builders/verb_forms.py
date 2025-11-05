@@ -661,7 +661,7 @@ def get_verb_stem_paradigm(
     if type(stems) is list:
         stems = [fst(stem) for stem in stems]
     elif stems is None:
-        stems = get_roots_for_class(fv_class, wrap_w_fsa=True)
+        stems = get_roots_for_class(fv_class, wrap_w_fsa=True, include_extensions=True)
 
     if paradigm_name is None:
         paradigm_name = stringify_lexeme_features(
