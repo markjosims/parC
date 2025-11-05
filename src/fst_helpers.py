@@ -187,6 +187,45 @@ def feature_dict_to_vector(
     lexical_flag_vector = features.FeatureVector(LEXEME, *lexical_flags)
     return lexeme_vector, lexical_flag_vector
 
+def stringify_lexeme_vector(lexeme_vector: features.FeatureVector) -> str:
+    """
+    Arguments:
+        lexeme_vector:  FeatureVector containing lexeme-specific features
+    Returns:
+        feature_str:    String representation of the features in `lexeme_vector`
+    
+    Converts the features in `lexeme_vector` to a string of the shape
+    "feature1=value1 feature2=value2 ...".
+    """
+    feature_strs = []
+    for feature in lexeme_vector.category.features:
+        feature_value = lexeme_vector.values[feature.name]
+        if feature_value == 'unmarked':
+            continue
+        feature_str = f"{feature.name}={feature_value}"
+        feature_strs.append(feature_str)
+    feature_str = " ".join(feature_strs)
+    return feature_str
+
+def vectorize_lexeme_string(lexeme_str: str) -> features.FeatureVector:
+    """
+    Arguments:
+        lexeme_str:     String representation of lexeme-specific features
+    Returns:
+        lexeme_vector:  FeatureVector containing lexeme-specific features
+    """
+    features = {}
+    for feature_str in lexeme_str.split():
+        feature, value = feature_str.split('=')
+        features[feature] = value
+    features_strs = []
+    for feature in LEXEME.features:
+        feature_value = features.get(feature.name, 'unmarked')
+        feature_str = f"[{feature.name}={feature_value}]"
+        features_strs.append(feature_str)
+    lexeme_vector = features.FeatureVector(LEXEME, *features_strs)
+    return lexeme_vector
+
 def decode_fst_lattice(
         lattice: pynini.Fst,
         project_type: Literal['input', 'output']='output',
