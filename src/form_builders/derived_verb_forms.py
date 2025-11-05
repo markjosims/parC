@@ -14,24 +14,7 @@ from itertools import product
 from typing import *
 from pynini.lib import paradigms
 
-from src.fst_helpers import decode_fst_string, fst, decode_fst_lattice
-
-def get_possible_extension_seqs() -> List[List[str]]:
-    """
-    Returns:
-        A list of all possible extension sequences (single and double extensions).
-    """
-    extension_couples = list(
-        product(EXTENSION_MAP.keys(), repeat=2)
-    )
-    allowed_repeats = ['locative', 'benefactive']
-    filtered_extension_couples = [
-        couple for couple in extension_couples
-        if couple[0] != couple[1] or couple[0] in allowed_repeats
-    ]
-    single_extensions = [[ext] for ext in EXTENSION_MAP.keys()]
-    all_extension_seqs = single_extensions + filtered_extension_couples
-    return all_extension_seqs
+from src.fst_helpers import decode_fst_string, fst, decode_fst_lattice, stringify_lexeme_features
 
 def extension_abbreviations_to_long(
     extension_seq: Union[str, Tuple[str, str]]

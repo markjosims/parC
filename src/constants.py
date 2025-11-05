@@ -2,6 +2,7 @@ import os
 import pynini
 from pynini.lib import edit_transducer, features
 from string import digits
+from itertools import product
 
 ###############
 # Tira phonemes
@@ -320,6 +321,21 @@ ABBREVIATION2EXTENSION = {
     v: k for k, v in EXTENSION2ABBREVIATION.items()
 }
 
+_extension_couples = list(
+    product(ABBREVIATION2EXTENSION.keys(), repeat=2)
+)
+_allowed_repeats = ['locative', 'benefactive']
+_filtered_extension_couples = [
+    couple for couple in _extension_couples
+    if couple[0] != couple[1] or couple[0] in _allowed_repeats
+]
+_single_extensions = [[ext] for ext in EXTENSION_MAP.keys()]
+ALL_POSSIBLE_EXTENSION_SEQS = _single_extensions + _filtered_extension_couples
+ALL_POSSIBLE_EXTENSION_SEQ_STRS = [
+    '+'.join(seq) for seq in ALL_POSSIBLE_EXTENSION_SEQS
+]
+
+
 #################
 # noun features #
 #################
@@ -382,7 +398,7 @@ FV_TAG = features.Feature("fv", "unmarked", *FV_CLASSES)
 AUX_TAG = features.Feature("aux", "unmarked", "true", "false")
 
 EXTENSION_TAG = features.Feature(
-    "extension", "unmarked", *EXTENSION2ABBREVIATION.values()
+    "extension", "unmarked", *ALL_POSSIBLE_EXTENSION_SEQ_STRS
 )
 
 LEXICAL_FEATURES = [POS_TAG, FV_TAG, AUX_TAG, EXTENSION_TAG]
