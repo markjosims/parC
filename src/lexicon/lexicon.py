@@ -4,7 +4,10 @@ stems to glosses and to principal parts.
 """
 
 import pandas as pd
+from src.cache_decorators import output_cache
 from src.constants import (
+    ALL_POSSIBLE_EXTENSION_SEQS,
+    FV_CLASSES,
     GOLD_PERSON_MARKING_PATH,
     GOLD_UNINFLECTED_WORDS_PATH,
     VERB_ROOTS_PATH,
@@ -18,6 +21,7 @@ from src.constants import (
     GOLD_ADJECTIVES_PATH,
     UNINFLECTED_WORDS_PATH,
 )
+from src.lexicon.extension_suffixes import get_derived_stem_and_fv
 from src.fst_helpers import fst
 from typing import *
 import json
@@ -172,3 +176,28 @@ def get_pos_and_gloss_for_uninflected_word(word: str) -> Tuple[str, str]:
 def get_gold_uninflected_words() -> List[Dict[str, str]]:
     gold_uninflected_words_df = pd.read_csv(GOLD_UNINFLECTED_WORDS_PATH, keep_default_na=False)
     return gold_uninflected_words_df.to_dict(orient='records')
+
+
+@output_cache(__file__)
+def map_fv_to_extension_sequences():
+    """
+    Returns:
+        fv_to_stems: dict mapping FV class to list of (root+extensions, gloss) tuples
+    """
+    fv_to_stems = {fv: [] for fv in FV_CLASSES}
+    verbs_df = get_all_verb_data(return_type=pd.DataFrame)
+    for fv in FV_CLASSES:
+        fv_mask = verbs_df['root_fv']==fv
+        fv_roots = verbs_df.loc[fv_mask, 'verb_root'].tolist()
+        fv_glosses = verbs_df.loc[fv_mask, 'root_sense'].tolist()
+        for extension_seq in ALL_POSSIBLE_EXTENSION_SEQS:
+            derived_stems, derived_fv = get_derived_stem_and_fv(
+                base_stem=fv_roots,
+                gloss=fv_glosses,
+                fv=fv,
+                extension_seq=extension_seq
+            )
+            fv_to_stems[derived_fv].extend(derived_stems)
+    for fv in FV_CLASSES:
+        fv_to_stems[fv] = sorted(list(fv_to_stems[fv]))
+    return fv_to_stems

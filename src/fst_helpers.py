@@ -152,12 +152,13 @@ def get_feature_fsa(feature_dict: Dict[str, str]) -> pynini.Fst:
     The features are sorted so that lexeme-specific features come first, then lexical
     flags.
     """
-    lexeme_vector, lexical_flag_vector = feature_dict_to_vector(feature_dict)
+    lexeme_vector, lexical_flag_vector = vectorize_feature_dict(feature_dict)
     acceptor = lexeme_vector.acceptor + lexical_flag_vector.acceptor
     return acceptor
 
-def feature_dict_to_vector(
-        feature_dict: Dict[str, str]
+def vectorize_feature_dict(
+        feature_dict: Dict[str, str],
+        specify_unmarked: bool = False,
 ) -> Tuple[features.FeatureVector, features.FeatureVector]:
     """
     Arguments:
@@ -174,16 +175,23 @@ def feature_dict_to_vector(
     lexeme_features = []
     lexical_flags = []
 
-    for feature in category.features:
-        feature_value = feature_dict.get(feature.name, 'unmarked')
-        feature_str = f"[{feature.name}={feature_value}]"
-        lexeme_features.append(feature_str)
+    if category is None:
+        lexeme_vector = None
+    else:
+        for feature in category.features:
+            feature_value = feature_dict.get(feature.name, 'unmarked')
+            if feature_value == 'unmarked' and not specify_unmarked:
+                continue
+            feature_str = f"[{feature.name}={feature_value}]"
+            lexeme_features.append(feature_str)
+        lexeme_vector = features.FeatureVector(category, *lexeme_features)
     for feature in LEXEME.features:
         feature_value = feature_dict.get(feature.name, 'unmarked')
+        if feature_value == 'unmarked' and not specify_unmarked:
+            continue
         feature_str = f"[{feature.name}={feature_value}]"
         lexical_flags.append(feature_str)
     
-    lexeme_vector = features.FeatureVector(category, *lexeme_features)
     lexical_flag_vector = features.FeatureVector(LEXEME, *lexical_flags)
     return lexeme_vector, lexical_flag_vector
 
@@ -304,7 +312,7 @@ def decode_fst_lattice(
         if unique_only and word in [w for w,_ in decoded_outputs]:
             continue
         if to_feature_vectors:
-            features = feature_dict_to_vector(features)
+            features = vectorize_feature_dict(features)
         if strings_only:
             decoded_outputs.append(word)
         else:

@@ -7,7 +7,7 @@ from src.form_builders.verb_forms import (
     get_inflected_paradigm_for_verb,
     FV_CLASSES
 )
-from src.lexicon import get_verb_gloss_and_fvs
+from src.lexicon.lexicon import get_verb_gloss_and_fvs
 from src.constants import VERB_FEATURE_VALUES
 from src.sentences import get_elan_analyses
 import pynini

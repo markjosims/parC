@@ -7,7 +7,7 @@ from typing import *
 from src.fst_helpers import fst, decode_feature_label_rewriter
 from src.constants import CLASS_PREFIXES, LOW_TONE
 from src.glossing import feature_str_to_dict
-from src.phonology import DELETE_SCHWA_BEFORE_VOWEL, SIGMASTAR, REMOVE_DOUBLE_BOUNDARIES
+from src.lexicon.phonology import DELETE_SCHWA_BEFORE_VOWEL, SIGMASTAR, REMOVE_DOUBLE_BOUNDARIES
 import pynini
 from pynini.lib import features, paradigms, rewrite
 import pandas as pd

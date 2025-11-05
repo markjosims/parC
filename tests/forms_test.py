@@ -3,8 +3,8 @@ from src.form_builders.adjective_forms import get_adjective_paradigm, inflect_ad
 from src.form_builders.form_helpers import generate_forms
 from src.form_builders.uninflected_forms import parse_uninflected_word
 from src.form_builders.verb_forms import *
-from src.form_builders.derived_verb_forms import inflect_verb_with_extension
-from src.lexicon import *
+from src.lexicon.extension_suffixes import inflect_verb_with_extension
+from src.lexicon.lexicon import *
 from src.constants import VERB_FEATURE_VALUES
 
 @pytest.mark.parametrize("verb_root,fv_class", get_all_verb_roots_and_fvs())

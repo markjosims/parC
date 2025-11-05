@@ -7,10 +7,10 @@ from pynini.lib import features, paradigms
 import pandas as pd
 from src.cache_decorators import output_cache
 from src.form_builders.form_helpers import *
-from src.phonology import *
+from src.lexicon.phonology import *
 from src.fst_helpers import *
-from src.lexicon import get_roots_for_class, get_all_verb_roots_and_fvs, get_gloss_for_verb
-from src.glossing import REMOVE_HOMOPHONE_TAG
+from src.lexicon.lexicon import get_roots_for_class, get_all_verb_roots_and_fvs, get_gloss_for_verb
+from src.lexicon.phonology import REMOVE_HOMOPHONE_TAG
 from src.constants import INFLECTED_VERBS_PATH, INFLECTED_VERB, FV_CLASSES
 from typing import *
 import random

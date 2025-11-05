@@ -3,8 +3,8 @@ from pynini.lib import rewrite
 from src.search import *
 import pytest
 from src.fst_helpers import *
-from src.phonology import V, SIGMA
-from src.lexicon import (
+from src.lexicon.phonology import V, SIGMA
+from src.lexicon.lexicon import (
     get_gold_derived_verbs,
     get_gold_nouns,
     get_gold_verbs,

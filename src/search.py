@@ -11,14 +11,14 @@ from src.form_builders.verb_forms import (
     get_verb_dstem_paradigm, get_verb_dstem_paradigm_w_aux,
 )
 from src.form_builders.noun_forms import get_noun_paradigm, parse_noun
-from src.form_builders.derived_verb_forms import get_paradigms_for_all_extensions
+from src.lexicon.extension_suffixes import get_paradigms_for_all_extensions
 from src.fst_helpers import *
 from src.constants import (
     INSERT, DELETE, SUBSTITUTE,
     DEFAULT_INSERT_COST, DEFAULT_DELETE_COST, DEFAULT_SUBSTITUTE_COST,
     DEFAULT_EDIT_BOUND, FV_CLASSES,
 )
-from src.phonology import (
+from src.lexicon.phonology import (
     SIGMA, INSERTION_COSTS, DELETION_COSTS, SUBSTITUTION_COSTS,
     INSERT_HYPHEN_RULE
 )

@@ -1,10 +1,10 @@
 from pynini.lib import paradigms, features
 from typing import *
 from src.cache_decorators import output_cache
-from src.lexicon import get_adjective_roots, get_gloss_for_adjective, get_all_adjective_data
+from src.lexicon.lexicon import get_adjective_roots, get_gloss_for_adjective, get_all_adjective_data
 from src.form_builders.form_helpers import add_class_prefix, add_class_prefixes_to_slots
 from src.constants import ADJECTIVE, ADJECTIVE_ROOT, ADJECTIVE_CLASS_VALUES, BOUNDARY_STR
-from src.phonology import ALL_LOW_TONE_RULE, SIGMASTAR
+from src.lexicon.phonology import ALL_LOW_TONE_RULE, SIGMASTAR
 from src.fst_helpers import decode_byte_str, decode_fst_string, fst, stringify_lexeme_features
 import pandas as pd
 

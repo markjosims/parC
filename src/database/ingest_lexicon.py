@@ -1,5 +1,5 @@
 from src.constants import NOUN_FEATURE_ABBREVIATIONS
-from src.lexicon import NOUNS_DF, VERBS_DF, ADJECTIVES_DF, UNINFLECTED_WORDS_DF
+from src.lexicon.lexicon import NOUNS_DF, VERBS_DF, ADJECTIVES_DF, UNINFLECTED_WORDS_DF
 from src.database.database import engine, SessionLocal, Base
 from tqdm import tqdm
 import pandas as pd

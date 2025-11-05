@@ -1,5 +1,5 @@
 import pytest
-from src.phonology import *
+from src.lexicon.phonology import *
 from src.fst_helpers import *
 from pynini.lib import rewrite
 

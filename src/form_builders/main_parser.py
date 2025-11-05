@@ -5,6 +5,7 @@ and creates a main parser FST that combines them all.
 """
 
 import pynini
+from pynini.lib import pynutil
 from src.constants import FV_CLASSES
 from src.form_builders.adjective_forms import get_adjective_paradigm
 from src.form_builders.noun_forms import get_noun_paradigm
@@ -12,16 +13,16 @@ from src.form_builders.verb_forms import (
     get_verb_stem_paradigm, get_aux_paradigm,
     get_verb_paradigm_w_aux,
 )
-from src.form_builders.derived_verb_forms import get_paradigms_for_all_extensions
+from src.fst_helpers import (
+    fst, decode_fst_lattice, vectorize_feature_dict, vectorize_lexeme_string,
+)
 from src.form_builders.uninflected_forms import get_uninflected_word_fst
 from src.cache_decorators import fst_cache
 import os
 from typing import *
 
-@fst_cache(os.path.dirname(__file__))
-def get_main_parser():
+def get_verb_paradigms():
     verb_paradigms = []
-    
     verb_paradigms.append(get_aux_paradigm())
 
     for fv_class in FV_CLASSES:
@@ -29,23 +30,46 @@ def get_main_parser():
         verb_paradigms.append(fv_paradigm)
         verb_paradigms.append(get_verb_paradigm_w_aux(fv_paradigm))
 
-    derived_verb_paradigms = get_paradigms_for_all_extensions()
-    verb_paradigms.extend(derived_verb_paradigms.values())
+    return verb_paradigms
 
-    verb_lemmatizers = []
-    verb_analyzers = []
+@fst_cache(os.path.dirname(__file__))
+def get_main_parser() -> Tuple[pynini.Fst, pynini.Fst, pynini.Fst]:
+    all_paradigms = get_verb_paradigms()
+    all_paradigms.append(get_noun_paradigm())
+    all_paradigms.append(get_adjective_paradigm())
 
-    for paradigm in verb_paradigms:
-        verb_lemmatizers.append(paradigm.lemmatizer)
-        verb_analyzers.append(paradigm.analyzer)
-    
-    main_verb_lemmatizer = pynini.union(*verb_lemmatizers)
-    main_verb_analyzer = pynini.union(*verb_analyzers)
-    main_verb_lemmatizer.optimize()
-    main_verb_analyzer.optimize()
+    lemmatizers = []
+    analyzers = []
+    inflectors = []
 
-def inflect_word(word, features) -> str:
-    return 'foo'
+    for paradigm in all_paradigms:
+        lexical_flag_vector = vectorize_lexeme_string(paradigm.name)
+        output_lexical_flags = pynutil.insert(lexical_flag_vector.acceptor)
+        input_lexical_flags = pynutil.delete(lexical_flag_vector.acceptor)
+        lemmatizers.append(paradigm.lemmatizer+output_lexical_flags)
+        analyzers.append(paradigm.analyzer+output_lexical_flags)
+        inflectors.append(paradigm.inflector+input_lexical_flags)
+
+    main_lemmatizer = pynini.union(*lemmatizers)
+    main_analyzer = pynini.union(*analyzers)
+    main_inflector = pynini.union(*inflectors)
+    main_lemmatizer.optimize()
+    main_analyzer.optimize()
+    main_inflector.optimize()
+
+    return main_lemmatizer, main_analyzer, main_inflector
+
+def inflect_word(root, features) -> str:
+    feature_vector, flag_vector = vectorize_feature_dict(features)
+    _, _, main_inflector = get_main_parser()
+    input_fst = fst(root) + feature_vector.acceptor + flag_vector.acceptor
+    output_fst = input_fst @ main_inflector
+    decoded_strs = decode_fst_lattice(output_fst, strings_only=True)
+    return decoded_strs
 
 def parse_word(word) -> list[Dict[str, str]]:
-    return [{'foo': 'bar'}, {'baz': 'qux'}]
+    main_lemmatizer, _, _ = get_main_parser()
+    input_fst = fst(word)
+    output_fst = input_fst @ main_lemmatizer
+    decoded_strs = decode_fst_lattice(output_fst)
+    return decoded_strs

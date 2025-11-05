@@ -1,7 +1,7 @@
 from src.cache_decorators import fst_cache
-from src.glossing import REMOVE_HOMOPHONE_TAG
+from src.lexicon.phonology import REMOVE_HOMOPHONE_TAG
 from src.fst_helpers import decode_byte_str, fst
-from src.lexicon import get_pos_and_gloss_for_uninflected_word, get_uninflected_word_data
+from src.lexicon.lexicon import get_pos_and_gloss_for_uninflected_word, get_uninflected_word_data
 import pynini
 from pynini.lib import rewrite
 from typing import *

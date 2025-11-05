@@ -7,7 +7,7 @@ from pynini.lib import paradigms, pynutil, rewrite
 from typing import *
 from src.constants import *
 from src.fst_helpers import (
-    fst, insert_fst, delete_fst,
+    fst, insert_fst, delete_fst, pynini,
 )
 
 BOUNDARY = fst(BOUNDARY_STR)
@@ -257,3 +257,12 @@ INSERT_HYPHEN_RULE = pynini.cdrewrite(
     sigma_star=SIGMASTAR,
 )
 INSERT_HYPHEN_RULE = INSERT_HYPHEN_RULE.optimize()
+DIGIT = fst(list(string.digits))
+HOMOPHONE_TAG = fst("(")+DIGIT+fst(")")
+SIGMASTAR_W_TAG = fst([SIGMA, DIGIT, fst("("), fst(")")]).closure().optimize()
+REMOVE_HOMOPHONE_TAG = pynini.cdrewrite(
+    delete_fst(HOMOPHONE_TAG),
+    fst(),
+    fst(),
+    sigma_star=SIGMASTAR_W_TAG,
+).optimize()
