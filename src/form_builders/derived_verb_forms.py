@@ -6,7 +6,10 @@ search functions to determine if a given verb form matches a particular extensio
 """
 
 from src.cache_decorators import output_cache
-from src.constants import EXTENSION_MAP, ABBREVIATION2EXTENSION, BOUNDARY_STR, FV_CLASSES
+from src.constants import (
+    EXTENSION_MAP, ABBREVIATION2EXTENSION, BOUNDARY_STR, FV_CLASSES,
+    ALL_POSSIBLE_EXTENSION_SEQ_STRS, ALL_POSSIBLE_EXTENSION_SEQS,
+)
 from src.form_builders.verb_forms import get_verb_stem_paradigm, get_verb_paradigm_w_aux, inflect_verb_with_features
 from src.lexicon import get_roots_for_class
 from src.phonology import LOCATIVE_ROUNDING_RULE
@@ -99,9 +102,11 @@ def get_paradigm_for_extension(
     if root is None:
         root = get_roots_for_class(fv)
     derived_stem, derived_fv = get_derived_stem_and_fv(root, fv, extension_seq)
-    paradigm_name = f"fv={derived_fv} ext={'+'.join(extension_seq)}"
-    if root is not None:
-        paradigm_name += f" stem={'/'.join(derived_stem)}"
+    
+    lexical_flags = {
+        'fv': derived_fv, 'extension': '+'.join(extension_seq), 'pos': 'verb',
+    }
+    paradigm_name = stringify_lexeme_features(lexical_flags)
     paradigm_no_aux = get_verb_stem_paradigm(
         stems=derived_stem,
         fv_class=derived_fv,
@@ -121,26 +126,32 @@ def get_paradigms_for_all_extensions() -> Dict[str, Tuple[paradigms.Paradigm, pa
     the derived verb, not the verb root.
     """
     fv_to_stems, fv_to_ext_seqs = map_fv_to_derived_stems()
-    paradigms_for_extensions = {}
+    paradigms = []
     for fv, stems in fv_to_stems.items():
-        extensions_seqs = fv_to_ext_seqs[fv]
-        paradigm_no_aux = get_verb_stem_paradigm(
-            stems=stems,
-            fv_class=fv,
-            paradigm_name=f"fv={fv} ext={'/'.join(extensions_seqs)}"
-        )
-        paradigm_w_aux = get_verb_paradigm_w_aux(paradigm_no_aux)
-        paradigms_for_extensions[fv] = (paradigm_no_aux, paradigm_w_aux)
-    return paradigms_for_extensions
+        extension_seqs = fv_to_ext_seqs[fv]
+        for extension_seq in extension_seqs:
+            lexical_flags = {
+                'fv': fv, 'pos': 'verb', 'extension': '+'.join(extension_seq),
+            }
+            paradigm_name = stringify_lexeme_features(lexical_flags)
+            paradigm_no_aux = get_verb_stem_paradigm(
+                stems=stems,
+                fv_class=fv,
+                paradigm_name=paradigm_name
+            )
+            paradigm_w_aux = get_verb_paradigm_w_aux(paradigm_no_aux)
+            
+            paradigms.append(paradigm_no_aux)
+            paradigms.append(paradigm_w_aux)
+    return paradigms
 
 @output_cache(__file__)
 def map_fv_to_derived_stems():
-    all_extension_seqs = get_possible_extension_seqs()
     fv_to_stems = {fv: [] for fv in FV_CLASSES}
     fv_to_ext_seqs = {fv: set() for fv in FV_CLASSES}
     for fv in FV_CLASSES:
         fv_roots = get_roots_for_class(fv)
-        for extension_seq in all_extension_seqs:
+        for extension_seq in ALL_POSSIBLE_EXTENSION_SEQS:
             derived_stems, derived_fv = get_derived_stem_and_fv(
                 base_stem=fv_roots,
                 fv=fv,
