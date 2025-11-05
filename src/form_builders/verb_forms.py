@@ -314,13 +314,10 @@ def build_itive_perfective_aux_forms() -> List[Tuple[pynini.Fst, features.Featur
 
 def add_perfective_ventive_personal_markers(
     form_fst: pynini.Fst,
-    skip_suffixes: bool=False
 ) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
     """
     Arguments:
         form_fst:       FST representing a perfective ventive verb form
-        skip_suffixes:  If True, skip adding suffixes
-                        (used for generating $d$-stem FST)
     Returns:
         slots_w_markers: List of Tuples of (FST, FeatureVector) with personal and class markers added
 
@@ -381,12 +378,6 @@ def add_perfective_ventive_personal_markers(
         (prefix("ɲá-"), get_features(sbj='2pl')),
     ]
     subject_prefix_slots = [(form_fst@rule, features_vec) for rule, features_vec in subject_prefixes]
-
-    if skip_suffixes:
-        slots = non_pronominal_slots + subject_prefix_slots
-        for rule, _ in slots:
-            rule.optimize()
-        return slots
 
     # subject with 3sg object
     subject_suffixes_3sg_obj = [
@@ -489,7 +480,6 @@ def add_imperative_object_markers(
 @output_cache(__file__)
 def make_verb_slots(
     fv_class: str,
-    skip_suffixes: bool=False
 ) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
     root_slot = (STEM, VERB_ROOT)
 
@@ -517,16 +507,10 @@ def make_verb_slots(
             a_morphome, o_morphome, is_OV, compose_stem, compose_stem_harmony
         )
     
-    if not skip_suffixes:
-        imp_slots = [
-            (paradigms.suffix(imp_it_suffix, imp_it_stem), IMP_IT),
-            (paradigms.suffix(imp_vent_suffix, imp_vent_stem), IMP_VENT),
-        ]
-    else:
-        imp_slots = [
-            (imp_it_stem, IMP_IT),
-            (imp_vent_stem, IMP_VENT),
-        ]
+    imp_slots = [
+        (paradigms.suffix(imp_it_suffix, imp_it_stem), IMP_IT),
+        (paradigms.suffix(imp_vent_suffix, imp_vent_stem), IMP_VENT),
+    ]
 
     ######################
     # Imperfective forms #
@@ -538,17 +522,11 @@ def make_verb_slots(
         generate_ipfv_forms(
             a_morphome, o_morphome, is_OV, compose_stem, compose_stem_harmony
         )
-    if not skip_suffixes:
-        ipfv_slots = [
-            (paradigms.suffix(ipfv_it_suffix, ipfv_it_stem), IPFV_IT),
-            (paradigms.suffix(ipfv_vent_suffix, ipfv_vent_stem), IPFV_VENT),
-        ]
-        ipfv_slots = add_1pl_incl_r_suffix(ipfv_slots)
-    else:
-        ipfv_slots = [
-            (ipfv_it_stem, IPFV_IT),
-            (ipfv_vent_stem, IPFV_VENT),
-        ]
+    ipfv_slots = [
+        (paradigms.suffix(ipfv_it_suffix, ipfv_it_stem), IPFV_IT),
+        (paradigms.suffix(ipfv_vent_suffix, ipfv_vent_stem), IPFV_VENT),
+    ]
+    ipfv_slots = add_1pl_incl_r_suffix(ipfv_slots)
 
     ####################
     # Perfective forms #
@@ -562,17 +540,11 @@ def make_verb_slots(
             o_morphome, e_morphome, is_OV, compose_stem, compose_stem_harmony, ipfv_vent_suffix
         )
 
-    if not skip_suffixes:
-        pfv_it_slots=[(paradigms.suffix(pfv_it_suffix, pfv_it_stem), PFV_IT)]
-        pfv_it_slots = add_1pl_incl_r_suffix(pfv_it_slots)
-        pfv_vent_form = paradigms.suffix(pfv_vent_suffix, pfv_vent_stem)
-    else:
-        pfv_it_slots=[(pfv_it_stem, PFV_IT)]
-        pfv_vent_form = pfv_vent_stem
+    pfv_it_slots=[(paradigms.suffix(pfv_it_suffix, pfv_it_stem), PFV_IT)]
+    pfv_it_slots = add_1pl_incl_r_suffix(pfv_it_slots)
+    pfv_vent_form = paradigms.suffix(pfv_vent_suffix, pfv_vent_stem)
 
-    pfv_vent_slots = add_perfective_ventive_personal_markers(
-        pfv_vent_form, skip_suffixes=skip_suffixes
-    )
+    pfv_vent_slots = add_perfective_ventive_personal_markers(pfv_vent_form)
     pfv_slots = [*pfv_vent_slots, *pfv_it_slots]
 
     ##############
@@ -584,10 +556,7 @@ def make_verb_slots(
     inf_suffix, inf_stem = generate_inf_forms(
         a_morphome, is_OV, compose_stem, compose_stem_harmony
     )
-    if not skip_suffixes:
-        inf_slot = [(paradigms.suffix(inf_suffix, inf_stem), INFINITIVE)]
-    else:
-        inf_slot = [(inf_stem, INFINITIVE)]
+    inf_slot = [(paradigms.suffix(inf_suffix, inf_stem), INFINITIVE)]
 
     ###################
     # Dependent forms #
@@ -600,16 +569,10 @@ def make_verb_slots(
         a_morphome, e_morphome, is_OV, compose_stem, compose_stem_harmony
     )
 
-    if not skip_suffixes:
-        dep_slots = [
-            (paradigms.suffix(dep_it_suffix, dep_it_stem), DEP_IT),
-            (paradigms.suffix(dep_vent_suffix, dep_vent_stem), DEP_VENT),
-        ]
-    else:
-        dep_slots = [
-            (dep_it_stem, DEP_IT),
-            (dep_vent_stem, DEP_VENT),
-        ]
+    dep_slots = [
+        (paradigms.suffix(dep_it_suffix, dep_it_stem), DEP_IT),
+        (paradigms.suffix(dep_vent_suffix, dep_vent_stem), DEP_VENT),
+    ]
     dep_slots = add_class_prefixes_to_slots(dep_slots)
 
     slots = [root_slot, *imp_slots, *ipfv_slots, *pfv_slots, *inf_slot, *dep_slots]
@@ -689,10 +652,9 @@ def generate_imperative_forms(a_morphome, o_morphome, is_OV, compose_stem, compo
 def get_verb_stem_paradigm(
         fv_class: str,
         stems: Union[str, pynini.Fst, None]=None,
-        skip_suffixes: bool=False,
         paradigm_name: Optional[str]=None,
 ) -> paradigms.Paradigm:
-    slots = make_verb_slots(fv_class, skip_suffixes=skip_suffixes)
+    slots = make_verb_slots(fv_class)
     if type(stems) is str:
         stems = [stems]
     
@@ -801,33 +763,6 @@ def get_verb_paradigm_w_aux(
         boundary=BOUNDARY,
     )
     return verb_w_aux_paradigm
-
-def get_verb_dstem_paradigm(
-        fv_class: str,
-        paradigm_name: Optional[str]=None
-) -> paradigms.Paradigm:
-    """
-    Wraps `get_verb_stem_paradigm` to generate a verb paradigm with $d$-stem forms only.
-    """
-    if paradigm_name is None:
-        paradigm_name = f"fv={fv_class} stem=d-stem"
-    return get_verb_stem_paradigm(fv_class, skip_suffixes=True, paradigm_name=paradigm_name)
-
-def get_verb_dstem_paradigm_w_aux(
-        fv_class: str,
-        paradigm_name: Optional[str]=None
-) -> paradigms.Paradigm:
-    """
-    Wraps `get_verb_paradigm_w_aux` to generate a verb paradigm with $d$-stem forms only.
-    """
-    if paradigm_name is None:
-        paradigm_name = f"fv={fv_class} stem=d-stem"
-    return get_verb_paradigm_w_aux(
-        fv_class,
-        stems=None,
-        skip_suffixes=True,
-        paradigm_name=paradigm_name
-    )
 
 def debug_paradigm(root, paradigm):
     if type(paradigm) is str:
