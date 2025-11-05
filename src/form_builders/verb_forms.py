@@ -130,7 +130,7 @@ def build_imperfective_aux_forms() -> List[Tuple[pynini.Fst, features.FeatureVec
         (suffix("-tɛ́"), get_features(obj='1pl.incl')),
         (suffix("-éɲár"), get_features(obj='1pl.excl')),
         (suffix("-tɛ́"), get_features(obj='2pl')),
-        (suffix("-ĺ")|suffix("-"), get_features(obj='3pl')),
+        (suffix("-ĺ")|suffix("-ló"), get_features(obj='3pl')),
     ]
     object_slots = [
         (insert_fst('á')@rule@VOWEL_COALESCENCE_RULE, features_vec)
