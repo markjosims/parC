@@ -1,16 +1,17 @@
 from src.form_builders.main_parser import get_main_parser, inflect_word, parse_word
 from src.lexicon.lexicon import *
-from src.constants import VERB_FEATURE_VALUES
+from src.constants import VERB_FEATURE_VALUES, LEXICAL_FEATURE_VALUES
 import pytest
 
 @pytest.mark.parametrize("gold_verb", get_gold_verbs())
 def test_verb_inflection(gold_verb):
     root = gold_verb.pop('root')
     form = gold_verb.pop('form')
+    gold_verb["part_of_speech"]='verb'
 
     gold_verb_filtered = {
         k: v for k,v in gold_verb.items()
-        if k in VERB_FEATURE_VALUES or k=='gloss'
+        if k in VERB_FEATURE_VALUES+LEXICAL_FEATURE_VALUES
     }
     predicted_form = inflect_word(root, features=gold_verb_filtered)
 
@@ -30,17 +31,15 @@ def test_verb_parsing(gold_verb):
     }
     assert gold_verb_filtered in predicted_parse
 
-@pytest.mark.parametrize("verb", get_gold_derived_verbs())
-def test_derived_verbs(verb):
-    form = verb.pop('form')
-    root = verb.pop('root')
-    extension_str = verb.pop('extension')
-    extensions = extension_str.split('+')
-    fv = verb.pop('fv')
+@pytest.mark.parametrize("gold_verb", get_gold_derived_verbs())
+def test_derived_verbs(gold_verb):
+    form = gold_verb.pop('form')
+    root = gold_verb.pop('root')
+    gold_verb["part_of_speech"]='verb'
 
     verb_filtered = {
-        k: v for k,v in verb.items()
-        if k in VERB_FEATURE_VALUES
+        k: v for k,v in gold_verb.items()
+        if k in VERB_FEATURE_VALUES+LEXICAL_FEATURE_VALUES+['gloss']
     }
 
     predicted_forms = inflect_word(
@@ -54,10 +53,9 @@ def test_derived_verbs(verb):
 def test_adjective_forms(gold_adj):
     root = gold_adj.pop('root')
     form = gold_adj.pop('form')
-    agree_class = gold_adj.pop('class')
-    features = {'class': agree_class}
+    gold_adj["part_of_speech"]='adjective'
 
-    predicted_forms = inflect_word(root, features=features)
+    predicted_forms = inflect_word(root, features=gold_adj)
     assert form in predicted_forms
 
 @pytest.mark.parametrize("gold_adj", get_gold_adjectives())
@@ -74,13 +72,13 @@ def test_adjective_parsing(gold_adj):
     }
     assert predicted_parse == gold_adj_filtered
 
-@pytest.mark.parametrize("uninflected_word", get_uninflected_word_data())
-def test_uninflected_forms(uninflected_word):
-    word = uninflected_word['word']
-    pos = uninflected_word['part_of_speech']
-    gloss = uninflected_word['gloss']
+@pytest.mark.parametrize("gold_word", get_uninflected_word_data())
+def test_uninflected_forms(gold_word):
+    word = gold_word['word']
+    pos = gold_word['part_of_speech']
+    gloss = gold_word['gloss']
 
-    parsed = parse_word(word)[0]
+    parses = parse_word(word)[0]
     assert parsed['part_of_speech'] == pos
     assert parsed['gloss'] == gloss
 

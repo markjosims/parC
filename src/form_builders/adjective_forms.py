@@ -24,7 +24,7 @@ def get_adjective_paradigm() -> paradigms.Paradigm:
         stems=adj_lemmata,
         boundary=fst(BOUNDARY_STR),
         lemma_feature_vector=ADJECTIVE_ROOT,
-        name=stringify_lexeme_features({'pos': 'adjective'}),
+        name=stringify_lexeme_features({"part_of_speech": 'adjective'}),
     )
     return adj_paradigm
 

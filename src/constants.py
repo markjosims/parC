@@ -390,7 +390,7 @@ POS2CATEGORY = {
 }
 
 POS_TAG = features.Feature(
-    "pos", "unmarked", *POS2CATEGORY.keys()
+    "part_of_speech", "unmarked", *POS2CATEGORY.keys()
 )
 
 FV_TAG = features.Feature("fv", "unmarked", *FV_CLASSES)

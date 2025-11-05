@@ -86,7 +86,7 @@ def parse_word(word) -> list[Dict[str, str]]:
     
     for parse in parses:
         parse['analyzed_form'] = analyses
-        pos = parse['pos']
+        pos = parse["part_of_speech"]
         if pos not in ['verb', 'noun', 'adjective']:
             pos = 'uninflected'
         gloss = get_gloss_for_root(parse['root'], pos)

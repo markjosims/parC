@@ -665,7 +665,7 @@ def get_verb_stem_paradigm(
 
     if paradigm_name is None:
         paradigm_name = stringify_lexeme_features(
-            {"fv": fv_class, 'pos': 'verb', 'aux': 'false'}
+            {"fv": fv_class, "part_of_speech": 'verb', 'aux': 'false'}
         )
 
     fv_paradigm = paradigms.Paradigm(
