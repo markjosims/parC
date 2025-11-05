@@ -3,14 +3,11 @@ WIP: Script that loads lexical data from .csv files and compiles FSTs mapping
 stems to glosses and to principal parts.
 """
 
-import pynini
 import pandas as pd
 from src.constants import (
     GOLD_PERSON_MARKING_PATH,
     GOLD_UNINFLECTED_WORDS_PATH,
     VERB_ROOTS_PATH,
-    ROOT2FV_FST_PATH,
-    ROOT2GLOSS_FST_PATH,
     GOLD_VERBS_PATH,
     GOLD_AUXS_PATH,
     GOLD_VERBS_DERIVED_PATH,
@@ -25,92 +22,70 @@ from src.fst_helpers import fst
 from typing import *
 import json
 
-# TODO: kinda stupid that I'm loading all this data at import time
-# change to use lazy loading
-
-VERBS_DF = pd.read_csv(VERB_ROOTS_PATH, keep_default_na=False)
-GOLD_VERBS_DF = pd.read_csv(GOLD_VERBS_PATH, keep_default_na=False)
-GOLD_AUXS_DF = pd.read_csv(GOLD_AUXS_PATH, keep_default_na=False)
-GOLD_PERSON_MARKING_DF = pd.read_csv(GOLD_PERSON_MARKING_PATH, keep_default_na=False)
-GOLD_DERIVED_VERBS_DF = pd.read_csv(GOLD_VERBS_DERIVED_PATH, keep_default_na=False)
-NOUNS_DF = pd.read_csv(NOUNS_PATH, keep_default_na=False)
-GOLD_NOUNS_DF = pd.read_csv(GOLD_NOUNS_PATH, keep_default_na=False)
-ADJECTIVES_DF = pd.read_csv(ADJECTIVES_PATH, keep_default_na=False)
-GOLD_ADJECTIVES_DF = pd.read_csv(GOLD_ADJECTIVES_PATH, keep_default_na=False)
-UNINFLECTED_WORDS_DF = pd.read_csv(UNINFLECTED_WORDS_PATH, keep_default_na=False)
-GOLD_UNINFLECTED_WORDS_DF = pd.read_csv(GOLD_UNINFLECTED_WORDS_PATH, keep_default_na=False)
-
 class LexemeNotFoundError(Exception):
     """
     Raised when a root is not found in a given paradigm.
     """
     pass
 
-def get_root2gloss_fst() -> pynini.Fst:
-    root2gloss_strs = [list(t) for t in zip(
-        VERBS_DF['verb_root'].tolist(),
-        VERBS_DF['root_sense'].tolist())
-    ]
-    root2gloss = pynini.string_map(root2gloss_strs)
-    return root2gloss
-
-def get_root2fv_fst() -> pynini.Fst:
-    root2fv_strs = [list(t) for t in zip(
-        VERBS_DF['verb_root'].tolist(),
-        VERBS_DF['root_fv'].tolist())
-    ]
-    root2fv = pynini.string_map(root2fv_strs)
-    return root2fv
-
 def get_gloss_for_verb(verb_root: str) -> str:
-    root_mask = VERBS_DF['verb_root']==verb_root
+    verbs_df = pd.read_csv(VERB_ROOTS_PATH, keep_default_na=False)
+    root_mask = verbs_df['verb_root']==verb_root
     if root_mask.sum()==0:
         raise LexemeNotFoundError(f"Root {verb_root} not found in verb lexicon.")
     if root_mask.sum()>1:
         raise LexemeNotFoundError(f"Root {verb_root} found multiple times in verb lexicon.")
-    gloss = VERBS_DF.loc[root_mask, 'root_sense'].item()
+    gloss = verbs_df.loc[root_mask, 'root_sense'].item()
     return gloss
 
-
 def get_roots_for_class(fv_class: str, wrap_w_fsa: bool=False) -> List[str]:
-    fv_mask = VERBS_DF['root_fv']==fv_class
-    roots = VERBS_DF.loc[fv_mask, 'verb_root'].tolist()
+    verbs_df = pd.read_csv(VERB_ROOTS_PATH, keep_default_na=False)
+    fv_mask = verbs_df['root_fv']==fv_class
+    roots = verbs_df.loc[fv_mask, 'verb_root'].tolist()
     if wrap_w_fsa:
         roots = [fst(root) for root in roots]
     return roots
 
 def get_all_verb_roots() -> List[str]:
-    return VERBS_DF['verb_root'].tolist()
+    verbs_df = pd.read_csv(VERB_ROOTS_PATH, keep_default_na=False)
+    return verbs_df['verb_root'].tolist()
 
 def get_all_verb_roots_and_fvs() -> List[Tuple[str, str]]:
-    verb_roots = VERBS_DF['verb_root'].tolist()
-    verb_fvs = VERBS_DF['root_fv'].tolist()
+    verbs_df = pd.read_csv(VERB_ROOTS_PATH, keep_default_na=False)
+    verb_roots = verbs_df['verb_root'].tolist()
+    verb_fvs = verbs_df['root_fv'].tolist()
     return list(zip(verb_roots, verb_fvs))
 
 def get_verb_gloss_and_fvs() -> List[Tuple[str, str, str]]:
-    verb_roots = VERBS_DF['verb_root'].tolist()
-    verb_fvs = VERBS_DF['root_fv'].tolist()
-    verb_glosses = VERBS_DF['root_sense'].tolist()
+    verbs_df = pd.read_csv(VERB_ROOTS_PATH, keep_default_na=False)
+    verb_roots = verbs_df['verb_root'].tolist()
+    verb_fvs = verbs_df['root_fv'].tolist()
+    verb_glosses = verbs_df['root_sense'].tolist()
     return list(zip(verb_roots, verb_fvs, verb_glosses))
 
 def get_all_verb_data(
         return_type: Union[list, pd.DataFrame]=list
 ) -> Union[pd.DataFrame, List[Tuple[Any]]]:
+    verbs_df = pd.read_csv(VERB_ROOTS_PATH, keep_default_na=False)
     if return_type == pd.DataFrame:
-        return VERBS_DF
-    return VERBS_DF.to_dict(orient='records')
+        return verbs_df
+    return verbs_df.to_dict(orient='records')
 
 def get_gold_verbs() -> List[Dict[str, str]]:
-    return GOLD_VERBS_DF.to_dict(orient='records')
+    gold_verbs_df = pd.read_csv(GOLD_VERBS_PATH, keep_default_na=False)
+    return gold_verbs_df.to_dict(orient='records')
 
 def get_gold_auxs() -> List[Dict[str, str]]:
-    return GOLD_AUXS_DF.to_dict(orient='records')
+    gold_auxs_df = pd.read_csv(GOLD_AUXS_PATH, keep_default_na=False)
+    return gold_auxs_df.to_dict(orient='records')
 
 def get_gold_person_marking() -> List[Dict[str, str]]:
-    return GOLD_PERSON_MARKING_DF.to_dict(orient='records')
+    gold_person_marking_df = pd.read_csv(GOLD_PERSON_MARKING_PATH, keep_default_na=False)
+    return gold_person_marking_df.to_dict(orient='records')
 
 def get_gold_derived_verbs() -> List[Dict[str, str]]:
-    return GOLD_DERIVED_VERBS_DF.to_dict(orient='records')
+    gold_derived_verbs_df = pd.read_csv(GOLD_VERBS_DERIVED_PATH, keep_default_na=False)
+    return gold_derived_verbs_df.to_dict(orient='records')
 
 def get_gold_paradigms() -> List[Dict[str, Any]]:
     with open(GOLD_PARADIGMS_PATH) as f:
@@ -118,10 +93,12 @@ def get_gold_paradigms() -> List[Dict[str, Any]]:
     return gold_paradigms
 
 def get_gold_nouns() -> List[Dict[str, str]]:
-    return GOLD_NOUNS_DF.to_dict(orient='records')
+    gold_nouns_df = pd.read_csv(GOLD_NOUNS_PATH, keep_default_na=False)
+    return gold_nouns_df.to_dict(orient='records')
 
 def get_noun_lemmata(wrap_w_fsa: bool=False) -> List[str]:
-    lemmata = NOUNS_DF['lemma'].tolist()
+    nouns_df = pd.read_csv(NOUNS_PATH, keep_default_na=False)
+    lemmata = nouns_df['lemma'].tolist()
     if wrap_w_fsa:
         lemmata = [fst(lemma) for lemma in lemmata]
     return lemmata
@@ -129,72 +106,69 @@ def get_noun_lemmata(wrap_w_fsa: bool=False) -> List[str]:
 def get_all_noun_data(
         return_type: Union[list, pd.DataFrame]=list
 ) -> Union[pd.DataFrame, List[Tuple[str, str]]]:
+    nouns_df = pd.read_csv(NOUNS_PATH, keep_default_na=False)
     if return_type == pd.DataFrame:
-        return NOUNS_DF
-    return NOUNS_DF.to_dict(orient='records')
+        return nouns_df
+    return nouns_df.to_dict(orient='records')
 
 def get_gloss_for_noun(lemma: str) -> str:
-    lemma_mask = NOUNS_DF['lemma']==lemma
+    nouns_df = pd.read_csv(NOUNS_PATH, keep_default_na=False)
+    lemma_mask = nouns_df['lemma']==lemma
     if lemma_mask.sum()==0:
         raise LexemeNotFoundError(f"Lemma {lemma} not found in noun lexicon.")
     if lemma_mask.sum()>1:
         raise LexemeNotFoundError(f"Lemma {lemma} found multiple times in noun lexicon.")
-    gloss = NOUNS_DF.loc[lemma_mask, 'gloss'].item()
+    gloss = nouns_df.loc[lemma_mask, 'gloss'].item()
     return gloss
 
 def get_adjective_roots(wrap_w_fsa: bool=False) -> List[str]:
-    roots = ADJECTIVES_DF['root'].tolist()
+    adjectives_df = pd.read_csv(ADJECTIVES_PATH, keep_default_na=False)
+    roots = adjectives_df['root'].tolist()
     if wrap_w_fsa:
         roots = [fst(root) for root in roots]
     return roots
 
 def get_gloss_for_adjective(root: str) -> str:
-    root_mask = ADJECTIVES_DF['root']==root
+    adjectives_df = pd.read_csv(ADJECTIVES_PATH, keep_default_na=False)
+    root_mask = adjectives_df['root']==root
     if root_mask.sum()==0:
         raise LexemeNotFoundError(f"Root {root} not found in adjective lexicon.")
     if root_mask.sum()>1:
         raise LexemeNotFoundError(f"Root {root} found multiple times in adjective lexicon.")
-    gloss = ADJECTIVES_DF.loc[root_mask, 'gloss'].item()
+    gloss = adjectives_df.loc[root_mask, 'gloss'].item()
     return gloss
 
 def get_gold_adjectives() -> List[Dict[str, str]]:
-    return GOLD_ADJECTIVES_DF.to_dict(orient='records')
+    gold_adjectives_df = pd.read_csv(GOLD_ADJECTIVES_PATH, keep_default_na=False)
+    return gold_adjectives_df.to_dict(orient='records')
 
 def get_all_adjective_data(
         return_type: Union[list, pd.DataFrame]=list
 ) -> Union[pd.DataFrame, List[Tuple[str, str]]]:
+    adjectives_df = pd.read_csv(ADJECTIVES_PATH, keep_default_na=False)
     if return_type == pd.DataFrame:
-        return ADJECTIVES_DF
-    return ADJECTIVES_DF.to_dict(orient='records')
+        return adjectives_df
+    return adjectives_df.to_dict(orient='records')
 
 def get_uninflected_word_data(
         return_type: Union[list, pd.DataFrame]=list
 ) -> Union[pd.DataFrame, List[Tuple[Any]]]:
+    uninflected_words_df = pd.read_csv(UNINFLECTED_WORDS_PATH, keep_default_na=False)
     if return_type == pd.DataFrame:
-        return UNINFLECTED_WORDS_DF
-    return UNINFLECTED_WORDS_DF.to_dict(orient='records')
+        return uninflected_words_df
+    return uninflected_words_df.to_dict(orient='records')
 
 def get_pos_and_gloss_for_uninflected_word(word: str) -> Tuple[str, str]:
-    word_mask = UNINFLECTED_WORDS_DF['word']==word
+    uninflected_words_df = pd.read_csv(UNINFLECTED_WORDS_PATH, keep_default_na=False)
+    word_mask = uninflected_words_df['word']==word
     if word_mask.sum()==0:
         raise LexemeNotFoundError(f"Word {word} not found in uninflected word lexicon.")
     if word_mask.sum()>1:
         raise LexemeNotFoundError(f"Word {word} found multiple times in uninflected word lexicon.")
-    pos = UNINFLECTED_WORDS_DF.loc[word_mask, 'part_of_speech'].item()
-    gloss = UNINFLECTED_WORDS_DF.loc[word_mask, 'gloss'].item()
+    pos = uninflected_words_df.loc[word_mask, 'part_of_speech'].item()
+    gloss = uninflected_words_df.loc[word_mask, 'gloss'].item()
     return pos, gloss
 
 def get_gold_uninflected_words() -> List[Dict[str, str]]:
-    return GOLD_UNINFLECTED_WORDS_DF.to_dict(orient='records')
-
-def main() -> int:
-    root2gloss = get_root2gloss_fst()
-    root2gloss.write(ROOT2GLOSS_FST_PATH)
-
-    root2fv = get_root2fv_fst()
-    root2fv.write(ROOT2FV_FST_PATH)
-
-    return 0
-
-if __name__ == '__main__':
-    main()
+    gold_uninflected_words_df = pd.read_csv(GOLD_UNINFLECTED_WORDS_PATH, keep_default_na=False)
+    return gold_uninflected_words_df.to_dict(orient='records')
