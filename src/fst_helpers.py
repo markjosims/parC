@@ -187,19 +187,23 @@ def feature_dict_to_vector(
     lexical_flag_vector = features.FeatureVector(LEXEME, *lexical_flags)
     return lexeme_vector, lexical_flag_vector
 
-def stringify_lexeme_vector(lexeme_vector: features.FeatureVector) -> str:
+def stringify_lexeme_features(
+        lexeme_features: Union[features.FeatureVector, Dict[str,str]]
+    ) -> str:
     """
     Arguments:
-        lexeme_vector:  FeatureVector containing lexeme-specific features
+        lexeme_features:  dict or FeatureVector containing lexeme-specific features
     Returns:
-        feature_str:    String representation of the features in `lexeme_vector`
-    
-    Converts the features in `lexeme_vector` to a string of the shape
+        feature_str:    String representation of the features in `lexeme_features`
+
+    Converts the features in `lexeme_features` to a string of the shape
     "feature1=value1 feature2=value2 ...".
     """
     feature_strs = []
-    for feature in lexeme_vector.category.features:
-        feature_value = lexeme_vector.values[feature.name]
+    if type(lexeme_features) is features.FeatureVector:
+        lexeme_features = lexeme_features.values
+    for feature in LEXEME.features:
+        feature_value = lexeme_features.values[feature.name]
         if feature_value == 'unmarked':
             continue
         feature_str = f"{feature.name}={feature_value}"

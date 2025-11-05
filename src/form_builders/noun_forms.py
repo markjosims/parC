@@ -39,7 +39,7 @@ def get_noun_paradigm() -> paradigms.Paradigm:
 
     noun_paradigm = paradigms.Paradigm(
         category=NOUN,
-        name=stringify_lexeme_vector({'pos': 'noun'}),
+        name=stringify_lexeme_features({'pos': 'noun'}),
         slots=slots,
         lemma_feature_vector=NOUN_ROOT,
         stems=get_noun_lemmata(wrap_w_fsa=True),

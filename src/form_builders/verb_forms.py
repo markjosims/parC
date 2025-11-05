@@ -664,7 +664,7 @@ def get_verb_stem_paradigm(
         stems = get_roots_for_class(fv_class, wrap_w_fsa=True)
 
     if paradigm_name is None:
-        paradigm_name = stringify_lexeme_vector(
+        paradigm_name = stringify_lexeme_features(
             {"fv": fv_class, 'pos': 'verb', 'aux': 'false'}
         )
 
@@ -755,7 +755,7 @@ def get_verb_paradigm_w_aux(
 
     lexical_flags = vectorize_lexeme_string(verb_paradigm.name).values
     lexical_flags['aux']= 'true'
-    paradigm_name = stringify_lexeme_vector(lexical_flags)
+    paradigm_name = stringify_lexeme_features(lexical_flags)
     verb_w_aux_paradigm = paradigms.Paradigm(
         category=INFLECTED_VERB,
         name=paradigm_name,
