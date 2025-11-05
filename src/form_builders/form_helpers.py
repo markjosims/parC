@@ -4,7 +4,7 @@ for various parts of speech.
 """
 
 from typing import *
-from src.fst_helpers import decode_byte_str, fst
+from src.fst_helpers import fst, decode_feature_label_rewriter
 from src.constants import CLASS_PREFIXES, LOW_TONE
 from src.glossing import feature_str_to_dict
 from src.phonology import DELETE_SCHWA_BEFORE_VOWEL, SIGMASTAR, REMOVE_DOUBLE_BOUNDARIES
@@ -97,7 +97,6 @@ def generate_forms(
         paradigm: paradigms.Paradigm,
         save_to_tmp: bool=False,
         print_forms: bool=False,
-        parse: bool=False,
 ):
     """
     Arguments:
@@ -110,23 +109,15 @@ def generate_forms(
         fst(stem),
         paradigm.stems_to_forms @ paradigm.feature_label_rewriter,
     )
-    wordforms = []
-    for wordform in rewrite.lattice_to_strings(lattice):
-        if parse:
-            parsed_wordform = feature_str_to_dict(wordform)
-            wordforms.append(parsed_wordform)
-        else:
-            byte_word = wordform.split('[')[0]
-            word = decode_byte_str(byte_word)
-            wordform = wordform.replace(byte_word, word)
-            wordforms.append(wordform)
-        if print_forms:
-            print(wordform)
-    if save_to_tmp and not parse:
-        with open(f'tmp/{stem}_forms.txt', 'w') as f:
-            f.write("\n".join(wordforms))
-    if save_to_tmp and parse:
-        df = pd.DataFrame(wordforms)
+    word_dicts = decode_feature_label_rewriter(lattice)
+    if save_to_tmp:
+        df = pd.DataFrame(word_dicts)
         df.to_csv(f'tmp/{stem}_forms.csv', index=False)
-    return wordforms
+    if print_forms:
+        for word_dict in word_dicts:
+            word_dict = word_dict.copy()
+            wordform = word_dict.pop('wordform')
+            features_str = ', '.join(f"{k}={v}" for k, v in word_dict.items())
+            print(f"{wordform}\t{features_str}")
+    return word_dicts
 
