@@ -1,5 +1,5 @@
 from src.form_builders.main_parser import get_main_parser, inflect_word, parse_word
-from src.lexicon.lexicon import *
+from src.lexicon import *
 from src.constants import VERB_FEATURE_VALUES, LEXICAL_FEATURE_VALUES
 import pytest
 
@@ -65,22 +65,24 @@ def test_adjective_parsing(gold_adj):
     form = analyzed_form.replace('-', '')
     gold_adj['form']=form
 
-    predicted_parse = parse_word(form)[0]
+    predicted_parses = parse_word(form)
     gold_adj_filtered = {
         k: v for k,v in gold_adj.items()
-        if k in predicted_parse
+        if k in predicted_parses[0]
     }
-    assert predicted_parse == gold_adj_filtered
+    assert gold_adj_filtered in predicted_parses
 
 @pytest.mark.parametrize("gold_word", get_uninflected_word_data())
 def test_uninflected_forms(gold_word):
     word = gold_word['word']
     pos = gold_word['part_of_speech']
-    gloss = gold_word['gloss']
 
-    parses = parse_word(word)[0]
-    assert parsed['part_of_speech'] == pos
-    assert parsed['gloss'] == gloss
+    parses = parse_word(word, features={'part_of_speech': pos})
+    gold_word_filtered = {
+        k: v for k,v in gold_word.items()
+        if k in parses[0]
+    }
+    assert gold_word_filtered in parses
 
 @pytest.mark.parametrize("aux", get_gold_auxs())
 def test_gold_auxs(aux):

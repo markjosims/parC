@@ -9,6 +9,7 @@ from src.constants import *
 from src.fst_helpers import (
     fst, insert_fst, delete_fst, pynini,
 )
+import string
 
 BOUNDARY = fst(BOUNDARY_STR)
 WORD_BOUNDARY = fst(WORD_BOUNDARY_STR)

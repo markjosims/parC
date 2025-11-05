@@ -4,7 +4,7 @@ from pynini.lib import features, paradigms, rewrite, pynutil
 from src.cache_decorators import output_cache
 from src.lexicon.phonology import *
 from src.fst_helpers import *
-from src.lexicon.lexicon import NOUNS_DF, get_all_noun_data, get_noun_lemmata, get_gloss_for_noun
+from src.lexicon import get_all_noun_data, get_noun_lemmata, get_gloss_for_noun
 from src.constants import (
     NOUN_FEATURE_ABBREVIATION_TO_VECTOR,
     NOUN_ROOT,
