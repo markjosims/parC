@@ -5,7 +5,7 @@ from src.lexicon import get_adjective_roots, get_gloss_for_adjective, get_all_ad
 from src.form_builders.form_helpers import add_class_prefix, add_class_prefixes_to_slots
 from src.constants import ADJECTIVE, ADJECTIVE_ROOT, ADJECTIVE_CLASS_VALUES, BOUNDARY_STR
 from src.phonology import ALL_LOW_TONE_RULE, SIGMASTAR
-from src.fst_helpers import decode_byte_str, decode_fst_string, fst
+from src.fst_helpers import decode_byte_str, decode_fst_string, fst, stringify_lexeme_vector
 import pandas as pd
 
 @output_cache(__file__)
@@ -24,7 +24,7 @@ def get_adjective_paradigm() -> paradigms.Paradigm:
         stems=adj_lemmata,
         boundary=fst(BOUNDARY_STR),
         lemma_feature_vector=ADJECTIVE_ROOT,
-        name="Adjective",
+        name=stringify_lexeme_vector({'pos': 'adjective'}),
     )
     return adj_paradigm
 
