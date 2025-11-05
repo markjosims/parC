@@ -402,6 +402,9 @@ EXTENSION_TAG = features.Feature(
 )
 
 LEXICAL_FEATURES = [POS_TAG, FV_TAG, AUX_TAG, EXTENSION_TAG]
+LEXICAL_FEATURE_VALUES = {
+    feature.name: feature.values for feature in LEXICAL_FEATURES
+}
 LEXEME = features.Category(*LEXICAL_FEATURES)
 
 
