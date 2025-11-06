@@ -23,15 +23,15 @@ CSV_PATH = 'data/test_cases/gold_person_marking.csv'
 def get_forms_for_tam(df: pd.DataFrame, tamd: str) -> pd.DataFrame:
     tamd = tamd.lower()
     examples = []
-    features = {}
+    feature_dict = {}
     if 'perfective' in tamd:
-        features['tam'] = 'perfective'
+        feature_dict['tam'] = 'perfective'
     elif 'imperfective' in tamd:
-        features['tam'] = 'imperfective'
+        feature_dict['tam'] = 'imperfective'
     if 'ventive' in tamd:
-        features['deixis'] = 'ventive'
+        feature_dict['deixis'] = 'ventive'
     elif 'andative' in tamd:
-        features['deixis'] = 'itive'
+        feature_dict['deixis'] = 'itive'
     for _, row in df.iterrows():
         subj = row['SUBJ/OBJ']
         if subj not in LABEL_MAP:
@@ -41,7 +41,7 @@ def get_forms_for_tam(df: pd.DataFrame, tamd: str) -> pd.DataFrame:
             if pd.isna(cell) or 'reflexive' in cell.lower() or 'impossible' in cell.lower():
                 continue
             form = normalize_ipa(cell.strip())
-            example_features = features.copy()
+            example_features = feature_dict.copy()
             if 'c' in form:
                 example_features['root']='ɲɛlac'
                 example_features['gloss']='tickle'

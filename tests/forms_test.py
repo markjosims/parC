@@ -29,7 +29,7 @@ def test_verb_inflection(gold_verb):
         k: v for k,v in gold_verb.items()
         if k in VERB_FEATURE_VALUES or k=='gloss'
     }
-    predicted_form = inflect_verb_with_features(root, fv, features=gold_verb_filtered)
+    predicted_form = inflect_verb_with_features(root, fv, feature_dict=gold_verb_filtered)
 
     assert form in predicted_form
 
@@ -64,7 +64,7 @@ def test_derived_verbs(verb):
     predicted_forms = inflect_verb_with_extension(
         root=root,
         fv=fv,
-        features=verb_filtered,
+        feature_dict=verb_filtered,
         extension_seq=extensions,
     )
 
@@ -119,6 +119,6 @@ def test_gold_auxs(aux):
         k: v for k,v in aux.items()
         if k in VERB_FEATURE_VALUES or k=='gloss'
     }
-    predicted_forms = inflect_aux_with_features(features=aux_filtered)
+    predicted_forms = inflect_aux_with_features(feature_dict=aux_filtered)
 
     assert form in predicted_forms
