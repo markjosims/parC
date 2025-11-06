@@ -65,14 +65,14 @@ def build_imperfective_aux_forms() -> List[Tuple[pynini.Fst, features.FeatureVec
         2pl: l- éɲá- ĺ
         3pl: l- á- l- ló
     Object: (takes place of Aux /a/)
-        1sg: -á-ŋɛ̂-
-        2sg: -á-ŋâ-
+        1sg: -á-ŋɛ̂
+        2sg: -á-ŋâ
         3sg: CL-
-        1du.incl: -á-tɛ́-
-        1pl.incl: -á-tɛ́-
-        1pl.excl: -éɲár-
-        2pl: -á-tɛ́-
-        3pl: CL-á-l(ó)-
+        1du.incl: -á-tɛ́
+        1pl.incl: -á-tɛ́
+        1pl.excl: -éɲár
+        2pl: -á-tɛ́
+        3pl: CL-á-l(ó)
     """
     tamd_strs = ["tam=imperfective", "deixis=unmarked"]
     def get_features(sbj: str='unmarked', obj: str='unmarked', cl: str='unmarked') -> List[str]:
