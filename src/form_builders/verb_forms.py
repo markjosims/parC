@@ -789,7 +789,7 @@ def inflect_random_verb(fv_class: Optional[str]=None):
 def inflect_verb_with_features(
         root: str,
         paradigm: Union[paradigms.Paradigm, str],
-        features: Dict[str, str],
+        feature_dict: Dict[str, str],
         expected_verb_type: Literal['stem', 'stem_and_aux', 'all']='all',
     ) -> List[str]:
     """
@@ -812,20 +812,20 @@ def inflect_verb_with_features(
         forms_stem = inflect_verb_with_features(
             root,
             get_verb_stem_paradigm(paradigm),
-            features,
+            feature_dict,
             expected_verb_type='stem'
         )
         forms_aux = inflect_verb_with_features(
             root,
             get_verb_paradigm_w_aux(paradigm),
-            features,
+            feature_dict,
             expected_verb_type='stem_and_aux'
         )
         forms = [*forms_stem, *forms_aux]
         return forms
     forms = []
     expected_keys = [feature.name for feature in INFLECTED_VERB.features]
-    features_filtered = {k:v for k,v in features.items() if k in expected_keys}
+    features_filtered = {k:v for k,v in feature_dict.items() if k in expected_keys}
     slot_for_features = [slot for slot in paradigm.slots if slot[1].values == features_filtered]
     for slot in slot_for_features:
         rule, _ = slot
@@ -835,18 +835,18 @@ def inflect_verb_with_features(
     return forms
 
 def inflect_aux_with_features(
-        features: Dict[str, str]
+        feature_dict: Dict[str, str]
     ) -> List[str]:
     """
     Arguments:
-        features:   dict mapping feature labels to values
+        feature_dict:   dict mapping feature labels to values
     Returns:
         form:       list of strs of auxiliary inflected with given features
     """
     forms = []
     aux_paradigm = get_aux_paradigm()
     expected_keys = [feature.name for feature in INFLECTED_AUX.features]
-    features_filtered = {k:v for k,v in features.items() if k in expected_keys}
+    features_filtered = {k:v for k,v in feature_dict.items() if k in expected_keys}
     slot_for_features = [slot for slot in aux_paradigm.slots if slot[1].values == features_filtered]
     for slot in slot_for_features:
         rule, _ = slot
@@ -885,7 +885,7 @@ def get_inflected_paradigm_for_verb(
             form = inflect_verb_with_features(
                 root=root,
                 paradigm=paradigm,
-                features={
+                feature_dict={
                     "tam": tam_value,
                     "deixis": deixis_value,
                     "class": class_value,
@@ -895,7 +895,7 @@ def get_inflected_paradigm_for_verb(
     inflected_paradigm['infinitive']=inflect_verb_with_features(
         root=root,
         paradigm=paradigm,
-        features={
+        feature_dict={
             "tam": "infinitive",
             "deixis": "unmarked",
             "class": "ð",
