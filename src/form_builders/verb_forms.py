@@ -691,9 +691,12 @@ def get_aux_paradigm() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
     lemma_feature_strs = [f"{feature}={value}" for feature, value in lemma_features.items()]
     aux_lemma = features.FeatureVector(INFLECTED_AUX, *lemma_feature_strs)
 
+    paradigm_name = stringify_lexeme_features(
+        {"part_of_speech": 'verb', 'aux': 'true'}
+    )
     aux_paradigm = paradigms.Paradigm(
         category=INFLECTED_AUX,
-        name="aux=true",
+        name=paradigm_name,
         slots=aux_slots,
         lemma_feature_vector=aux_lemma,
         stems=[fst("")],
