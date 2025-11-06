@@ -62,8 +62,9 @@ def ingest_data(df: pd.DataFrame, db: Session):
 
 def add_parses_for_word(db, word_str, wordform):
     parses = search_word(word_str)
-    for parse, weight in parses:
+    for parse in parses:
         part_of_speech = parse['part_of_speech']
+        weight = parse['weight']
         lexeme = db.query(Lexeme).filter(
                         Lexeme.root == parse['root'],
                         Lexeme.part_of_speech == part_of_speech,
