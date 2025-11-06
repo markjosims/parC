@@ -291,7 +291,10 @@ def decode_fst_lattice(
         word = ''
         features = {}
         for label in path_iter.olabels():
-            if label < TIRA_NUM_SYMBOLS:
+            if label == 0:
+                # epsilon, skip
+                continue
+            elif label < TIRA_NUM_SYMBOLS:
                 symbol = TIRA_SYMBOL_TABLE.find(label)
                 char = TIRA_SYMBOL_TO_CHAR.get(symbol, symbol)
                 word += char
