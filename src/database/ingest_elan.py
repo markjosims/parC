@@ -4,7 +4,7 @@ from src.constants import SENTENCES_PATH
 from src.database.models import Sentence, Wordform, SentenceWord, Parse, Lexeme
 from sqlalchemy.orm import Session
 from tqdm import tqdm
-from src.search import search_parse
+from src.search import search_word
 import traceback
 from random import choice
 import math
@@ -61,7 +61,7 @@ def ingest_data(df: pd.DataFrame, db: Session):
     print("Data ingestion successful")
 
 def add_parses_for_word(db, word_str, wordform):
-    parses = search_parse(word_str)
+    parses = search_word(word_str)
     for parse, weight in parses:
         part_of_speech = parse['part_of_speech']
         lexeme = db.query(Lexeme).filter(

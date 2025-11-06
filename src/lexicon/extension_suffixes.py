@@ -11,7 +11,7 @@ from src.constants import (
 )
 from src.lexicon.phonology import LOCATIVE_ROUNDING_RULE
 from typing import *
-from src.fst_helpers import fst, decode_fst_lattice
+from src.fst_helpers import fst, get_lattice_strs_and_weights
 
 def extension_abbreviations_to_long(
     extension_seq: Union[str, Tuple[str, str]]
@@ -72,17 +72,17 @@ def get_derived_stem_and_fv(
         suffix = EXTENSION_MAP[ext]
         if type(suffix) is dict:
             suffix_str, suffix_fv = suffix[outer_fv]
-            extension_suffix_str+= suffix_str
+            extension_suffix_str+= BOUNDARY_STR+suffix_str
         else: # type(suffix) is tuple
             suffix_str, suffix_fv = suffix
-            extension_suffix_str+= suffix_str
+            extension_suffix_str+= BOUNDARY_STR+suffix_str
         outer_fv = suffix_fv
     
     if type(base_stem) is str:
-        derived_stems = [base_stem + BOUNDARY_STR + extension_suffix_str]
+        derived_stems = [base_stem + extension_suffix_str]
     else:
         derived_stems = [
-            stem + BOUNDARY_STR + extension_suffix_str
+            stem + extension_suffix_str
             for stem in base_stem
         ]
     if type(gloss) is str:
@@ -100,7 +100,8 @@ def get_derived_stem_and_fv(
         derived_glosses_w_rounding = []
         for stem, gloss in zip(derived_stems, derived_glosses):
             stem = fst(stem) @ LOCATIVE_ROUNDING_RULE
-            new_stems = decode_fst_lattice(stem, strings_only=True)
+            new_stems = get_lattice_strs_and_weights(stem)
+            new_stems = [s for s, _ in new_stems]
             derived_stems_w_rounding.extend(new_stems)
             derived_glosses_w_rounding.extend([gloss]*len(new_stems))
         derived_glosses = derived_glosses_w_rounding

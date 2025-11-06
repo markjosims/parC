@@ -2,16 +2,14 @@ import pynini
 from pynini.lib import pynutil
 
 from typing import *
-from src.cache_decorators import output_cache
+from src.cache_decorators import fst_cache, output_cache
 from src.form_builders.adjective_forms import get_adjective_paradigm, parse_adjective
 from src.form_builders.uninflected_forms import get_uninflected_word_fst, parse_uninflected_word
 from src.form_builders.verb_forms import (
     parse_inflected_verb, get_verb_stem_paradigm,
     get_aux_paradigm, get_verb_paradigm_w_aux,
-    get_verb_dstem_paradigm, get_verb_dstem_paradigm_w_aux,
 )
 from src.form_builders.noun_forms import get_noun_paradigm, parse_noun
-from src.lexicon.extension_suffixes import get_paradigms_for_all_extensions
 from src.fst_helpers import *
 from src.constants import (
     INSERT, DELETE, SUBSTITUTE,
@@ -22,6 +20,7 @@ from src.lexicon.phonology import (
     SIGMA, INSERTION_COSTS, DELETION_COSTS, SUBSTITUTION_COSTS,
     INSERT_HYPHEN_RULE
 )
+from src.parser import get_main_parser, add_analysis_and_gloss_to_parses, parse_word
 
 # ----------------------------------- #
 # functions for building search graph #
@@ -43,6 +42,22 @@ def get_searchable_lexicon(
     if type(lexicon) is list:
         lexicon = fst(lexicon)
     left_factor, right_factor = get_edit_factors(**edit_factor_kwargs)
+    searchable_lexicon = right_factor@lexicon
+    return left_factor, searchable_lexicon
+
+@fst_cache(os.path.dirname(__file__), num_fst=2)
+def get_searchable_main_parser(**edit_factor_kwargs) -> Tuple[pynini.Fst, pynini.Fst]:
+    """
+    Arguments:
+        edit_factor_kwargs:     Arguments for `get_edit_factors`
+    Returns:
+        (left_factor, searchable_lexicon):    FST to compile with queries; pre-compiled FST right_factor@lexicon
+
+    Wraps `get_edit_factors` and compiles right factor with main parser lexicon.
+    """
+    main_lemmatizer, _, _ = get_main_parser()
+    left_factor, right_factor = get_edit_factors(**edit_factor_kwargs)
+    lexicon = pynini.project(main_lemmatizer, 'input')
     searchable_lexicon = right_factor@lexicon
     return left_factor, searchable_lexicon
 
@@ -510,13 +525,13 @@ def _parse_hits(
     hits = hit_parses[:num_hits]
     return hits
 
-def search_parse(
+def search_word(
         form: str,
         num_hits: int = 5,
         edit_bound: int = 5,
     ) -> List[Tuple[Dict[str, Any], float]]:
     """
-    Wraps search functions for each part of speech and returns nbest hits.
+    Returns fuzzy search hits for a queried word form across all parts of speech.
 
     Arguments:
         form:       str of form to query parses for
@@ -524,33 +539,23 @@ def search_parse(
     Returns:
         parses:     list of tuples, each of shape `(parse: dict, prob: float)`
     """
-    pos_search_functions = {
-        'verb': search_verb_form,
-        'noun': search_noun_form,
-        'adjective': search_adjective_form,
-        'uninflected': search_uninflected_word,
-    }
 
-    all_hits = []
-    for pos, search_function in pos_search_functions.items():
-        hits = search_function(
-            form,
-            num_hits=num_hits,
-            edit_bound=edit_bound,
-            return_parse=True,
-        )
-        if pos!='uninflected':
-            # add part_of_speech to each hit
-            hits = [(
-                {**hit[0], 'part_of_speech': pos},
-                hit[1]
-            ) for hit in hits]
-        all_hits.extend(hits)
-
-    all_hits.sort(key=lambda hit_tuple: hit_tuple[-1])
-    nbest_hits = all_hits[:num_hits]
-    return nbest_hits
-
+    left_factor, searchable_lexicon = get_searchable_main_parser(bound=edit_bound)
+    query_fst = fst(form)@left_factor
+    query_fst.optimize()
+    search_lattice = query_fst@searchable_lexicon
+    search_lattice.project('output')
+    search_lattice.optimize()
+    hits = get_lattice_strs_and_weights(
+        search_lattice,
+        nshortest=num_hits,
+    )
+    parses = []
+    for hit_str, weight in hits:
+        for parse in parse_word(hit_str):
+            parse['weight']=weight
+            parses.append(parse)
+    return parses
 
 def search_for_hyphenated_form(
         unparsed_form: str,

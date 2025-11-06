@@ -27,6 +27,7 @@ def test_verb_parsing(gold_verb):
     gold_verb['form']=form
     gold_verb["part_of_speech"]='verb'
     gold_verb['aux']= str(' ' in form).lower()
+    gold_verb['weight']=0.0
 
     predicted_parse = parse_word(form)
     gold_verb_filtered = {
@@ -40,7 +41,7 @@ def test_derived_verbs(gold_verb):
     form = gold_verb.pop('form')
     root = gold_verb.pop('root')
     gold_verb["part_of_speech"]='verb'
-    gold_verb['aux']= ' ' in form
+    gold_verb['aux']= str(' ' in form).lower()
 
     verb_filtered = {
         k: v for k,v in gold_verb.items()
@@ -71,6 +72,7 @@ def test_adjective_parsing(gold_adj):
     gold_adj["part_of_speech"]='adjective'
     form = analyzed_form.replace('-', '')
     gold_adj['form']=form
+    gold_adj['weight']=0.0
 
     predicted_parses = parse_word(form)
     gold_adj_filtered = {
@@ -84,6 +86,7 @@ def test_uninflected_forms(gold_word):
     word = gold_word['word']
     gold_word['analyzed_form']=word
     gold_word['root']=word
+    gold_word['weight']=0.0
 
     parses = parse_word(word)
     gold_word_filtered = {

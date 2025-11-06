@@ -260,6 +260,7 @@ FV_CLASSES = ['aɔ', 'ao', 'au', 'ai', 'ɔɔ', 'ɔi', 'ɔu']
 ######################
 
 INFLECTED_AUX = features.Category(*INFLECTED_VERB.features)
+AUX_LEMMA_STR = 'ŋgá'
 IPFV_AUX = features.FeatureVector(INFLECTED_AUX, "tam=imperfective")
 PFV_IT_AUX = features.FeatureVector(INFLECTED_AUX, "tam=perfective", "deixis=itive")
 AUX_FEATURE_BUNDLES = [

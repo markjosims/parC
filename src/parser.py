@@ -14,13 +14,16 @@ from src.form_builders.verb_forms import (
     get_verb_paradigm_w_aux,
 )
 from src.fst_helpers import (
-    fst, decode_fst_lattice, vectorize_feature_dict, vectorize_lexeme_string,
+    fst, parse_lattice_outputs, get_features_fsa,
+    vectorize_feature_dict, vectorize_lexeme_string, get_lattice_strs
 )
 from src.form_builders.uninflected_forms import get_uninflected_word_fst
 from src.cache_decorators import fst_cache
 from src.lexicon import get_gloss_for_root
 import os
 from typing import *
+
+from src.lexicon.phonology import SIGMASTAR
 
 __dir__ = os.path.dirname(os.path.abspath(__file__))
 _form_builders_dir = os.path.join(__dir__, 'form_builders')
@@ -69,30 +72,42 @@ def get_main_parser() -> Tuple[pynini.Fst, pynini.Fst, pynini.Fst]:
 
     return main_lemmatizer, main_analyzer, main_inflector
 
-def inflect_word(root, feature_dict) -> str:
+def inflect_word(root, feature_dict) -> List[Tuple[str, float]]:
     feature_vector, flag_vector = vectorize_feature_dict(feature_dict)
     _, _, main_inflector = get_main_parser()
     input_fst = fst(root) + feature_vector.acceptor + flag_vector.acceptor
     output_fst = input_fst @ main_inflector
-    decoded_strs = decode_fst_lattice(output_fst, strings_only=True)
-    return decoded_strs
+    inflected_strs = get_lattice_strs(output_fst)
+    return inflected_strs
 
 def parse_word(word) -> list[Dict[str, str]]:
-    main_lemmatizer, main_analyzer, _ = get_main_parser()
+    main_lemmatizer, _, _ = get_main_parser()
     input_fst = fst(word)
     lemmatized_lattice = input_fst @ main_lemmatizer
-    parses = decode_fst_lattice(lemmatized_lattice, word_key='root')
+    parses = parse_lattice_outputs(lemmatized_lattice, word_key='root')
+    parses = [{**parse, 'form': word} for parse in parses]
+    parses = add_analysis_and_gloss_to_parses(parses, input_fst=input_fst)
 
-    analyzed_lattice = input_fst @ main_analyzer
-    analyses = decode_fst_lattice(analyzed_lattice)
-    analyses = [analysis['form'] or analysis for analysis in analyses]
+    return parses
 
-    for parse, analysis in zip(parses, analyses):
+def add_analysis_and_gloss_to_parses(parses, input_fst=None) -> list[Dict[str, str]]:
+    _, main_analyzer, _ = get_main_parser()
+
+    non_feature_keys = ['root', 'weight']
+    for parse in parses:
+        if input_fst is None:
+            input_fst = fst(parse['form'])
+        feature_dict = {k: v for k, v in parse.items() if k not in non_feature_keys}
+        features_fsa = get_features_fsa(feature_dict)
+        analysis_lattice = input_fst @ main_analyzer @ (SIGMASTAR + features_fsa)
+        analyses = get_lattice_strs(analysis_lattice)
+        assert len(analyses) == 1, f"Expected exactly one analysis, got {analyses}"
+        parse['analyzed_form'] = analyses[0].split('[')[0]
+
         pos = parse["part_of_speech"]
-        parse['analyzed_form'] = analysis
         if pos not in ['verb', 'noun', 'adjective']:
             pos = 'uninflected'
         gloss = get_gloss_for_root(parse['root'], pos)
         parse['gloss'] = gloss
-
+    
     return parses

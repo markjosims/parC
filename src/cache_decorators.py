@@ -223,7 +223,7 @@ def fst_cache(current_file: str, cache_dir=".cache/", num_fst: int=1) -> pynini.
             for cache_path in cache_paths:
                 cached_f = get_cached_fst_from_stack(cache_path)
                 cached_fsts.append(cached_f)
-            if None not in cached_fsts:
+            if not any(f is None for f in cached_fsts):
                 # all FSTS found in in-memory cache
                 if PRINT_CACHE_STATS:
                     print(

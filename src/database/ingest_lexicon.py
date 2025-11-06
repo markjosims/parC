@@ -23,8 +23,8 @@ def ingest_verbs(df: pd.DataFrame, db: Session):
         new_lexeme = Lexeme(
             root=row['verb_root'],
             part_of_speech='verb',
-            gloss=row['root_sense'],
-            lexical_info={"fv_class": row['root_fv']}
+            gloss=row['gloss'],
+            lexical_info={"fv_class": row['fv']}
         )
         db.add(new_lexeme)
         num_added += 1

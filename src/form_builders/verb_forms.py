@@ -769,15 +769,6 @@ def get_verb_paradigm_w_aux(
     )
     return verb_w_aux_paradigm
 
-def debug_paradigm(root, paradigm):
-    if type(paradigm) is str:
-        paradigm = get_verb_stem_paradigm(paradigm)
-    for rule, feature_vector in paradigm.slots:
-        try:
-            form = decode_fst_lattice(fst(root)@rule)
-            print(f"Successfully generated {form} from root {root} with values {feature_vector.values}")
-        except:
-            print(f"Error when generating {root} with values {feature_vector.values}")
 
 def inflect_random_verb(fv_class: Optional[str]=None):
     if fv_class is None:
@@ -829,7 +820,7 @@ def inflect_verb_with_features(
     slot_for_features = [slot for slot in paradigm.slots if slot[1].values == features_filtered]
     for slot in slot_for_features:
         rule, _ = slot
-        form = decode_fst_lattice(fst(root)@rule, strings_only=True)
+        form = get_lattice_strs(fst(root)@rule)
         forms.extend(form)
 
     return forms

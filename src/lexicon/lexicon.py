@@ -3,6 +3,7 @@ WIP: Script that loads lexical data from .csv files and compiles FSTs mapping
 stems to glosses and to principal parts.
 """
 
+import os
 import pandas as pd
 from src.cache_decorators import output_cache
 from src.constants import (
@@ -20,6 +21,7 @@ from src.constants import (
     ADJECTIVES_PATH,
     GOLD_ADJECTIVES_PATH,
     UNINFLECTED_WORDS_PATH,
+    AUX_LEMMA_STR
 )
 from src.lexicon.extension_suffixes import get_derived_stem_and_fv
 from src.fst_helpers import fst
@@ -37,8 +39,8 @@ def get_roots_for_class(fv_class: str, wrap_w_fsa: bool=False, include_extension
         verbs_df = get_all_verb_data(return_type=pd.DataFrame)
     else:
         verbs_df = get_verb_root_data(return_type=pd.DataFrame)
-    fv_mask = verbs_df['root_fv']==fv_class
-    roots = verbs_df.loc[fv_mask, 'verb_root'].tolist()
+    fv_mask = verbs_df['fv']==fv_class
+    roots = verbs_df.loc[fv_mask, 'verb_root'].str.replace('-', '').tolist()
     if wrap_w_fsa:
         roots = [fst(root) for root in roots]
     return roots
@@ -50,14 +52,14 @@ def get_all_verb_roots() -> List[str]:
 def get_all_verb_roots_and_fvs() -> List[Tuple[str, str]]:
     verbs_df = pd.read_csv(VERB_ROOTS_PATH, keep_default_na=False)
     verb_roots = verbs_df['verb_root'].tolist()
-    verb_fvs = verbs_df['root_fv'].tolist()
+    verb_fvs = verbs_df['fv'].tolist()
     return list(zip(verb_roots, verb_fvs))
 
 def get_verb_gloss_and_fvs() -> List[Tuple[str, str, str]]:
     verbs_df = pd.read_csv(VERB_ROOTS_PATH, keep_default_na=False)
     verb_roots = verbs_df['verb_root'].tolist()
-    verb_fvs = verbs_df['root_fv'].tolist()
-    verb_glosses = verbs_df['root_sense'].tolist()
+    verb_fvs = verbs_df['fv'].tolist()
+    verb_glosses = verbs_df['gloss'].tolist()
     return list(zip(verb_roots, verb_fvs, verb_glosses))
 
 def get_verb_root_data(
@@ -68,7 +70,7 @@ def get_verb_root_data(
         return verbs_df
     return verbs_df.to_dict(orient='records')
 
-@output_cache(__file__)
+@output_cache(os.path.dirname(__file__))
 def get_verb_w_extensions_df():
     """
     Returns:
@@ -80,9 +82,9 @@ def get_verb_w_extensions_df():
     new_dfs = []
     verbs_df = get_verb_root_data(return_type=pd.DataFrame)
     for fv in FV_CLASSES:
-        fv_mask = verbs_df['root_fv']==fv
+        fv_mask = verbs_df['fv']==fv
         fv_roots = verbs_df.loc[fv_mask, 'verb_root'].tolist()
-        fv_glosses = verbs_df.loc[fv_mask, 'root_sense'].tolist()
+        fv_glosses = verbs_df.loc[fv_mask, 'gloss'].tolist()
         for extension_seq in ALL_POSSIBLE_EXTENSION_SEQS:
             derived_stems, derived_glosses, derived_fv = get_derived_stem_and_fv(
                 base_stem=fv_roots,
@@ -110,13 +112,17 @@ def get_all_verb_data(
     return all_verbs_df.to_dict(orient='records')
 
 def get_gloss_for_verb(verb_root: str) -> str:
+    if verb_root == AUX_LEMMA_STR:
+        return "aux"
     verbs_df = get_all_verb_data(return_type=pd.DataFrame)
-    root_mask = verbs_df['verb_root']==verb_root
+    verb_root = verb_root.replace('-', '')
+    no_hyphen_root = verbs_df['verb_root'].str.replace('-', '')
+    root_mask = no_hyphen_root==verb_root
     if root_mask.sum()==0:
         raise LexemeNotFoundError(f"Root {verb_root} not found in verb lexicon.")
     if root_mask.sum()>1:
         raise LexemeNotFoundError(f"Root {verb_root} found multiple times in verb lexicon.")
-    gloss = verbs_df.loc[root_mask, 'root_sense'].item()
+    gloss = verbs_df.loc[root_mask, 'gloss'].item()
     return gloss
 
 def get_gold_verbs() -> List[Dict[str, str]]:
