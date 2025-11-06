@@ -397,11 +397,7 @@ FV_TAG = features.Feature("fv", "unmarked", *FV_CLASSES)
 
 AUX_TAG = features.Feature("aux", "unmarked", "true", "false")
 
-EXTENSION_TAG = features.Feature(
-    "extension", "unmarked", *ALL_POSSIBLE_EXTENSION_SEQ_STRS
-)
-
-LEXICAL_FEATURES = [POS_TAG, FV_TAG, AUX_TAG, EXTENSION_TAG]
+LEXICAL_FEATURES = [POS_TAG, FV_TAG, AUX_TAG]
 LEXICAL_FEATURE_VALUES = {
     feature.name: feature.values for feature in LEXICAL_FEATURES
 }
