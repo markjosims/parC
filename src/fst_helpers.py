@@ -182,14 +182,14 @@ def vectorize_feature_dict(
             feature_value = feature_dict.get(feature.name, 'unmarked')
             if feature_value == 'unmarked' and not specify_unmarked:
                 continue
-            feature_str = f"[{feature.name}={feature_value}]"
+            feature_str = f"{feature.name}={feature_value}"
             lexeme_features.append(feature_str)
         lexeme_vector = features.FeatureVector(category, *lexeme_features)
     for feature in LEXEME.features:
         feature_value = feature_dict.get(feature.name, 'unmarked')
         if feature_value == 'unmarked' and not specify_unmarked:
             continue
-        feature_str = f"[{feature.name}={feature_value}]"
+        feature_str = f"{feature.name}={feature_value}"
         lexical_flags.append(feature_str)
     
     lexical_flag_vector = features.FeatureVector(LEXEME, *lexical_flags)
