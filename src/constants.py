@@ -386,8 +386,11 @@ POS2CATEGORY = {
     'adjective': ADJECTIVE,
     'adverb': None,
     'postposition': None,
+    'preposition': None,
     'conjunction': None,
+    'particle': None,
 }
+
 
 POS_TAG = features.Feature(
     "part_of_speech", "unmarked", *POS2CATEGORY.keys()
