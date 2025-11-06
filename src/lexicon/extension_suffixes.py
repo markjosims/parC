@@ -97,9 +97,12 @@ def get_derived_stem_and_fv(
     if extension_seq[0] == 'locative':
         # locative extension may assimilate in rounding to the stem vowel
         derived_stems_w_rounding = []
-        for stem in derived_stems:
+        derived_glosses_w_rounding = []
+        for stem, gloss in zip(derived_stems, derived_glosses):
             stem = fst(stem) @ LOCATIVE_ROUNDING_RULE
-            new_stems = decode_fst_lattice(stem)
+            new_stems = decode_fst_lattice(stem, strings_only=True)
             derived_stems_w_rounding.extend(new_stems)
+            derived_glosses_w_rounding.extend([gloss]*len(new_stems))
+        derived_glosses = derived_glosses_w_rounding
         derived_stems = derived_stems_w_rounding
     return derived_stems, derived_glosses, outer_fv
