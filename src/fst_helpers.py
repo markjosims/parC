@@ -1,8 +1,9 @@
 import pynini
-from pynini.lib import pynutil, rewrite
+from pynini.lib import pynutil, rewrite, features
 from src.constants import *
 from typing import *
 import pydot
+import unicodedata
 
 # symbol table wrappers
 
@@ -15,13 +16,7 @@ def set_symbols(fst: pynini.Fst) -> pynini.Fst:
     return fst
 
 def tone2diac(tone_str: str) -> str:
-    """
-    Replace all tone symbols with combining diacritics,
-    i.e. \<H> --> \u0301
-    """
-    for tone_symbol, tone_diac in SYMBOL2DIAC.items():
-        tone_str = tone_str.replace(tone_symbol, tone_diac)
-    return tone_str
+    raise DeprecationWarning
 
 def tone2symbol(tone_str: str) -> str:
     """
@@ -51,35 +46,17 @@ def encode_fst_string(input_string: Union[str, Sequence[str]]) -> Union[str, Lis
     """
     if type(input_string) is not str:
         return [encode_fst_string(input_element) for input_element in input_string]
-    str_w_word_boundaries = input_string.replace(' ', WORD_BOUNDARY_STR)
+    nfkd_norm = unicodedata.normalize('NFKD', input_string)
+    str_w_word_boundaries = nfkd_norm.replace(' ', WORD_BOUNDARY_STR)
     tokenized_str = " ".join(str_w_word_boundaries)
     str_w_tone_symbols = tone2symbol(tokenized_str)
     str_w_collapsed_dentals = collapse_multichar_tokens(str_w_tone_symbols)
     return str_w_collapsed_dentals
 
 def decode_fst_string(
-        input_string: Union[str, Sequence[str], pynini.Fst],
-        is_byte_str: bool=False,
+        input_string: Union[str, Sequence[str]],
     ) -> Union[str, List[str]]:
-    """
-    Condense all separated characters, replaces `WORD_BOUNDARY_STR` symbol (default "|")
-    with a space, and changes tone symbols back to diacritics.
-    If `input_string` is an FST, call `Fst.string()` first.
-    If `is_byte_str` is passed, call `decode_byte_str` first.
-    """
-    if type(input_string) is pynini.Fst:
-        input_string = input_string.string(token_type=TIRA_SYMBOL_TABLE)
-    elif type(input_string) is not str:
-        return [
-            decode_fst_string(input_element, is_byte_str)
-            for input_element in input_string
-        ]
-    if is_byte_str:
-        input_string = decode_byte_str(input_string)
-    detokenized_str = input_string.replace(' ', '')
-    str_w_word_spaces = detokenized_str.replace(WORD_BOUNDARY_STR, ' ')
-    str_w_tone_diacs = tone2diac(str_w_word_spaces)
-    return str_w_tone_diacs
+    raise DeprecationWarning
 
 def fst(
         fst_input: Union[str, Sequence[str], pynini.Fst, None]=None,
@@ -163,45 +140,361 @@ def delete_fst(
     f = set_symbols(f)
     return f
 
-def get_decoded_strings(
+def vectorize_feature_dict(
+        feature_dict: Dict[str, str],
+        specify_unmarked: bool = True,
+) -> Tuple[features.FeatureVector, features.FeatureVector]:
+    """
+    Arguments:
+        feature_dict:   Dict mapping feature names to feature values
+    Returns:
+        lexeme_vector:          FeatureVector containing lexeme-specific features
+        lexical_flag_vector:    FeatureVector containing lexical flags
+    Expects `feature_dict` to contain a "part_of_speech" key to determine the category.
+    Splits features into lexeme-specific features and lexical flags and returns
+    as two FeatureVectors.
+    """
+    pos = feature_dict["part_of_speech"]
+    category = POS2CATEGORY[pos]
+    lexeme_features = []
+    lexical_flags = []
+
+    if category is None:
+        lexeme_vector = None
+    else:
+        for feature in category.features:
+            feature_value = feature_dict.get(feature.name, 'unmarked')
+            if feature_value == 'unmarked' and not specify_unmarked:
+                continue
+            feature_str = f"{feature.name}={feature_value}"
+            lexeme_features.append(feature_str)
+        lexeme_vector = features.FeatureVector(category, *lexeme_features)
+    for feature in LEXEME.features:
+        feature_value = feature_dict.get(feature.name, 'unmarked')
+        if feature_value == 'unmarked' and not specify_unmarked:
+            continue
+        feature_str = f"{feature.name}={feature_value}"
+        lexical_flags.append(feature_str)
+    
+    lexical_flag_vector = features.FeatureVector(LEXEME, *lexical_flags)
+    return lexeme_vector, lexical_flag_vector
+
+def stringify_lexeme_features(
+        lexeme_features: Union[features.FeatureVector, Dict[str,str]]
+    ) -> str:
+    """
+    Arguments:
+        lexeme_features:  dict or FeatureVector containing lexeme-specific features
+    Returns:
+        feature_str:    String representation of the features in `lexeme_features`
+
+    Converts the features in `lexeme_features` to a string of the shape
+    "feature1=value1 feature2=value2 ...".
+    """
+    feature_strs = []
+    if type(lexeme_features) is features.FeatureVector:
+        lexeme_features = lexeme_features.values
+    for feature in LEXEME.features:
+        feature_value = lexeme_features.get(feature.name, 'unmarked')
+        if feature_value == 'unmarked':
+            continue
+        feature_str = f"{feature.name}={feature_value}"
+        feature_strs.append(feature_str)
+    feature_str = " ".join(feature_strs)
+    return feature_str
+
+def vectorize_lexeme_string(lexeme_str: str, specify_unmarked: bool = True) -> features.FeatureVector:
+    """
+    Arguments:
+        lexeme_str:     String representation of lexeme-specific features
+    Returns:
+        lexeme_vector:  FeatureVector containing lexeme-specific features
+    """
+    feature_dict = {}
+    for feature_str in lexeme_str.split():
+        feature, value = feature_str.split('=')
+        feature_dict[feature] = value
+    feature_strs = []
+    for feature in LEXEME.features:
+        feature_value = feature_dict.get(feature.name, 'unmarked')
+        if feature_value == 'unmarked' and not specify_unmarked:
+            continue
+        elif feature == 'part_of_speech' and feature_value not in POS2CATEGORY:
+            # assume uninflected if invalid pos tag
+            feature_value = 'uninflected'
+        feature_str = f"{feature.name}={feature_value}"
+        feature_strs.append(feature_str)
+    lexeme_vector = features.FeatureVector(LEXEME, *feature_strs)
+    return lexeme_vector
+
+def get_features_fsa(
+        features: Union[str, Dict[str,str], Tuple[features.FeatureVector, features.FeatureVector]],
+) -> pynini.Fst:
+    """
+    Arguments:
+        features:   Lexeme features and lexical flags as a string, dict, or tuple of FeatureVectors
+    Returns:
+        fsa:       Finite state acceptor representing the features
+    """
+    if isinstance(features, str):
+        features = vectorize_lexeme_string(features)
+    elif isinstance(features, dict):
+        features = vectorize_feature_dict(features)
+    lexeme_vector, lexical_flag_vector = features
+    fsa = lexeme_vector.acceptor + lexical_flag_vector.acceptor
+    return fsa
+
+def parse_lattice_outputs(
+        lattice: pynini.Fst,
+        word_key: str='form',
+        nshortest: Optional[int]=None,
+        include_input_strs: bool=False,
+        input_str_key: str='input_str',
+    ) -> List[Dict[str, Any]]:
+    """
+    Arguments:
+        lattice:    pynini.Fst with multiple output strings.
+        word_key:   key to use for decoded string in feature dicts
+        nshortest:  (Optional) int indicating number of shortest paths to
+                    consider before decoding (default None, i.e. all paths).
+        include_input_strs:  (Optional) bool indicating whether to include
+                            input strings in output dicts (default False).
+        input_str_key:       (Optional) key to use for input strings in output dicts
+    Returns:
+        decoded_outputs:    List of decoded feature dicts from the lattice.
+    Wraps `get_lattice_strs_and_weights` and converts output strings to feature dicts.
+    """
+    if not include_input_strs:
+        decoded_outputs = get_lattice_strs_and_weights(
+            lattice,
+            project_type='output',
+            nshortest=nshortest,
+        )
+    else:
+        decoded_outputs = get_lattice_input_output_strs_and_weights(
+            lattice,
+            nshortest=nshortest,
+        )
+    feature_dicts = []
+    for output in decoded_outputs:
+        feature_dict = {}
+        if include_input_strs:
+            output_str, input_str, weight = output
+            feature_dict[input_str_key] = input_str
+        else:
+            output_str, weight = output
+
+        parts = output_str.split('[')
+        wordform = parts[0]
+        feature_dict[word_key] = wordform
+        feature_dict['weight'] = weight
+        for feature_part in parts[1:]:
+            feature_part = feature_part.rstrip(']')
+            feature, value = feature_part.split('=')
+            feature_dict[feature] = value
+        feature_dicts.append(feature_dict)
+    return feature_dicts
+
+def vectorize_lattice_outputs(
+        lattice: pynini.Fst,
+        nshortest: Optional[int]=None,
+    ) -> List[Tuple[str, features.FeatureVector, features.FeatureVector, float]]:
+    """
+    Arguments:
+        lattice:    pynini.Fst with multiple output strings.
+        nshortest:  (Optional) int indicating number of shortest paths to
+                    consider before decoding (default None, i.e. all paths).
+    Returns:
+        decoded_outputs:    List of tuples of the shape
+                            `(decoded_string, lexeme_vector, lexical_flag_vector, weight)`.
+    Wraps `parse_lattice_outputs` and converts output strings to feature vectors.
+    """
+    decoded_outputs = parse_lattice_outputs(
+        lattice,
+        word_key='form',
+        nshortest=nshortest,
+    )
+    output_tuples = []
+    for output_dict in decoded_outputs:
+        wordform = output_dict.pop('form', '')
+        lexeme_vector = vectorize_lexeme_string(wordform)
+        lexical_flag_vector = vectorize_lexeme_string(wordform, specify_unmarked=False)
+        weight = output_dict.pop('weight', 0.0)
+        output_tuples.append(
+            (wordform, lexeme_vector, lexical_flag_vector, weight)
+        )
+    return output_tuples
+
+def get_lattice_strs(
         lattice: pynini.Fst,
         project_type: Literal['input', 'output']='output',
-        unique_only: bool=True,
         nshortest: Optional[int]=None,
     ) -> List[str]:
     """
-    Wraps `rewrite.lattice_to_strings`. Sets `TIRA_SYMBOL_TABLE`
-    and calls `decode_fst_string` on output. If `nshortest` is passed,
-    call `rewrite.lattice_to_nshortest` first.
+    Arguments:
+        lattice:        pynini.Fst with multiple output strings.
+        project_type:   'input' or 'output' indicating which side to project
+                        before decoding (default 'output').
+                        (default True).
+        nshortest:      (Optional) int indicating number of shortest paths to
+                        consider before decoding (default None, i.e. all paths).
+    Returns:
+        decoded_outputs:    List of decoded strings from the lattice.
+
+    Wraps `get_lattice_strs_and_weights` and returns only the decoded strings.
+
+    Returns a list of decoded strings.
+    """
+    decoded_outputs = get_lattice_strs_and_weights(
+        lattice,
+        project_type=project_type,
+        nshortest=nshortest,
+    )
+    return [output for output, _ in decoded_outputs]
+
+
+def get_lattice_strs_and_weights(
+        lattice: pynini.Fst,
+        project_type: Literal['input', 'output']='output',
+        nshortest: Optional[int]=None,
+    ) -> List[
+        Union[
+            Dict[str,str],
+            str,
+            Tuple[
+                str, features.FeatureVector, features.FeatureVector
+            ],
+        ]
+    ]:
+    """
+    Arguments:
+        lattice:        pynini.Fst with multiple output strings.
+        project_type:   'input' or 'output' indicating which side to project
+                        before decoding (default 'output').
+                        (default True).
+        nshortest:      (Optional) int indicating number of shortest paths to
+                        consider before decoding (default None, i.e. all paths).
+    Returns:
+        decoded_outputs:    List of decoded strings and feature dicts/vectors
+                            from the lattice.
+
+    Decodes all strings from the given `lattice` FST.
+    Code based off `Paradigm._parse_lattice` in `pynini.lib.paradigms`.
+    If `nshortest` is passed, call `rewrite.lattice_to_nshortest` first.
+
+    Returns a list of tuples of the shape `(decoded_string, path_weight)`.
     """
     lattice = pynini.project(lattice, project_type=project_type)
     if nshortest is not None:
         lattice = rewrite.lattice_to_nshortest(lattice, nshortest=nshortest)
-    tokenized_strings =  rewrite.lattice_to_strings(lattice, token_type=TIRA_SYMBOL_TABLE)
-    decoded_strings = decode_fst_string(tokenized_strings)
-    if unique_only:
-        return list(set(decoded_strings))
-    return decoded_strings
 
-def decode_byte_str(byte_str: str) -> str:
+    decoded_outputs = []
+
+    path_iter = lattice.paths()
+    while not path_iter.done():
+        label_iter = path_iter.olabels()
+        word = extract_word_from_labels(label_iter)
+        weight = float(path_iter.weight())
+        decoded_outputs.append((word, weight))
+        path_iter.next()
+
+    decoded_outputs.sort(key=lambda t:t[-1])
+    return decoded_outputs
+
+def extract_word_from_labels(label_iter):
+    word = ''
+    for label in label_iter:
+        if label == 0:
+                # epsilon, skip
+            continue
+        elif label < TIRA_NUM_SYMBOLS:
+            symbol = TIRA_SYMBOL_TABLE.find(label)
+            char = TIRA_SYMBOL_TO_CHAR.get(symbol, symbol)
+            word += char
+        else:
+            feature_str = '['+GENERATED_SYMBOLS.find(label)+']'
+            word += feature_str
+        
+    return word
+
+def get_lattice_input_output_strs_and_weights(
+        lattice: pynini.Fst,
+        nshortest: Optional[int]=None,
+    ) -> List[Tuple[str, str, float]]:
     """
     Arguments:
-        byte_str:       String of encoded Tira symbol indices
+        lattice:        pynini.Fst with multiple output strings.
+        nshortest:      (Optional) int indicating number of shortest paths to
+                        consider before decoding (default None, i.e. all paths).
     Returns:
-        decoded_string: `byte_str` decoded using TIRA_SYMBOL_TABLE
-    
-    Decodes a string the byte value of each character is the index of
-    a symbol in TIRA_SYMBOL_TABLE. This occurs when an FST with the
-    symbol table set is combined with an FST using byte tokens, as is the
-    case when using FST graphs generated by the `paradigms` module of Pynini.
+        decoded_outputs:    List of tuples of the shape
+                            `(input_string, output_string, weight)`.
+    Decodes all input and output strings from the given `lattice` FST.
+    Code based off `Paradigm._parse_lattice` in `pynini.lib.paradigms`.
+    If `nshortest` is passed, call `rewrite.lattice_to_nshortest` first.
+    Returns a list of tuples of the shape `(input_string, output_string, path_weight)`.
     """
-    byte_values = [ord(char) for char in byte_str]
-    symbols = [TIRA_SYMBOL_TABLE.find(i) for i in byte_values]
-    symbol_str = ' '.join(symbols)
-    decoded_string = decode_fst_string(symbol_str)
-    return decoded_string
+    if nshortest is not None:
+        # can't call `rewrite.lattice_to_nshortest` on an FST with both input and output labels
+        # compute nshortest on projected output FSA and compose back
+        output_fsa = pynini.project(lattice, project_type='output')
+        output_fsa = rewrite.lattice_to_nshortest(output_fsa, nshortest=nshortest)
+        lattice = lattice @ output_fsa
 
-def draw_svg(fst: pynini.Fst, filepath: str = 'tmp/tmp.svg', title: Optional[str]=None):
+    decoded_outputs = []
+
+    path_iter = lattice.paths()
+    while not path_iter.done():
+        outlabel_iter = path_iter.olabels()
+        inlabel_iter = path_iter.ilabels()
+        in_word = extract_word_from_labels(inlabel_iter)
+        out_word = extract_word_from_labels(outlabel_iter)
+        weight = float(path_iter.weight())
+        decoded_outputs.append((in_word, out_word, weight))
+        path_iter.next()
+
+    decoded_outputs.sort(key=lambda t:t[-1])
+    return decoded_outputs
+
+
+def decode_feature_label_rewriter(
+        lattice: pynini.Fst,
+):
+    """
+    Arguments:
+        lattice: FST corresponding Paradigm.feature_label_rewriter
+    Returns:
+        decoded_strs: List of decoded strings from the output side of `lattice`
+    `feature_label_rewriter` maps doesn't use GENERATED_SYMBOLS, so we need a
+    custom decoder here.
+    """
+    strings = rewrite.lattice_to_strings(lattice)
+    decoded_strs = []
+    for lattice_output in strings:
+        parts = lattice_output.split('[')
+        wordform = parts[0]
+        wordform = decode_byte_str(wordform)
+        features = {'wordform': wordform}
+        for feature_part in parts[1:]:
+            feature_part = feature_part.rstrip(']')
+            feature, value = feature_part.split('=')
+            features[feature] = value
+        decoded_strs.append(features)
+    return decoded_strs
+
+def decode_byte_str(byte_str: str) -> str:
+    decoded_str = ''
+    for token in byte_str:
+        i = ord(token)
+        char = TIRA_SYMBOL_TABLE.find(i)
+        decoded_str += TIRA_SYMBOL_TO_CHAR.get(char, char)
+    return decoded_str
+
+def draw_svg(
+    fst: pynini.Fst, filepath: str = 'tmp/tmp.svg',
+    title: Optional[str]=None,
+    use_union_table: bool=True,
+):
     """
     Saves .dot and .svg representations of `fst`, with an optionally specified `title`
     (defaults to `filepath`).
@@ -209,11 +502,13 @@ def draw_svg(fst: pynini.Fst, filepath: str = 'tmp/tmp.svg', title: Optional[str
     stem = os.path.splitext(filepath)[0]
     fst = set_symbols(fst)
     dotfile = stem+'.dot'
+    input_table = UNION_TABLE if use_union_table else fst.input_symbols()
+    output_table = UNION_TABLE if use_union_table else fst.output_symbols()
     fst.draw(
         source=dotfile,
         show_weight_one=True,
-        isymbols=fst.input_symbols(),
-        osymbols=fst.output_symbols(),
+        isymbols=input_table,
+        osymbols=output_table,
         portrait=True,
         title=title or stem,
     )
@@ -244,65 +539,5 @@ def get_nbest_strs_and_weights(
         lattice: pynini.Fst,
         n: int=5,
         return_input_strs: bool=True,
-        use_byte_tokens: bool=False,
     ) -> List[Tuple[str, str, float]]:
-    """
-    Arguments:
-        lattice:            pynini.Fst with multiple output strings.
-        n:                  int indicating number of strings to fetch.
-        return_input_strs:  bool indicating whether input strings ('intabs')
-                            should be returned.
-        use_byte_tokens:    bool indicating whether `lattice` uses  byte tokens
-                            or symbol table (default)
-    Returns:
-        hits:       List of tuples `[(intab?, outtab, cost), ...]`
-    
-    Finds n best strings from the output vocabulary of the given lattice
-    and returns as a list of 2/3-tuples containing the (input string?), output string
-    and cost for each path.
-
-    Finding n best unique strings from the lattice requires projecting the output
-    and then performing epsilon removal. If only output strs are requested, return
-    the strs and weight from the nbest paths from the output projection.
-    If `return_input_strs=True`, then we need to compose each output str with the lattice
-    in order to compute the shortest distance as well as the associated input str
-    which obtains the output str.
-    """
-    lattice_acceptor = pynini.project(lattice, 'output')
-    lattice_acceptor.optimize()
-    nbest_paths = pynini.shortestpath(lattice_acceptor, nshortest=n, unique=True).paths()
-    if not return_input_strs:
-        # don't need to map output strs to best input
-        nbest_couples = []
-        for _, outtab, weight in nbest_paths.items():
-            outtab = decode_fst_string(outtab, is_byte_str=use_byte_tokens)
-            weight = float(weight)
-            nbest_couples.append((outtab, weight))
-        return nbest_couples
-
-    nbest_strs = list(nbest_paths.ostrings())
-    # pass opposite value of `use_byte_tokens here`
-    # since string will be composed with the lattice directly
-    # therefore they need to be of the same type
-    # nbest_strs = [
-    #     decode_byte_str(byte_str, is_byte_str=not use_byte_tokens)
-    #     for byte_str in nbest_strs
-    # ]
-    nbest_strs = [decode_byte_str(byte_str) for byte_str in nbest_strs]
-
-    nbest_triples = []
-    for hit_str in nbest_strs:
-        hit_transducer = lattice@fst(hit_str)
-        hit_shortestpath = pynini.shortestpath(hit_transducer)
-        hit_triple = list(
-            hit_shortestpath.paths(
-                input_token_type=TIRA_SYMBOL_TABLE,               
-                output_token_type=TIRA_SYMBOL_TABLE,               
-            ).items())
-        hit_triple = hit_triple[0]
-        intab, outtab, weight = hit_triple
-        intab = decode_fst_string(intab, is_byte_str=use_byte_tokens)
-        outtab = decode_fst_string(outtab, is_byte_str=use_byte_tokens)
-        weight = float(weight)
-        nbest_triples.append((intab, outtab, weight))
-    return nbest_triples
+    raise DeprecationWarning

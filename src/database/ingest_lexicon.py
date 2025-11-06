@@ -1,5 +1,8 @@
 from src.constants import NOUN_FEATURE_ABBREVIATIONS
-from src.lexicon import NOUNS_DF, VERBS_DF, ADJECTIVES_DF, UNINFLECTED_WORDS_DF
+from src.lexicon import (
+    get_all_noun_data, get_all_verb_data,
+    get_all_adjective_data, get_uninflected_word_data
+)
 from src.database.database import engine, SessionLocal, Base
 from tqdm import tqdm
 import pandas as pd
@@ -20,10 +23,25 @@ def ingest_verbs(df: pd.DataFrame, db: Session):
         new_lexeme = Lexeme(
             root=row['verb_root'],
             part_of_speech='verb',
-            gloss=row['root_sense'],
-            lexical_info={"fv_class": row['root_fv']}
+            gloss=row['gloss'],
+            lexical_info={"fv_class": row['fv']}
         )
         db.add(new_lexeme)
+        num_added += 1
+        db.flush()
+    # special case: add TAMD aux
+    existing_tamd = db.query(Lexeme).filter(
+        Lexeme.root == 'ŋgá',
+        Lexeme.part_of_speech == 'verb',
+    ).first()
+    if not existing_tamd:
+        tamd_lexeme = Lexeme(
+            root='ŋgá',
+            part_of_speech='verb',
+            gloss='aux',
+            lexical_info={},
+        )
+        db.add(tamd_lexeme)
         num_added += 1
         db.flush()
     db.commit()
@@ -105,16 +123,16 @@ def main():
 
     try:
         print(f"Ingesting verb lexical data...")
-        ingest_verbs(VERBS_DF, db)
+        ingest_verbs(get_all_verb_data(return_type=pd.DataFrame), db)
 
         print(f"Ingesting noun lexical data...")
-        ingest_nouns(NOUNS_DF, db)
+        ingest_nouns(get_all_noun_data(return_type=pd.DataFrame), db)
 
         print(f"Ingesting adjective lexical data...")
-        ingest_adjectives(ADJECTIVES_DF, db)
+        ingest_adjectives(get_all_adjective_data(return_type=pd.DataFrame), db)
 
         print(f"Ingesting uninflected word lexical data...")
-        ingest_uninflected_words(UNINFLECTED_WORDS_DF, db)
+        ingest_uninflected_words(get_uninflected_word_data(return_type=pd.DataFrame), db)
 
     except Exception as e:
         print(f"Error occurred: {e}")

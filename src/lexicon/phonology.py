@@ -7,18 +7,21 @@ from pynini.lib import paradigms, pynutil, rewrite
 from typing import *
 from src.constants import *
 from src.fst_helpers import (
-    fst, insert_fst, delete_fst,
+    fst, insert_fst, delete_fst, pynini,
 )
+import string
 
 BOUNDARY = fst(BOUNDARY_STR)
+WORD_BOUNDARY = fst(WORD_BOUNDARY_STR)
 C = fst(TIRA_CONSONANTS)
 V = fst(TIRA_VOWELS)
 T = fst(TIRA_TONE_DIACS)
+SEGMENT = C|V
 TBU = fst(TIRA_TBUS)
 TONE_SLOT = fst(TONE_SLOT_STR)
 TONE_PLACEHOLDER = fst(TONE_PLACEHOLDER_STR)
 TONE_SLOT_OR_PLACEHOLDER = TONE_SLOT|TONE_PLACEHOLDER
-SIGMA = C|V|T|BOUNDARY|TONE_SLOT_OR_PLACEHOLDER
+SIGMA = C|V|T|BOUNDARY|WORD_BOUNDARY|TONE_SLOT_OR_PLACEHOLDER
 SIGMA_EXCEPT_PLACEHOLDER = C|V|T|BOUNDARY
 SIGMASTAR = pynini.closure(SIGMA).optimize()
 SIGMASTAR_EXCEPT_PLACEHOLDER = pynini.closure(SIGMA_EXCEPT_PLACEHOLDER).optimize()
@@ -27,6 +30,13 @@ STEM = paradigms.make_byte_star_except_boundary(BOUNDARY)
 # ---------------------- #
 # phonological processes #
 # ---------------------- #
+
+REMOVE_DOUBLE_BOUNDARIES = pynini.cdrewrite(
+    tau=delete_fst(BOUNDARY),
+    l=fst(),
+    r=BOUNDARY,
+    sigma_star=SIGMASTAR,
+).optimize()
 
 ADD_TBU_MARKER = pynini.cdrewrite(
     tau=insert_fst(TONE_SLOT_STR),
@@ -76,12 +86,21 @@ DELETE_SCHWA_BEFORE_VOWEL = pynini.cdrewrite(
 ).optimize()
 
 ROUNDING_HARMONY_TARGET = fst("ɛ") | fst("a") | fst("ɜ")
-ROUNDING_HARMONY_TRIGGER = fst("ɔ")
+ROUNDING_HARMONY_OUTPUT = fst("ɔ")
+BLOCKING_VOWELS = fst(["i", "ɪ", "e"])
+ROUNDING_RIGHT_CONTEXT = pynini.closure(SIGMA-BLOCKING_VOWELS)
 
 ROUNDING_HARMONY = pynini.cdrewrite(
-    tau=pynini.cross(ROUNDING_HARMONY_TARGET, ROUNDING_HARMONY_TRIGGER),
+    tau=pynini.cross(ROUNDING_HARMONY_TARGET, ROUNDING_HARMONY_OUTPUT),
     l=fst(''),
-    r=fst(''),
+    r=ROUNDING_RIGHT_CONTEXT+'[EOS]',
+    sigma_star=SIGMASTAR,
+).optimize()
+
+LOCATIVE_ROUNDING_RULE = pynini.cdrewrite(
+    tau=fst("a", "ɔ")|fst("a"),
+    l=fst("ɔ")+T.ques+(C|BOUNDARY).plus,
+    r=T.ques+fst(DENTAL_T),
     sigma_star=SIGMASTAR,
 ).optimize()
 
@@ -122,6 +141,53 @@ COMBINE_TONES_RULE = pynini.cdrewrite(
     r=fst(),
     sigma_star=SIGMASTAR,
 )
+
+H_SPREAD_RULE = pynini.cdrewrite(
+    tau=fst(T, HIGH_TONE),
+    l=fst([HIGH_TONE, RISE_TONE])+pynini.closure(C|BOUNDARY)+WORD_BOUNDARY+pynini.closure(SEGMENT),
+    r=fst(),
+    sigma_star=SIGMASTAR,
+)
+
+# used in perfective itive forms where prefix fall blocks H docking
+FALL_BLOCKS_H_RULE = pynini.cdrewrite(
+    tau=fst(HIGH_TONE, LOW_TONE),
+    l=fst(FALL_TONE)+pynini.closure(C|BOUNDARY)+WORD_BOUNDARY+pynini.closure(SEGMENT),
+    r=fst(),
+    sigma_star=SIGMASTAR,
+).optimize()
+
+# vowel coalescence
+# for now assuming that V[-high,-front]+i > ɛ
+# and any other V+V goes to the second V
+
+LOW_BACK_VOWEL = fst(["ɔ", "a", "ɜ"])
+HIGH_FRONT_VOWEL = fst("i")
+MID_FRONT_VOWEL = fst("ɛ")
+
+COALESCE_W_HIGH_FRONT_VOWEL = pynini.union(*[
+    fst(LOW_BACK_VOWEL+T.ques+HIGH_FRONT_VOWEL, MID_FRONT_VOWEL),
+])
+COALESCE_W_HIGH_FRONT_VOWEL_BOUNDARY = pynini.union(*[
+    fst(LOW_BACK_VOWEL+T.ques+BOUNDARY+HIGH_FRONT_VOWEL, BOUNDARY+MID_FRONT_VOWEL),
+])
+COALESCE_W_HIGH_FRONT_VOWEL_RULE = pynini.cdrewrite(
+    tau=COALESCE_W_HIGH_FRONT_VOWEL_BOUNDARY | COALESCE_W_HIGH_FRONT_VOWEL,
+    l=fst(),
+    r=fst(),
+    sigma_star=SIGMASTAR,
+).optimize()
+
+DELETE_VOWEL_IN_HIATUS = pynini.cdrewrite(
+    tau=delete_fst(V+T.ques),
+    l=fst(),
+    r=BOUNDARY.ques+V,
+    sigma_star=SIGMASTAR,
+).optimize()
+
+VOWEL_COALESCENCE_RULE = COALESCE_W_HIGH_FRONT_VOWEL_RULE@DELETE_VOWEL_IN_HIATUS
+
+VOWEL_COALESCENCE_RULE = VOWEL_COALESCENCE_RULE@REMOVE_DOUBLE_BOUNDARIES
 
 # ---------- #
 # edit costs #
@@ -192,3 +258,12 @@ INSERT_HYPHEN_RULE = pynini.cdrewrite(
     sigma_star=SIGMASTAR,
 )
 INSERT_HYPHEN_RULE = INSERT_HYPHEN_RULE.optimize()
+DIGIT = fst(list(string.digits))
+HOMOPHONE_TAG = fst("(")+DIGIT+fst(")")
+SIGMASTAR_W_TAG = fst([SIGMA, DIGIT, fst("("), fst(")")]).closure().optimize()
+REMOVE_HOMOPHONE_TAG = pynini.cdrewrite(
+    delete_fst(HOMOPHONE_TAG),
+    fst(),
+    fst(),
+    sigma_star=SIGMASTAR_W_TAG,
+).optimize()

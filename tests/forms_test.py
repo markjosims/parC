@@ -1,8 +1,9 @@
 import pytest
-from src.form_builders.adjective_forms import ADJECTIVE_PARADIGM, inflect_adjective_with_features, parse_adjective
+from src.form_builders.adjective_forms import get_adjective_paradigm, inflect_adjective_with_features, parse_adjective
 from src.form_builders.form_helpers import generate_forms
 from src.form_builders.uninflected_forms import parse_uninflected_word
 from src.form_builders.verb_forms import *
+from src.lexicon.extension_suffixes import inflect_verb_with_extension
 from src.lexicon import *
 from src.constants import VERB_FEATURE_VALUES
 
@@ -12,14 +13,14 @@ def test_compile_regular_paradigms(verb_root, fv_class):
         # skipping irregular verbs for now
         return
     try:
-        forms = generate_forms(verb_root, FV2PARADIGM[fv_class], action='return')
+        forms = generate_forms(verb_root, get_verb_stem_paradigm(fv_class))
         assert len(forms) >= VERB_PARADIGM_SIZE
     except Exception as error:
         print(verb_root, fv_class)
         raise error
 
 @pytest.mark.parametrize("gold_verb", get_gold_verbs())
-def test_gold_features2forms(gold_verb):
+def test_verb_inflection(gold_verb):
     root = gold_verb.pop('root')
     form = gold_verb.pop('form')
     fv = gold_verb.pop('fv')
@@ -28,25 +29,47 @@ def test_gold_features2forms(gold_verb):
         k: v for k,v in gold_verb.items()
         if k in VERB_FEATURE_VALUES or k=='gloss'
     }
-    predicted_form = inflect_verb_with_features(root, fv, features=gold_verb_filtered)
+    predicted_form = inflect_verb_with_features(root, fv, feature_dict=gold_verb_filtered)
 
-    assert form == predicted_form
+    assert form in predicted_form
 
 @pytest.mark.parametrize("gold_verb", get_gold_verbs())
-def test_gold_forms2features(gold_verb):
+def test_verb_parsing(gold_verb):
     analyzed_form = gold_verb['form']
     gold_verb['analyzed_form']=analyzed_form
     form = analyzed_form.replace('-', '')
     gold_verb['form']=form
     fv = gold_verb.pop('fv')
 
-    predicted_parse = parse_inflected_verb(form, fv)[0]
+    predicted_parse = parse_inflected_verb(form, fv)
     gold_verb_filtered = {
         k: v for k,v in gold_verb.items()
-        if k in predicted_parse
+        if any(k in parse for parse in predicted_parse)
     }
-    assert predicted_parse == gold_verb_filtered
-    
+    assert gold_verb_filtered in predicted_parse
+
+@pytest.mark.parametrize("verb", get_gold_derived_verbs())
+def test_derived_verbs(verb):
+    form = verb.pop('form')
+    root = verb.pop('root')
+    extension_str = verb.pop('extension')
+    extensions = extension_str.split('+')
+    fv = verb.pop('fv')
+
+    verb_filtered = {
+        k: v for k,v in verb.items()
+        if k in VERB_FEATURE_VALUES
+    }
+
+    predicted_forms = inflect_verb_with_extension(
+        root=root,
+        fv=fv,
+        feature_dict=verb_filtered,
+        extension_seq=extensions,
+    )
+
+    assert form in predicted_forms
+
 @pytest.mark.parametrize("inflected_paradigm", get_gold_paradigms())
 def test_gold_paradigms(inflected_paradigm):
     root = inflected_paradigm['root']
@@ -61,9 +84,8 @@ def test_adjective_forms(gold_adj):
     form = gold_adj.pop('form')
     agree_class = gold_adj.pop('class')
 
-    predicted_form = inflect_adjective_with_features(root, agree_class)
-
-    assert form == predicted_form
+    predicted_forms = inflect_adjective_with_features(root, agree_class)
+    assert form in predicted_forms
 
 @pytest.mark.parametrize("gold_adj", get_gold_adjectives())
 def test_adjective_parsing(gold_adj):
@@ -88,3 +110,15 @@ def test_uninflected_forms(uninflected_word):
     parsed = parse_uninflected_word(word)[0]
     assert parsed['part_of_speech'] == pos
     assert parsed['gloss'] == gloss
+
+@pytest.mark.parametrize("aux", get_gold_auxs())
+def test_gold_auxs(aux):
+    form = aux.pop('form')
+
+    aux_filtered = {
+        k: v for k,v in aux.items()
+        if k in VERB_FEATURE_VALUES or k=='gloss'
+    }
+    predicted_forms = inflect_aux_with_features(feature_dict=aux_filtered)
+
+    assert form in predicted_forms

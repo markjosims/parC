@@ -97,7 +97,7 @@ def handle_inflect(form):
     """Handles the inflection form submission."""
     verb_row = form.get('verb_root', '')
     verb_root, fv, _ = verb_row.split()
-    features = {
+    feature_dict = {
         'tam': form.get('tam'),
         'deixis': form.get('deixis'),
         'class': form.get('class')
@@ -107,7 +107,7 @@ def handle_inflect(form):
         result = "Please enter a verb root."
     else:
         try:
-            result = inflect_verb_with_features(verb_root, fv, features)
+            result = inflect_verb_with_features(verb_root, fv, feature_dict)
         except:
             result = "Invalid feature combination."
 
@@ -115,14 +115,14 @@ def handle_inflect(form):
         'inflect_result': result,
         'inflect_input': {
             'verb_root': verb_row,
-            **features,
+            **feature_dict,
         }
     }
 
 def handle_test_inflect(form):
     verb_row = form.get('verb_root', '')
     verb_root, fv, _ = verb_row.split()
-    features = {
+    feature_dict = {
         'tam': form.get('tam'),
         'deixis': form.get('deixis'),
         'class': form.get('class')
@@ -131,7 +131,7 @@ def handle_test_inflect(form):
     expected = form.get('expected_inflected_form', '').strip()
     expected = normalize_inflect_input(expected)
 
-    actual = inflect_verb_with_features(verb_root, fv, features)
+    actual = inflect_verb_with_features(verb_root, fv, feature_dict)
 
     if actual == expected:
         status = "Success"
@@ -146,7 +146,7 @@ def handle_test_inflect(form):
         },
         'inflect_input': {
             'verb_root': verb_row,
-            **features,
+            **feature_dict,
         },
         'expected_inflected_form': expected,
     }

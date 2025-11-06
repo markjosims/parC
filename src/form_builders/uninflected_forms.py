@@ -1,28 +1,34 @@
-from src.glossing import REMOVE_HOMOPHONE_TAG
-from src.fst_helpers import decode_byte_str, fst, decode_fst_string
+from src.cache_decorators import fst_cache
+from src.lexicon.phonology import REMOVE_HOMOPHONE_TAG
+from src.fst_helpers import decode_byte_str, fst, vectorize_lexeme_string
 from src.lexicon import get_pos_and_gloss_for_uninflected_word, get_uninflected_word_data
 import pynini
 from pynini.lib import rewrite
 from typing import *
 import pandas as pd
 
-def build_uninflected_word_fst() -> pynini.Fst:
+@fst_cache(__file__)
+def get_uninflected_word_fst() -> pynini.Fst:
     """
     Build an FST accepting uninflected words and mapping homophones
     to strings with homophone tags.
     """
     uninflected_word_df = get_uninflected_word_data(return_type=pd.DataFrame)
     words = uninflected_word_df['word'].tolist()
+    pos = uninflected_word_df['part_of_speech'].tolist()
+    pos_strs = [f"part_of_speech={p}" for p in pos]
+    lexeme_flag_acceptors = [
+        vectorize_lexeme_string(tag).acceptor for tag in pos_strs
+    ]
     word_fsas = [fst(word) for word in words]
     word_fsas_notag = [word@REMOVE_HOMOPHONE_TAG for word in word_fsas]
     word_fsts = [
-        fst(word_fsa_notag, word_fsa)
-        for word_fsa, word_fsa_notag in zip(word_fsas, word_fsas_notag)
+        fst(word_fsa_notag, word_fsa+lexeme_flag_acceptor)
+        for word_fsa, word_fsa_notag, lexeme_flag_acceptor
+        in zip(word_fsas, word_fsas_notag, lexeme_flag_acceptors)
     ]
     word_fst = pynini.union(*word_fsts).optimize()
     return word_fst
-
-UNINFLECTED_WORD_FST = build_uninflected_word_fst()
 
 def parse_uninflected_word(form: str) -> List[Dict[str, str]]:
     """
@@ -37,7 +43,8 @@ def parse_uninflected_word(form: str) -> List[Dict[str, str]]:
         parse:  A dictionary with keys 'root', 'form', 'part_of_speech', and 'gloss'.
     """
     parses = []
-    lattice = (fst(form) @ UNINFLECTED_WORD_FST).project('output')
+    uninflected_word_fst = get_uninflected_word_fst()
+    lattice = (fst(form) @ uninflected_word_fst).project('output')
     roots = rewrite.lattice_to_strings(lattice)
     for root in roots:
         root = decode_byte_str(root)

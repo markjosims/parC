@@ -1,5 +1,5 @@
 import pytest
-from src.phonology import *
+from src.lexicon.phonology import *
 from src.fst_helpers import *
 from pynini.lib import rewrite
 
@@ -13,7 +13,7 @@ from pynini.lib import rewrite
 ])
 def test_fst_wrapper(fst_input, fst_output):
     f = fst(fst_input, fst_output)
-    input_strings = get_decoded_strings(f, 'input')
+    input_strings = get_lattice_strs(f, 'input')
     if type(fst_input) is str:
         assert len(input_strings) == 1
         assert input_strings[0] == fst_input
@@ -23,7 +23,7 @@ def test_fst_wrapper(fst_input, fst_output):
     if fst_output is None:
         return
 
-    output_strings = get_decoded_strings(f, 'output')
+    output_strings = get_lattice_strs(f, 'output')
     if type(fst_output) is str:
         assert len(output_strings) == 1
         assert output_strings[0] == fst_output
@@ -38,7 +38,7 @@ def test_fst_wrapper(fst_input, fst_output):
 ])
 def test_all_high_tone(atonal_str, tone_added_str):
     lattice=rewrite.rewrite_lattice(fst(atonal_str), ALL_HIGH_TONE_RULE)
-    strings = get_decoded_strings(lattice)
+    strings = get_lattice_strs(lattice)
     assert len(strings)==1
     assert strings[0]==tone_added_str
 
@@ -50,7 +50,7 @@ def test_all_high_tone(atonal_str, tone_added_str):
 ])
 def test_all_low_tone(atonal_str, tone_added_str):
     lattice=rewrite.rewrite_lattice(fst(atonal_str), ALL_LOW_TONE_RULE)
-    strings = get_decoded_strings(lattice)
+    strings = get_lattice_strs(lattice)
     assert len(strings)==1
     assert strings[0]==tone_added_str
 
@@ -62,7 +62,7 @@ def test_all_low_tone(atonal_str, tone_added_str):
 ])
 def test_hlstar(atonal_str, tone_added_str):
     lattice=rewrite.rewrite_lattice(fst(atonal_str), HLSTAR_RULE)
-    strings = get_decoded_strings(lattice)
+    strings = get_lattice_strs(lattice)
     assert len(strings)==1
     assert strings[0]==tone_added_str
 
@@ -73,9 +73,65 @@ def test_hlstar(atonal_str, tone_added_str):
     ("r̀lɛ̀ɲ", "r̀lɔ̀ɲ"),
     ("îɾcɛ́cɛ̀c", "îɾcɔ́cɔ̀c"),
     ("ɜ̌dɛ̀ŋnàt̪", "ɔ̌dɔ̀ŋnɔ̀t̪"),
+    ("vɛ̀ð-ɛ̀t̪", "vɔ̀ð-ɔ̀t̪"),
+    ("vɛ̀ð-ìt̪", "vɛ̀ð-ìt̪"), # /i/ blocks harmony
+    ("kə̀-mɛ̀ð-ìt̪", "kə̀-mɛ̀ð-ìt̪"), # /i/ blocks harmony
 ])
 def test_rounding_harmony(unround_str,round_str):
     lattice=rewrite.rewrite_lattice(fst(unround_str), ROUNDING_HARMONY)
-    strings = get_decoded_strings(lattice)
+    strings = get_lattice_strs(lattice)
     assert len(strings)==1
     assert strings[0]==round_str
+
+@pytest.mark.parametrize("uncoalesced,coalesced", [
+    ("káɔ̀", "kɔ̀"),
+    ("là-ípɛ̀", "l-ɛ́pɛ̀"),
+    ("l-ɔ̀-ípɛ̀", "l-ɛ́pɛ̀"),
+    ("ŋgɔ́-ìð", "ŋg-ɛ̀ð"),
+    ("m-ɔ́-èɲà", "m-èɲà"),
+])
+def test_vowel_coalescence(uncoalesced,coalesced):
+    lattice=rewrite.rewrite_lattice(fst(uncoalesced), VOWEL_COALESCENCE_RULE)
+    strings = get_lattice_strs(lattice)
+    assert len(strings)==1
+    assert strings[0]==coalesced
+
+@pytest.mark.parametrize("pre_hts,w_hts", [
+    ("àpɾí jìcə̀lò", "àpɾí jícə̀lò"),
+    ("kə̀və̀lɛ̀ðɔ́ ðàŋàlà", "kə̀və̀lɛ̀ðɔ́ ðáŋàlà"),
+    ("jǎ ŋɔ̀mɔ̀", "jǎ ŋɔ́mɔ̀"),
+])
+def test_h_spread(pre_hts, w_hts):
+    lattice=rewrite.rewrite_lattice(fst(pre_hts), H_SPREAD_RULE)
+    strings = get_lattice_strs(lattice)
+    assert len(strings)==1
+    assert strings[0]==w_hts
+
+@pytest.mark.parametrize("fall_tone_str,blocked_h_str", [
+    ("kápɾî jícə̀lò", "kápɾî jìcə̀lò"),
+    ("ŋg-éɲâ və́lɛ̀ð-ɛ̀", "ŋg-éɲâ və̀lɛ̀ð-ɛ̀"),
+    ("j-à-ŋâ mɛ́ð-ɛ̀", "j-à-ŋâ mɛ̀ð-ɛ̀"),
+])
+def test_fall_blocks_h(fall_tone_str, blocked_h_str):
+    lattice=rewrite.rewrite_lattice(fst(fall_tone_str), FALL_BLOCKS_H_RULE)
+    strings = get_lattice_strs(lattice)
+    assert len(strings)==1
+    assert strings[0]==blocked_h_str
+
+@pytest.mark.parametrize("unround_str,round_str,do_round", [
+    ("tɔ̀t-át̪", "tɔ̀t-ɔ́t̪", True),
+    ("tɔ̀t-áp", "tɔ̀t-ɔ́p", False),
+    ("kɔ́t̪-àt̪", "kɔ́t̪-ɔ̀t̪", True),
+    ("ɔ̀d-ɛ́t̪", "ɔ̀d-ɔ́t̪", False),
+    ("pát̪-át̪", "pát̪-ɔ́t̪", False),
+])
+def test_locative_rounding(unround_str,round_str,do_round):
+    lattice=rewrite.rewrite_lattice(fst(unround_str), LOCATIVE_ROUNDING_RULE)
+    strings = get_lattice_strs(lattice)
+    if do_round:
+        assert len(strings)==2
+        assert round_str in strings
+        assert unround_str in strings
+    else:
+        assert len(strings)==1
+        assert strings[0]==unround_str

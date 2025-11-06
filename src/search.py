@@ -2,17 +2,25 @@ import pynini
 from pynini.lib import pynutil
 
 from typing import *
-from src.form_builders.adjective_forms import ADJECTIVE_PARADIGM, parse_adjective
-from src.form_builders.uninflected_forms import UNINFLECTED_WORD_FST, parse_uninflected_word
+from src.cache_decorators import fst_cache, output_cache
+from src.form_builders.adjective_forms import get_adjective_paradigm, parse_adjective
+from src.form_builders.uninflected_forms import get_uninflected_word_fst, parse_uninflected_word
+from src.form_builders.verb_forms import (
+    parse_inflected_verb, get_verb_stem_paradigm,
+    get_aux_paradigm, get_verb_paradigm_w_aux,
+)
+from src.form_builders.noun_forms import get_noun_paradigm, parse_noun
 from src.fst_helpers import *
 from src.constants import (
     INSERT, DELETE, SUBSTITUTE,
     DEFAULT_INSERT_COST, DEFAULT_DELETE_COST, DEFAULT_SUBSTITUTE_COST,
-    DEFAULT_EDIT_BOUND,
+    DEFAULT_EDIT_BOUND, FV_CLASSES,
 )
-from src.phonology import SIGMA, INSERTION_COSTS, DELETION_COSTS, SUBSTITUTION_COSTS, INSERT_HYPHEN_RULE
-from src.form_builders.verb_forms import FV2PARADIGM, parse_inflected_verb
-from src.form_builders.noun_forms import NOUN_PARADIGM, parse_noun
+from src.lexicon.phonology import (
+    SIGMA, INSERTION_COSTS, DELETION_COSTS, SUBSTITUTION_COSTS,
+    INSERT_HYPHEN_RULE
+)
+from src.parser import get_main_parser, add_analysis_and_gloss_to_parses, parse_word
 
 # ----------------------------------- #
 # functions for building search graph #
@@ -37,15 +45,32 @@ def get_searchable_lexicon(
     searchable_lexicon = right_factor@lexicon
     return left_factor, searchable_lexicon
 
+@fst_cache(os.path.dirname(__file__), num_fst=2)
+def get_searchable_main_parser(**edit_factor_kwargs) -> Tuple[pynini.Fst, pynini.Fst]:
+    """
+    Arguments:
+        edit_factor_kwargs:     Arguments for `get_edit_factors`
+    Returns:
+        (left_factor, searchable_lexicon):    FST to compile with queries; pre-compiled FST right_factor@lexicon
+
+    Wraps `get_edit_factors` and compiles right factor with main parser lexicon.
+    """
+    main_lemmatizer, _, _ = get_main_parser()
+    left_factor, right_factor = get_edit_factors(**edit_factor_kwargs)
+    lexicon = pynini.project(main_lemmatizer, 'input')
+    searchable_lexicon = right_factor@lexicon
+    return left_factor, searchable_lexicon
+
+@output_cache(__file__)
 def get_edit_factors(
-        insertions: List[Tuple[pynini.FstLike, pynini.WeightLike]],
-        substitutions: List[Tuple[pynini.FstLike, pynini.FstLike, pynini.WeightLike]],
-        deletions: List[Tuple[pynini.FstLike, pynini.WeightLike]],
-        sigma: pynini.FstLike,
+        insertions: List[Tuple[pynini.FstLike, pynini.WeightLike]]=INSERTION_COSTS,
+        substitutions: List[Tuple[pynini.FstLike, pynini.FstLike, pynini.WeightLike]]=SUBSTITUTION_COSTS,
+        deletions: List[Tuple[pynini.FstLike, pynini.WeightLike]]=DELETION_COSTS,
+        sigma: pynini.FstLike=SIGMA,
         insert_cost: float=DEFAULT_INSERT_COST,
         sub_cost: float=DEFAULT_SUBSTITUTE_COST,
         delete_cost: float=DEFAULT_DELETE_COST,
-        bound: Optional[int]=None,
+        bound: Optional[int]=DEFAULT_EDIT_BOUND,
     ) -> Tuple[pynini.Fst, pynini.Fst]:
     """
     Arguments:
@@ -60,8 +85,9 @@ def get_edit_factors(
         sigma:          FST representing the alphabet of the lexicon.
         insert_cost:    Default cost for inserting any element not specified in `insertions`.
         delete_cost:    Default cost for deleting any element not specified in `deletions`.
-        sub_cost:       Default cost for substituting any element not specified in `substiutions`.
-        bound:          Integer indicating the number of edits allowed when searching. Defaults to unbounded (infinite edits allowed)
+        sub_cost:       Default cost for substituting any element not specified in `substitutions`.
+        bound:          Integer indicating the number of edits allowed when searching. Defaults to `DEFAULT_EDIT_BOUND`.
+                        Pass `None` for unbounded edits.
 
     Returns:
         (left_factor, right_factor):    FSTs for the left and right factors.
@@ -220,27 +246,55 @@ def _get_substitution_graph(
 
     return sub_graph_left, sub_graph_right
 
-# -------------------------------------------------------- #
-# left and right factors with default edit costs and bound #
-# -------------------------------------------------------- #
-
-LEFT_FACTOR, RIGHT_FACTOR = get_edit_factors(
-        sigma=SIGMA,
-        insertions=INSERTION_COSTS,
-        substitutions=SUBSTITUTION_COSTS,
-        deletions=DELETION_COSTS,
-        bound=DEFAULT_EDIT_BOUND,
-)
-
 # ------------------------------- #
 # functions for performing search #
 # ------------------------------- #
+
+def retrieve_verb_paradigms(expected_verb_type):
+    if expected_verb_type == 'd-stem':
+        stem_paradigms = (get_verb_dstem_paradigm(fv) for fv in FV_CLASSES)
+        stem_and_aux_paradigms = (get_verb_dstem_paradigm_w_aux(fv) for fv in FV_CLASSES)
+        return (*stem_paradigms, *stem_and_aux_paradigms)
+
+    stem_paradigms = (get_verb_stem_paradigm(fv) for fv in FV_CLASSES)
+    stem_and_aux_paradigms = (get_verb_paradigm_w_aux(fv) for fv in FV_CLASSES)
+    derived_verb_paradigms = get_paradigms_for_all_extensions()
+    derived_stem_paradigms = (
+        stem_paradigm for stem_paradigm, _ in derived_verb_paradigms.values()
+    )
+    derived_stem_and_aux_paradigms = (
+        stem_and_aux_paradigm for _, stem_and_aux_paradigm in derived_verb_paradigms.values()
+    )
+    if expected_verb_type == 'auto':
+        paradigms_to_search = (
+            *stem_paradigms,
+            *stem_and_aux_paradigms,
+            *derived_stem_paradigms,
+            *derived_stem_and_aux_paradigms,
+            get_aux_paradigm()
+    )
+    elif expected_verb_type == 'aux':
+        paradigms_to_search = (get_aux_paradigm(),)
+    elif expected_verb_type == 'derived_stem':
+        paradigms_to_search = derived_stem_paradigms
+    elif expected_verb_type == 'derived_stem_and_aux':
+        paradigms_to_search = derived_stem_and_aux_paradigms
+    elif expected_verb_type == 'stem_and_aux':
+        paradigms_to_search = stem_and_aux_paradigms
+    else:  # 'stem'
+        paradigms_to_search = stem_paradigms
+    return paradigms_to_search
 
 def search_verb_form(
         verb_form: str,
         num_hits: int = 5,
         edit_bound: int = 5,
         return_parse: bool = True,
+        expected_verb_type: Literal[
+            'stem', 'aux', 'stem_and_aux',
+            'derived_stem', 'derived_stem_and_aux',
+            'auto', 'd-stem',
+        ]='auto',
     ) -> List[Tuple[Dict[str, Any], float]]:
     """
     Arguments:
@@ -255,25 +309,25 @@ def search_verb_form(
     List is sorted by weight in ascending order so that least costly hit is the first item.
     """
 
-    left_factor, right_factor = LEFT_FACTOR, RIGHT_FACTOR
-    if edit_bound != DEFAULT_EDIT_BOUND:
-        # recompile left and right factors if edit bound is not default
-        left_factor, right_factor = get_edit_factors(
-            sigma=SIGMA,
-            insertions=INSERTION_COSTS,
-            substitutions=SUBSTITUTION_COSTS,
-            deletions=DELETION_COSTS,
-            bound=edit_bound,
-        )
+    left_factor, right_factor = get_edit_factors(bound=edit_bound)
 
     hits = []
     query_fst = fst(verb_form)@left_factor
     query_fst.optimize()
-    for fv, paradigm in FV2PARADIGM.items():
+
+    paradigms_to_search = retrieve_verb_paradigms(expected_verb_type)
+    for paradigm in paradigms_to_search:
         # since we cannot know ahead of time what paradigm nbest hits will come from
         # get nbest hits for each paradigm individually, then filter later
         paradigm_lattice = paradigm.lemmatizer
         paradigm_lattice = pynini.project(paradigm_lattice, 'input')
+        if expected_verb_type == 'd-stem':
+            weighted_sigmastar = fst(SIGMA, weight=1).closure()
+            insert_separator_lattice=paradigm_lattice+insert_fst(SEARCH_SEPARATOR_STR)+weighted_sigmastar
+            trim_separator_lattice=paradigm_lattice+delete_fst(SEARCH_SEPARATOR_STR)+delete_fst(SIGMA).closure()
+            insert_separator_lattice.optimize()
+            trim_separator_lattice.optimize()
+            paradigm_lattice+=weighted_sigmastar
         paradigm_lattice.optimize()
         search_lattice = query_fst@right_factor@paradigm_lattice
         search_lattice.optimize()
@@ -284,11 +338,30 @@ def search_verb_form(
             use_byte_tokens=True,
         )
         if return_parse:
-            parse_verb_fv = lambda form: parse_inflected_verb(form, fv)
-            fv_hits = _parse_hits(hits_for_paradigm, num_hits, parse_verb_fv)
+            parse_verb_funct = lambda form: parse_inflected_verb(
+                form,
+                paradigm=paradigm,
+                expected_verb_type=expected_verb_type,
+            )
+            fv_hits = _parse_hits(hits_for_paradigm, num_hits, parse_verb_funct)
             hits.extend(fv_hits)
         else:
-            hits.extend([({'form': hit, 'fv': fv}, weight) for hit, weight in hits_for_paradigm])
+            paradigm_name_parts = paradigm.name.split()
+            fv_part = [part for part in paradigm_name_parts if part.startswith('fv=')]
+            fv = fv_part[0].split('=')[1] if fv_part else None
+            hits_w_fv = [({'form': hit, 'fv': fv}, weight) for hit, weight in hits_for_paradigm]
+            if expected_verb_type == 'd-stem':
+                for hit in hits_w_fv:
+                    form = hit[0]['form']
+                    separated_dstem_fsa = fst(form)@insert_separator_lattice
+                    separated_dstem_fsa.project('output')
+                    trimmed_dstem_fsa = separated_dstem_fsa@trim_separator_lattice
+                    trimmed_dstem = decode_fst_string(pynini.shortestpath(trimmed_dstem_fsa))
+                    lemmata = paradigm.lemmatize(fst(trimmed_dstem))
+                    lemma, _ = lemmata[0] # take first lemma
+                    root = decode_byte_str(lemma)
+                    hit[0]['root'] = root
+            hits.extend(hits_w_fv)
     hits.sort(key=lambda hit_tuple: hit_tuple[-1])
     nbest_hits = hits[:num_hits]
     return nbest_hits
@@ -313,21 +386,13 @@ def search_noun_form(
     by weight in ascending order so that least costly hit is the first item.
     """
 
-    left_factor, right_factor = LEFT_FACTOR, RIGHT_FACTOR
-    if edit_bound != DEFAULT_EDIT_BOUND:
-        # recompile left and right factors if edit bound is not default
-        left_factor, right_factor = get_edit_factors(
-            sigma=SIGMA,
-            insertions=INSERTION_COSTS,
-            substitutions=SUBSTITUTION_COSTS,
-            deletions=DELETION_COSTS,
-            bound=edit_bound,
-        )
+    left_factor, right_factor = get_edit_factors(bound=edit_bound)
 
     query_fst = fst(noun_form)@left_factor
     query_fst.optimize()
 
-    paradigm_lattice = NOUN_PARADIGM.lemmatizer
+    noun_paradigm = get_noun_paradigm()
+    paradigm_lattice = noun_paradigm.lemmatizer
     paradigm_lattice = pynini.project(paradigm_lattice, 'input')
     paradigm_lattice.optimize()
 
@@ -367,21 +432,13 @@ def search_adjective_form(
     and `weight` is the number of edits per hit. List is sorted
     by weight in ascending order so that least costly hit is the first item.
     """
-    left_factor, right_factor = LEFT_FACTOR, RIGHT_FACTOR
-    if edit_bound != DEFAULT_EDIT_BOUND:
-        # recompile left and right factors if edit bound is not default
-        left_factor, right_factor = get_edit_factors(
-            sigma=SIGMA,
-            insertions=INSERTION_COSTS,
-            substitutions=SUBSTITUTION_COSTS,
-            deletions=DELETION_COSTS,
-            bound=edit_bound,
-        )
+    left_factor, right_factor = get_edit_factors(bound=edit_bound)
 
     query_fst = fst(adj_form)@left_factor
     query_fst.optimize()
 
-    paradigm_lattice = ADJECTIVE_PARADIGM.lemmatizer
+    adjective_paradigm = get_adjective_paradigm()
+    paradigm_lattice = adjective_paradigm.lemmatizer
     paradigm_lattice = pynini.project(paradigm_lattice, 'input')
     paradigm_lattice.optimize()
 
@@ -420,21 +477,12 @@ def search_uninflected_word(
     `form` is the predicted uninflected form and `weight` is the number of edits per hit.
     List is sorted by weight in ascending order so that least costly hit is the first item.
     """
-    left_factor, right_factor = LEFT_FACTOR, RIGHT_FACTOR
-    if edit_bound != DEFAULT_EDIT_BOUND:
-        # recompile left and right factors if edit bound is not default
-        left_factor, right_factor = get_edit_factors(
-            sigma=SIGMA,
-            insertions=INSERTION_COSTS,
-            substitutions=SUBSTITUTION_COSTS,
-            deletions=DELETION_COSTS,
-            bound=edit_bound,
-        )
+    left_factor, right_factor = get_edit_factors(bound=edit_bound)
 
     query_fst = fst(form)@left_factor
     query_fst.optimize()
 
-    lattice = UNINFLECTED_WORD_FST
+    lattice = get_uninflected_word_fst()
     lattice = pynini.project(lattice, 'input')
     lattice.optimize()
 
@@ -477,13 +525,13 @@ def _parse_hits(
     hits = hit_parses[:num_hits]
     return hits
 
-def search_parse(
+def search_word(
         form: str,
         num_hits: int = 5,
         edit_bound: int = 5,
     ) -> List[Tuple[Dict[str, Any], float]]:
     """
-    Wraps search functions for each part of speech and returns nbest hits.
+    Returns fuzzy search hits for a queried word form across all parts of speech.
 
     Arguments:
         form:       str of form to query parses for
@@ -491,33 +539,23 @@ def search_parse(
     Returns:
         parses:     list of tuples, each of shape `(parse: dict, prob: float)`
     """
-    pos_search_functions = {
-        'verb': search_verb_form,
-        'noun': search_noun_form,
-        'adjective': search_adjective_form,
-        'uninflected': search_uninflected_word,
-    }
 
-    all_hits = []
-    for pos, search_function in pos_search_functions.items():
-        hits = search_function(
-            form,
-            num_hits=num_hits,
-            edit_bound=edit_bound,
-            return_parse=True,
-        )
-        if pos!='uninflected':
-            # add part_of_speech to each hit
-            hits = [(
-                {**hit[0], 'part_of_speech': pos},
-                hit[1]
-            ) for hit in hits]
-        all_hits.extend(hits)
-
-    all_hits.sort(key=lambda hit_tuple: hit_tuple[-1])
-    nbest_hits = all_hits[:num_hits]
-    return nbest_hits
-
+    left_factor, searchable_lexicon = get_searchable_main_parser(bound=edit_bound)
+    query_fst = fst(form)@left_factor
+    query_fst.optimize()
+    search_lattice = query_fst@searchable_lexicon
+    search_lattice.project('output')
+    search_lattice.optimize()
+    hits = get_lattice_strs_and_weights(
+        search_lattice,
+        nshortest=num_hits,
+    )
+    parses = []
+    for hit_str, weight in hits:
+        for parse in parse_word(hit_str):
+            parse['weight']=weight
+            parses.append(parse)
+    return parses
 
 def search_for_hyphenated_form(
         unparsed_form: str,

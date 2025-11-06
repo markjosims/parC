@@ -2,6 +2,7 @@ import os
 import pynini
 from pynini.lib import edit_transducer, features
 from string import digits
+from itertools import product
 
 ###############
 # Tira phonemes
@@ -77,11 +78,13 @@ TONE_SLOT_STR = '<TBU>'
 TONE_PLACEHOLDER_STR = '<FLOAT>'
 BOUNDARY_STR = '-'
 WORD_BOUNDARY_STR = '|'
+SEARCH_SEPARATOR_STR = '#'
 EPSILON_SYMBOL = '<eps>'
 
 SPECIAL_SYMBOLS = [
     BOUNDARY_STR, WORD_BOUNDARY_STR, TONE_SLOT_STR, TONE_PLACEHOLDER_STR,
-    INSERT, DELETE, SUBSTITUTE, *BRACKETS, *digits
+    INSERT, DELETE, SUBSTITUTE, SEARCH_SEPARATOR_STR,
+    *BRACKETS, *digits
 ]
 MULTICHAR_TOKENS = [symbol for symbol in SPECIAL_SYMBOLS if len(symbol)>1]\
     + [DENTAL_D, DENTAL_T]
@@ -101,7 +104,7 @@ CLASS_PREFIXES = [
     "r",
     "l",
 ]
-CLASS_AGREE = features.Feature("class", *CLASS_PREFIXES+['unmarked'])
+CLASS_AGREE = features.Feature("class", *CLASS_PREFIXES, default='unmarked')
 
 PERSON_AND_NUMBER_VALUES = [
     "1sg",
@@ -113,9 +116,6 @@ PERSON_AND_NUMBER_VALUES = [
     "2pl",
     "3pl",
 ]
-SUBJECT = 'sbj'
-OBJECT = 'obj'
-
 
 SUBJECT_PERSON_AND_NUMBER = features.Feature(
     "subject",
@@ -156,7 +156,13 @@ TAM = features.Feature(
 DEIXIS_VALUES = ["ventive", "itive"]
 DEIXIS = features.Feature("deixis", "unmarked", *DEIXIS_VALUES)
 
-INFLECTED_VERB = features.Category(TAM, DEIXIS, CLASS_AGREE)
+INFLECTED_VERB = features.Category(
+    TAM,
+    DEIXIS,
+    CLASS_AGREE,
+    SUBJECT_PERSON_AND_NUMBER,
+    OBJECT_PERSON_AND_NUMBER
+)
 VERB_FEATURE_VALUES = {
     feature.name: feature.values for feature in INFLECTED_VERB.features
 }
@@ -169,16 +175,167 @@ VERB_PARADIGM_SIZE = len(SUBJECT_AND_DEIXIS_MARKED_TAM)*len(CLASS_PREFIXES)*len(
 # verb feature bundles
 ######################
 
-INFINITIVE = features.FeatureVector(INFLECTED_VERB, "tam=infinitive", "class=ð", "deixis=unmarked")
-IPFV_IT = features.FeatureVector(INFLECTED_VERB, "tam=imperfective", "deixis=itive")
-IPFV_VENT = features.FeatureVector(INFLECTED_VERB, "tam=imperfective", "deixis=ventive")
-PFV_IT = features.FeatureVector(INFLECTED_VERB, "tam=perfective", "deixis=itive")
-PFV_VENT = features.FeatureVector(INFLECTED_VERB, "tam=perfective", "deixis=ventive")
-DEP_IT = features.FeatureVector(INFLECTED_VERB, "tam=dependent", "deixis=itive")
-DEP_VENT = features.FeatureVector(INFLECTED_VERB, "tam=dependent", "deixis=ventive")
-IMP_IT = features.FeatureVector(INFLECTED_VERB, "tam=imperative", "deixis=itive", "class=unmarked")
-IMP_VENT = features.FeatureVector(INFLECTED_VERB, "tam=imperative", "deixis=ventive", "class=unmarked")
-VERB_ROOT = features.FeatureVector(INFLECTED_VERB, "tam=unmarked", "deixis=unmarked", "class=unmarked")
+INFINITIVE_VALUES = {"tam": "infinitive", "class": "ð"}
+IPFV_IT_VALUES = {"tam": "imperfective", "deixis": "itive"}
+IPFV_VENT_VALUES = {"tam": "imperfective", "deixis": "ventive"}
+PFV_IT_VALUES = {"tam": "perfective", "deixis": "itive"}
+PFV_VENT_VALUES = {"tam": "perfective", "deixis": "ventive"}
+DEP_IT_VALUES = {"tam": "dependent", "deixis": "itive"}
+DEP_VENT_VALUES = {"tam": "dependent", "deixis": "ventive"}
+IMP_IT_VALUES = {"tam": "imperative", "deixis": "itive"}
+IMP_VENT_VALUES = {"tam": "imperative", "deixis": "ventive"}
+VERB_ROOT_VALUES = {"tam": "unmarked"}
+VERB_FEATURE_BUNDLE_DICTS = [
+    INFINITIVE_VALUES,
+    IPFV_IT_VALUES,
+    IPFV_VENT_VALUES,
+    PFV_IT_VALUES,
+    PFV_VENT_VALUES,
+    DEP_IT_VALUES,
+    DEP_VENT_VALUES,
+    IMP_IT_VALUES,
+    IMP_VENT_VALUES,
+    VERB_ROOT_VALUES,
+]
+for feature_bundle in VERB_FEATURE_BUNDLE_DICTS:
+    for feature in VERB_FEATURE_VALUES.keys():
+        if feature not in feature_bundle:
+            feature_bundle[feature] = 'unmarked'
+INFINITIVE = features.FeatureVector(
+    INFLECTED_VERB,
+    *[f"{k}={v}" for k, v in INFINITIVE_VALUES.items()]
+)
+IPFV_IT = features.FeatureVector(
+    INFLECTED_VERB,
+    *[f"{k}={v}" for k, v in IPFV_IT_VALUES.items()]
+)
+IPFV_VENT = features.FeatureVector(
+    INFLECTED_VERB,
+    *[f"{k}={v}" for k, v in IPFV_VENT_VALUES.items()]
+)
+PFV_IT = features.FeatureVector(
+    INFLECTED_VERB,
+    *[f"{k}={v}" for k, v in PFV_IT_VALUES.items()]
+)
+PFV_VENT = features.FeatureVector(
+    INFLECTED_VERB,
+    *[f"{k}={v}" for k, v in PFV_VENT_VALUES.items()]
+)
+DEP_IT = features.FeatureVector(
+    INFLECTED_VERB,
+    *[f"{k}={v}" for k, v in DEP_IT_VALUES.items()]
+)
+DEP_VENT = features.FeatureVector(
+    INFLECTED_VERB,
+    *[f"{k}={v}" for k, v in DEP_VENT_VALUES.items()]
+)
+IMP_IT = features.FeatureVector(
+    INFLECTED_VERB,
+    *[f"{k}={v}" for k, v in IMP_IT_VALUES.items()]
+)
+IMP_VENT = features.FeatureVector(
+    INFLECTED_VERB,
+    *[f"{k}={v}" for k, v in IMP_VENT_VALUES.items()]
+)
+VERB_ROOT = features.FeatureVector(
+    INFLECTED_VERB,
+    *[f"{k}={v}" for k, v in VERB_ROOT_VALUES.items()]
+)
+VERB_FETURE_BUNDLES = [
+    INFINITIVE,
+    IPFV_IT,
+    IPFV_VENT,
+    PFV_IT,
+    PFV_VENT,
+    DEP_IT,
+    DEP_VENT,
+    IMP_IT,
+    IMP_VENT,
+    VERB_ROOT,
+]
+FV_CLASSES = ['aɔ', 'ao', 'au', 'ai', 'ɔɔ', 'ɔi', 'ɔu']
+
+######################
+# auxiliary features #
+######################
+
+INFLECTED_AUX = features.Category(*INFLECTED_VERB.features)
+AUX_LEMMA_STR = 'ŋgá'
+IPFV_AUX = features.FeatureVector(INFLECTED_AUX, "tam=imperfective")
+PFV_IT_AUX = features.FeatureVector(INFLECTED_AUX, "tam=perfective", "deixis=itive")
+AUX_FEATURE_BUNDLES = [
+    IPFV_AUX,
+    PFV_IT_AUX,
+]
+for feature_bundle in AUX_FEATURE_BUNDLES:
+    for feature in VERB_FEATURE_VALUES.keys():
+        if feature not in feature_bundle.values:
+            feature_bundle.values[feature] = 'unmarked' 
+
+##################
+# verb extension #
+##################
+
+CAUS_STR = 'ij'
+PASS_STR = 'in'
+ANTIP_STR = 'ið'
+BEN_STR = 'it̪'
+LOC_AV_STR = 'at̪'
+LOC_OV_STR = 'ɛt̪'
+LOC_AI_STR = 'ac'
+LOC_OI_STR = 'ɛc'
+LOC_STRS = [LOC_AV_STR, LOC_OV_STR, LOC_AI_STR, LOC_OI_STR]
+
+EXTENSION_MAP = {
+    'causative': (CAUS_STR, 'ɔi'),
+    'passive': (PASS_STR, 'ɔɔ'),
+    'antipassive': {
+        'aɔ': (ANTIP_STR, 'ao'),
+        'ao': (ANTIP_STR, 'ao'),
+        'au': (ANTIP_STR, 'au'),
+        'ai': (ANTIP_STR, 'au'),
+        'ɔɔ': (ANTIP_STR, 'ɔu'),
+        'ɔi': (ANTIP_STR, 'ɔu'),
+        'ɔu': (ANTIP_STR, 'ɔu'),
+    },
+    'benefactive': (BEN_STR, 'ɔɔ'),
+    'locative': {
+        'aɔ': (LOC_AV_STR, 'aɔ'),
+        'ao': (LOC_AV_STR, 'aɔ'),
+        'au': (LOC_AV_STR, 'aɔ'),
+        'ɔɔ': (LOC_OV_STR, 'ɔɔ'),
+        'ɔu': (LOC_OV_STR, 'ɔɔ'),
+        'ai': (LOC_AI_STR, 'ai'),
+        'ɔi': (LOC_OI_STR, 'ɔi'),
+    }
+}
+
+EXTENSION2ABBREVIATION = {
+    'causative': 'caus',
+    'passive': 'pass',
+    'antipassive': 'antip',
+    'benefactive': 'ben',
+    'locative': 'loc',
+}
+
+ABBREVIATION2EXTENSION = {
+    v: k for k, v in EXTENSION2ABBREVIATION.items()
+}
+
+_extension_couples = list(
+    product(ABBREVIATION2EXTENSION.keys(), repeat=2)
+)
+_allowed_repeats = ['locative', 'benefactive']
+_filtered_extension_couples = [
+    couple for couple in _extension_couples
+    if couple[0] != couple[1] or couple[0] in _allowed_repeats
+]
+_single_extensions = [[ext] for ext in EXTENSION_MAP.keys()]
+ALL_POSSIBLE_EXTENSION_SEQS = _single_extensions + _filtered_extension_couples
+ALL_POSSIBLE_EXTENSION_SEQ_STRS = [
+    '+'.join(seq) for seq in ALL_POSSIBLE_EXTENSION_SEQS
+]
+
 
 #################
 # noun features #
@@ -216,6 +373,42 @@ ADJECTIVE_CLASS = features.Feature("class", "unmarked", *ADJECTIVE_CLASS_VALUES)
 ADJECTIVE = features.Category(ADJECTIVE_CLASS)
 ADJECTIVE_ROOT = features.FeatureVector(ADJECTIVE, "class=unmarked")
 
+####################
+# lexical features #
+####################
+
+# 'features' used to distinguish lexical classes
+# useful for the unified parser
+
+POS2CATEGORY = {
+    'noun': NOUN,
+    'verb': INFLECTED_VERB,
+    'aux': INFLECTED_AUX,
+    'adjective': ADJECTIVE,
+    'adverb': None,
+    'postposition': None,
+    'preposition': None,
+    'conjunction': None,
+    'particle': None,
+}
+
+
+POS_TAG = features.Feature(
+    "part_of_speech", "unmarked", *POS2CATEGORY.keys()
+)
+
+FV_TAG = features.Feature("fv", "unmarked", *FV_CLASSES)
+
+AUX_TAG = features.Feature("aux", "unmarked", "true", "false")
+
+LEXICAL_FEATURES = [POS_TAG, FV_TAG, AUX_TAG]
+LEXICAL_FEATURE_VALUES = {
+    feature.name: feature.values for feature in LEXICAL_FEATURES
+}
+LEXEME = features.Category(*LEXICAL_FEATURES)
+
+
+
 ################
 # symbol table #
 ################
@@ -227,6 +420,20 @@ for symbol in SPECIAL_SYMBOLS:
 for phone in TIRA_CONSONANTS+TIRA_VOWELS+TIRA_TONE_SYMBOLS:
     TIRA_SYMBOL_TABLE.add_symbol(phone)
 TIRA_SYMBOL_TABLE
+
+TIRA_NUM_SYMBOLS = TIRA_SYMBOL_TABLE.num_symbols()
+TIRA_SYMBOL_TO_CHAR = {
+    **SYMBOL2DIAC,
+    WORD_BOUNDARY_STR: ' ',
+}
+
+GENERATED_SYMBOLS = pynini.generated_symbols()
+
+UNION_TABLE = TIRA_SYMBOL_TABLE.copy()
+# used for printing FSTs with both Tira symbols
+# and feature labels
+for label, symbol in GENERATED_SYMBOLS:
+    UNION_TABLE.add_symbol(symbol, label)
 
 #########################
 # edit transducer costs #
@@ -242,8 +449,11 @@ DEFAULT_EDIT_BOUND = 5
 #########
 
 VERB_ROOTS_PATH = 'data/lexicon/verb_roots.csv'
-INFLECTED_VERBS_PATH = 'data/lexicon/inflected_verb_forms.csv'
+INFLECTED_VERBS_PATH = 'data/local/inflected_verb_forms.csv'
 GOLD_VERBS_PATH = 'data/test_cases/gold_verbs.csv'
+GOLD_PERSON_MARKING_PATH = 'data/test_cases/gold_person_marking.csv'
+GOLD_VERBS_DERIVED_PATH = 'data/test_cases/gold_verbs_derived.csv'
+GOLD_AUXS_PATH = 'data/test_cases/gold_auxs.csv'
 GOLD_PARADIGMS_PATH = 'data/test_cases/gold_paradigms.json'
 SENTENCES_PATH = 'data/sentences/sentences.csv'
 NOUNS_PATH = 'data/lexicon/nouns.csv'

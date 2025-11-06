@@ -1,9 +1,10 @@
 import pandas as pd
 import pynini
 from pynini.lib import features, paradigms, rewrite, pynutil
-from src.phonology import *
+from src.cache_decorators import output_cache
+from src.lexicon.phonology import *
 from src.fst_helpers import *
-from src.lexicon import NOUNS_DF, get_all_noun_data, get_noun_lemmata, get_gloss_for_noun
+from src.lexicon import get_all_noun_data, get_noun_lemmata, get_gloss_for_noun
 from src.constants import (
     NOUN_FEATURE_ABBREVIATION_TO_VECTOR,
     NOUN_ROOT,
@@ -12,7 +13,8 @@ from src.constants import (
 )
 from typing import *
 
-def build_noun_forms() -> paradigms.Paradigm:
+@output_cache(__file__)
+def get_noun_paradigm() -> paradigms.Paradigm:
     """
     Create Paradigm object for Tira nouns.
     """
@@ -37,15 +39,13 @@ def build_noun_forms() -> paradigms.Paradigm:
 
     noun_paradigm = paradigms.Paradigm(
         category=NOUN,
-        name='Nouns',
+        name=stringify_lexeme_features({"part_of_speech": 'noun'}),
         slots=slots,
         lemma_feature_vector=NOUN_ROOT,
         stems=get_noun_lemmata(wrap_w_fsa=True),
         boundary=fst(BOUNDARY_STR),
     )
     return noun_paradigm
-
-NOUN_PARADIGM = build_noun_forms()
 
 def parse_noun(noun_form: str, add_gloss: bool=True) -> Dict[str, str]:
     """
@@ -57,11 +57,15 @@ def parse_noun(noun_form: str, add_gloss: bool=True) -> Dict[str, str]:
         parse:      dict with keys 'form', 'lemma', and feature names
     """
     parses = []
-    lemmata = NOUN_PARADIGM.lemmatize(fst(noun_form))
+    noun_paradigm = get_noun_paradigm()
+    lemmata = noun_paradigm.lemmatize(fst(noun_form))
     for root, feature_vec in lemmata:
         root = decode_byte_str(root)
 
         parse = feature_vec.values
+        if parse['case']=='unmarked':
+            # ignore zero feature parses
+            continue
         parse['root'] = root
         parse['form'] = noun_form
         if add_gloss:

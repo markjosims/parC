@@ -16,8 +16,8 @@ OLD_SENSE_COL = 'Translation'
 OLD_FV_COL = 'Inflection class'
 
 ROOT_COL = 'verb_root'
-SENSE_COL = 'root_sense'
-FV_COL = 'root_fv'
+SENSE_COL = 'gloss'
+FV_COL = 'fv'
 
 def get_roots_from_excel() -> int:
     """
@@ -37,7 +37,7 @@ def get_roots_from_excel() -> int:
 
 def apply_roots_to_excel() -> int:
     """
-    Loads data from `ROOTS_INPATH` and updates `root_sense` and `root_fv_class` columns
+    Loads data from `ROOTS_INPATH` and updates `gloss` and `fv_class` columns
     in Excel data.
     """
     excel_df = pd.read_excel(EXCEL_VERBS_PATH, sheet_name=EXCEL_SHEET_NAME)
