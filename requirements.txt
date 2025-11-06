@@ -12,4 +12,4 @@ pydot
 flask
 gunicorn
 sqlalchemy
-pyscopg2-binary
+psycopg2-binary
