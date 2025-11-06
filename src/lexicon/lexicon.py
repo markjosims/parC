@@ -84,7 +84,7 @@ def get_verb_w_extensions_df():
         fv_roots = verbs_df.loc[fv_mask, 'verb_root'].tolist()
         fv_glosses = verbs_df.loc[fv_mask, 'root_sense'].tolist()
         for extension_seq in ALL_POSSIBLE_EXTENSION_SEQS:
-            derived_stems, derived_fv = get_derived_stem_and_fv(
+            derived_stems, derived_glosses, derived_fv = get_derived_stem_and_fv(
                 base_stem=fv_roots,
                 gloss=fv_glosses,
                 fv=fv,
@@ -92,7 +92,7 @@ def get_verb_w_extensions_df():
             )
             df_for_extension_seq = pd.DataFrame({
                 'verb_root': derived_stems,
-                'gloss': fv_glosses,
+                'gloss': derived_glosses,
                 'fv': [derived_fv]*len(derived_stems),
             })
             new_dfs.append(df_for_extension_seq)
