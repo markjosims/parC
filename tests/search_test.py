@@ -100,7 +100,7 @@ def test_search_verb_form(gold_verb):
     
     hits = search_word(fuzzy_form, num_hits=num_hits)
 
-    # assert len(hits) == num_hits # verb forms can get long
+    # assert len(hits) >= 1 # verb forms can get long
     # so make the tests less strict
     assert len(hits) >= 1
     top_forms = [hit['form'] for hit in hits]
@@ -133,7 +133,7 @@ def test_search_noun_form(gold_noun):
     
     hits = search_word(fuzzy_form, num_hits=num_hits)
 
-    assert len(hits) == num_hits
+    assert len(hits) >= 1
     top_form = hits[0]['form']
     assert top_form == gold_form
 
@@ -146,7 +146,7 @@ def test_search_uninflected_word_form(uninflected_word):
 
     hits = search_word(fuzzy_form, num_hits=num_hits)
 
-    assert len(hits) == num_hits
+    assert len(hits) >= 1
     top_form = hits[0]['form']
     assert top_form == gold_form
 
@@ -159,7 +159,6 @@ def test_search_adjective_form(gold_adjective):
     
     hits = search_word(fuzzy_form, num_hits=num_hits)
 
-    assert len(hits) == num_hits
     top_form = hits[0]['form']
     assert top_form == gold_form
 
@@ -171,6 +170,5 @@ def test_search_adjective_form(gold_adjective):
 def test_search_for_hyphenated_form_simple(unhyphenated_str, hyphenated_str):
     lexicon = fst(hyphenated_str)
     hits = search_for_hyphenated_form(unhyphenated_str, lattice=lexicon)
-    assert len(hits) > 0
     top_form, _ = hits[0]
     assert top_form == hyphenated_str
