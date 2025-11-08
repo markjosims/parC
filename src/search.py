@@ -250,41 +250,6 @@ def _get_substitution_graph(
 # functions for performing search #
 # ------------------------------- #
 
-def retrieve_verb_paradigms(expected_verb_type):
-    if expected_verb_type == 'd-stem':
-        stem_paradigms = (get_verb_dstem_paradigm(fv) for fv in FV_CLASSES)
-        stem_and_aux_paradigms = (get_verb_dstem_paradigm_w_aux(fv) for fv in FV_CLASSES)
-        return (*stem_paradigms, *stem_and_aux_paradigms)
-
-    stem_paradigms = (get_verb_stem_paradigm(fv) for fv in FV_CLASSES)
-    stem_and_aux_paradigms = (get_verb_paradigm_w_aux(fv) for fv in FV_CLASSES)
-    derived_verb_paradigms = get_paradigms_for_all_extensions()
-    derived_stem_paradigms = (
-        stem_paradigm for stem_paradigm, _ in derived_verb_paradigms.values()
-    )
-    derived_stem_and_aux_paradigms = (
-        stem_and_aux_paradigm for _, stem_and_aux_paradigm in derived_verb_paradigms.values()
-    )
-    if expected_verb_type == 'auto':
-        paradigms_to_search = (
-            *stem_paradigms,
-            *stem_and_aux_paradigms,
-            *derived_stem_paradigms,
-            *derived_stem_and_aux_paradigms,
-            get_aux_paradigm()
-    )
-    elif expected_verb_type == 'aux':
-        paradigms_to_search = (get_aux_paradigm(),)
-    elif expected_verb_type == 'derived_stem':
-        paradigms_to_search = derived_stem_paradigms
-    elif expected_verb_type == 'derived_stem_and_aux':
-        paradigms_to_search = derived_stem_and_aux_paradigms
-    elif expected_verb_type == 'stem_and_aux':
-        paradigms_to_search = stem_and_aux_paradigms
-    else:  # 'stem'
-        paradigms_to_search = stem_paradigms
-    return paradigms_to_search
-
 def search_verb_form(
         verb_form: str,
         num_hits: int = 5,
@@ -296,75 +261,8 @@ def search_verb_form(
             'auto', 'd-stem',
         ]='auto',
     ) -> List[Tuple[Dict[str, Any], float]]:
-    """
-    Arguments:
-        verb_form:  str of verb form to query parses for
-        num_hits:   int, number of parses to return
-    Returns:
-        hits:       list of tuples, each of shape `(parse: dict, prob: float)`
-    
-    Performs fuzzy search mapping a queried verb form to possible parses
-    as defined by verb paradigm FSTs. Returns list of couples of (`form`, `weight`).
-    `form` is the predicted verb form and `weight` is the number of edits per hit.
-    List is sorted by weight in ascending order so that least costly hit is the first item.
-    """
+    raise DeprecationWarning("Function `search_verb_form` is deprecated. Use `search_word` instead.")
 
-    left_factor, right_factor = get_edit_factors(bound=edit_bound)
-
-    hits = []
-    query_fst = fst(verb_form)@left_factor
-    query_fst.optimize()
-
-    paradigms_to_search = retrieve_verb_paradigms(expected_verb_type)
-    for paradigm in paradigms_to_search:
-        # since we cannot know ahead of time what paradigm nbest hits will come from
-        # get nbest hits for each paradigm individually, then filter later
-        paradigm_lattice = paradigm.lemmatizer
-        paradigm_lattice = pynini.project(paradigm_lattice, 'input')
-        if expected_verb_type == 'd-stem':
-            weighted_sigmastar = fst(SIGMA, weight=1).closure()
-            insert_separator_lattice=paradigm_lattice+insert_fst(SEARCH_SEPARATOR_STR)+weighted_sigmastar
-            trim_separator_lattice=paradigm_lattice+delete_fst(SEARCH_SEPARATOR_STR)+delete_fst(SIGMA).closure()
-            insert_separator_lattice.optimize()
-            trim_separator_lattice.optimize()
-            paradigm_lattice+=weighted_sigmastar
-        paradigm_lattice.optimize()
-        search_lattice = query_fst@right_factor@paradigm_lattice
-        search_lattice.optimize()
-        hits_for_paradigm = get_nbest_strs_and_weights(
-            search_lattice,
-            n=num_hits,
-            return_input_strs=False,
-            use_byte_tokens=True,
-        )
-        if return_parse:
-            parse_verb_funct = lambda form: parse_inflected_verb(
-                form,
-                paradigm=paradigm,
-                expected_verb_type=expected_verb_type,
-            )
-            fv_hits = _parse_hits(hits_for_paradigm, num_hits, parse_verb_funct)
-            hits.extend(fv_hits)
-        else:
-            paradigm_name_parts = paradigm.name.split()
-            fv_part = [part for part in paradigm_name_parts if part.startswith('fv=')]
-            fv = fv_part[0].split('=')[1] if fv_part else None
-            hits_w_fv = [({'form': hit, 'fv': fv}, weight) for hit, weight in hits_for_paradigm]
-            if expected_verb_type == 'd-stem':
-                for hit in hits_w_fv:
-                    form = hit[0]['form']
-                    separated_dstem_fsa = fst(form)@insert_separator_lattice
-                    separated_dstem_fsa.project('output')
-                    trimmed_dstem_fsa = separated_dstem_fsa@trim_separator_lattice
-                    trimmed_dstem = decode_fst_string(pynini.shortestpath(trimmed_dstem_fsa))
-                    lemmata = paradigm.lemmatize(fst(trimmed_dstem))
-                    lemma, _ = lemmata[0] # take first lemma
-                    root = decode_byte_str(lemma)
-                    hit[0]['root'] = root
-            hits.extend(hits_w_fv)
-    hits.sort(key=lambda hit_tuple: hit_tuple[-1])
-    nbest_hits = hits[:num_hits]
-    return nbest_hits
 
 def search_noun_form(
         noun_form: str,
@@ -372,46 +270,7 @@ def search_noun_form(
         edit_bound: int = 5,
         return_parse: bool = True,
     ) -> List[Tuple[Dict[str, Any], float]]:
-    """
-    Arguments:
-        noun_form:  str of noun form to query parses for
-        num_hits:   int, number of parses to return
-    Returns:
-        parses:     list of tuples, each of shape `(parse: dict, prob: float)`
-    
-    Performs fuzzy search mapping a queried noun form to possible parses
-    as defined by noun paradigm FSTs. Returns list of couples of (`parse`, `weight`).
-    `parse` is output of `parse_inflected_noun`
-    and `weight` is the number of edits per hit. List is sorted
-    by weight in ascending order so that least costly hit is the first item.
-    """
-
-    left_factor, right_factor = get_edit_factors(bound=edit_bound)
-
-    query_fst = fst(noun_form)@left_factor
-    query_fst.optimize()
-
-    noun_paradigm = get_noun_paradigm()
-    paradigm_lattice = noun_paradigm.lemmatizer
-    paradigm_lattice = pynini.project(paradigm_lattice, 'input')
-    paradigm_lattice.optimize()
-
-    search_lattice = query_fst@right_factor@paradigm_lattice
-    search_lattice.optimize()
-    
-    hits = get_nbest_strs_and_weights(
-        search_lattice,
-        n=num_hits,
-        return_input_strs=False,
-        use_byte_tokens=True,
-    )
-        
-    hits.sort(key=lambda hit_tuple: hit_tuple[-1])
-    if return_parse:
-        hits = _parse_hits(hits, num_hits, parse_noun)
-    else:
-        hits = [({'form': hit}, weight) for hit, weight in hits]
-    return hits
+    raise DeprecationWarning("Function `search_noun_form` is deprecated. Use `search_word` instead.")
 
 def search_adjective_form(
         adj_form: str,
@@ -419,45 +278,7 @@ def search_adjective_form(
         edit_bound: int = 5,
         return_parse: bool = True,
     ) -> List[Tuple[Dict[str, Any], float]]:
-    """
-    Arguments:
-        adj_form:   str of adjective form to query parses for
-        num_hits:   int, number of parses to return
-    Returns:
-        parses:     list of tuples, each of shape `(parse: dict, prob: float)`
-    
-    Performs fuzzy search mapping a queried adjective form to possible parses
-    as defined by adjective paradigm FSTs. Returns list of couples of (`parse`, `weight`).
-    `parse` is output of `parse_inflected_adjective`
-    and `weight` is the number of edits per hit. List is sorted
-    by weight in ascending order so that least costly hit is the first item.
-    """
-    left_factor, right_factor = get_edit_factors(bound=edit_bound)
-
-    query_fst = fst(adj_form)@left_factor
-    query_fst.optimize()
-
-    adjective_paradigm = get_adjective_paradigm()
-    paradigm_lattice = adjective_paradigm.lemmatizer
-    paradigm_lattice = pynini.project(paradigm_lattice, 'input')
-    paradigm_lattice.optimize()
-
-    search_lattice = query_fst@right_factor@paradigm_lattice
-    search_lattice.optimize()
-    
-    hits = get_nbest_strs_and_weights(
-        search_lattice,
-        n=num_hits,
-        return_input_strs=False,
-        use_byte_tokens=True,
-    )
-        
-    hits.sort(key=lambda hit_tuple: hit_tuple[-1])
-    if return_parse:
-        hits = _parse_hits(hits, num_hits, parse_adjective)
-    else:
-        hits = [({'form': hit}, weight) for hit, weight in hits]
-    return hits
+    raise DeprecationWarning("Function `search_adjective_form` is deprecated. Use `search_word` instead.")
 
 def search_uninflected_word(
         form: str,
@@ -465,65 +286,8 @@ def search_uninflected_word(
         edit_bound: int = 5,
         return_parse: bool = True,
     ) -> List[Tuple[Dict[str, Any], float]]:
-    """
-    Arguments:
-        form:       str of form to query parses for
-        num_hits:   int, number of parses to return
-    Returns:
-        parses:     list of tuples, each of shape `(parse: dict, prob: float)`
-    
-    Performs fuzzy search mapping a queried uninflected form to possible parses
-    as defined by noun and verb paradigm FSTs. Returns list of couples of (`form`, `weight`).
-    `form` is the predicted uninflected form and `weight` is the number of edits per hit.
-    List is sorted by weight in ascending order so that least costly hit is the first item.
-    """
-    left_factor, right_factor = get_edit_factors(bound=edit_bound)
+    raise DeprecationWarning("Function `search_uninflected_word` is deprecated. Use `search_word` instead.")
 
-    query_fst = fst(form)@left_factor
-    query_fst.optimize()
-
-    lattice = get_uninflected_word_fst()
-    lattice = pynini.project(lattice, 'input')
-    lattice.optimize()
-
-    search_lattice = query_fst@right_factor@lattice
-    search_lattice.optimize()
-    
-    hits = get_nbest_strs_and_weights(
-        search_lattice,
-        n=num_hits,
-        return_input_strs=False,
-        use_byte_tokens=True,
-    )
-        
-    hits.sort(key=lambda hit_tuple: hit_tuple[-1])
-    if return_parse:
-        hits = _parse_hits(hits, num_hits, parse_uninflected_word)
-    else:
-        hits = [({'form': hit_str}, weight) for hit_str, weight in hits]
-    return hits
-
-def _parse_hits(
-        hits: List[Tuple[str, float]],
-        num_hits: int,
-        parse_funct: Callable
-) -> List[Tuple[Dict[str, Any], float]]:
-    """
-    Arguments:
-        hits:       list of tuples, each of shape `(hit_str: str, weight: float)`
-        num_hits:   int, number of parses to return
-        parse_funct: Callable that takes a str and returns a list of dicts
-    Returns:
-        hits:       list of tuples, each of shape `(parse: dict, weight: float)`
-    
-    Parses each hit string using `parse_funct` and returns up to `num_hits` parses.
-    """
-    hit_parses = []
-    for hit_str, weight in hits:
-        for parse in parse_funct(hit_str):
-            hit_parses.append((parse, weight))
-    hits = hit_parses[:num_hits]
-    return hits
 
 def search_word(
         form: str,
