@@ -395,7 +395,8 @@ def get_lattice_strs_and_weights(
         label_iter = path_iter.olabels()
         word = extract_word_from_labels(label_iter)
         weight = float(path_iter.weight())
-        decoded_outputs.append((word, weight))
+        if (word, weight) not in  decoded_outputs:
+            decoded_outputs.append((word, weight))
         path_iter.next()
 
     decoded_outputs.sort(key=lambda t:t[-1])
