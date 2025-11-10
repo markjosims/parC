@@ -13,15 +13,20 @@ import string
 
 BOUNDARY = fst(BOUNDARY_STR)
 WORD_BOUNDARY = fst(WORD_BOUNDARY_STR)
+EOS = fst(EOS_STR)
 C = fst(TIRA_CONSONANTS)
 V = fst(TIRA_VOWELS)
 T = fst(TIRA_TONE_DIACS)
+H = fst(HIGH_TONE)
+L = fst(LOW_TONE)
+F = fst(FALL_TONE)
+R = fst(RISE_TONE)
 SEGMENT = C|V
 TBU = fst(TIRA_TBUS)
 TONE_SLOT = fst(TONE_SLOT_STR)
 TONE_PLACEHOLDER = fst(TONE_PLACEHOLDER_STR)
 TONE_SLOT_OR_PLACEHOLDER = TONE_SLOT|TONE_PLACEHOLDER
-SIGMA = C|V|T|BOUNDARY|WORD_BOUNDARY|TONE_SLOT_OR_PLACEHOLDER
+SIGMA = C|V|T|BOUNDARY|WORD_BOUNDARY|TONE_SLOT_OR_PLACEHOLDER|EOS
 SIGMA_EXCEPT_PLACEHOLDER = C|V|T|BOUNDARY
 SIGMASTAR = pynini.closure(SIGMA).optimize()
 SIGMASTAR_EXCEPT_PLACEHOLDER = pynini.closure(SIGMA_EXCEPT_PLACEHOLDER).optimize()
@@ -77,6 +82,13 @@ ALL_LOW_TONE = pynini.closure(LTONE_SYLL).optimize()
 HLSTAR_RULE = compose_tone(HLSTAR)
 ALL_HIGH_TONE_RULE = compose_tone(ALL_HIGH_TONE)
 ALL_LOW_TONE_RULE = compose_tone(ALL_LOW_TONE)
+
+DELETE_EOS = pynini.cdrewrite(
+    tau=delete_fst(EOS_STR),
+    l=fst(''),
+    r=fst(''),
+    sigma_star=SIGMASTAR,
+).optimize()
 
 DELETE_SCHWA_BEFORE_VOWEL = pynini.cdrewrite(
     tau=pynutil.delete(fst("ə")+T.ques),
@@ -188,6 +200,50 @@ DELETE_VOWEL_IN_HIATUS = pynini.cdrewrite(
 VOWEL_COALESCENCE_RULE = COALESCE_W_HIGH_FRONT_VOWEL_RULE@DELETE_VOWEL_IN_HIATUS
 
 VOWEL_COALESCENCE_RULE = VOWEL_COALESCENCE_RULE@REMOVE_DOUBLE_BOUNDARIES
+
+# special case: L>HL when L is the only tone in the word
+
+LEFT_H_MONOSYLL = pynini.cdrewrite(
+    tau=fst(LOW_TONE, FALL_TONE),
+    l='[BOS]'+pynini.closure(C)+V.ques,
+    r=pynini.closure(C)+'[EOS]',
+    sigma_star=SIGMASTAR,
+)
+
+LEFT_H_GENERIC = pynini.cdrewrite(
+    tau=fst(T, HIGH_TONE),
+    l='[BOS]'+pynini.closure(C)+V.ques,
+    r=fst(''),
+    sigma_star=SIGMASTAR,
+)
+
+LEFT_H_RULE = LEFT_H_MONOSYLL @ LEFT_H_GENERIC
+
+# need to apply left-to-right so we don't feed
+
+FINAL_LOWERING_MONOSYLL = pynini.cdrewrite(
+    tau=fst(H, F),
+    l='[BOS]'+pynini.closure(C)+V.ques,
+    r=pynini.closure(C)+EOS,
+    sigma_star=SIGMASTAR,
+)
+
+# final lowering turns the rightmost H into L
+# since an H can span multiple syllables, we need to look for H
+# where no L tones follow, and then apply left to right
+
+FINAL_LOWERING_RIGHT_CONTEXT = (
+        pynini.closure(SEGMENT)+(H+pynini.closure(SIGMA-L)).ques
+)+EOS
+FINAL_LOWERING_GENERIC = pynini.cdrewrite(
+    tau=fst(T-F, L),
+    l=fst(''),
+    r=FINAL_LOWERING_RIGHT_CONTEXT,
+    sigma_star=SIGMASTAR,
+    direction='ltr',
+)
+
+FINAL_LOWERING_RULE = FINAL_LOWERING_MONOSYLL @ FINAL_LOWERING_GENERIC @ DELETE_EOS
 
 # ---------- #
 # edit costs #
