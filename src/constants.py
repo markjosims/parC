@@ -431,13 +431,12 @@ TIRA_SYMBOL_TO_CHAR = {
     WORD_BOUNDARY_STR: ' ',
 }
 
-GENERATED_SYMBOLS = pynini.generated_symbols()
+GENERATED_SYMBOL_TABLE = pynini.generated_symbols()
+GENERATED_SYMBOLS = dict(GENERATED_SYMBOL_TABLE).values()
+MULTICHAR_TOKENS.extend(GENERATED_SYMBOLS)
 
-UNION_TABLE = TIRA_SYMBOL_TABLE.copy()
-# used for printing FSTs with both Tira symbols
-# and feature labels
-for label, symbol in GENERATED_SYMBOLS:
-    UNION_TABLE.add_symbol(symbol, label)
+for label, symbol in GENERATED_SYMBOL_TABLE:
+    TIRA_SYMBOL_TABLE.add_symbol(symbol, label)
 
 #########################
 # edit transducer costs #
