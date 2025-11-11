@@ -400,9 +400,12 @@ POS_TAG = features.Feature(
 
 FV_TAG = features.Feature("fv", "unmarked", *FV_CLASSES)
 
+# binary features
 AUX_TAG = features.Feature("aux", "unmarked", "true", "false")
+FINAL_LOWERING_TAG = features.Feature("final_lowering", "unmarked", "true", "false")
+LEFTH_TAG = features.Feature("left_h", "unmarked", "true", "false")
 
-LEXICAL_FEATURES = [POS_TAG, FV_TAG, AUX_TAG]
+LEXICAL_FEATURES = [POS_TAG, FV_TAG, AUX_TAG, FINAL_LOWERING_TAG, LEFTH_TAG]
 LEXICAL_FEATURE_VALUES = {
     feature.name: feature.values for feature in LEXICAL_FEATURES
 }
