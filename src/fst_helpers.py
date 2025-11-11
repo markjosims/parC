@@ -413,7 +413,7 @@ def extract_word_from_labels(label_iter):
             char = TIRA_SYMBOL_TO_CHAR.get(symbol, symbol)
             word += char
         else:
-            feature_str = '['+GENERATED_SYMBOLS.find(label)+']'
+            feature_str = '['+GENERATED_SYMBOL_TABLE.find(label)+']'
             word += feature_str
         
     return word
@@ -494,7 +494,6 @@ def decode_byte_str(byte_str: str) -> str:
 def draw_svg(
     fst: pynini.Fst, filepath: str = 'tmp/tmp.svg',
     title: Optional[str]=None,
-    use_union_table: bool=True,
 ):
     """
     Saves .dot and .svg representations of `fst`, with an optionally specified `title`
@@ -503,8 +502,8 @@ def draw_svg(
     stem = os.path.splitext(filepath)[0]
     fst = set_symbols(fst)
     dotfile = stem+'.dot'
-    input_table = UNION_TABLE if use_union_table else fst.input_symbols()
-    output_table = UNION_TABLE if use_union_table else fst.output_symbols()
+    input_table = fst.input_symbols()
+    output_table = fst.output_symbols()
     fst.draw(
         source=dotfile,
         show_weight_one=True,
