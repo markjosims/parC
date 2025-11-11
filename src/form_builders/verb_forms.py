@@ -360,11 +360,12 @@ def add_perfective_ventive_personal_markers(
     - 3pl: CL-  
     """
     tamd_strs = ["tam=perfective", "deixis=ventive"]
-    def get_features(sbj: str='unmarked', obj: str='unmarked') -> List[str]:
+    def get_features(sbj: str='unmarked', obj: str='unmarked', cl: str='unmarked') -> List[str]:
         features_list = [INFLECTED_VERB]
         features_list.extend(tamd_strs)
         features_list.append(f"subject={sbj}")
         features_list.append(f"object={obj}")
+        features_list.append(f"class={cl}")
         return features.FeatureVector(*features_list)
 
     non_pronominal_slots = add_class_prefixes_to_slots([(form_fst, get_features())], include_ng=False)
