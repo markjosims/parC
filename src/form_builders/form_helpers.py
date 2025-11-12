@@ -5,7 +5,7 @@ for various parts of speech.
 
 from typing import *
 from src.fst_helpers import fst, decode_feature_label_rewriter
-from src.constants import CLASS_PREFIXES, LOW_TONE
+from src.constants import CLASS_PREFIXES, HIGH_TONE, LOW_TONE
 from src.lexicon.phonology import DELETE_SCHWA_BEFORE_VOWEL, SIGMASTAR, REMOVE_DOUBLE_BOUNDARIES
 import pynini
 from pynini.lib import features, paradigms, rewrite
@@ -120,3 +120,27 @@ def generate_forms(
             print(f"{wordform}\t{features_str}")
     return word_dicts
 
+def build_wh_parser(parser_fst) -> pynini.Fst:
+    """
+    Arguments:
+        parser_fst:  An FST mapping from form strings to feature strings
+    Returns:
+        wh_parser_fst:  An FST mapping from form strings to feature strings
+                        with WH suffixes/features added
+    Constructs an FST based on `parser_fst` that adds appropriate WH suffixes
+    based on the noun class features in the input. Note that this function
+    does not handle setting the WH feature flag to 'true'; that should be done
+    separately.
+    """
+    inverse_parser_fst = pynini.invert(parser_fst)
+    wh_parsers = []
+
+    for class_prefix in CLASS_PREFIXES:
+        class_feature_fsa = SIGMASTAR+fst('class='+class_prefix)+SIGMASTAR
+        class_suffix = suffix(f"-{class_prefix}ɛ{HIGH_TONE}")
+
+        class_wh_fst = class_feature_fsa @ inverse_parser_fst @ class_suffix
+        class_wh_fst.invert()
+        wh_parsers.append(class_wh_fst)
+
+    return pynini.union(*wh_parsers).optimize()
