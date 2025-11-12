@@ -434,6 +434,7 @@ TIRA_SYMBOL_TO_CHAR = {
 GENERATED_SYMBOL_TABLE = pynini.generated_symbols()
 GENERATED_SYMBOLS = dict(GENERATED_SYMBOL_TABLE).values()
 MULTICHAR_TOKENS.extend(GENERATED_SYMBOLS)
+MULTICHAR_TOKENS.sort(key=lambda x: len(x), reverse=True)
 
 for label, symbol in GENERATED_SYMBOL_TABLE:
     TIRA_SYMBOL_TABLE.add_symbol(symbol, label)
