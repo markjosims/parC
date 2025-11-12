@@ -5,6 +5,24 @@ import pytest
 from tests.utils import get_different_items
 
 @pytest.mark.parametrize("gold_verb", get_gold_verbs())
+def test_verb_wh_inflection(gold_verb):
+    root = gold_verb.pop('root')
+    form = gold_verb.pop('form').replace('-', '')
+    agree_class = gold_verb['class']
+    form+=f"{agree_class}ɛ́"
+    gold_verb["part_of_speech"]='verb'
+    gold_verb['aux']= str(' ' in form).lower()
+    gold_verb['wh']='true'
+
+    gold_verb_filtered = {
+        k: v for k,v in gold_verb.items()
+        if (k in VERB_FEATURE_VALUES or k in LEXICAL_FEATURE_VALUES)
+    }
+    predicted_form = inflect_word(root, feature_dict=gold_verb_filtered)
+
+    assert form in predicted_form
+
+@pytest.mark.parametrize("gold_verb", get_gold_verbs())
 def test_verb_inflection(gold_verb):
     root = gold_verb.pop('root')
     form = gold_verb.pop('form').replace('-', '')
