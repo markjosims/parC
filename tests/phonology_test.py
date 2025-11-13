@@ -165,3 +165,16 @@ def test_final_lowering(orig_str,fl_str):
     strings_final = get_lattice_strs(lattice_final)
     assert len(strings_final)==1
     assert strings_final[0]==fl_str
+
+@pytest.mark.parametrize("orig_str,expected_str", [
+    ("àpɾí", "ápɾì"),
+    ("ùnɛ́ɾɛ́", "únɛ̀ɾɛ̀"),
+    ("kávə̀lɛ̀ðɔ́", "kávə̀lɛ̀ðɔ̀"),
+    ("pɔ̌", "pɔ̂"),
+    ("pɛ́", "pɛ̂"),
+])
+def test_final_lowering_and_lefth(orig_str, expected_str):
+    lattice=rewrite.rewrite_lattice(fst(orig_str+EOS_STR), FINAL_LOWERING_RULE@LEFT_H_RULE)
+    strings = get_lattice_strs(lattice)
+    assert len(strings)==1
+    assert strings[0]==expected_str
