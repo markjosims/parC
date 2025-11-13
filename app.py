@@ -13,7 +13,7 @@ from src.sentences import get_elan_analyses
 import pynini
 from unicodedata import normalize
 from sqlalchemy.orm import joinedload, selectinload
-from src.database.database import SessionLocal
+from src.database.init_database import SessionLocal
 from src.database.models import Sentence, SentenceWord, Wordform
 import math
 import logging
