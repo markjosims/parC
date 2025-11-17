@@ -417,7 +417,20 @@ LEXICAL_FEATURE_VALUES = {
 }
 LEXEME = features.Category(*LEXICAL_FEATURES)
 
+################
+# all features #
+################
 
+FEATURES_TO_VALUES = {}
+for category in [INFLECTED_VERB, INFLECTED_AUX, NOUN, ADJECTIVE, LEXEME]:
+    for feature in category.features:
+        if feature.name not in FEATURES_TO_VALUES:
+            FEATURES_TO_VALUES[feature.name] = feature.values
+
+ALL_FEATURE_STRS = []
+for feature_name, feature_values in FEATURES_TO_VALUES.items():
+    for feature_value in feature_values:
+        ALL_FEATURE_STRS.append(f"{feature_name}={feature_value}")
 
 ################
 # symbol table #
