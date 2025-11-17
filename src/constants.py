@@ -403,10 +403,12 @@ POS_TAG = features.Feature(
 
 FV_TAG = features.Feature("fv", "unmarked", *FV_CLASSES)
 
-# binary features
+# ternary/binary features
 AUX_TAG = features.Feature("aux", "unmarked", "true", "false")
-FINAL_LOWERING_TAG = features.Feature("final_lowering", "unmarked", "true", "false")
-LEFTH_TAG = features.Feature("left_h", "unmarked", "true", "false")
+# aux is ternary since verb stems that are discontinuous with Aux
+# are marked as aux=false
+FINAL_LOWERING_TAG = features.Feature("final_lowering", "unmarked", "true")
+LEFTH_TAG = features.Feature("left_h", "unmarked", "true")
 
 LEXICAL_FEATURES = [
     POS_TAG, FV_TAG, AUX_TAG,
