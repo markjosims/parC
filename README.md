@@ -25,28 +25,28 @@ comes from the sentence-initial focus particle /àn/.
     | Parse     | àn^<H>    | ɔ́ndì  | <H>+k-àr-ɔ́-gɛ́             | l-úrnɔ̀            | kə̀-r̀lɛ̀ɲ-í             | ŋɛ́n   |
     | Gloss     | FOC       | what  | Clg-say-FV.Vent.Pfv-Wh    | CLl-grandfather   | Clg-chase-FV.Vent.Pfv | dog   |
 
-Tira is an under-studied language, and the data to be processed come from various stages of the lifecycle of the project
-and do not reflect a consistent transcription convention, as is often the case when documenting a language.
+Tira is an under-studied language, and the data to be processed come from various stages of the lifecycle of the project and do not reflect a consistent transcription convention, as is often the case when documenting a language.
 For the parser to be able to process human annotations, it will need to be able to handle fuzzy matches.
-For example the word /ùnɛ́ɾɛ́/ 'yesterday' can be found transcribed \[únːɛ̀ːɾɛ̀], \[ūnːɛ̄ːɾɛ̀], \[ùnɛ̀ré],
-and the word /t̪òlé/ 'lion' can be found transcribed \[t̪òlí], \[t̪ʊ̀lɪ́], \[t̪ùlí] etc.
+For example the word /ùnɛ́ɾɛ́/ 'yesterday' can be found transcribed \[únːɛ̀ːɾɛ̀], \[ūnːɛ̄ːɾɛ̀], \[ùnɛ̀ré], and the word /t̪òlé/ 'lion' can be found transcribed \[t̪òlí], \[t̪ʊ̀lɪ́], \[t̪ùlí] etc.
 Ideally, fuzzy search should be able to account for the possible variation encountered in Tira transcriptions and enforce
 a consistent standard.
 
 ## Methods
 The Tira parser relies on FST technology with the Pynini python package as an interface.
 Rules for morphological exponence for Tira are adapted from the analysis given in Hagen Kaldhol (2024).
-Pynini provides functions for efficient creation of context-dependent rewrite rules
-that are ideal for handling the complex patterns of exponence present in Tira.
-In addition, the `pynini.lib.paradigms` module allows for easy creation and organization of
-morphological paradigms including transducing inflected forms to glosses and vice versa.
+Pynini provides functions for efficient creation of context-dependent rewrite rules that are ideal for handling the complex patterns of exponence present in Tira.
+In addition, the `pynini.lib.paradigms` module allows for easy creation and organization of morphological paradigms including transducing inflected forms to glosses and vice versa.
+
+## Workflow
 
 ## Dependencies
 ### Linux
 Should just need `pip install -r requirements.txt`
 
 ### MacOS
-Pynini requires [OpenFST 1.8.3](https://www.openfst.org/twiki/bin/view/FST/FstDownload). Earlier versions might work as well. If using 1.8.3 note the patch described in [this github issue](https://github.com/gpustack/gpustack/issues/1798#issuecomment-2980869111).
+Pynini requires [OpenFST 1.8.3](https://www.openfst.org/twiki/bin/view/FST/FstDownload).
+Earlier versions might work as well.
+If using 1.8.3 note the patch described in [this github issue](https://github.com/gpustack/gpustack/issues/1798#issuecomment-2980869111).
 
 Once OpenFST is installed, `pip install -r requirements.txt` should work.
 
