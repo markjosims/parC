@@ -473,20 +473,8 @@ DEFAULT_EDIT_BOUND = 5
 # paths #
 #########
 
-VERB_ROOTS_PATH = 'data/lexicon/verb_roots.csv'
-INFLECTED_VERBS_PATH = 'data/local/inflected_verb_forms.csv'
-GOLD_VERBS_PATH = 'data/test_cases/gold_verbs.csv'
-GOLD_PERSON_MARKING_PATH = 'data/test_cases/gold_person_marking.csv'
-GOLD_VERBS_DERIVED_PATH = 'data/test_cases/gold_verbs_derived.csv'
-GOLD_AUXS_PATH = 'data/test_cases/gold_auxs.csv'
-GOLD_PARADIGMS_PATH = 'data/test_cases/gold_paradigms.json'
-SENTENCES_PATH = 'data/sentences/sentences.csv'
-NOUNS_PATH = 'data/lexicon/nouns.csv'
-ADJECTIVES_PATH = 'data/lexicon/adjectives.csv'
-GOLD_NOUNS_PATH = 'data/test_cases/gold_nouns.csv'
-GOLD_ADJECTIVES_PATH = 'data/test_cases/gold_adjectives.csv'
-UNINFLECTED_WORDS_PATH = 'data/lexicon/uninflected_words.csv'
-GOLD_UNINFLECTED_WORDS_PATH = 'data/test_cases/gold_uninflected_words.csv'
+LEXICON_DIR = "data/lexicon/"
+TEST_CASE_DIR = "data/test_cases/"
 
 FST_DIR = "fst/"
 ROOT2GLOSS_FST_PATH = os.path.join(FST_DIR, "root2gloss.fst")
