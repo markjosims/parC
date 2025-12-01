@@ -113,3 +113,9 @@ MULTICHAR_TOKENS.sort(key=lambda x: len(x), reverse=True)
 
 for label, symbol in GENERATED_SYMBOL_TABLE:
     TIRA_SYMBOL_TABLE.add_symbol(symbol, label)
+
+#########################
+# k2 specific constants #
+#########################
+
+K2_FINAL_ARC_LABEL = -1
