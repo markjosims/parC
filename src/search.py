@@ -2,7 +2,7 @@ import pynini
 from pynini.lib import pynutil
 
 from typing import *
-from src.cache_decorators import fst_cache, output_cache
+from src.cache_decorators import fst_cache, output_cache, Timer
 from src.form_builders.adnominal_forms import get_adjective_paradigm, parse_adjective
 from src.form_builders.uninflected_forms import get_uninflected_word_fst, parse_uninflected_word
 from src.form_builders.verb_forms import (
@@ -43,6 +43,7 @@ def get_searchable_lexicon(
         lexicon = fst(lexicon)
     left_factor, right_factor = get_edit_factors(**edit_factor_kwargs)
     searchable_lexicon = right_factor@lexicon
+    searchable_lexicon.optimize()
     return left_factor, searchable_lexicon
 
 @fst_cache(os.path.dirname(__file__), num_fst=2)
@@ -59,6 +60,7 @@ def get_searchable_main_parser(**edit_factor_kwargs) -> Tuple[pynini.Fst, pynini
     left_factor, right_factor = get_edit_factors(**edit_factor_kwargs)
     lexicon = pynini.project(main_lemmatizer, 'input')
     searchable_lexicon = right_factor@lexicon
+    searchable_lexicon.optimize()
     return left_factor, searchable_lexicon
 
 @output_cache(__file__)
@@ -255,6 +257,8 @@ def search_word(
         form: str,
         num_hits: int = 10,
         edit_bound: int = 5,
+        main_lemmatizer: Optional[pynini.Fst]=None,
+        main_analyzer: Optional[pynini.Fst]=None,
     ) -> List[Tuple[Dict[str, Any], float]]:
     """
     Returns fuzzy search hits for a queried word form across all parts of speech.
@@ -267,20 +271,31 @@ def search_word(
     """
 
     left_factor, searchable_lexicon = get_searchable_main_parser(bound=edit_bound)
-    query_fst = fst(form)@left_factor
-    query_fst.optimize()
-    search_lattice = query_fst@searchable_lexicon
-    search_lattice.project('output')
-    search_lattice.optimize()
-    hits = get_lattice_strs_and_weights(
-        search_lattice,
-        nshortest=num_hits,
-    )
+    with Timer("Left lattice composition"):
+        query_fst = fst(form)@left_factor
+        query_fst.optimize()
+    with Timer("Right lattice composition"):
+        search_lattice = query_fst@searchable_lexicon
+        search_lattice.project('output')
+        search_lattice.optimize()
+    with Timer("Getting n-best hits"):
+        hits = get_lattice_strs_and_weights(
+            search_lattice,
+            nshortest=num_hits,
+        )
+
+    if main_lemmatizer is None or main_analyzer is None:
+        main_lemmatizer, main_analyzer, _ = get_main_parser()
     parses = []
     for hit_str, weight in hits:
-        for parse in parse_word(hit_str):
-            parse['weight']=weight
-            parses.append(parse)
+        with Timer("Parsing hit"):
+            for parse in parse_word(
+                hit_str,
+                main_lemmatizer,
+                main_analyzer
+            ):
+                parse['weight']=weight
+                parses.append(parse)
     return parses
 
 def search_for_hyphenated_form(
@@ -304,6 +319,8 @@ def search_for_hyphenated_form(
 
 def rewrite_sentence(
         sentence: str,
+        main_lemmatizer: Optional[pynini.Fst]=None,
+        main_analyzer: Optional[pynini.Fst]=None,
 ) -> str:
     """
     Arguments:
@@ -311,10 +328,14 @@ def rewrite_sentence(
     Returns:
         rewritten_sentence:  str of space-separated rewritten words
     """
+    if main_lemmatizer is None or main_analyzer is None:
+        main_lemmatizer, main_analyzer, _ = get_main_parser()
+
+
     words = sentence.split(' ')
     rewritten_words = []
     for word in words:
-        hits = search_word(word, num_hits=1)
+        hits = search_word(word, num_hits=1, main_lemmatizer=main_lemmatizer, main_analyzer=main_analyzer)
         if hits:
             best_hit = hits[0]['form']
             rewritten_words.append(best_hit)
