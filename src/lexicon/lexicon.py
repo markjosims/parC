@@ -7,13 +7,12 @@ import os
 import pandas as pd
 from src.cache_decorators import output_cache
 from src.constants import (
-    ALL_POSSIBLE_EXTENSION_SEQS,
     FV_CLASSES,
     LEXICON_DIR,
     TEST_CASE_DIR,
     AUX_LEMMA_STR
 )
-from src.lexicon.extension_suffixes import get_derived_stem_and_fv
+from src.lexicon.extension_suffixes import get_derived_stem_and_fv, ALL_POSSIBLE_EXTENSION_SEQS
 from src.fst_helpers import fst
 from typing import *
 import json
