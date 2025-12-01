@@ -20,7 +20,7 @@ from src.lexicon.phonology import (
     SIGMA, INSERTION_COSTS, DELETION_COSTS, SUBSTITUTION_COSTS,
     INSERT_HYPHEN_RULE
 )
-from src.parser import get_main_parser, add_analysis_and_gloss_to_parses, parse_word
+from src.parser import get_main_parser, add_analysis_and_gloss_to_parses, parse_is_root, parse_word
 
 # ----------------------------------- #
 # functions for building search graph #
@@ -290,8 +290,10 @@ def search_word(
             main_lemmatizer,
             main_analyzer
         ):
-            parse['weight']=weight
-            parses.append(parse)
+            if not parse_is_root(parse):
+                # skip zero-feature parses
+                parse['weight']=weight
+                parses.append(parse)
     return parses
 
 def search_for_hyphenated_form(

@@ -196,6 +196,24 @@ def parse_word(
     )
     return parses
 
+def parse_is_root(parse: Dict[str, str]) -> bool:
+    """
+    Determines whether a given parse corresponds to a root form
+    (i.e. form with no features marked).
+    Arguments:
+        parse: A dictionary representing a parse.
+    Returns:
+        True if the parse corresponds to a root form, False otherwise.
+    """
+    if parse['part_of_speech'] == 'noun':
+        return parse['case'] == 'unmarked'
+    if parse['part_of_speech'] == 'verb':
+        return parse['tam'] == 'unmarked'
+    if parse['part_of_speech'] == 'adjective':
+        return parse['class'] == 'unmarked'
+    return False
+
+
 def add_analysis_and_gloss_to_parses(
         parses,
         input_fst=None,
