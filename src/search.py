@@ -14,6 +14,9 @@ from src.lexicon.phonology import (
     INSERT_HYPHEN_RULE
 )
 from src.parser import get_main_parser, add_analysis_and_gloss_to_parses, parse_is_root, parse_word
+from argparse import ArgumentParser
+import os
+import yaml
 
 # ----------------------------------- #
 # functions for building search graph #
@@ -334,3 +337,114 @@ def rewrite_sentence(
             rewritten_words.append(word)
     rewritten_sentence = ' '.join(rewritten_words)
     return rewritten_sentence
+
+def get_annotation_markup_for_sentence(
+        sentence: str,
+        num_hits: int = 10,
+        main_lemmatizer: Optional[pynini.Fst]=None,
+        main_analyzer: Optional[pynini.Fst]=None,
+) -> List[Dict[str, Any]]:
+    """
+    Given an unparsed sentence, generates hypothetical parses
+    for each word and returns in a structured format for annotation,
+    conforming to this schema:
+    {
+        'sentence': str,
+        'words': [
+            {
+                'original_str': str,
+                'updated_str': str,
+                'updated_gloss': str,
+                'parses': [
+                    (
+                        predicted_form,
+                        predicted_form_segmented,
+                        predicted_gloss,
+                        weight
+                    ),
+                    ...
+                ]
+            },
+            ...
+        ]
+    }
+
+    Arguments:
+        sentence:   str of space-separated words to search and annotate
+        num_hits:  int, number of hits to return per word
+        main_lemmatizer: FST of main lemmatizer
+        main_analyzer: FST of main analyzer
+    Returns:
+        annotated_parses:  list of dicts representing annotated parses for each word
+    """
+    markup_dict = {
+        'sentence': sentence,
+        'words': []
+    }
+
+    if main_lemmatizer is None or main_analyzer is None:
+        main_lemmatizer, main_analyzer, _ = get_main_parser()
+
+    words = sentence.split(' ')
+    parsed_words = []
+    for word in words:
+        word_obj = {
+            'original_str': word,
+            'updated_str': '',
+            'updated_gloss': '',
+            'parses': []
+        }
+        hits = search_word(
+            word,
+            main_lemmatizer=main_lemmatizer,
+            main_analyzer=main_analyzer,
+            num_hits=num_hits,
+        )
+        for hit in hits:
+            gloss_str = get_gloss_str_from_dict(hit)
+            predicted_form = hit['form']
+            predicted_form_segmented = hit['analyzed_form']
+            weight = hit['weight']
+            word_obj['parses'].append((
+                predicted_form,
+                predicted_form_segmented,
+                gloss_str,
+                weight
+            ))
+        parsed_words.append(word_obj)
+
+    return markup_dict
+
+if __name__ == '__main__':
+    # when loaded as script, ingress sentences from a text file
+    # and output .yaml file with annotation markup
+    parser = ArgumentParser(
+        description="Predicts parses for words in a text file using fuzzy search."
+    )
+    parser.add_argument('--input', '-i', help="Input text file")
+    parser.add_argument('--output', '-o', help="Output .yaml file for annotation markup")
+    parser.add_argument('--num_hits', '-n', default=10)
+
+    args = parser.parse_args()
+    if getattr(args, 'output', None) is None:
+        args.output = os.path.splitext(args.input)[0]+'.yaml'
+
+    with open(args.input, 'r', encoding='utf-8') as infile:
+        sentences = infile.readlines()
+
+    main_lemmatizer, main_analyzer, _ = get_main_parser()
+    all_markup = []
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        markup = get_annotation_markup_for_sentence(
+            sentence,
+            num_hits=int(args.num_hits),
+            main_lemmatizer=main_lemmatizer,
+            main_analyzer=main_analyzer,
+        )
+        all_markup.append(markup)
+
+    with open(args.output, 'w', encoding='utf-8') as outfile:
+        yaml.dump(all_markup, outfile, allow_unicode=True, sort_keys=False)
