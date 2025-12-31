@@ -66,7 +66,7 @@ def handle_parse(form):
 
 def handle_test_parse(form):
     parse_input = form.get('parse_input', '').strip()
-    verb_row = form.get('verb_root', '')
+    verb_row = form.get('root', '')
     verb_root, fv, gloss = verb_row.split()
 
     expected = {
@@ -95,7 +95,7 @@ def handle_test_parse(form):
 
 def handle_inflect(form):
     """Handles the inflection form submission."""
-    verb_row = form.get('verb_root', '')
+    verb_row = form.get('root', '')
     verb_root, fv, _ = verb_row.split()
     feature_dict = {
         'tam': form.get('tam'),
@@ -114,13 +114,13 @@ def handle_inflect(form):
     return {
         'inflect_result': result,
         'inflect_input': {
-            'verb_root': verb_row,
+            'root': verb_row,
             **feature_dict,
         }
     }
 
 def handle_test_inflect(form):
-    verb_row = form.get('verb_root', '')
+    verb_row = form.get('root', '')
     verb_root, fv, _ = verb_row.split()
     feature_dict = {
         'tam': form.get('tam'),
@@ -145,7 +145,7 @@ def handle_test_inflect(form):
             "actual": actual,
         },
         'inflect_input': {
-            'verb_root': verb_row,
+            'root': verb_row,
             **feature_dict,
         },
         'expected_inflected_form': expected,
@@ -163,7 +163,7 @@ def lexicon_page():
 def paradigms_page():
     context = {'paradigm': None, 'inflect_input': None}
     if request.method == 'POST':
-        verb_row = request.form.get('verb_root', '')
+        verb_row = request.form.get('root', '')
         verb_root, fv, _ = verb_row.split()
         context['paradigm']=get_inflected_paradigm_for_verb(verb_root, fv)
         context['inflect_input']=verb_row

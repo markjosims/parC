@@ -3,13 +3,6 @@ from pynini.lib import pynutil
 
 from typing import *
 from src.cache_decorators import fst_cache, output_cache
-from src.form_builders.adnominal_forms import get_adjective_paradigm, parse_adjective
-from src.form_builders.uninflected_forms import get_uninflected_word_fst, parse_uninflected_word
-from src.form_builders.verb_forms import (
-    parse_inflected_verb, get_verb_stem_paradigm,
-    get_aux_paradigm, get_verb_paradigm_w_aux,
-)
-from src.form_builders.noun_forms import get_noun_paradigm, parse_noun
 from src.fst_helpers import *
 from src.constants import (
     INSERT, DELETE, SUBSTITUTE,

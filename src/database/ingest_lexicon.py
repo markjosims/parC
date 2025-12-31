@@ -15,7 +15,7 @@ def ingest_verbs(df: pd.DataFrame, db: Session):
     num_existing = 0
     for i, row in tqdm(df.iterrows(), total=num_rows):
         existing_verb = db.query(Lexeme).filter(
-            Lexeme.root == row['verb_root'],
+            Lexeme.root == row['root'],
             Lexeme.part_of_speech == 'verb',
         ).first()
         if existing_verb:
@@ -23,7 +23,7 @@ def ingest_verbs(df: pd.DataFrame, db: Session):
             continue
 
         new_lexeme = Lexeme(
-            root=row['verb_root'],
+            root=row['root'],
             part_of_speech='verb',
             gloss=row['gloss'],
             lexical_info={"fv_class": row['fv']}
@@ -55,7 +55,7 @@ def ingest_nouns(df: pd.DataFrame, db: Session):
     num_existing = 0
     for i, row in tqdm(df.iterrows(), total=num_rows):
         existing_noun = db.query(Lexeme).filter(
-            Lexeme.root == row['lemma'],
+            Lexeme.root == row['root'],
             Lexeme.part_of_speech == 'noun',
         ).first()
         if existing_noun:
@@ -64,7 +64,7 @@ def ingest_nouns(df: pd.DataFrame, db: Session):
 
         noun_features = {abbr: row[abbr] for abbr in NOUN_FEATURE_ABBREVIATIONS if row[abbr]!=''}
         new_lexeme = Lexeme(
-            root=row['lemma'],
+            root=row['root'],
             part_of_speech='noun',
             gloss=row['gloss'],
             lexical_info=noun_features,
@@ -104,7 +104,7 @@ def ingest_uninflected_words(df: pd.DataFrame, db: Session):
     num_existing = 0
     for i, row in tqdm(df.iterrows(), total=num_rows):
         existing_lexeme = db.query(Lexeme).filter(
-            Lexeme.root == row['word'],
+            Lexeme.root == row['root'],
             Lexeme.part_of_speech == row['part_of_speech'],
         ).first()
         if existing_lexeme:
@@ -112,7 +112,7 @@ def ingest_uninflected_words(df: pd.DataFrame, db: Session):
             continue
 
         new_lexeme = Lexeme(
-            root=row['word'],
+            root=row['root'],
             part_of_speech=row['part_of_speech'],
             gloss=row['gloss'],
             lexical_info={},
@@ -128,16 +128,16 @@ def main():
 
     try:
         print(f"Ingesting verb lexical data...")
-        ingest_verbs(get_all_verb_data(return_type=pd.DataFrame), db)
+        ingest_verbs(get_all_verb_data(return_type='dataframe'), db)
 
         print(f"Ingesting noun lexical data...")
-        ingest_nouns(get_all_noun_data(return_type=pd.DataFrame), db)
+        ingest_nouns(get_all_noun_data(return_type='dataframe'), db)
 
         print(f"Ingesting adjective lexical data...")
-        ingest_adjectives(get_all_adjective_data(return_type=pd.DataFrame), db)
+        ingest_adjectives(get_all_adjective_data(return_type='dataframe'), db)
 
         print(f"Ingesting uninflected word lexical data...")
-        ingest_uninflected_words(get_uninflected_word_data(return_type=pd.DataFrame), db)
+        ingest_uninflected_words(get_uninflected_word_data(return_type='dataframe'), db)
 
     except Exception as e:
         print(f"Error occurred: {e}")

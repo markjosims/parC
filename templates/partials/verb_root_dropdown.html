@@ -5,7 +5,7 @@
                 {% for verb_row in verb_lexicon %}
                     <option
                         value="{{ " ".join(verb_row) }}"
-                        {% if inflect_input['verb_root'] == " ".join(verb_row) %}
+                        {% if inflect_input['root'] == " ".join(verb_row) %}
                             selected
                         {% endif %}
                     >

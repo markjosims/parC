@@ -210,19 +210,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function getFeatureStr(parse, pos) {
+    function getFeatureStr(parse, part_of_speech) {
         // Construct a feature string for a given parse based on part of speech
         let feature_str = '';
-        if (pos === 'verb') {
+        if (part_of_speech === 'verb') {
             feature_str += (parse.analysis.class != 'unmarked') ? "CL" + parse.analysis.class + " " : "";
             feature_str += (parse.analysis.tam != 'unmarked') ? parse.analysis.tam + " " : "";
             feature_str += (parse.analysis.deixis != 'unmarked') ? parse.analysis.deixis : "";
         }
-        else if (pos === 'noun') {
+        else if (part_of_speech === 'noun') {
             feature_str += (parse.analysis.number != 'unmarked') ? parse.analysis.number + " " : "";
             feature_str += (parse.analysis.case != 'unmarked') ? parse.analysis.case : "";
         }
-        else if (pos === 'adjective') {
+        else if (part_of_speech === 'adjective') {
             feature_str += (parse.analysis.class != 'unmarked') ? "CL" + parse.analysis.class : "";
         }
         return feature_str.trim();
@@ -249,8 +249,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (parses.length > 0) {
             selectElement.innerHTML = `<option value="">-- Select a parse --</option>`;
             parses.forEach(parse => {
-                const pos = parse.analysis.part_of_speech || 'N/A';
-                const feature_str = getFeatureStr(parse, pos);
+                const part_of_speech = parse.analysis.part_of_speech || 'N/A';
+                const feature_str = getFeatureStr(parse, part_of_speech);
                 const gloss = parse.analysis.gloss || 'N/A';
                 const label = `${parse.updated_form} (${gloss}) ${feature_str} [Source: ${parse.source}]`;
                 const option = document.createElement('option');

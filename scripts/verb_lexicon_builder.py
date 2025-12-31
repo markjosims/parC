@@ -15,7 +15,7 @@ OLD_ROOT_COL = 'Root'
 OLD_SENSE_COL = 'Translation'
 OLD_FV_COL = 'Inflection class'
 
-ROOT_COL = 'verb_root'
+ROOT_COL = 'root'
 SENSE_COL = 'gloss'
 FV_COL = 'fv'
 

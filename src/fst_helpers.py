@@ -46,12 +46,12 @@ def encode_fst_string(input_string: Union[str, Sequence[str]]) -> Union[str, Lis
     """
     if type(input_string) is not str:
         return [encode_fst_string(input_element) for input_element in input_string]
-    str_no_brackets = input_string.replace('[', '').replace(']', '')
+    nfkd_norm = unicodedata.normalize('NFKD', input_string)
+    str_no_brackets = nfkd_norm.replace('[', '').replace(']', '')
     str_w_word_boundaries = str_no_brackets.replace(' ', WORD_BOUNDARY_STR)
     tokenized_str = " ".join(str_w_word_boundaries)
     str_w_collapsed_tokens = collapse_multichar_tokens(tokenized_str)
-    nfkd_norm = unicodedata.normalize('NFKD', str_w_collapsed_tokens)
-    str_w_tone_symbols = tone2symbol(nfkd_norm)
+    str_w_tone_symbols = tone2symbol(str_w_collapsed_tokens)
     return str_w_tone_symbols
 
 def decode_fst_string(
@@ -148,6 +148,7 @@ def vectorize_feature_dict(
     """
     Arguments:
         feature_dict:   Dict mapping feature names to feature values
+        specify_unmarked: Whether to include 'unmarked' features in the output FeatureVectors
     Returns:
         lexeme_vector:          FeatureVector containing lexeme-specific features
         lexical_flag_vector:    FeatureVector containing lexical flags
@@ -155,8 +156,8 @@ def vectorize_feature_dict(
     Splits features into lexeme-specific features and lexical flags and returns
     as two FeatureVectors.
     """
-    pos = feature_dict["part_of_speech"]
-    category = POS2CATEGORY[pos]
+    part_of_speech = feature_dict["part_of_speech"]
+    category = POS2CATEGORY[part_of_speech]
     lexeme_features = []
     lexical_flags = []
 
@@ -171,7 +172,18 @@ def vectorize_feature_dict(
             lexeme_features.append(feature_str)
         lexeme_vector = features.FeatureVector(category, *lexeme_features)
     for feature in LEXEME.features:
-        feature_value = feature_dict.get(feature.name, 'unmarked')
+        if feature.name == 'aux' and part_of_speech == 'verb':
+            # special handling for 'aux' feature in verbs
+            # if verb belongs to an Aux-taking TAMD value and user did not specify aux,
+            # default to 'true'
+            tam = feature_dict['tam']
+            deixis = feature_dict.get('deixis', 'unmarked')
+            if (tam == 'imperfective') or (tam == 'perfective' and deixis == 'itive'):
+                feature_value = feature_dict.get(feature.name, 'true')
+            else:
+                feature_value = feature_dict.get(feature.name, 'unmarked')
+        else:
+            feature_value = feature_dict.get(feature.name, 'unmarked')
         if feature_value == 'unmarked' and not specify_unmarked:
             continue
         feature_str = f"{feature.name}={feature_value}"
@@ -221,12 +233,36 @@ def vectorize_lexeme_string(lexeme_str: str, specify_unmarked: bool = True) -> f
         if feature_value == 'unmarked' and not specify_unmarked:
             continue
         elif feature == 'part_of_speech' and feature_value not in POS2CATEGORY:
-            # assume uninflected if invalid pos tag
+            # assume uninflected if invalid part_of_speech tag
             feature_value = 'uninflected'
         feature_str = f"{feature.name}={feature_value}"
         feature_strs.append(feature_str)
     lexeme_vector = features.FeatureVector(LEXEME, *feature_strs)
     return lexeme_vector
+
+def get_gloss_str_from_dict(
+        analysis: Dict[str, str],
+        verbose: bool = False,
+) -> str:
+    analysis_subset = analysis.copy()
+    gloss = analysis_subset.pop('gloss')
+
+    ignored_keys = ['root', 'part_of_speech', 'analyzed_form', 'weight', 'form']
+    for key, value in analysis.items():
+        if key in ignored_keys or value == 'unmarked':
+            analysis_subset.pop(key, None)
+    keys = sorted(analysis_subset.keys())
+    if verbose:
+        other_parts = [f'[{key}={analysis_subset[key]}]' for key in keys]
+        gloss_str = gloss + ''.join(other_parts)
+    else:
+        if 'class' in analysis:
+            # Prepend 'CL' to class value
+            analysis_subset['class'] = f"CL{analysis_subset['class']}"
+        other_parts = [f'{analysis_subset[key]}' for key in keys]
+        gloss_str = '-'.join([gloss] + other_parts)
+
+    return gloss_str
 
 def get_features_fsa(
         features: Union[str, Dict[str,str], Tuple[features.FeatureVector, features.FeatureVector]],

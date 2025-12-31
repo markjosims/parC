@@ -20,7 +20,8 @@ from src.fst_helpers import (
     stringify_lexeme_features,
 )
 from src.cache_decorators import fst_cache, Timer
-from src.lexicon import get_gloss_for_root, get_verb_root_w_hyphen
+from src.lexicon import get_gloss_for_root, get_verb_root_w_hyphen, get_root_for_gloss, get_part_of_speech_for_root, \
+    get_class_for_verb_root
 import os
 from typing import *
 
@@ -160,8 +161,62 @@ def get_main_parser() -> Tuple[pynini.Fst, pynini.Fst, pynini.Fst]:
     return main_lemmatizer, main_analyzer, main_inflector
 
 
-def inflect_word(root, feature_dict) -> List[Tuple[str, float]]:
-    feature_vector, flag_vector = vectorize_feature_dict(feature_dict)
+def inflect_word(
+        root: str=None,
+        gloss: str=None,
+        **feature_kwargs,
+) -> List[str]:
+    """
+    Given a root and features, returns the inflected forms.
+    If 'gloss' is passed instead of 'root', find the root(s) corresponding to that gloss.
+
+    Args:
+        root:
+        gloss:
+        **feature_kwargs:
+
+    Returns:
+        List of strings representing the inflected forms.
+    """
+    if root is None:
+        if gloss is None:
+            raise ValueError("Either 'root' or 'gloss' must be provided.")
+        # get root(s) for gloss and return inflected forms for each
+        roots_and_pos = get_root_for_gloss(gloss, return_pos=True)
+        inflected_forms = []
+        for root, pos in roots_and_pos:
+            feature_kwargs['part_of_speech'] = pos
+            inflected_forms.extend(
+                inflect_word(
+                    root=root,
+                    **feature_kwargs
+                )
+            )
+        return list(set(inflected_forms))  # remove duplicates
+
+    if 'part_of_speech' not in feature_kwargs:
+        possible_pos = get_part_of_speech_for_root(root)
+        for part_of_speech in possible_pos:
+            inflected_forms = []
+            feature_kwargs['part_of_speech'] = part_of_speech
+            inflected_forms.extend(inflect_word(
+                root=root,
+                **feature_kwargs
+            ))
+        return list(set(inflected_forms))  # remove duplicates
+
+    if (feature_kwargs['part_of_speech'] == 'verb') and (feature_kwargs.get('fv', None) is None):
+        fv_list = get_class_for_verb_root(root)
+        inflected_forms = []
+        for fv in fv_list:
+            feature_kwargs['fv'] = fv
+            inflected_forms.extend(inflect_word(
+                root=root,
+                **feature_kwargs
+            ))
+        return list(set(inflected_forms))  # remove duplicates
+
+    feature_vector, flag_vector = vectorize_feature_dict(feature_kwargs)
     _, _, main_inflector = get_main_parser()
     input_fst = fst(root) + feature_vector.acceptor + flag_vector.acceptor
     output_fst = input_fst @ main_inflector
@@ -236,10 +291,10 @@ def add_analysis_and_gloss_to_parses(
         # temporarily commenting out to update dataset w/o causing bugs
         new_parse['analyzed_form'] = analyses[0].split('[')[0]
 
-        pos = parse["part_of_speech"]
-        if pos not in ['verb', 'noun', 'adjective']:
-            pos = 'uninflected'
-        glosses = get_gloss_for_root(parse['root'], pos)
+        part_of_speech = parse["part_of_speech"]
+        if part_of_speech not in ['verb', 'noun', 'adjective']:
+            part_of_speech = 'uninflected'
+        glosses = get_gloss_for_root(parse['root'], part_of_speech)
         for gloss in glosses:
             new_parse['gloss'] = gloss
             new_parses.append(new_parse)

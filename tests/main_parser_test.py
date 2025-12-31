@@ -25,7 +25,7 @@ def test_verb_inflection_wh(gold_verb):
         k: v for k,v in gold_verb.items()
         if (k in VERB_FEATURE_VALUES or k in LEXICAL_FEATURE_VALUES)
     }
-    predicted_form = inflect_word(root, feature_dict=gold_verb_filtered)
+    predicted_form = inflect_word(root, **gold_verb_filtered)
 
     assert form in predicted_form
 
@@ -44,7 +44,7 @@ def test_verb_inflection_loc(gold_verb):
         k: v for k,v in gold_verb.items()
         if (k in VERB_FEATURE_VALUES or k in LEXICAL_FEATURE_VALUES)
     }
-    predicted_form = inflect_word(root, feature_dict=gold_verb_filtered)
+    predicted_form = inflect_word(root, **gold_verb_filtered)
 
     assert form in predicted_form
 
@@ -59,7 +59,7 @@ def test_verb_inflection(gold_verb):
         k: v for k,v in gold_verb.items()
         if (k in VERB_FEATURE_VALUES or k in LEXICAL_FEATURE_VALUES)
     }
-    predicted_form = inflect_word(root, feature_dict=gold_verb_filtered)
+    predicted_form = inflect_word(root, **gold_verb_filtered)
 
     assert form in predicted_form
 
@@ -183,7 +183,7 @@ def test_derived_verbs(gold_verb):
 
     predicted_forms = inflect_word(
         root=root,
-        feature_dict=verb_filtered,
+        **verb_filtered,
     )
 
     assert form in predicted_forms
@@ -195,7 +195,7 @@ def test_adjective_forms(gold_adj):
     form = form.replace('-', '')
     gold_adj["part_of_speech"]='adjective'
 
-    predicted_forms = inflect_word(root, feature_dict=gold_adj)
+    predicted_forms = inflect_word(root, **gold_adj)
     assert form in predicted_forms
 
 @pytest.mark.parametrize("gold_adj", get_gold_adjectives())
@@ -219,7 +219,7 @@ def test_adjective_parsing(gold_adj):
 @pytest.mark.parametrize("gold_word", get_uninflected_word_data())
 def test_uninflected_forms(gold_word):
 
-    root = gold_word['word']
+    root = gold_word['root']
     form = root.split('(')[0]
     gold_word['analyzed_form']=root
     gold_word['root']=root
@@ -250,6 +250,6 @@ def test_gold_auxs(gold_aux):
         if (k in VERB_FEATURE_VALUES or k in LEXICAL_FEATURE_VALUES)
     }
     aux_root = 'ŋgá'
-    predicted_forms = inflect_word(aux_root, feature_dict=aux_filtered)
+    predicted_forms = inflect_word(aux_root, **aux_filtered)
 
     assert form in predicted_forms

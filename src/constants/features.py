@@ -416,7 +416,7 @@ ACCSG_INALIENABLE = features.FeatureVector(NOUN, "case=accusative", "number=sing
 ACCPL_INALIENABLE = features.FeatureVector(NOUN, "case=accusative", "number=plural")
 
 INALIENABLE_NOUN_ROOT = features.FeatureVector(
-    NOUN,
+    INALIENABLE_NOUN,
     "case=unmarked",
     "number=unmarked",
     "possessor=unmarked"
@@ -520,6 +520,10 @@ POS2CATEGORY = {
     'conjunction': None,
     'particle': None,
 }
+
+INFLECTED_POS = [
+    k for k, v in POS2CATEGORY.items() if v is not None
+]
 
 
 POS_TAG = features.Feature(

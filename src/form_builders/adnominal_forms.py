@@ -1,7 +1,7 @@
 from pynini.lib import paradigms, features
 from typing import *
 from src.cache_decorators import output_cache
-from src.lexicon import get_adjective_roots, get_gloss_for_adjective, get_all_adjective_data
+from src.lexicon import get_adjective_roots
 from src.form_builders.form_helpers import add_class_prefix, add_class_prefixes_to_slots
 from src.constants import ADJECTIVE, ADJECTIVE_ROOT, ADJECTIVE_CLASS_VALUES, BOUNDARY_STR
 from src.lexicon.phonology import ALL_LOW_TONE_RULE, SIGMASTAR
@@ -30,9 +30,3 @@ def get_adjective_paradigm() -> paradigms.Paradigm:
 @output_cache(__file__)
 def get_pronoun_paradigm() -> paradigms.Paradigm:
     ...
-
-def parse_adjective(form: str, add_gloss: bool=True) -> Dict[str, str]:
-    raise DeprecationWarning("parse_adjective is deprecated. Use parse_word instead.")
-
-def inflect_adjective_with_features(root: str, agree_class: str) -> str:
-    raise DeprecationWarning("inflect_adjective_with_features is deprecated. Use inflect_word instead.")

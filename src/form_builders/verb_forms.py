@@ -9,7 +9,7 @@ from src.cache_decorators import output_cache
 from src.form_builders.form_helpers import *
 from src.lexicon.phonology import *
 from src.fst_helpers import *
-from src.lexicon import get_roots_for_class, get_all_verb_roots_and_fvs, get_gloss_for_verb
+from src.lexicon import get_roots_for_class
 from src.lexicon.phonology import REMOVE_HOMOPHONE_TAG
 from src.constants import INFLECTED_VERB, FV_CLASSES
 from typing import *
@@ -777,14 +777,6 @@ def get_verb_paradigm_w_aux(
     )
     return verb_w_aux_paradigm
 
-
-def inflect_random_verb(fv_class: Optional[str]=None):
-    if fv_class is None:
-        fv_class = random.choice(FV_CLASSES)
-    root = random.choice(get_roots_for_class(fv_class))
-    print(root, fv_class)
-    generate_forms(root, get_verb_stem_paradigm(fv_class))
-
 def inflect_verb_with_features(
         root: str,
         paradigm: Union[paradigms.Paradigm, str],
@@ -853,124 +845,3 @@ def inflect_aux_with_features(
         forms.append(form)
 
     return forms
-
-def get_inflected_paradigm_for_verb(
-        root: str,
-        paradigm: Union[paradigms.Paradigm, str],
-        fv_class: Optional[str]=None,
-) -> Dict[str, Any]:
-    """
-    Arguments:
-        root:               str indicating verb root to inflect
-        paradigm:           Paradigm object or str of FV class shorthand e.g. 'aɔ'
-        fv_class:           Optional str of FV class shorthand e.g. 'aɔ'. If given, overrides
-                            the fv_class inferred from the paradigm.
-    Returns:
-        inflected_paradigm: dict mapping feature values to inflected forms of the verb
-    """
-    if type(paradigm) is str:
-        fv_class = paradigm
-        paradigm = get_verb_stem_paradigm(paradigm)
-    gloss = get_gloss_for_verb(root)
-    inflected_paradigm = {"root": root, "fv": fv_class, "gloss": gloss}
-
-    finite_class = "l"
-    for tam_value in DEIXIS_MARKED_TAM+SUBJECT_AND_DEIXIS_MARKED_TAM:
-        inflected_paradigm[tam_value]={}
-        class_value = finite_class
-        if tam_value == 'imperative':
-            class_value = 'unmarked'
-        for deixis_value in DEIXIS_VALUES:
-            form = inflect_verb_with_features(
-                root=root,
-                paradigm=paradigm,
-                feature_dict={
-                    "tam": tam_value,
-                    "deixis": deixis_value,
-                    "class": class_value,
-                }
-            )
-            inflected_paradigm[tam_value][deixis_value]=form
-    inflected_paradigm['infinitive']=inflect_verb_with_features(
-        root=root,
-        paradigm=paradigm,
-        feature_dict={
-            "tam": "infinitive",
-            "deixis": "unmarked",
-            "class": "ð",
-        }
-    )
-    return inflected_paradigm
-
-def parse_inflected_verb(
-        form: str,
-        paradigm: Union[paradigms.Paradigm, str, None]=None,
-        add_gloss: bool=True,
-        expected_verb_type: Literal['stem', 'aux', 'stem_and_aux', 'auto'] = 'auto',
-) -> Dict[str, str]:
-    """
-    Arguments:
-        form:                   str of inflected verb form
-        paradigm:               Paradigm object or str of FV class shorthand e.g. 'aɔ'
-        add_gloss:              bool indicating whether to add gloss to output
-        expected_verb_type:     indicates whether to parse as 'stem' (inflected verb),
-                                'aux' (auxiliary verb), 'stem_and_aux' (both), or 'auto'
-                                (automatic detection). Default 'auto'. If paradigm is `Paradigm`
-                                object, this is ignored.
-    Returns:        dict of shape {'root': root, '$feature': feature_value}
-    """
-    parses = []
-
-    if expected_verb_type == 'aux':
-        # only one paradigm for auxiliaries
-        paradigm = get_aux_paradigm()
-    elif paradigm is None:
-        for fv in FV_CLASSES:
-            parses_for_fv = parse_inflected_verb(form, fv, add_gloss, expected_verb_type)
-            parses.extend(parses_for_fv)
-    # if paradigm is str (FV tag), get the appropriate paradigm
-    # based on expected_verb_type
-    if type(paradigm) is str and expected_verb_type == 'stem':
-        paradigm = get_verb_stem_paradigm(paradigm)
-    elif type(paradigm) is str and expected_verb_type == 'stem_and_aux':
-        paradigm = get_verb_paradigm_w_aux(paradigm)
-    elif type(paradigm) is str and expected_verb_type == 'auto':
-        # try all possible verb types
-        for verb_type in ['stem', 'aux', 'stem_and_aux']:
-            parses_for_type = parse_inflected_verb(form, paradigm, add_gloss, verb_type)
-            parses.extend(parses_for_type)
-        return parses
-    # if paradigm is Paradigm object, infer expected_verb_type from its name
-    elif type(paradigm) is paradigms.Paradigm and expected_verb_type == 'auto':
-        if "aux=true" in paradigm.name and "stem" in paradigm.name:
-            expected_verb_type = 'stem_and_aux'
-        elif "aux=true" in paradigm.name:
-            expected_verb_type = 'aux'
-        else:
-            expected_verb_type = 'stem'
-
-    try:
-        lemmata = paradigm.lemmatize(fst(form))
-        analyzed_forms = paradigm.analyze(fst(form))
-    except pynini.lib.rewrite.Error:
-        return parses
-    for lemma, analyzed_form in zip(lemmata, analyzed_forms):
-        root, feature_vec = lemma
-        root = decode_byte_str(root)
-
-        analyzed_form = analyzed_form[0]
-        analyzed_form = decode_byte_str(analyzed_form)
-
-        parse = feature_vec.values
-        if parse['tam'] == 'unmarked':
-            # ignore zero feature parses
-            continue
-        parse['root'] = root
-        parse['analyzed_form'] = analyzed_form
-        parse['form'] = form
-        if add_gloss and expected_verb_type == 'aux':
-            parse['gloss'] = 'aux'
-        elif add_gloss:
-            parse['gloss'] = get_gloss_for_verb(root)
-        parses.append(parse)
-    return parses

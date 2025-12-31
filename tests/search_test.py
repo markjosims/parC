@@ -139,7 +139,7 @@ def test_search_noun_form(gold_noun):
 
 @pytest.mark.parametrize("uninflected_word", get_gold_uninflected_words())
 def test_search_uninflected_word_form(uninflected_word):
-    gold_form = uninflected_word['word']
+    gold_form = uninflected_word['root']
     gold_form = gold_form.replace('-', '')
     fuzzy_form = uninflected_word['fuzzy_form']
     num_hits = 1
