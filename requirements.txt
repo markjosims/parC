@@ -4,7 +4,7 @@ wordfreq
 pympi-ling
 unidecode
 openpyxl
-pynini
+pynini==2.1.6
 ipykernel
 pytest
 graphviz
