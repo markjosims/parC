@@ -53,7 +53,7 @@ def test_verb_inflection(gold_verb):
     root = gold_verb.pop('root')
     form = gold_verb.pop('form').replace('-', '')
     gold_verb["part_of_speech"]='verb'
-    gold_verb['aux']= str(' ' in form).lower()
+    gold_verb['aux']= 'true' if ' ' in form else 'unmarked'
 
     gold_verb_filtered = {
         k: v for k,v in gold_verb.items()
@@ -70,7 +70,7 @@ def test_verb_parsing(gold_verb):
     form = analyzed_form.replace('-', '')
     gold_verb['form']=form
     gold_verb["part_of_speech"]='verb'
-    gold_verb['aux']= str(' ' in form).lower()
+    gold_verb['aux']= 'true' if ' ' in form else 'unmarked'
     gold_verb['weight']=0.0
     for unused_feature in ['final_lowering', 'left_h', 'wh']:
         gold_verb[unused_feature] = 'unmarked'
@@ -174,7 +174,7 @@ def test_derived_verbs(gold_verb):
     root = gold_verb.pop('root').replace('-', '')
     gold_verb['fv']=gold_verb.pop('derived_fv')
     gold_verb["part_of_speech"]='verb'
-    gold_verb['aux']= str(' ' in form).lower()
+    gold_verb['aux']= 'true' if ' ' in form else 'unmarked'
 
     verb_filtered = {
         k: v for k,v in gold_verb.items()
