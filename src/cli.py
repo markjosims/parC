@@ -7,7 +7,7 @@ from functools import wraps
 import os
 import fire
 
-verbose=os.env.get('verbose', False)
+verbose=os.environ.get('verbose', False)
 
 def parse_printer(func):
     @wraps(func)
