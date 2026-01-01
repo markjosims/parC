@@ -163,18 +163,20 @@ def test_final_lowering(orig_str,fl_str):
 
     lattice_final =rewrite.rewrite_lattice(fst(orig_str+EOS_STR), FINAL_LOWERING_RULE)
     strings_final = get_lattice_strs(lattice_final, strip_eos=False)
-    assert len(strings_final)==1
-    assert strings_final[0]==fl_str+EOS_STR
+    assert len(strings_final)==2
+    assert fl_str+EOS_STR in strings_final
+    assert orig_str+EOS_STR in strings_final
 
-@pytest.mark.parametrize("orig_str,expected_str", [
-    ("àpɾí", "ápɾì"),
-    ("ùnɛ́-ɾɛ́", "únɛ̀-ɾɛ̀"),
-    ("k-á-və̀lɛ̀ð-ɔ́", "k-á-və̀lɛ̀ð-ɔ̀"),
-    ("p-ɔ̌", "p-ɔ̂"),
-    ("p-ɛ́", "p-ɛ̂"),
+@pytest.mark.parametrize("orig_str,expected_str,no_fl_str", [
+    ("àpɾí", "ápɾì", "ápɾí"),
+    ("ùnɛ́-ɾɛ́", "únɛ̀-ɾɛ̀", "únɛ́-ɾɛ́"),
+    ("k-á-və̀lɛ̀ð-ɔ́", "k-á-və̀lɛ̀ð-ɔ̀", "k-á-və̀lɛ̀ð-ɔ́"),
+    ("p-ɔ̌", "p-ɔ̂", "p-ɔ́"),
+    ("p-ɛ́", "p-ɛ̂", "p-ɛ́"),
 ])
-def test_final_lowering_and_lefth(orig_str, expected_str):
+def test_final_lowering_and_lefth(orig_str, expected_str, no_fl_str):
     lattice=rewrite.rewrite_lattice(fst(orig_str+EOS_STR), FINAL_LOWERING_RULE@LEFT_H_RULE)
     strings = get_lattice_strs(lattice, strip_eos=False)
-    assert len(strings)==1
-    assert strings[0]==expected_str+EOS_STR
+    assert len(strings)==2
+    assert expected_str+EOS_STR in strings
+    assert no_fl_str+EOS_STR in strings
