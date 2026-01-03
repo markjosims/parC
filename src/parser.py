@@ -76,7 +76,7 @@ def add_tone_processes_to_parser(parser_fst: pynini.Fst) -> pynini.Fst:
     tone_rules = [
         (('final_lowering',), FINAL_LOWERING_RULE),
         (('left_h',), LEFT_H_RULE),
-        (('final_lowering', 'left_h'), FINAL_LOWERING_RULE @ LEFT_H_RULE),
+        (('final_lowering', 'left_h'), [LEFT_H_RULE, FINAL_LOWERING_RULE]),
     ]
     parser_list = [parser_fst]
     for feature_names, rule_fst in tone_rules:
