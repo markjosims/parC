@@ -1,10 +1,14 @@
-from src.parser import get_main_parser, inflect_word, parse_word
+from src.parser import inflect_word, parse_word
 from src.lexicon import *
 from src.constants import EOS_STR, VERB_FEATURE_VALUES, LEXICAL_FEATURE_VALUES
 from src.lexicon.phonology import FINAL_LOWERING_RULE, LEFT_H_RULE, EOS
 from src.fst_helpers import get_lattice_strs, fst
 import pytest
 from tests.utils import filter_query_and_hits, get_different_items
+
+"""
+## Verb parsing and inflection tests
+"""
 
 @pytest.mark.parametrize("gold_verb", get_gold_verbs())
 def test_verb_inflection_wh(gold_verb):
@@ -188,6 +192,10 @@ def test_derived_verbs(gold_verb):
 
     assert form in predicted_forms
 
+"""
+## Adjective parsing and inflection tests
+"""
+
 @pytest.mark.parametrize("gold_adj", get_gold_adjectives())
 def test_adjective_forms(gold_adj):
     root = gold_adj.pop('root')
@@ -216,6 +224,10 @@ def test_adjective_parsing(gold_adj):
     }
     assert gold_adj_filtered in predicted_parses
 
+"""
+## Uninflected word parsing tests
+"""
+
 @pytest.mark.parametrize("gold_word", get_uninflected_word_data())
 def test_uninflected_forms(gold_word):
 
@@ -239,6 +251,10 @@ def test_uninflected_forms(gold_word):
         parses_filtered.append(parse_filtered)
     assert gold_word_filtered in parses_filtered
 
+"""
+## Auxiliary parsing and inflection tests
+"""
+
 @pytest.mark.parametrize("gold_aux", get_gold_auxs())
 def test_gold_auxs(gold_aux):
     form = gold_aux.pop('form').replace('-', '')
@@ -252,3 +268,4 @@ def test_gold_auxs(gold_aux):
     predicted_forms = inflect_word(aux_root, **aux_filtered)
 
     assert form in predicted_forms
+
