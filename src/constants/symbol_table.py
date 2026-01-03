@@ -85,7 +85,7 @@ SPECIAL_SYMBOLS = [
     INSERT, DELETE, SUBSTITUTE, SEARCH_SEPARATOR_STR, EOS_STR,
     *BRACKETS, *digits
 ]
-MULTICHAR_TOKENS = [symbol for symbol in SPECIAL_SYMBOLS if len(symbol)>1]\
+MULTICHAR_TOKENS = [symbol for symbol in SPECIAL_SYMBOLS+TIRA_TONE_SYMBOLS if len(symbol)>1]\
     + [DENTAL_D, DENTAL_T]
 
 ################
