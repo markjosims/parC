@@ -61,6 +61,17 @@ TIRA_VOWELS = [
 
 TIRA_CONSONANTS = TIRA_STOPS + TIRA_FRICATIVES + TIRA_GLIDES + TIRA_NASALS + TIRA_SONORANTS
 
+"""
+## Tira tone symbols and diacritics
+We implement two representations of Tira tones:
+1. Symbolic representation using special symbols: <H>, <L>, <HL>, <LH>, <HLH>
+2. Diacritic representation using Unicode combining diacritics.
+Either symbol can be used when building FSTs with factory functions
+(see src/fst_helpers.py). Internally, we convert all diacritics to tone
+symbols, which is beneficial when visualizing FSTs as a .dot file. When
+decoding an FST into strings, we convert tone symbols back to diacritics.
+"""
+
 HIGH_TONE_SYMBOL = '<H>'
 LOW_TONE_SYMBOL = '<L>'
 FALL_TONE_SYMBOL = '<HL>'
@@ -88,22 +99,58 @@ TIRA_TONE_DIACS = [HIGH_TONE, LOW_TONE, FALL_TONE, RISE_TONE, FALLRISE_TONE]
 
 TIRA_TBUS = TIRA_VOWELS + TIRA_NASALS + TIRA_SONORANTS
 
-#####################
-# special FST symbols
-#####################
+"""
+## Special symbols
+We define special symbols for various purposes, including edit operations,
+tone slots, boundaries, and placeholders.
+
+### Edit symbols
+Pynini provides an `EditTransducer` class that defines standard edit operations:
+- INSERT: Insertion of a symbol
+- DELETE: Deletion of a symbol
+- SUBSTITUTE: Substitution of one symbol for another
+We implement our own edit transducer (src/search.py), recycling these standard symbols.
+"""
 
 INSERT = edit_transducer.EditTransducer.INSERT
 DELETE = edit_transducer.EditTransducer.DELETE
 SUBSTITUTE = edit_transducer.EditTransducer.SUBSTITUTE
-BRACKETS = ['[', ']', '(', ')']
+
+"""
+### Tone slots
+To facilitate tone assignment during parsing, we define special symbols
+for tone slots and placeholders:
+- TONE_SLOT_STR: Indicates that the preceding segment requires a tone
+- TONE_PLACEHOLDER_STR: Represents a floating tone that is inserted by
+    a grammatical process but cannot attach to the preceding segment.
+    This symbol indicates that a later process should assign this tone
+    to an appropriate segment.
+"""
 
 TONE_SLOT_STR = '<TBU>'
 TONE_PLACEHOLDER_STR = '<FLOAT>'
+
+"""
+### Other special symbols
+- BOUNDARY_STR: Morpheme boundary symbol
+- WORD_BOUNDARY_STR: Word boundary symbol
+- EPSILON_SYMBOL: Epsilon (empty) symbol for FSTs
+- EOS_STR: End-of-sentence symbol
+- BRACKETS: List of bracket symbols used in various contexts
+"""
+
 BOUNDARY_STR = '-'
 WORD_BOUNDARY_STR = '|'
-SEARCH_SEPARATOR_STR = '#'
 EPSILON_SYMBOL = '<eps>'
 EOS_STR = '<ENDOFSENTENCE>'
+BRACKETS = ['[', ']', '(', ')']
+
+"""
+### Symbol lists
+- SPECIAL_SYMBOLS: List of all special symbols defined above
+- MULTICHAR_TOKENS: List of special symbols and Tira tone symbols
+    that consist of more than one character (including dental t̪ and d̪)
+"""
 
 SPECIAL_SYMBOLS = [
     BOUNDARY_STR, WORD_BOUNDARY_STR, TONE_SLOT_STR, TONE_PLACEHOLDER_STR,
@@ -113,9 +160,11 @@ SPECIAL_SYMBOLS = [
 MULTICHAR_TOKENS = [symbol for symbol in SPECIAL_SYMBOLS+TIRA_TONE_SYMBOLS if len(symbol)>1]\
     + [DENTAL_D, DENTAL_T]
 
-################
-# symbol table #
-################
+"""
+## Tira symbol table
+We create a Pynini symbol table that includes all Tira phones, special symbols,
+and generated symbols used by Pynini (e.g., for feature values).
+"""
 
 TIRA_SYMBOL_TABLE = pynini.SymbolTable(name="Tira phones")
 TIRA_SYMBOL_TABLE.add_symbol(EPSILON_SYMBOL)
@@ -139,8 +188,12 @@ MULTICHAR_TOKENS.sort(key=lambda x: len(x), reverse=True)
 for label, symbol in GENERATED_SYMBOL_TABLE:
     TIRA_SYMBOL_TABLE.add_symbol(symbol, label)
 
-#########################
-# k2 specific constants #
-#########################
+"""
+## K2 constants
+K2_FINAL_ARC_LABEL: The special label used by K2 to indicate final arcs
+in FSTs.
+
+Note: not currently using k2, but defined here for future use.
+"""
 
 K2_FINAL_ARC_LABEL = -1
