@@ -31,8 +31,9 @@ Mid:        e           ə           o
 Low:                    a
 """
 
-DENTAL_T = 't̪'
-DENTAL_D = 'd̪'
+DENTAL_BRIDGE = '\u032a'
+DENTAL_T = 't' + DENTAL_BRIDGE
+DENTAL_D = 'd' + DENTAL_BRIDGE
 
 TIRA_STOPS = [
     'p', DENTAL_T, 't', 'c', 'k', 'ʔ',
