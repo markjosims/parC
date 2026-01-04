@@ -1,3 +1,4 @@
+# NOTE: POSTGRES DATABASE IS DEPRECATED
 from src.constants import NOUN_FEATURE_ABBREVIATIONS
 from src.lexicon import (
     get_all_noun_data, get_all_verb_data,

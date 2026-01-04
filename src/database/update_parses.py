@@ -1,3 +1,4 @@
+# NOTE: POSTGRES DATABASE IS DEPRECATED
 """
 For every sentence in the database, drop all associated parses and re-generate them.
 Preserve parses that have been manually set by users.

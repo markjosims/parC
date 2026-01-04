@@ -1,3 +1,4 @@
+# NOTE: POSTGRES DATABASE IS DEPRECATED
 import pandas as pd
 from src.database.init_database import engine, SessionLocal, Base
 from src.constants import SENTENCES_PATH

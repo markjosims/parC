@@ -1,3 +1,4 @@
+# NOTE: POSTGRES DATABASE IS DEPRECATED
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, JSON, Boolean, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSONB
