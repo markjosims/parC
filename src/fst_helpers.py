@@ -542,31 +542,6 @@ def get_lattice_input_output_strs_and_weights(
     return decoded_outputs
 
 
-def decode_feature_label_rewriter(
-        lattice: pynini.Fst,
-):
-    """
-    Arguments:
-        lattice: FST corresponding Paradigm.feature_label_rewriter
-    Returns:
-        decoded_strs: List of decoded strings from the output side of `lattice`
-    `feature_label_rewriter` maps doesn't use GENERATED_SYMBOLS, so we need a
-    custom decoder here.
-    """
-    strings = rewrite.lattice_to_strings(lattice)
-    decoded_strs = []
-    for lattice_output in strings:
-        parts = lattice_output.split('[')
-        wordform = parts[0]
-        wordform = decode_byte_str(wordform)
-        features = {'wordform': wordform}
-        for feature_part in parts[1:]:
-            feature_part = feature_part.rstrip(']')
-            feature, value = feature_part.split('=')
-            features[feature] = value
-        decoded_strs.append(features)
-    return decoded_strs
-
 def decode_byte_str(byte_str: str) -> str:
     decoded_str = ''
     for token in byte_str:
