@@ -167,16 +167,86 @@ def test_final_lowering(orig_str,fl_str):
     assert fl_str+EOS_STR in strings_final
     assert orig_str+EOS_STR in strings_final
 
-@pytest.mark.parametrize("orig_str,expected_str,no_fl_str", [
-    ("àpɾí", "ápɾì", "ápɾí"),
-    ("ùnɛ́-ɾɛ́", "únɛ̀-ɾɛ̀", "únɛ́-ɾɛ́"),
-    ("k-á-və̀lɛ̀ð-ɔ́", "k-á-və̀lɛ̀ð-ɔ̀", "k-á-və̀lɛ̀ð-ɔ́"),
-    ("p-ɔ̌", "p-ɔ̂", "p-ɔ́"),
-    ("p-ɛ́", "p-ɛ̂", "p-ɛ́"),
+@pytest.mark.parametrize("orig_str,lefth_str,is_vacuous", [
+    ("àpɾí", "ápɾí", False),
+    ("ùnɛ́-ɾɛ́", "únɛ́-ɾɛ́", False),
+    ("k-á-və̀lɛ̀ð-ɔ́", "k-á-və̀lɛ̀ð-ɔ́", True),
+    ("nd-á", "nd-á", True),
+    ("p-ɔ̌", "p-ɔ́", False),
 ])
-def test_final_lowering_and_lefth(orig_str, expected_str, no_fl_str):
+def test_lefth_rule_nonvacuous(orig_str,lefth_str,is_vacuous):
+    lattice=rewrite.rewrite_lattice(fst(orig_str), LEFT_H_RULE_NONVACUOUS)
+    strings = get_lattice_strs(lattice)
+    if is_vacuous:
+        expected_output = ''
+    else:
+        expected_output = lefth_str
+    assert len(strings)==1
+    assert strings[0]==expected_output
+
+@pytest.mark.parametrize("orig_str,fl_str,is_vacuous", [
+    ("àpɾí", "àpɾì", False),
+    ("ùnɛ́-ɾɛ́", "ùnɛ̀-ɾɛ̀", False),
+    ("k-á-və̀lɛ̀ð-ɔ́", "k-á-və̀lɛ̀ð-ɔ̀", False),
+    ("p-ɔ̌", "p-ɔ̀", False),
+    ("p-ɛ́", "p-ɛ̂", False),
+    ("p-ɔ̀", "p-ɔ̀", True),
+    ("nd-ɛ̀", "nd-ɛ̀", True),
+    ("krt-râ", "krt-râ", True),
+    ("j-âj", "j-âj", True),
+    ("kâ-ŋà", "kâ-ŋà", True),
+])
+def test_final_lowering_nonvacuous(orig_str,fl_str,is_vacuous):
+    lattice_nonfinal=rewrite.rewrite_lattice(fst(orig_str), FINAL_LOWERING_RULE_NONVACUOUS)
+    strings_nonfinal = get_lattice_strs(lattice_nonfinal, strip_eos=False)
+    assert len(strings_nonfinal)==1
+    assert strings_nonfinal[0]==''
+
+    lattice_final =rewrite.rewrite_lattice(fst(orig_str+EOS_STR), FINAL_LOWERING_RULE_NONVACUOUS)
+    strings_final = get_lattice_strs(lattice_final, strip_eos=False)
+    if is_vacuous:
+        expected_ouput=''
+    else:
+        expected_ouput=fl_str+EOS_STR
+    assert len(strings_final)==1
+    assert expected_ouput in strings_final
+
+@pytest.mark.parametrize("orig_str,expected_str", [
+    ("àpɾí", "ápɾì"),
+    ("ùnɛ́-ɾɛ́", "únɛ̀-ɾɛ̀"),
+    ("k-á-və̀lɛ̀ð-ɔ́", "k-á-və̀lɛ̀ð-ɔ̀"),
+    ("p-ɔ̌", "p-ɔ̂"),
+    ("p-ɛ́", "p-ɛ̂"),
+])
+def test_final_lowering_and_lefth(orig_str, expected_str):
     lattice=rewrite.rewrite_lattice(fst(orig_str+EOS_STR), FINAL_LOWERING_RULE@LEFT_H_RULE)
     strings = get_lattice_strs(lattice, strip_eos=False)
     assert len(strings)==2
     assert expected_str+EOS_STR in strings
-    assert no_fl_str+EOS_STR in strings
+
+@pytest.mark.parametrize("orig_str,expected_str,is_vacuous", [
+    ("àpɾí", "ápɾì", False),
+    ("ùnɛ́-ɾɛ́", "únɛ̀-ɾɛ̀", False),
+    ("k-á-və̀lɛ̀ð-ɔ́", "k-á-və̀lɛ̀ð-ɔ̀", True),
+    ("p-ɔ̌", "p-ɔ̂", False),
+    ("p-ɛ́", "p-ɛ̂", True),
+    ("p-ɔ̀", "p-ɔ̂", True),
+    ("nd-ɛ̀", "nd-ɛ̀", True),
+    ("krt-râ", "krt-râ", True),
+    ("j-âj", "j-âj", True),
+    ("kâ-ŋà", "kâ-ŋà", True),
+    ("nd-á", "nd-â", True),
+    ("p-ɔ̌", "p-ɔ̂", False),
+])
+def test_final_lowering_and_lefth_nonvacuous(orig_str, expected_str, is_vacuous):
+    lattice=rewrite.rewrite_lattice(
+        fst(orig_str+EOS_STR),
+        FINAL_LOWERING_RULE_NONVACUOUS@LEFT_H_RULE_NONVACUOUS
+    )
+    strings = get_lattice_strs(lattice, strip_eos=False)
+    if is_vacuous:
+        expected_output = ''
+    else:
+        expected_output = expected_str+EOS_STR
+    assert len(strings)==1
+    assert expected_output in strings

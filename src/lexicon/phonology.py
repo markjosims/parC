@@ -26,7 +26,7 @@ TBU = fst(TIRA_TBUS)
 TONE_SLOT = fst(TONE_SLOT_STR)
 TONE_PLACEHOLDER = fst(TONE_PLACEHOLDER_STR)
 TONE_SLOT_OR_PLACEHOLDER = TONE_SLOT|TONE_PLACEHOLDER
-SIGMA = C|V|T|BOUNDARY|WORD_BOUNDARY|TONE_SLOT_OR_PLACEHOLDER|EOS
+SIGMA = C|V|T|BOUNDARY|WORD_BOUNDARY|TONE_SLOT_OR_PLACEHOLDER|EOS|fst(DELETE)
 SIGMA_EXCEPT_PLACEHOLDER = C|V|T|BOUNDARY
 SIGMASTAR = pynini.closure(SIGMA).optimize()
 FEATURE = fst(ALL_FEATURE_STRS).optimize()
@@ -225,7 +225,20 @@ LEFT_H_GENERIC = pynini.cdrewrite(
 
 LEFT_H_RULE = LEFT_H_MONOSYLL @ LEFT_H_GENERIC
 
-# need to apply left-to-right so we don't feed
+# to avoid vacuous application, we can define a version that
+# first deletes any string with an initial H or HL tone
+
+INITIAL_H = '[BOS]' + pynini.union(SEGMENT,BOUNDARY).plus + (H|F)
+INITIAL_H.optimize()
+
+TAG_LEFTH_FOR_DELETION = pynini.cdrewrite(
+    tau=insert_fst(DELETE),
+    l=INITIAL_H,
+    r=fst(''),
+    sigma_star=SIGMASTAR,
+).optimize()
+DELETOR = (SIGMA-fst(DELETE)).closure() | delete_fst(SIGMASTAR + fst(DELETE) + SIGMASTAR)
+LEFT_H_RULE_NONVACUOUS = TAG_LEFTH_FOR_DELETION @ LEFT_H_RULE @ DELETOR
 
 FINAL_LOWERING_MONOSYLL = pynini.cdrewrite(
     tau=fst(H, F),
@@ -250,6 +263,19 @@ FINAL_LOWERING_GENERIC = pynini.cdrewrite(
 )
 
 FINAL_LOWERING_RULE = FINAL_LOWERING_MONOSYLL @ FINAL_LOWERING_GENERIC
+
+FINAL_L = (L|F) + pynini.closure(SEGMENT|BOUNDARY) + EOS + '[EOS]'
+NOT_SENTENCE_FINAL = (SIGMA-EOS) + '[EOS]'
+
+TAG_FINAL_LOWERING_FOR_DELETION = pynini.cdrewrite(
+    tau=insert_fst(DELETE),
+    l=fst(''),
+    r=FINAL_L|NOT_SENTENCE_FINAL,
+    sigma_star=SIGMASTAR,
+).optimize()
+FINAL_LOWERING_DELETOR = (SIGMA-fst(DELETE)).closure() | delete_fst(SIGMASTAR + fst(DELETE) + SIGMASTAR)
+
+FINAL_LOWERING_RULE_NONVACUOUS = TAG_FINAL_LOWERING_FOR_DELETION @ FINAL_LOWERING_RULE @ FINAL_LOWERING_DELETOR
 
 # ---------- #
 # edit costs #
