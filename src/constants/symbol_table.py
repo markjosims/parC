@@ -2,9 +2,22 @@ import pynini
 from string import digits
 from pynini.lib import edit_transducer
 
-###############
-# Tira phonemes
-###############
+"""
+## Tira phone inventory
+The standard Tira phone inventory consists of:
+
+            Labial  Dental  Alv.    Retro.  Palatal Velar
+Nasal:      m               n               ɲ       ŋ
+Stop:       p       t̪       t               c       k
+            b       d̪       d               ɟ       g
+Fricative:  f               s
+            v       ð
+Glide:      w                               j
+Lateral:                    l
+Trill:                      r      
+Tap/flap:                   ɾ       ɽ
+
+"""
 
 DENTAL_T = 't̪'
 DENTAL_D = 'd̪'
