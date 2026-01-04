@@ -276,6 +276,7 @@ def search_word(
     hits = get_lattice_strs_and_weights(
         search_lattice,
         nshortest=num_hits,
+        strip_eos=False,
     )
 
     if main_lemmatizer is None or main_analyzer is None:
