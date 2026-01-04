@@ -7,6 +7,7 @@ and creates a main parser FST that combines them all.
 import pynini
 from pynini.lib import pynutil
 from src.constants import FV_CLASSES
+from src.constants.symbol_table import EPSILON_SYMBOL
 from src.form_builders.adnominal_forms import get_adjective_paradigm
 from src.form_builders.noun_forms import get_noun_paradigm
 from src.form_builders.verb_forms import (
@@ -27,11 +28,11 @@ from typing import *
 
 from src.lexicon.phonology import (
     EOS,
-    SIGMASTAR,
+    SIGMA,
     SIGMASTAR_W_TAG,
     SIGMASTAR_W_SYMBOLS,
-    FINAL_LOWERING_RULE,
-    LEFT_H_RULE,
+    FINAL_LOWERING_RULE_NONVACUOUS,
+    LEFT_H_RULE_NONVACUOUS,
 )
 
 __dir__ = os.path.dirname(os.path.abspath(__file__))
@@ -59,11 +60,11 @@ def add_tone_processes_to_inflector(inflector_fst: pynini.Fst) -> pynini.Fst:
         The main inflector FST with tone processes added.
     """
     inflector_reversed = pynini.invert(inflector_fst)
-    inflector_with_tone = add_tone_processes_to_parser(inflector_reversed)
+    inflector_with_tone = add_all_tone_processes_to_parser(inflector_reversed)
     inflector_final = pynini.invert(inflector_with_tone)
     return inflector_final
 
-def add_tone_processes_to_parser(parser_fst: pynini.Fst) -> pynini.Fst:
+def add_all_tone_processes_to_parser(parser_fst: pynini.Fst) -> pynini.Fst:
     """
     Adds paths for tone processes (left H docking/spreading, final lowering)
     to `parser_fst`.
@@ -74,9 +75,9 @@ def add_tone_processes_to_parser(parser_fst: pynini.Fst) -> pynini.Fst:
         The main parser FST with tone processes added.
     """
     tone_rules = [
-        (('final_lowering',), FINAL_LOWERING_RULE),
-        (('left_h',), LEFT_H_RULE),
-        (('final_lowering', 'left_h'), [LEFT_H_RULE, FINAL_LOWERING_RULE]),
+        (('final_lowering',), FINAL_LOWERING_RULE_NONVACUOUS),
+        (('left_h',), LEFT_H_RULE_NONVACUOUS),
+        (('final_lowering', 'left_h'), [LEFT_H_RULE_NONVACUOUS, FINAL_LOWERING_RULE_NONVACUOUS]),
     ]
     parser_list = [parser_fst]
     for feature_names, rule_fst in tone_rules:
@@ -85,7 +86,7 @@ def add_tone_processes_to_parser(parser_fst: pynini.Fst) -> pynini.Fst:
             feature_name: ('unmarked', 'true')
             for feature_name in feature_names
         }
-        parser_fst_with_tone = add_tone_process_to_parser(
+        parser_fst_with_tone = add_process_to_parser(
             parser_fst,
             rule_fst,
             feature_map
@@ -96,7 +97,7 @@ def add_tone_processes_to_parser(parser_fst: pynini.Fst) -> pynini.Fst:
     parser_fst.optimize()
     return parser_fst
 
-def add_tone_process_to_parser(
+def add_process_to_parser(
         parser_fst: pynini.Fst,
         rule_fst: pynini.Fst,
         feature_map: Dict[str, Tuple[str, str]],
@@ -113,9 +114,8 @@ def add_tone_process_to_parser(
     """
     parser_w_rule = apply_rule_to_input(parser_fst, rule_fst)
     parser_w_shifted_features = shift_feature_value(parser_w_rule, feature_map)
-    parser_with_process = prune_redundant_paths(parser_fst, parser_w_shifted_features)
     
-    return parser_with_process.optimize()
+    return parser_w_shifted_features.optimize()
 
 def append_eos_to_input(
         parser: pynini.Fst,
@@ -159,6 +159,22 @@ def apply_rule_to_input(
     returns an equivalent FST where `rule` has been applied
     to all strings on the input side.
 
+    If `prune_redundant_paths` is True, removes any paths
+    where the application of `rule` does not change the form.
+    Imagine `rule` describes the process of final lowering.
+    The word "ðɔ̀mɔ̀cɔ̀", having a lexical all-low melody,
+    is unchanged by final lowering. Then `parser` will have the relation:
+
+        ðɔ̀mɔ̀cɔ̀ -> man[case=nominative][number=singular][final_lowering=unmarked]
+    
+    And `parser_w_rule` will have the relation:
+
+        ðɔ̀mɔ̀cɔ̀ -> man[case=nominative][number=singular][final_lowering=true]
+
+    Where final lowering has been applied vacuously. To avoid proliferation
+    of vacuous paths like this, this setting this option removes such relations
+    from `parser_w_rule` and returns only the non-redundant paths.
+    
     Arguments:
         parser: FST mapping forms to parses.
         rule: FST or list of FSTs representing phonological rules to apply.
@@ -179,6 +195,11 @@ def apply_rule_to_input(
     # and forms with the rule applied are on the left side
     forms_w_rule = pynini.invert(forms_w_rule)
     parser_w_rule = forms_w_rule @ parser
+
+    # some rules are set to map non-applicable or vacuous inputs to epsilon
+    # for this reason, we need to remove paths that are just epsilon on the input side
+    parser_w_rule = SIGMA.plus @ parser_w_rule
+    parser_w_rule.optimize()
 
     return parser_w_rule
 
@@ -212,47 +233,6 @@ def shift_feature_value(parser: pynini.Fst, feature_map: Dict[str, Tuple[str, st
     parser_shifted = parser @ feature_rewrite_rule
     parser_shifted.optimize()
     return parser_shifted
-
-def prune_redundant_paths(
-        parser: pynini.Fst,
-        parser_w_rule: pynini.Fst,
-    ) -> pynini.Fst:
-    """
-    Given a parser FST that maps form strings to parses,
-    and an equivalent parser FST where a phonological rule
-    has been applied to the input side, returns an FST that
-    is a union of the two, excluding any paths from `parser_w_rule`
-    whose input strings are already covered by `parser`.
-
-    Imagine `parser_w_rule` describes forms with final lowering
-    applied. The word "ðɔ̀mɔ̀cɔ̀", having a lexical all-low melody,
-    is unchanged by final lowering. Then `parser` will have the relation:
-
-        ðɔ̀mɔ̀cɔ̀ -> man[case=nominative][number=singular][final_lowering=unmarked]
-    
-    And `parser_w_rule` will have the relation:
-
-        ðɔ̀mɔ̀cɔ̀ -> man[case=nominative][number=singular][final_lowering=true]
-
-    Where final lowering has been applied vacuously. To avoid proliferation
-    of vacuous paths like this, this function removes such relations from
-    `parser_w_rule` and returns only the non-redundant paths.
-
-    Arguments:
-        parser: FST mapping forms to parses.
-        parser_w_rule: FST mapping forms to parses, with a phonological rule applied.
-    Returns:
-        FST equivalent to `parser_w_rule`, excluding redundant paths from `parser_w_rule`
-        where the rule has been applied vacuously.
-    """
-    parser_input = pynini.project(parser, 'input')
-    parser_w_rule_input = pynini.project(parser_w_rule, 'input')
-    
-    intersection = pynini.intersect(parser_input, parser_w_rule_input)
-    non_redundant_input = parser_w_rule_input - intersection
-    non_redundant_paths = non_redundant_input @ parser_w_rule
-
-    return non_redundant_paths
 
 @fst_cache(_form_builders_dir, num_fst=3)
 def get_main_parser() -> Tuple[pynini.Fst, pynini.Fst, pynini.Fst]:
@@ -297,8 +277,8 @@ def get_main_parser() -> Tuple[pynini.Fst, pynini.Fst, pynini.Fst]:
     main_inflector = append_eos_to_input(main_inflector, optional=True)
 
     print("Adding tone processes...")
-    main_lemmatizer = add_tone_processes_to_parser(main_lemmatizer)
-    main_analyzer = add_tone_processes_to_parser(main_analyzer)
+    main_lemmatizer = add_all_tone_processes_to_parser(main_lemmatizer)
+    main_analyzer = add_all_tone_processes_to_parser(main_analyzer)
     main_inflector = add_tone_processes_to_inflector(main_inflector)
 
     return main_lemmatizer, main_analyzer, main_inflector

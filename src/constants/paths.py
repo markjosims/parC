@@ -1,8 +1,8 @@
 import os
 
-#########
-# paths #
-#########
+"""
+## Path Constants
+"""
 
 LEXICON_DIR = "data/lexicon/"
 TEST_CASE_DIR = "data/test_cases/"
