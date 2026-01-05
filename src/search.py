@@ -343,6 +343,8 @@ def rewrite_sentence(
 def get_annotation_markup_for_sentence(
         sentence: str,
         translation: Optional[str] = None,
+        split: Optional[str] = None,
+        index: Optional[int] = None,
         num_hits: int = 10,
         main_lemmatizer: Optional[pynini.Fst]=None,
         main_analyzer: Optional[pynini.Fst]=None,
@@ -384,6 +386,8 @@ def get_annotation_markup_for_sentence(
     markup_dict = {
         'sentence': sentence.removesuffix(EOS_STR),
         'translation': translation,
+        'split': split,
+        'index': index,
         'checked_by_pi': False,
     }
 
@@ -443,7 +447,7 @@ if __name__ == '__main__':
     main_lemmatizer, main_analyzer, _ = get_main_parser()
     all_markup = []
     for line in tqdm(lines):
-        sentence, translation = line.strip().split(',')
+        sentence, translation, split, index = line.strip().split(',')
         sentence = sentence.strip()
         sentence += EOS_STR
         if not sentence:
@@ -451,6 +455,8 @@ if __name__ == '__main__':
         markup = get_annotation_markup_for_sentence(
             sentence,
             translation,
+            split,
+            index,
             num_hits=int(args.num_hits),
             main_lemmatizer=main_lemmatizer,
             main_analyzer=main_analyzer,
