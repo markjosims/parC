@@ -385,6 +385,7 @@ def get_annotation_markup_for_sentence(
     """
     markup_dict = {
         'sentence': sentence.removesuffix(EOS_STR),
+        'update_sentence': '',
         'translation': translation,
         'split': split,
         'index': index,
