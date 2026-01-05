@@ -1,12 +1,28 @@
 """
 # Verb form builders
-This module builds the paradigms for Tira verbs using data from the verb lexicon.
-The 'root' column is used as the lemma for all verb forms. [TODO: finish docstr]
+This module builds the paradigms for Tira verbs and auxiliaries.
+Unlike other parts of speech, due to the morphological complexity
+of verbs, the verb lexicon is split up across several paradigms.
+
+Paradigms are split across final vowel (FV) suffix classes, and
+whether the stem is a verb stem w/o auxiliary, a verb stem w/ auxiliary,
+or a bare auxiliary. The reason for this split is that the auxiliary are
+often adjacent but may be separated by an intervening subject. In partic-
+-ular, many cases of adjacent auxiliary+verb stem combinations are written
+as a single word in our data, motivating a paradigm that combines both so
+that coalesced forms can be properly recognized.
+
+## Auxiliary verbs
+Before we describe the verb paradigms, a note on the distribution of
+the verbal auxiliary is merited. The auxiliary /a/ occurs alongside
+verb stems in imperfective aspect, progressive aspect, and perfective
+aspect itive deixis. All other TAMD values lack the auxiliary.
+When present, the auxiliary bears person and class prefixes that
+would otherwise be attached to the verb stem.
 """
 
 import pynini
 from pynini.lib import features, paradigms
-import pandas as pd
 from src.cache_decorators import output_cache
 from src.form_builders.form_helpers import *
 from src.lexicon.phonology import *
@@ -16,7 +32,13 @@ from src.lexicon.phonology import REMOVE_HOMOPHONE_TAG
 from src.constants import INFLECTED_VERB, FV_CLASSES
 from typing import *
 
-# FV mappings
+"""
+## FV classes
+There are 7 FV classes in Tira verbs. FV suffixes are divided into 3 morphomes
+(Kaldhol 2023) such that each morpheme has the same distribution within the
+paradigm across classes. The morphemes are referred to as "a", "o", and "e"
+morphomes based on the vowel qualities in the canonical aɔ class.
+"""
 
 CLASS2FV = {
     "aɔ": {"a_morphome": "a", "o_morphome": "ɔ", "e_morphome": "ɛ"},
@@ -29,7 +51,39 @@ CLASS2FV = {
 }
 FV_CLASSES = list(CLASS2FV.keys())
 
-# person marking
+"""
+## Person marking functions
+Person marking in Tira involves a complex system of prefixes and suffixes,
+which vary based on tense-aspect-mood-deixis (TAMD) categories, and based
+on interactions between subject and object persons. In particular, third
+person participants often receive 'precedence' over other persons, such
+that a 1st or 2nd person subject that would normally be marked as a  prefix
+will instead be marked with a suffix if the object is 3rd person, which itself
+is marked with a prefix.
+
+Here we give a general overview of the distribution of person marking suffixes
+across TAMD categories. See the docstrings of the individual functions for more
+details on each particular category.
+
+### Imperfective auxiliary forms
+The auxiliary takes person markers for subject and object, as indicated in the
+docstring for `build_imperfective_aux_forms`. The only exception is that when the
+subject is 1pl.inclusive the suffix -ŕ follows the verb stem, in addition to the
+suffix -l on the auxiliary.
+
+In general, subjects are marked with prefixes and objects with suffixes, except
+when the object is 3rd person, in which case the subject is indicated with a
+suffix instead.
+
+### Perfective itive auxiliary forms
+Equivalent to the forms for the perfective auxiliary, with some tone differences
+e.g. the subject marker -ɛ́ becomes -ɛ̀. See the docstring for
+`build_itive_perfective_aux_forms` for more details.
+
+## Perfective ventive verb forms
+Here the verb stem itself takes the personal markers, as described in the
+docstring for `add_perfective_ventive_personal_markers`.
+"""
 
 def build_imperfective_aux_forms() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
     """
@@ -473,10 +527,19 @@ def add_imperative_object_markers(
     slots: List[tuple[pynini.Fst, features.FeatureVector]]
 ) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
     """
+    TODO
     Object:
         3pl: -l
     """
+    ...
 
+def add_dependent_markers(
+    slots: List[Tuple[pynini.Fst, features.FeatureVector]]
+) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """
+    TODO
+    """
+    ...
     
 
 # slots for verb paradigms
