@@ -245,6 +245,14 @@ def get_gloss_str_from_dict(
         verbose: bool = False,
         include_form: bool = False,
 ) -> str:
+    """
+    Arguments:
+        analysis:       Dict mapping feature names to feature values
+        verbose:        Whether to include full feature names in the gloss string
+        include_form:   Whether to prepend the analyzed form to the gloss string
+    Returns:
+        gloss_str:      String representation of the analysis in gloss format
+    """
     analysis_subset = analysis.copy()
     gloss = analysis_subset.pop('gloss')
 
@@ -252,6 +260,8 @@ def get_gloss_str_from_dict(
         'root', 'part_of_speech', 'analyzed_form',
         'weight', 'form'
     ]
+    # drop ummarked and ignored keys
+    # if not verbose, modify certain values for conciseness
     for key, value in analysis.items():
         if key in ignored_keys or value == 'unmarked':
             analysis_subset.pop(key, None)
@@ -264,12 +274,17 @@ def get_gloss_str_from_dict(
             analysis_subset[key]+='.obj'
         elif value == 'true' and not verbose:
             analysis_subset[key]=key
-    keys = sorted(analysis_subset.keys())
+
+    inflectional_keys = [k for k in analysis_subset.keys() if k not in LEXICAL_FEATURE_VALUES]
+    lexical_keys = [k for k in analysis_subset.keys() if k in LEXICAL_FEATURE_VALUES]
+    keys = sorted(inflectional_keys) + sorted(lexical_keys)
+
     if verbose:
         other_parts = [f'[{key}={analysis_subset[key]}]' for key in keys]
         gloss_str = gloss + ''.join(other_parts)
     else:
-        other_parts = [f'{analysis_subset[key]}' for key in keys]
+        other_parts = [analysis_subset[key] for key in keys]
+        other_parts = [FEATURE2ABBREVIATION.get(part, part) for part in other_parts]
         gloss_str = '-'.join([gloss] + other_parts)
 
     if include_form and 'analyzed_form' in analysis:
