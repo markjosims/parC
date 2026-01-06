@@ -258,7 +258,7 @@ def get_gloss_str_from_dict(
 
     ignored_keys = [
         'root', 'part_of_speech', 'analyzed_form',
-        'weight', 'form'
+        'weight', 'form', 'fv',
     ]
     # drop ummarked and ignored keys
     # if not verbose, modify certain values for conciseness
