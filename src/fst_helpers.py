@@ -275,9 +275,10 @@ def get_gloss_str_from_dict(
         elif value == 'true' and not verbose:
             analysis_subset[key]=key
 
-    inflectional_keys = [k for k in analysis_subset.keys() if k not in LEXICAL_FEATURE_VALUES]
+    person_keys = [k for k in analysis_subset.keys() if k in ['subject', 'object', 'possessor']]
     lexical_keys = [k for k in analysis_subset.keys() if k in LEXICAL_FEATURE_VALUES]
-    keys = sorted(inflectional_keys) + sorted(lexical_keys)
+    inflectional_keys = [k for k in analysis_subset.keys() if k not in person_keys+lexical_keys]
+    keys = sorted(inflectional_keys) + sorted(person_keys) + sorted(lexical_keys)
 
     if verbose:
         other_parts = [f'[{key}={analysis_subset[key]}]' for key in keys]
