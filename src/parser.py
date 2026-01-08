@@ -152,7 +152,7 @@ def append_eos_to_input(
     else:
         forms_w_eos2forms_without_eos = parser_input + delete_fst(EOS)
 
-
+    forms_w_eos2forms_without_eos.optimize()
     # since the right side of this graph is equivalent to the input
     # side of `parser`, we can compose to get the desired FST
     # mapping forms with EOS to parses
