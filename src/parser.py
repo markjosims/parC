@@ -7,7 +7,6 @@ and creates a main parser FST that combines them all.
 import pynini
 from pynini.lib import pynutil
 from src.constants import FV_CLASSES
-from src.constants.symbol_table import EPSILON_SYMBOL
 from src.form_builders.adnominal_forms import get_adjective_paradigm
 from src.form_builders.noun_forms import get_noun_paradigm
 from src.form_builders.verb_forms import (
@@ -34,18 +33,26 @@ from src.lexicon.phonology import (
     FINAL_LOWERING_RULE_NONVACUOUS,
     LEFT_H_RULE_NONVACUOUS,
 )
+from multiprocessing import Pool
 
 __dir__ = os.path.dirname(os.path.abspath(__file__))
 _form_builders_dir = os.path.join(__dir__, 'form_builders')
+
+def _build_fv_paradigm_pair(fv_class):
+    """Helper function for parallel processing"""
+    fv_paradigm = get_verb_stem_paradigm(fv_class)
+    fv_with_aux = get_verb_paradigm_w_aux(fv_paradigm)
+    return (fv_paradigm, fv_with_aux)
 
 def get_verb_paradigms():
     verb_paradigms = []
     verb_paradigms.append(get_aux_paradigm())
 
-    for fv_class in FV_CLASSES:
-        fv_paradigm = get_verb_stem_paradigm(fv_class)
+    with Pool() as pool:
+        fv_paradigm_pairs = pool.map(_build_fv_paradigm_pair, FV_CLASSES)
+    for fv_paradigm, fv_with_aux in fv_paradigm_pairs:
         verb_paradigms.append(fv_paradigm)
-        verb_paradigms.append(get_verb_paradigm_w_aux(fv_paradigm))
+        verb_paradigms.append(fv_with_aux)
 
     return verb_paradigms
 
@@ -80,6 +87,7 @@ def add_all_tone_processes_to_parser(parser_fst: pynini.Fst) -> pynini.Fst:
         (('final_lowering', 'left_h'), [FINAL_LOWERING_RULE_NONVACUOUS, LEFT_H_RULE_NONVACUOUS]),
     ]
     parser_list = [parser_fst]
+    parser_input_projection = parser_fst.project('input')
     for feature_names, rule_fst in tone_rules:
         print(f"Computing parser with tone process: {', '.join(feature_names)}")
         feature_map = {
@@ -88,8 +96,9 @@ def add_all_tone_processes_to_parser(parser_fst: pynini.Fst) -> pynini.Fst:
         }
         parser_fst_with_tone = add_process_to_parser(
             parser_fst,
+            parser_input_projection,
             rule_fst,
-            feature_map
+            feature_map,
         )
         parser_list.append(parser_fst_with_tone)
 
@@ -99,12 +108,14 @@ def add_all_tone_processes_to_parser(parser_fst: pynini.Fst) -> pynini.Fst:
 
 def add_process_to_parser(
         parser_fst: pynini.Fst,
+        parser_input_projection: pynini.Fst,
         rule_fst: pynini.Fst,
         feature_map: Dict[str, Tuple[str, str]],
 ) -> pynini.Fst:
     """
     Arguments:
         parser_fst: The main parser FST before tone processes are added.
+        parser_input_projection: The input projection of `parser_fst`.
         rule_fst: The phonological rule FST to apply.
         feature_map: Dictionary mapping features to tuples of (from_value, to_value).
     Returns:
@@ -112,7 +123,7 @@ def add_process_to_parser(
 
     Adds paths for a single tone process to `parser_fst`.
     """
-    parser_w_rule = apply_rule_to_input(parser_fst, rule_fst)
+    parser_w_rule = apply_rule_to_input(parser_fst, parser_input_projection,rule_fst)
     parser_w_shifted_features = shift_feature_value(parser_w_rule, feature_map)
     
     return parser_w_shifted_features.optimize()
@@ -152,6 +163,7 @@ def append_eos_to_input(
 
 def apply_rule_to_input(
     parser: pynini.Fst,
+    parser_input_projection: pynini.Fst,
     rule: Union[pynini.Fst, List[pynini.Fst]],
 ) -> pynini.Fst:
     """
@@ -177,11 +189,12 @@ def apply_rule_to_input(
     
     Arguments:
         parser: FST mapping forms to parses.
+        parser_input_projection: The input projection of `parser`.
         rule: FST or list of FSTs representing phonological rules to apply.
     Returns:
         FST equivalent to `parser` with `rule` applied to input side.
     """
-    forms_w_rule = pynini.project(parser, 'input')
+    forms_w_rule = parser_input_projection
 
     if type(rule) is list:
         for r in rule:
@@ -230,6 +243,8 @@ def shift_feature_value(parser: pynini.Fst, feature_map: Dict[str, Tuple[str, st
             r=fst(),
             sigma_star=SIGMASTAR_W_SYMBOLS,
         )
+
+    feature_rewrite_rule.optimize()
     parser_shifted = parser @ feature_rewrite_rule
     parser_shifted.optimize()
     return parser_shifted

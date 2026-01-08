@@ -319,9 +319,6 @@ def build_aux_forms(
         combined_slots
     )
 
-    for rule, _ in slots:
-        rule.optimize()
-
     return slots
 
 
@@ -579,9 +576,6 @@ def add_perfective_ventive_personal_markers(
         _build_pfv_vent_combined_sbj_obj_slots(form_fst, markers, get_features)
     )
 
-    for rule, _ in slots:
-        rule.optimize()
-
     return slots
 
 
@@ -641,8 +635,8 @@ class StemComposer:
     e_morphome: str
 
     def __post_init__(self):
-        self._prepare = REMOVE_HOMOPHONE_TAG @ ADD_PLACEHOLDER_TBU
-        self._finalize = FLOAT_TONE_RULE @ COMBINE_TONES_RULE
+        self._prepare = (REMOVE_HOMOPHONE_TAG @ ADD_PLACEHOLDER_TBU).optimize()
+        self._finalize = (FLOAT_TONE_RULE @ COMBINE_TONES_RULE).optimize()
 
     @property
     def is_OV(self) -> bool:
@@ -897,7 +891,6 @@ def _compose_aux_verb_rule(aux_rule, verb_rule, deixis: str, ventive_allows_hspr
     if deixis == 'itive' or ventive_allows_hspread:
         combined_rule = combined_rule @ H_SPREAD_RULE
 
-    combined_rule.optimize()
     return combined_rule
 
 

@@ -26,17 +26,27 @@ import pandas as pd
 ## Non-FST search functions 
 """
 
-def search_corpus(word, whole_word=False):
+def search_corpus(
+        query,
+        query_type: Literal['tira', 'en'] = 'tira',
+        whole_word=False
+    ):
     """
     Search sentences.csv for occurrences of the given word.
     To allow for (very simple) fuzzy matching, the word is first
     normalized by removing diacritics and converting to lowercase,
     and matched against sentences that have undergone the same normalization.
     """
-    query = unidecode(word).lower()
+    query = unidecode(query).lower()
     corpus_path = os.path.join(SENTENCE_DIR, 'sentences.csv')
-    df = pd.read_csv(corpus_path)
-    normalized_sentence = df['text'].apply(unidecode).str.lower()
+    df = pd.read_csv(corpus_path, keep_default_na=False)
+    if query_type == 'tira':
+        normalized_sentence = df['text'].apply(unidecode).str.lower()
+    elif query_type == 'en':
+        normalized_sentence = df['translation'].apply(unidecode).str.lower()
+    else:
+        raise ValueError("query_type must be one of 'tira' or 'en'")
+
     if whole_word:
         split_sentences = normalized_sentence.str.split(' ')
         matching_rows = df[split_sentences.apply(lambda x: query in x)]
