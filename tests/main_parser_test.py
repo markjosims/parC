@@ -1,5 +1,5 @@
 from src.parser import inflect_word, parse_word
-from src.lexicon import *
+from src.lexicon import load_lexical_data, load_test_case_data
 from src.constants import EOS_STR, VERB_FEATURE_VALUES, LEXICAL_FEATURE_VALUES
 from src.lexicon.phonology import FINAL_LOWERING_RULE, LEFT_H_RULE, EOS
 from src.fst_helpers import get_lattice_strs, fst
@@ -10,7 +10,7 @@ from tests.utils import filter_query_and_hits, get_different_items
 ## Verb parsing and inflection tests
 """
 
-@pytest.mark.parametrize("gold_verb", get_gold_verbs())
+@pytest.mark.parametrize("gold_verb", load_test_case_data('gold_verbs'))
 def test_verb_inflection_wh(gold_verb):
     root = gold_verb.pop('root')
     form = gold_verb.pop('form').replace('-', '')
@@ -33,7 +33,7 @@ def test_verb_inflection_wh(gold_verb):
 
     assert form in predicted_form
 
-@pytest.mark.parametrize("gold_verb", get_gold_verbs())
+@pytest.mark.parametrize("gold_verb", load_test_case_data('gold_verbs'))
 def test_verb_inflection_loc(gold_verb):
     root = gold_verb.pop('root')
     form = gold_verb.pop('form').replace('-', '')
@@ -52,7 +52,7 @@ def test_verb_inflection_loc(gold_verb):
 
     assert form in predicted_form
 
-@pytest.mark.parametrize("gold_verb", get_gold_verbs())
+@pytest.mark.parametrize("gold_verb", load_test_case_data('gold_verbs'))
 def test_verb_inflection(gold_verb):
     root = gold_verb.pop('root')
     form = gold_verb.pop('form').replace('-', '')
@@ -67,7 +67,7 @@ def test_verb_inflection(gold_verb):
 
     assert form in predicted_form
 
-@pytest.mark.parametrize("gold_verb", get_gold_verbs())
+@pytest.mark.parametrize("gold_verb", load_test_case_data('gold_verbs'))
 def test_verb_parsing(gold_verb):
     analyzed_form = gold_verb['form']
     gold_verb['analyzed_form']=analyzed_form
@@ -86,7 +86,7 @@ def test_verb_parsing(gold_verb):
     }
     assert gold_verb_filtered in predicted_parse
 
-@pytest.mark.parametrize("gold_verb", get_gold_verbs())
+@pytest.mark.parametrize("gold_verb", load_test_case_data('gold_verbs'))
 def test_verb_parsing_final_lowering(gold_verb):
     hyphenated_form = gold_verb['form']
     orig_form = gold_verb['form'].replace('-', '')
@@ -119,7 +119,7 @@ def test_verb_parsing_final_lowering(gold_verb):
     else:
         assert gold_verb_filtered not in predicted_parse_filtered
 
-@pytest.mark.parametrize("gold_verb", get_gold_verbs())
+@pytest.mark.parametrize("gold_verb", load_test_case_data('gold_verbs'))
 def test_verb_parsing_lefth_and_final_lowering(gold_verb):
     hyphenated_form = gold_verb['form']
     orig_form = gold_verb['form'].replace('-', '')
@@ -147,7 +147,7 @@ def test_verb_parsing_lefth_and_final_lowering(gold_verb):
     else:
         assert gold_verb_filtered not in predicted_parse_filtered
 
-@pytest.mark.parametrize("gold_verb", get_gold_verbs())
+@pytest.mark.parametrize("gold_verb", load_test_case_data('gold_verbs'))
 def test_verb_parsing_lefth(gold_verb):
     hyphenated_form = gold_verb['form']
     orig_form = gold_verb['form'].replace('-', '')
@@ -172,7 +172,7 @@ def test_verb_parsing_lefth(gold_verb):
     else:
         assert gold_verb_filtered not in predicted_parse_filtered
 
-@pytest.mark.parametrize("gold_verb", get_gold_derived_verbs())
+@pytest.mark.parametrize("gold_verb", load_test_case_data('gold_verbs_derived'))
 def test_derived_verbs(gold_verb):
     form = gold_verb.pop('form').replace('-', '')
     root = gold_verb.pop('root').replace('-', '')
@@ -196,7 +196,7 @@ def test_derived_verbs(gold_verb):
 ## Adjective parsing and inflection tests
 """
 
-@pytest.mark.parametrize("gold_adj", get_gold_adjectives())
+@pytest.mark.parametrize("gold_adj", load_test_case_data('gold_adjectives'))
 def test_adjective_forms(gold_adj):
     root = gold_adj.pop('root')
     form = gold_adj.pop('form')
@@ -206,7 +206,7 @@ def test_adjective_forms(gold_adj):
     predicted_forms = inflect_word(root, **gold_adj)
     assert form in predicted_forms
 
-@pytest.mark.parametrize("gold_adj", get_gold_adjectives())
+@pytest.mark.parametrize("gold_adj", load_test_case_data('gold_adjectives'))
 def test_adjective_parsing(gold_adj):
     analyzed_form = gold_adj['form']
     gold_adj['analyzed_form']=analyzed_form
@@ -228,7 +228,10 @@ def test_adjective_parsing(gold_adj):
 ## Uninflected word parsing tests
 """
 
-@pytest.mark.parametrize("gold_word", get_uninflected_word_data())
+@pytest.mark.parametrize(
+        "gold_word",
+        load_test_case_data('gold_uninflected_words')
+)
 def test_uninflected_forms(gold_word):
 
     root = gold_word['root']
@@ -255,7 +258,7 @@ def test_uninflected_forms(gold_word):
 ## Auxiliary parsing and inflection tests
 """
 
-@pytest.mark.parametrize("gold_aux", get_gold_auxs())
+@pytest.mark.parametrize("gold_aux", load_test_case_data('gold_auxs'))
 def test_gold_auxs(gold_aux):
     form = gold_aux.pop('form').replace('-', '')
     gold_aux['part_of_speech']='aux'

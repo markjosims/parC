@@ -2,12 +2,8 @@
 Data files storing raw lexical data to seed PostgreSQL database.
 
 ## Files
-- adjectives.csv
-- nouns.csv
-- verb_roots.csv
-- uninflected_words.csv (adverbs, prepositions, particles, etc.)
-- inflected_verb_forms.csv: Output by `forms.py`, every possible inflected verb form for every root supported by the FST parser.
-
-## TO DO:
-- Add pronouns
-- Add other adnominals (like possessive marker -ɛ̀)
+- adjective.csv
+- adnominal.csv (non-adjective elements that modify nouns and take class agreement: demonstratives, possessive pronouns, genitive marker)
+- nominal.csv (nouns and pronouns that inflect like nouns)
+- verb.csv
+- uninflected.csv (adverbs, prepositions, particles, etc.)

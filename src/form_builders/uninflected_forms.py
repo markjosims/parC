@@ -12,7 +12,7 @@ in output, e.g. "nɛ̀" -> "nɛ̀(1)" 'in', "nɛ̀(2)" 'and'.
 from src.cache_decorators import fst_cache
 from src.lexicon.phonology import REMOVE_HOMOPHONE_TAG
 from src.fst_helpers import decode_byte_str, fst, vectorize_lexeme_string
-from src.lexicon import get_uninflected_word_data
+from src.lexicon import load_lexical_data
 import pynini
 from pynini.lib import rewrite
 from typing import *
@@ -24,7 +24,7 @@ def get_uninflected_word_fst() -> pynini.Fst:
     Build an FST accepting uninflected words and mapping homophones
     to strings with homophone tags.
     """
-    uninflected_word_df = get_uninflected_word_data(return_type='dataframe')
+    uninflected_word_df = load_lexical_data(part_of_speech='uninflected')
     words = uninflected_word_df['root'].tolist()
     part_of_speech = uninflected_word_df['part_of_speech'].tolist()
     pos_strs = [f"part_of_speech={p}" for p in part_of_speech]

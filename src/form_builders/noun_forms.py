@@ -15,7 +15,7 @@ from pynini.lib import features, paradigms, rewrite, pynutil
 from src.cache_decorators import output_cache
 from src.lexicon.phonology import *
 from src.fst_helpers import *
-from src.lexicon import get_all_noun_data, get_noun_roots
+from src.lexicon import load_lexical_data
 from src.constants import (
     NOUN_FEATURE_ABBREVIATION_TO_VECTOR,
     NOUN_ROOT,
@@ -29,7 +29,8 @@ def get_noun_paradigm() -> paradigms.Paradigm:
     """
     Create Paradigm object for Tira nouns.
     """
-    nouns_df = get_all_noun_data(return_type='dataframe')
+    nouns_df = load_lexical_data(part_of_speech='nominal')
+    nouns_df = nouns_df[nouns_df['part_of_speech']=='noun']
     slots = []
     lemma_col = nouns_df['root']
     for feature_str, feature_vec in NOUN_FEATURE_ABBREVIATION_TO_VECTOR.items():
@@ -45,7 +46,8 @@ def get_noun_paradigm() -> paradigms.Paradigm:
                 feature_fsts.append(fst(lemma, subform))
         feature_fst = pynini.union(*feature_fsts).optimize()
         slots.append((feature_fst, feature_vec))
-    lemma_acceptor = pynini.union(*get_noun_roots(wrap_w_fsa=True)).optimize()
+    root_fsas = [fst(root) for root in nouns_df['root'].tolist()]
+    lemma_acceptor = pynini.union(*root_fsas).optimize()
     slots.append((lemma_acceptor, NOUN_ROOT))
 
     noun_paradigm = paradigms.Paradigm(
@@ -53,7 +55,7 @@ def get_noun_paradigm() -> paradigms.Paradigm:
         name=stringify_lexeme_features({"part_of_speech": 'noun'}),
         slots=slots,
         lemma_feature_vector=NOUN_ROOT,
-        stems=get_noun_roots(wrap_w_fsa=True),
+        stems=root_fsas,
         boundary=fst(BOUNDARY_STR),
     )
     return noun_paradigm

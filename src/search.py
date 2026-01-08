@@ -8,6 +8,7 @@ from src.constants import (
     INSERT, DELETE, SUBSTITUTE,
     DEFAULT_INSERT_COST, DEFAULT_DELETE_COST, DEFAULT_SUBSTITUTE_COST,
     DEFAULT_EDIT_BOUND, FV_CLASSES, EOS_STR,
+    SENTENCE_DIR,
 )
 from src.lexicon.phonology import (
     SIGMA, INSERTION_COSTS, DELETION_COSTS, SUBSTITUTION_COSTS,
@@ -18,6 +19,33 @@ from argparse import ArgumentParser
 import os
 import yaml
 from tqdm import tqdm
+from unidecode import unidecode
+import pandas as pd
+
+"""
+## Non-FST search functions 
+"""
+
+def search_corpus(word, whole_word=False):
+    """
+    Search sentences.csv for occurrences of the given word.
+    To allow for (very simple) fuzzy matching, the word is first
+    normalized by removing diacritics and converting to lowercase,
+    and matched against sentences that have undergone the same normalization.
+    """
+    query = unidecode(word).lower()
+    corpus_path = os.path.join(SENTENCE_DIR, 'sentences.csv')
+    df = pd.read_csv(corpus_path)
+    normalized_sentence = df['text'].apply(unidecode).str.lower()
+    if whole_word:
+        split_sentences = normalized_sentence.str.split(' ')
+        matching_rows = df[split_sentences.apply(lambda x: query in x)]
+    else:
+        matching_rows = df[normalized_sentence.str.contains(query, na=False)]
+    hit_sentences = matching_rows['text'].tolist()
+    translations = matching_rows['translation'].tolist()
+    return list(zip(hit_sentences, translations))
+
 
 # ----------------------------------- #
 # functions for building search graph #

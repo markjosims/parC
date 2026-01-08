@@ -4,13 +4,7 @@ from src.search import *
 import pytest
 from src.fst_helpers import *
 from src.lexicon.phonology import V, SIGMA
-from src.lexicon.lexicon import (
-    get_gold_derived_verbs,
-    get_gold_nouns,
-    get_gold_verbs,
-    get_gold_uninflected_words,
-    get_gold_adjectives,
-)
+from src.lexicon.lexicon import load_test_case_data
 import math
 
 substitutions = [
@@ -90,7 +84,7 @@ def test_edit_weight(query, top_string, expected_weight, top_n_strings):
     predicted_top_n_strings = get_lattice_strs(fst(query)@left_factor@searchable_lexicon, nshortest=len(top_n_strings))
     assert set(predicted_top_n_strings) == set(top_n_strings)
 
-@pytest.mark.parametrize("gold_verb", get_gold_verbs())
+@pytest.mark.parametrize("gold_verb", load_test_case_data('gold_verbs'))
 def test_search_verb_form(gold_verb):
     gold_form = gold_verb['form']
     gold_form = gold_form.replace('-', '')
@@ -108,7 +102,7 @@ def test_search_verb_form(gold_verb):
     assert gold_form in top_forms
     assert gold_fv in top_fvs
 
-@pytest.mark.parametrize("gold_verb", get_gold_derived_verbs())
+@pytest.mark.parametrize("gold_verb", load_test_case_data('gold_verbs_derived'))
 def test_search_derived_verb(gold_verb):
     gold_form = gold_verb['form']
     gold_form = gold_form.replace('-', '')
@@ -124,7 +118,7 @@ def test_search_derived_verb(gold_verb):
     top_forms = [hit['form'] for hit in hits]
     assert gold_form in top_forms
 
-@pytest.mark.parametrize("gold_noun", get_gold_nouns())
+@pytest.mark.parametrize("gold_noun", load_test_case_data('gold_nouns'))
 def test_search_noun_form(gold_noun):
     gold_form = gold_noun['gold_noun']
     gold_form = gold_form.replace('-', '')
@@ -137,7 +131,7 @@ def test_search_noun_form(gold_noun):
     top_form = hits[0]['form']
     assert top_form == gold_form
 
-@pytest.mark.parametrize("uninflected_word", get_gold_uninflected_words())
+@pytest.mark.parametrize("uninflected_word", load_test_case_data('gold_uninflected_words'))
 def test_search_uninflected_word_form(uninflected_word):
     gold_form = uninflected_word['root']
     gold_form = gold_form.replace('-', '')
@@ -150,7 +144,7 @@ def test_search_uninflected_word_form(uninflected_word):
     top_form = hits[0]['form']
     assert top_form == gold_form
 
-@pytest.mark.parametrize("gold_adjective", get_gold_adjectives())
+@pytest.mark.parametrize("gold_adjective", load_test_case_data('gold_adjectives'))
 def test_search_adjective_form(gold_adjective):
     gold_form = gold_adjective['form']
     gold_form = gold_form.replace('-', '')

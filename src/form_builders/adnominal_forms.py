@@ -16,7 +16,7 @@ part of speech.
 from pynini.lib import paradigms, features
 from typing import *
 from src.cache_decorators import output_cache
-from src.lexicon import get_adjective_roots
+from src.lexicon import load_lexical_data
 from src.form_builders.form_helpers import add_class_prefix, add_class_prefixes_to_slots
 from src.constants import ADJECTIVE, ADJECTIVE_ROOT, ADNOMINAL_CLASS_VALUES, BOUNDARY_STR
 from src.lexicon.phonology import ALL_LOW_TONE_RULE, SIGMASTAR
@@ -25,7 +25,8 @@ import pandas as pd
 
 @output_cache(__file__)
 def get_adjective_paradigm() -> paradigms.Paradigm:
-    adj_lemmata = get_adjective_roots(wrap_w_fsa=True)
+    adj_data = load_lexical_data(part_of_speech='adjective')
+    adj_roots = [fst(root) for root in adj_data['root'].tolist()]
 
     inflected_slot = (ALL_LOW_TONE_RULE, ADJECTIVE_ROOT)
     root_slot = (SIGMASTAR, ADJECTIVE_ROOT)
@@ -35,7 +36,7 @@ def get_adjective_paradigm() -> paradigms.Paradigm:
     adj_paradigm = paradigms.Paradigm(
         category=ADJECTIVE,
         slots=slots,
-        stems=adj_lemmata,
+        stems=adj_roots,
         boundary=fst(BOUNDARY_STR),
         lemma_feature_vector=ADJECTIVE_ROOT,
         name=stringify_lexeme_features({"part_of_speech": 'adjective'}),
