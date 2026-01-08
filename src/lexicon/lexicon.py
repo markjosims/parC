@@ -17,6 +17,7 @@ from src.lexicon.extension_suffixes import get_derived_stem_and_fv, ALL_POSSIBLE
 from src.fst_helpers import fst
 from typing import *
 import pynini
+from glob import glob
 
 """
 ## Data loading functions
@@ -82,7 +83,7 @@ def get_roots_for_class(
         List of strings or FSAs corresponding to verb roots in the given FV class
     """
     if include_extensions:
-        verbs_df = get_all_verb_data(return_type='dataframe')
+        verbs_df = get_all_verb_data()
     else:
         verbs_df = load_lexical_data(part_of_speech='verb')
     fv_mask = verbs_df['fv']==fv_class
@@ -100,7 +101,7 @@ def get_class_for_verb_root(root: str) -> List[str]:
     Returns:
         The FV class(es) for the given verb root.
     """
-    all_verbs_df = get_all_verb_data(return_type='dataframe')
+    all_verbs_df = get_all_verb_data()
     root_mask = all_verbs_df['root']==root
     if root_mask.sum()==0:
         raise KeyError(f"Root {root} not found in verb lexicon.")
@@ -144,9 +145,7 @@ def get_verb_w_extensions_df():
     all_verbs_with_extensions_df = pd.concat(new_dfs, ignore_index=True)
     return all_verbs_with_extensions_df
 
-def get_all_verb_data(
-    return_type: Literal['list', 'dataframe']='list'
-) -> Union[pd.DataFrame, List[Dict[str, str]]]:
+def get_all_verb_data() -> pd.DataFrame:
     """
     Creates a dataframe containing all verb data, including
     both verb roots and verbs with extension suffixes.
@@ -162,9 +161,7 @@ def get_all_verb_data(
     verbs_df = load_lexical_data(part_of_speech='verb')
     verbs_with_extensions_df = get_verb_w_extensions_df()
     all_verbs_df = pd.concat([verbs_df, verbs_with_extensions_df], ignore_index=True)
-    if return_type == 'dataframe':
-        return all_verbs_df
-    return all_verbs_df.to_dict(orient='records')
+    return all_verbs_df
 
 def get_verb_root_w_hyphen(root_no_hyphen: str, fv: Optional[str]=None) -> List[str]:
     """
@@ -179,7 +176,7 @@ def get_verb_root_w_hyphen(root_no_hyphen: str, fv: Optional[str]=None) -> List[
     """
     if root_no_hyphen == AUX_LEMMA_STR:
         return [AUX_LEMMA_STR]
-    all_verbs_df = get_all_verb_data(return_type='dataframe')
+    all_verbs_df = get_all_verb_data()
     no_hyphen_series = all_verbs_df['root'].str.replace('-', '')
     root_mask = no_hyphen_series==root_no_hyphen
     if fv is not None:
@@ -195,9 +192,7 @@ def get_verb_root_w_hyphen(root_no_hyphen: str, fv: Optional[str]=None) -> List[
 ## Global lexicon functions
 """
 
-def get_all_lexical_data(
-    return_type: Literal['list', 'dataframe']='list'
-) -> Union[pd.DataFrame, List[Dict[str, str]]]:
+def get_all_lexical_data() -> pd.DataFrame:
     """
     Combines all lexical data from verbs, nouns, adjectives,
     and uninflected words into a single dataset.
@@ -208,27 +203,24 @@ def get_all_lexical_data(
     Returns:
         Combined lexical data as a DataFrame or list of dictionaries.
     """
-    data_fetchers = {
-        'verb': get_all_verb_data,
-        'noun': load_lexical_data,
-        'adjective': get_all_adjective_data,
-        'uninflected': get_uninflected_word_data,
-    }
+    csv_paths = glob(os.path.join(LEXICON_DIR, '*.csv'))
 
     df_list = []
-    for key, fetcher in data_fetchers.items():
-        df = fetcher(return_type='dataframe')
-        if key != 'uninflected':
-            df['part_of_speech'] = key
-        df_list.append(df)
+    for csv_path in csv_paths:
+        csv_stem = os.path.basename(csv_path)
+        csv_stem = os.path.splitext(csv_stem)[0]
+        
+        # verbs are a special case, since extended forms are built dynamically
+        if csv_path == 'verb':
+            df_list.append(get_all_verb_data())
+        else:
+            df_list.append(pd.read_csv(csv_path, keep_default_na=False))
 
     all_lexical_df = pd.concat(
         df_list,
         ignore_index=True,
     )
-    if return_type == 'dataframe':
-        return all_lexical_df
-    return all_lexical_df.to_dict(orient='records')
+    return all_lexical_df
 
 def get_gloss_for_root(
     root: str,
@@ -251,7 +243,7 @@ def get_gloss_for_root(
             return [('aux', 'aux')]
         return ['aux']
 
-    all_lexical_data = get_all_lexical_data(return_type='dataframe')
+    all_lexical_data = get_all_lexical_data()
     root_mask = all_lexical_data['root']==root
     if part_of_speech == 'uninflected':
         pos_mask = ~all_lexical_data['part_of_speech'].isin(INFLECTED_POS)
@@ -278,7 +270,7 @@ def get_part_of_speech_for_root(root: str) -> List[str]:
     Returns:
         The part(s) of speech for the given root.
     """
-    all_lexical_data = get_all_lexical_data(return_type='dataframe')
+    all_lexical_data = get_all_lexical_data()
     root_mask = all_lexical_data['root']==root
     if root_mask.sum()==0:
         raise KeyError(f"Root {root} not found in lexicon.")
@@ -305,7 +297,7 @@ def get_root_for_gloss(
         if return_pos:
             return [(AUX_LEMMA_STR, 'aux')]
         return [AUX_LEMMA_STR]
-    all_lexical_data = get_all_lexical_data(return_type='dataframe')
+    all_lexical_data = get_all_lexical_data()
     gloss_mask = all_lexical_data['gloss']==gloss
     if part_of_speech == 'uninflected':
         pos_mask = ~all_lexical_data['part_of_speech'].isin(INFLECTED_POS)
