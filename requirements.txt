@@ -9,11 +9,6 @@ ipykernel
 pytest
 graphviz
 pydot
-flask
-gunicorn
-sqlalchemy
-psycopg2-binary
-python-dotenv
 fire
 pyyaml
 RecursiveNamespace
