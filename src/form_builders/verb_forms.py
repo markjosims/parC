@@ -21,6 +21,7 @@ When present, the auxiliary bears person and class prefixes that
 would otherwise be attached to the verb stem.
 """
 
+from dataclasses import dataclass
 import pynini
 from pynini.lib import features, paradigms
 from src.cache_decorators import output_cache
@@ -32,8 +33,11 @@ from src.lexicon.phonology import REMOVE_HOMOPHONE_TAG
 from src.constants import INFLECTED_VERB, FV_CLASSES
 from typing import *
 
+# =============================================================================
+# FV Class Constants
+# =============================================================================
+
 """
-## FV classes
 There are 7 FV classes in Tira verbs. FV suffixes are divided into 3 morphomes
 (Kaldhol 2023) such that each morpheme has the same distribution within the
 paradigm across classes. The morphemes are referred to as "a", "o", and "e"
@@ -51,681 +55,769 @@ CLASS2FV = {
 }
 FV_CLASSES = list(CLASS2FV.keys())
 
-"""
-## Person marking functions
-Person marking in Tira involves a complex system of prefixes and suffixes,
-which vary based on tense-aspect-mood-deixis (TAMD) categories, and based
-on interactions between subject and object persons. In particular, third
-person participants often receive 'precedence' over other persons, such
-that a 1st or 2nd person subject that would normally be marked as a  prefix
-will instead be marked with a suffix if the object is 3rd person, which itself
-is marked with a prefix.
+# =============================================================================
+# Feature Vector Utilities
+# =============================================================================
 
-Here we give a general overview of the distribution of person marking suffixes
-across TAMD categories. See the docstrings of the individual functions for more
-details on each particular category.
+def make_feature_builder(category, tamd_strs: List[str]):
+    """
+    Returns a function that creates feature vectors for a given category and TAMD.
 
-### Imperfective auxiliary forms
-The auxiliary takes person markers for subject and object, as indicated in the
-docstring for `build_imperfective_aux_forms`. The only exception is that when the
-subject is 1pl.inclusive the suffix -ŕ follows the verb stem, in addition to the
-suffix -l on the auxiliary.
+    Arguments:
+        category:   The feature category (e.g., INFLECTED_AUX, INFLECTED_VERB)
+        tamd_strs:  List of TAMD feature strings (e.g., ["tam=imperfective", "deixis=unmarked"])
 
-In general, subjects are marked with prefixes and objects with suffixes, except
-when the object is 3rd person, in which case the subject is indicated with a
-suffix instead.
+    Returns:
+        A function get_features(sbj, obj, cl, wh) that returns a FeatureVector
+    """
+    def get_features(sbj: str = 'unmarked', obj: str = 'unmarked',
+                     cl: str = 'unmarked', wh: str = 'unmarked') -> features.FeatureVector:
+        features_list = [category]
+        features_list.extend(tamd_strs)
+        features_list.append(f"subject={sbj}")
+        features_list.append(f"object={obj}")
+        features_list.append(f"class={cl}")
+        features_list.append(f"wh={wh}")
+        return features.FeatureVector(*features_list)
+    return get_features
 
-### Perfective itive auxiliary forms
-Equivalent to the forms for the perfective auxiliary, with some tone differences
-e.g. the subject marker -ɛ́ becomes -ɛ̀. See the docstring for
-`build_itive_perfective_aux_forms` for more details.
 
-## Perfective ventive verb forms
-Here the verb stem itself takes the personal markers, as described in the
-docstring for `add_perfective_ventive_personal_markers`.
-"""
+# =============================================================================
+# Person Marker Data Structures
+# =============================================================================
+
+@dataclass
+class AuxPersonMarkers:
+    """
+    Stores person marker forms for an auxiliary TAMD category.
+
+    The marker strings use IPA with tone diacritics. Hyphens indicate
+    morpheme boundaries.
+    """
+    aux_vowel: str  # Base auxiliary vowel ('á' for imperfective, 'à' for itive perfective)
+
+    # Subject prefixes (with nominal object)
+    # Format: {person: marker_string}
+    subject_prefixes: Dict[str, Tuple[str, str]]  # (marker, class)
+
+    # Subject suffixes when object is 3sg
+    # These replace/include the auxiliary
+    subject_3sg_obj: Dict[str, str]
+
+    # Subject suffixes when object is 3pl
+    subject_3pl_obj: Dict[str, str]
+
+    # Object suffixes (replace auxiliary)
+    object_suffixes: Dict[str, str]
+
+
+IMPERFECTIVE_AUX_MARKERS = AuxPersonMarkers(
+    aux_vowel='á',
+    subject_prefixes={
+        '1sg': ('íŋ-g-á', 'g'),
+        '2sg': ('á-g-á', 'g'),
+        '1du.incl': ('á-l-á', 'l'),
+        '1pl.incl': ('á-l-á', 'l'),
+        '1pl.excl': ('ɲà-l-á', 'l'),
+        '2pl': ('ɲá-l-á', 'l'),
+    },
+    subject_3sg_obj={
+        '1sg': 'ɛ́',
+        '2sg': 'á',
+        '3sg': 'á-l',
+        '1du.incl': 'á-l',
+        '1pl.incl': 'á-l',
+        '1pl.excl': 'éɲâ',
+        '2pl': 'éɲá',
+        '3pl': 'á-l',
+    },
+    subject_3pl_obj={
+        '1sg': 'ɛ́-ĺ',
+        '2sg': 'á-ĺ',
+        '3sg': 'á-ŋə́-ĺ',
+        '1du.incl': 'á-ló',
+        '1pl.incl': 'á-ló',
+        '1pl.excl': 'éɲâ-ĺ',
+        '2pl': 'éɲá-ĺ',
+        '3pl': 'á-l-ló',
+    },
+    object_suffixes={
+        '1sg': '-ŋɛ̂',
+        '2sg': '-ŋâ',
+        '1du.incl': '-tɛ́',
+        '1pl.incl': '-tɛ́',
+        '1pl.excl': '-éɲár',
+        '2pl': '-tɛ́',
+        '3pl': ('-ĺ', '-ló'),  # Tuple for alternatives
+    },
+)
+
+ITIVE_PERFECTIVE_AUX_MARKERS = AuxPersonMarkers(
+    aux_vowel='à',
+    subject_prefixes={
+        '1sg': ('íŋ-g-à', 'g'),
+        '2sg': ('á-g-à', 'g'),
+        '1du.incl': ('á-l-à', 'l'),
+        '1pl.incl': ('á-l-à', 'l'),
+        '1pl.excl': ('ɲà-l-à', 'l'),
+        '2pl': ('ɲá-l-à', 'l'),
+    },
+    subject_3sg_obj={
+        '1sg': 'ɛ̀',
+        '2sg': 'à',
+        '3sg': 'à-l',
+        '1du.incl': 'á-l',
+        '1pl.incl': 'á-l',
+        '1pl.excl': 'éɲâ',
+        '2pl': 'éɲá',
+        '3pl': 'à-l',
+    },
+    subject_3pl_obj={
+        '1sg': 'ɛ̀-ĺ',
+        '2sg': 'à-ĺ',
+        '3sg': 'à-ŋə́-ĺ',
+        '1du.incl': 'á-ló',
+        '1pl.incl': 'á-ló',
+        '1pl.excl': 'éɲâ-ĺ',
+        '2pl': 'éɲá-ĺ',
+        '3pl': 'à-l-ló',
+    },
+    object_suffixes={
+        '1sg': '-ŋɛ̂',
+        '2sg': '-ŋâ',
+        '1du.incl': '-tɛ́',
+        '1pl.incl': '-tɛ́',
+        '1pl.excl': '-éɲár',
+        '2pl': '-tɛ́',
+        '3pl': ('-ĺ', '-ló'),
+    },
+)
+
+
+# =============================================================================
+# Auxiliary Slot-Building Helpers
+# =============================================================================
+
+def _build_aux_non_pronominal_slots(markers: AuxPersonMarkers, get_features) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build slots for auxiliary with no person marking."""
+    base_slots = [(insert_fst(markers.aux_vowel), get_features())]
+    return add_class_prefixes_to_slots(base_slots, include_ng=True)
+
+
+def _build_aux_subject_prefix_slots(markers: AuxPersonMarkers, get_features) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build slots for subject marking via prefixes (with nominal object)."""
+    slots = []
+    for person, (marker, cl) in markers.subject_prefixes.items():
+        slots.append((insert_fst(marker), get_features(sbj=person, cl=cl)))
+    return slots
+
+
+def _build_aux_subject_3sg_obj_slots(markers: AuxPersonMarkers, get_features) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build slots for subject marking when object is 3sg."""
+    slots = []
+    for person, marker in markers.subject_3sg_obj.items():
+        slots.append((insert_fst(marker), get_features(sbj=person, obj='3sg')))
+    return add_class_prefixes_to_slots(slots, include_ng=True)
+
+
+def _build_aux_subject_3pl_obj_slots(markers: AuxPersonMarkers, get_features) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build slots for subject marking when object is 3pl."""
+    slots = []
+    for person, marker in markers.subject_3pl_obj.items():
+        slots.append((insert_fst(marker), get_features(sbj=person, obj='3pl')))
+    return add_class_prefixes_to_slots(slots, include_ng=True)
+
+
+def _make_object_suffix_fst(marker) -> pynini.Fst:
+    """Create FST for an object suffix, handling alternatives."""
+    if isinstance(marker, tuple):
+        return suffix(marker[0]) | suffix(marker[1])
+    return suffix(marker)
+
+
+def _build_aux_object_slots(markers: AuxPersonMarkers, get_features) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build slots for object-only marking."""
+    object_suffixes = []
+    for person, marker in markers.object_suffixes.items():
+        object_suffixes.append((_make_object_suffix_fst(marker), get_features(obj=person)))
+
+    # Compose with auxiliary vowel and vowel coalescence
+    object_slots = [
+        (insert_fst(markers.aux_vowel) @ rule @ VOWEL_COALESCENCE_RULE, features_vec)
+        for rule, features_vec in object_suffixes
+    ]
+    return add_class_prefixes_to_slots(object_slots, include_ng=True)
+
+
+def _build_aux_combined_sbj_obj_slots(
+    subject_prefix_slots: List[Tuple[pynini.Fst, features.FeatureVector]],
+    markers: AuxPersonMarkers,
+    get_features
+) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build combined subject+object slots, filtering invalid combinations."""
+    slots = []
+
+    for sbj_rule, sbj_features_vec in subject_prefix_slots:
+        for person, marker in markers.object_suffixes.items():
+            subject_feature = sbj_features_vec.values['subject']
+            class_feature = sbj_features_vec.values['class']
+            object_feature = person
+
+            # Skip duplicate person combinations
+            if subject_feature.startswith('1') and object_feature.startswith('1'):
+                continue
+            if subject_feature.startswith('2') and object_feature.startswith('2'):
+                continue
+
+            obj_rule = _make_object_suffix_fst(marker)
+            combined_features_vec = get_features(
+                sbj=subject_feature,
+                obj=object_feature,
+                cl=class_feature
+            )
+            slots.append((
+                sbj_rule @ obj_rule @ VOWEL_COALESCENCE_RULE,
+                combined_features_vec
+            ))
+
+    return slots
+
+
+# =============================================================================
+# Auxiliary Form Builders
+# =============================================================================
+
+def build_aux_forms(
+    markers: AuxPersonMarkers,
+    tamd_strs: List[str],
+) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """
+    Build auxiliary forms with personal markers for a given TAMD category.
+
+    Arguments:
+        markers:    AuxPersonMarkers dataclass with person marker forms
+        tamd_strs:  List of TAMD feature strings
+
+    Returns:
+        List of (FST, FeatureVector) tuples representing all auxiliary forms
+    """
+    get_features = make_feature_builder(INFLECTED_AUX, tamd_strs)
+
+    non_pronominal_slots = _build_aux_non_pronominal_slots(markers, get_features)
+    subject_prefix_slots = _build_aux_subject_prefix_slots(markers, get_features)
+    subject_3sg_obj_slots = _build_aux_subject_3sg_obj_slots(markers, get_features)
+    subject_3pl_obj_slots = _build_aux_subject_3pl_obj_slots(markers, get_features)
+    object_slots = _build_aux_object_slots(markers, get_features)
+    combined_slots = _build_aux_combined_sbj_obj_slots(subject_prefix_slots, markers, get_features)
+
+    slots = (
+        non_pronominal_slots +
+        subject_prefix_slots +
+        subject_3sg_obj_slots +
+        subject_3pl_obj_slots +
+        object_slots +
+        combined_slots
+    )
+
+    for rule, _ in slots:
+        rule.optimize()
+
+    return slots
+
 
 def build_imperfective_aux_forms() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
-    """
-    Returns:
-        slots: List of Tuples of (FST, FeatureVector) representing perfective itive auxiliary forms
+    """Build imperfective auxiliary forms with personal markers."""
+    return build_aux_forms(
+        IMPERFECTIVE_AUX_MARKERS,
+        ["tam=imperfective", "deixis=unmarked"]
+    )
 
-    Builds perfective itive auxiliary forms with personal markers.
-    Personal markers for perfective itive verbs have the following forms:
-    Subject w/ nominal object:
-        1sg: íŋ-g-
-        2sg: á-g-
-        3sg: ŋg-
-        1du.incl: á-l
-        1pl.incl: á-l -ŕ
-        1pl.excl: ɲà-l
-        2pl: ɲá-l
-        3pl: l-
-    Subject w/ 3sg object (takes place of or includes Aux /a/):
-        1sg:  CL-ɛ́
-        2sg:  CL-á
-        3sg:  CL-á-l
-        1du.incl:  CL-á-l
-        1pl.incl:  CL-á-l- -ŕ
-        1pl.excl:  CL-éɲâ (blocks H-tone spreading onto verb)
-        2pl:  CL-éɲá
-        3pl:  CL-á-l- (blocks H-tone spreading onto verb)
-    Subject w/ 3pl object (takes place of or includes Aux /a/):
-        1sg: l- ɛ́- ĺ
-        2sg: l- á- ĺ
-        3sg: l- á- ŋə́- ĺ
-        1du.incl: l- á- ló
-        1pl.incl: l- á- ló -ŕ
-        1pl.excl: l- éɲâ- ĺ
-        2pl: l- éɲá- ĺ
-        3pl: l- á- l- ló
-    Object: (takes place of Aux /a/)
-        1sg: -á-ŋɛ̂
-        2sg: -á-ŋâ
-        3sg: CL-
-        1du.incl: -á-tɛ́
-        1pl.incl: -á-tɛ́
-        1pl.excl: -éɲár
-        2pl: -á-tɛ́
-        3pl: CL-á-l(ó)
-    """
-    tamd_strs = ["tam=imperfective", "deixis=unmarked"]
-    def get_features(sbj: str='unmarked', obj: str='unmarked', cl: str='unmarked') -> List[str]:
-        features_list = [INFLECTED_AUX]
-        features_list.extend(tamd_strs)
-        features_list.append(f"subject={sbj}")
-        features_list.append(f"object={obj}")
-        features_list.append(f"class={cl}")
-        features_list.append("wh=unmarked")
-        return features.FeatureVector(*features_list)
-    
-    # make non-pronominal slots
-    non_pronominal_slots = add_class_prefixes_to_slots([(insert_fst("á"), get_features())], include_ng=True)
-
-    # subject marking
-    subject_prefixes_slots = [
-        (insert_fst("íŋ-g-á"), get_features(sbj='1sg', cl='g')),
-        (insert_fst("á-g-á"), get_features(sbj='2sg', cl='g')),
-        (insert_fst("á-l-á"), get_features(sbj='1du.incl', cl='l')),
-        (insert_fst("á-l-á"), get_features(sbj='1pl.incl', cl='l')),
-        (insert_fst("ɲà-l-á"), get_features(sbj='1pl.excl', cl='l')),
-        (insert_fst("ɲá-l-á"), get_features(sbj='2pl', cl='l')),
-    ]
-
-    # subject with 3sg object
-    subject_suffixes_3sg_obj = [
-        (insert_fst("ɛ́"), get_features(sbj='1sg', obj='3sg')),
-        (insert_fst("á"), get_features(sbj='2sg', obj='3sg')),
-        (insert_fst("á-l"), get_features(sbj='3sg', obj='3sg')),
-        (insert_fst("á-l"), get_features(sbj='1du.incl', obj='3sg')),
-        (insert_fst("á-l"), get_features(sbj='1pl.incl', obj='3sg')),
-        (insert_fst("éɲâ"), get_features(sbj='1pl.excl', obj='3sg')),
-        (insert_fst("éɲá"), get_features(sbj='2pl', obj='3sg')),
-        (insert_fst("á-l"), get_features(sbj='3pl', obj='3sg')),
-    ]
-    subject_suffixes_3sg_obj_slots = add_class_prefixes_to_slots(subject_suffixes_3sg_obj, include_ng=True)
-
-    # subject with 3pl object
-    subject_suffixes_3pl_obj = [
-        (insert_fst("ɛ́-ĺ"), get_features(sbj='1sg', obj='3pl')),
-        (insert_fst("á-ĺ"), get_features(sbj='2sg', obj='3pl')),
-        (insert_fst("á-ŋə́-ĺ"), get_features(sbj='3sg', obj='3pl')),
-        (insert_fst("á-ló"), get_features(sbj='1du.incl', obj='3pl')),
-        (insert_fst("á-ló"), get_features(sbj='1pl.incl', obj='3pl')),
-        (insert_fst("éɲâ-ĺ"), get_features(sbj='1pl.excl', obj='3pl')),
-        (insert_fst("éɲá-ĺ"), get_features(sbj='2pl', obj='3pl')),
-        (insert_fst("á-l-ló"), get_features(sbj='3pl', obj='3pl')),
-    ]
-    subject_suffixes_3pl_obj_slots = add_class_prefixes_to_slots(subject_suffixes_3pl_obj, include_ng=True)
-
-    # object marking
-    object_suffixes = [
-        (suffix("-ŋɛ̂"), get_features(obj='1sg')),
-        (suffix("-ŋâ"), get_features(obj='2sg')),
-        (suffix("-tɛ́"), get_features(obj='1du.incl')),
-        (suffix("-tɛ́"), get_features(obj='1pl.incl')),
-        (suffix("-éɲár"), get_features(obj='1pl.excl')),
-        (suffix("-tɛ́"), get_features(obj='2pl')),
-        (suffix("-ĺ")|suffix("-ló"), get_features(obj='3pl')),
-    ]
-    object_slots = [
-        (insert_fst('á')@rule@VOWEL_COALESCENCE_RULE, features_vec)
-        for rule, features_vec in object_suffixes
-    ]
-    object_slots = add_class_prefixes_to_slots(object_slots, include_ng=True)
-
-    # joint subject+object marking
-    subject_object_slots = []
-    for sbj_rule, sbj_features_vec in subject_prefixes_slots:
-        for obj_rule, obj_features_vec in object_suffixes:
-            subject_feature = sbj_features_vec.values['subject']
-            class_feature = sbj_features_vec.values['class']
-            object_feature = obj_features_vec.values['object']
-            if subject_feature.startswith('1') and object_feature.startswith('1'):
-                # avoid duplicating 1st person markers
-                continue
-            if subject_feature.startswith('2') and object_feature.startswith('2'):
-                # avoid duplicating 2nd person markers
-                continue
-            combined_features_vec = get_features(
-                sbj=subject_feature,
-                obj=object_feature,
-                cl=class_feature
-            )
-            subject_object_slots.append((
-                sbj_rule@obj_rule@VOWEL_COALESCENCE_RULE,
-                combined_features_vec
-            ))
-    
-    slots = non_pronominal_slots\
-        + subject_prefixes_slots\
-        + subject_suffixes_3sg_obj_slots\
-        + subject_suffixes_3pl_obj_slots\
-        + object_slots\
-        + subject_object_slots
-    for rule, _ in slots:
-        rule.optimize() 
-    return slots
 
 def build_itive_perfective_aux_forms() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build perfective itive auxiliary forms with personal markers."""
+    return build_aux_forms(
+        ITIVE_PERFECTIVE_AUX_MARKERS,
+        ["tam=perfective", "deixis=itive"]
+    )
+
+
+# =============================================================================
+# Perfective Ventive Person Markers
+# =============================================================================
+
+@dataclass
+class PerfectiveVentiveMarkers:
     """
-    Returns:
-        slots: List of Tuples of (FST, FeatureVector) representing perfective itive auxiliary forms
+    Stores person marker forms for perfective ventive verb forms.
 
-    Builds perfective itive auxiliary forms with personal markers.
-    Personal markers for perfective itive verbs have the following forms:
-    Subject w/ nominal object:
-        1sg: íŋ-g-
-        2sg: á-g-
-        3sg: ŋg-
-        1du.incl: á-l-
-        1pl.incl: á-l- -ŕ
-        1pl.excl: ɲà-l-
-        2pl: ɲá-l-
-        3pl: l-
-    Subject w/ 3sg object (takes place of or includes Aux /a/):
-        1sg:  CL-ɛ̀
-        2sg:  CL-à
-        3sg:  CL-à-l
-        1du.incl:  CL-á-l
-        1pl.incl:  CL-á-l- -ŕ
-        1pl.excl:  CL-éɲâ (blocks H-tone spreading onto verb)
-        2pl:  CL-éɲá
-        3pl:  CL-á-l- (blocks H-tone spreading onto verb)
-    Subject w/ 3pl object (takes place of or includes Aux /a/):
-        1sg: l- ɛ̀- ĺ
-        2sg: l- à- ĺ
-        3sg: l- à- ŋə́- ĺ
-        1du.incl: l- á- ló
-        1pl.incl: l- á- ló -ŕ
-        1pl.excl: l- éɲâ- ĺ
-        2pl: l- éɲá- ĺ
-        3pl: l- á- l- ló
-    Object: (takes place of Aux /a/)
-        1sg: -à-ŋɛ̂-
-        2sg: -à-ŋâ-
-        3sg: CL-
-        1du.incl: -à-tɛ́-
-        1pl.incl: -à-tɛ́- -ŕ
-        1pl.excl: -éɲár-
-        2pl: -à-tɛ́-
-        3pl: CL-à-l(ó)-
+    Unlike auxiliary markers which are insertions, these markers are
+    prefixes and suffixes applied to the verb stem.
+
+    Marker formats in dictionaries:
+    - Simple string: '-íŋí' -> suffix('-íŋí')
+    - Dict with 'prefix': {'prefix': 'jɛ́-'} -> prefix('jɛ́-')
+    - Dict with 'prefix' and 'suffix': {'prefix': 'lə́-', 'suffix': '-ŕ'}
+    - Dict with 'required' and 'optional': {'required': '-ŋ', 'optional': 'ú'}
+    - Dict with 'required' list and 'optional': {'required': ['-l', '-ɔ́ŋ'], 'optional': 'ú'}
     """
-    tamd_strs = ["tam=perfective", "deixis=itive"]
-    def get_features(sbj: str='unmarked', obj: str='unmarked', cl: str='unmarked') -> List[str]:
-        features_list = [INFLECTED_AUX]
-        features_list.extend(tamd_strs)
-        features_list.append(f"subject={sbj}")
-        features_list.append(f"object={obj}")
-        features_list.append(f"class={cl}")
-        features_list.append("wh=unmarked")
-        return features.FeatureVector(*features_list)
-    
-    # make non-pronominal slots
-    non_pronominal_slots = add_class_prefixes_to_slots([(insert_fst("à"), get_features())], include_ng=True)
+    subject_prefixes: Dict[str, dict]
+    subject_3sg_obj: Dict[str, dict]
+    subject_3pl_obj: Dict[str, dict]
+    object_suffixes: Dict[str, dict]
 
-    # subject marking
-    subject_prefixes_slots = [
-        (insert_fst("íŋ-g-à"), get_features(sbj='1sg', cl='g')),
-        (insert_fst("á-g-à"), get_features(sbj='2sg', cl='g')),
-        (insert_fst("á-l-à"), get_features(sbj='1du.incl', cl='l')),
-        (insert_fst("á-l-à"), get_features(sbj='1pl.incl', cl='l')),
-        (insert_fst("ɲà-l-à"), get_features(sbj='1pl.excl', cl='l')),
-        (insert_fst("ɲá-l-à"), get_features(sbj='2pl', cl='l')),
-    ]
 
-    # subject with 3sg object
-    subject_suffixes_3sg_obj = [
-        (insert_fst("ɛ̀"), get_features(sbj='1sg', obj='3sg')),
-        (insert_fst("à"), get_features(sbj='2sg', obj='3sg')),
-        (insert_fst("à-l"), get_features(sbj='3sg', obj='3sg')),
-        (insert_fst("á-l"), get_features(sbj='1du.incl', obj='3sg')),
-        (insert_fst("á-l"), get_features(sbj='1pl.incl', obj='3sg')),
-        (insert_fst("éɲâ"), get_features(sbj='1pl.excl', obj='3sg')),
-        (insert_fst("éɲá"), get_features(sbj='2pl', obj='3sg')),
-        (insert_fst("à-l"), get_features(sbj='3pl', obj='3sg')),
-    ]
-    subject_suffixes_3sg_obj_slots = add_class_prefixes_to_slots(subject_suffixes_3sg_obj, include_ng=True)
+PERFECTIVE_VENTIVE_MARKERS = PerfectiveVentiveMarkers(
+    subject_prefixes={
+        '1sg': {'prefix': 'jɛ́-'},
+        '2sg': {'prefix': 'á-'},
+        '1du.incl': {'prefix': 'lə́-'},
+        '1pl.incl': {'prefix': 'lə́-', 'suffix': '-ŕ'},
+        '1pl.excl': {'prefix': 'ɲà-'},
+        '2pl': {'prefix': 'ɲá-'},
+    },
+    subject_3sg_obj={
+        '1sg': {'suffix': '-íŋí'},
+        '2sg': {'suffix': '-áŋá'},
+        '3sg': {'required': '-ŋ', 'optional': 'ú'},
+        '1du.incl': {'suffix': '-ɜ́llí'},
+        '1pl.incl': {'suffix': '-ɜ́llí-ŕ'},
+        '1pl.excl': {'suffix': '-áɲà'},
+        '2pl': {'suffix': '-áɲá'},
+        '3pl': {'suffix': '-ɜ́l'},
+    },
+    subject_3pl_obj={
+        '1sg': {'suffix': '-ɛ́-ló'},
+        '2sg': {'suffix': '-á-ló'},
+        '3sg': {'required': ['-l', '-ɔ́ŋ'], 'optional': 'ú'},
+        '1du.incl': {'suffix': '-ɜ́llí'},
+        '1pl.incl': {'suffix': '-ɜ́llí-ŕ'},
+        '1pl.excl': {'suffix': '-áɲâ-l'},
+        '2pl': {'suffix': '-áɲá-l'},
+        '3pl': {'suffix': '-ɜ́l-ló'},
+    },
+    object_suffixes={
+        '1sg': {'suffix': '-íŋì'},
+        '2sg': {'suffix': '-áŋà'},
+        '3sg': {'required': '-ŋ', 'optional': 'ú'},
+        '1du.incl': {'suffix': '-átɛ́'},
+        '1pl.incl': {'suffix': '-átɛ́-ŕ'},
+        '1pl.excl': {'suffix': '-éɲárɛ́'},
+        '2pl': {'suffix': '-átɛ́'},
+    },
+)
 
-    # subject with 3pl object
-    subject_suffixes_3pl_obj = [
-        (insert_fst("ɛ̀-ĺ"), get_features(sbj='1sg', obj='3pl')),
-        (insert_fst("à-ĺ"), get_features(sbj='2sg', obj='3pl')),
-        (insert_fst("à-ŋə́-ĺ"), get_features(sbj='3sg', obj='3pl')),
-        (insert_fst("á-ló"), get_features(sbj='1du.incl', obj='3pl')),
-        (insert_fst("á-ló"), get_features(sbj='1pl.incl', obj='3pl')),
-        (insert_fst("éɲâ-ĺ"), get_features(sbj='1pl.excl', obj='3pl')),
-        (insert_fst("éɲá-ĺ"), get_features(sbj='2pl', obj='3pl')),
-        (insert_fst("à-l-ló"), get_features(sbj='3pl', obj='3pl')),
-    ]
-    subject_suffixes_3pl_obj_slots = add_class_prefixes_to_slots(subject_suffixes_3pl_obj, include_ng=True)
 
-    # object marking
-    object_suffixes = [
-        (suffix("-ŋɛ̂"), get_features(obj='1sg')),
-        (suffix("-ŋâ"), get_features(obj='2sg')),
-        (suffix("-tɛ́"), get_features(obj='1du.incl')),
-        (suffix("-tɛ́"), get_features(obj='1pl.incl')),
-        (suffix("-éɲár"), get_features(obj='1pl.excl')),
-        (suffix("-tɛ́"), get_features(obj='2pl')),
-        (suffix("-ĺ")|suffix("-ló"), get_features(obj='3pl')),
-    ]
-    object_slots = [
-        (insert_fst('à')@rule@VOWEL_COALESCENCE_RULE, features_vec)
-        for rule, features_vec in object_suffixes
-    ]
-    object_slots = add_class_prefixes_to_slots(object_slots, include_ng=True)
+# =============================================================================
+# Perfective Ventive Slot-Building Helpers
+# =============================================================================
 
-    # joint subject+object marking
-    subject_object_slots = []
-    for sbj_rule, sbj_features_vec in subject_prefixes_slots:
-        for obj_rule, obj_features_vec in object_suffixes:
-            subject_feature = sbj_features_vec.values['subject']
-            class_feature = sbj_features_vec.values['class']
-            object_feature = obj_features_vec.values['object']
-            if subject_feature.startswith('1') and object_feature.startswith('1'):
-                # avoid duplicating 1st person markers
-                continue
-            if subject_feature.startswith('2') and object_feature.startswith('2'):
-                # avoid duplicating 2nd person markers
-                continue
-            combined_features_vec = get_features(
-                sbj=subject_feature,
-                obj=object_feature,
-                cl=class_feature
-            )
-            subject_object_slots.append((
-                sbj_rule@obj_rule@VOWEL_COALESCENCE_RULE,
-                combined_features_vec
-            ))
-    
-    slots = non_pronominal_slots\
-        + subject_prefixes_slots\
-        + subject_suffixes_3sg_obj_slots\
-        + subject_suffixes_3pl_obj_slots\
-        + object_slots\
-        + subject_object_slots
-    for rule, _ in slots:
-        rule.optimize() 
+def _make_marker_rule(marker: dict) -> pynini.Fst:
+    """
+    Create FST from a marker dictionary.
+
+    Handles formats:
+    - {'prefix': 'X'} -> prefix('X')
+    - {'suffix': 'X'} -> suffix('X')
+    - {'prefix': 'X', 'suffix': 'Y'} -> prefix('X') @ suffix('Y')
+    - {'required': 'X', 'optional': 'Y'} -> suffix('X') + suffix('Y').ques
+    - {'required': ['X', 'Y'], 'optional': 'Z'} -> suffix('X') @ (suffix('Y') + suffix('Z').ques)
+    """
+    if 'required' in marker:
+        required = marker['required']
+        optional = marker.get('optional')
+
+        if isinstance(required, list):
+            # Multiple required parts: chain them, last one gets optional
+            rule = suffix(required[0])
+            for i, part in enumerate(required[1:], 1):
+                if i == len(required) - 1 and optional:
+                    rule = rule @ (suffix(part) + suffix(optional).ques)
+                else:
+                    rule = rule @ suffix(part)
+            if optional and len(required) == 1:
+                rule = rule + suffix(optional).ques
+            return rule
+        else:
+            # Single required part with optional
+            if optional:
+                return suffix(required) + suffix(optional).ques
+            return suffix(required)
+
+    if 'prefix' in marker and 'suffix' in marker:
+        return prefix(marker['prefix']) @ suffix(marker['suffix'])
+    elif 'prefix' in marker:
+        return prefix(marker['prefix'])
+    elif 'suffix' in marker:
+        return suffix(marker['suffix'])
+
+    raise ValueError(f"Unknown marker format: {marker}")
+
+
+def _build_pfv_vent_non_pronominal_slots(
+    form_fst: pynini.Fst,
+    get_features
+) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build non-pronominal slots with class prefixes."""
+    return add_class_prefixes_to_slots(
+        [(form_fst, get_features())],
+        include_ng=False
+    )
+
+
+def _build_pfv_vent_subject_prefix_slots(
+    form_fst: pynini.Fst,
+    markers: PerfectiveVentiveMarkers,
+    get_features
+) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build slots for subject marking via prefixes."""
+    slots = []
+    for person, marker in markers.subject_prefixes.items():
+        rule = _make_marker_rule(marker)
+        slots.append((form_fst @ rule, get_features(sbj=person)))
     return slots
+
+
+def _build_pfv_vent_subject_3sg_obj_slots(
+    form_fst: pynini.Fst,
+    markers: PerfectiveVentiveMarkers,
+    get_features
+) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build slots for subject marking when object is 3sg."""
+    slots = []
+    for person, marker in markers.subject_3sg_obj.items():
+        rule = _make_marker_rule(marker)
+        slots.append((
+            form_fst @ rule @ VOWEL_COALESCENCE_RULE,
+            get_features(sbj=person, obj='3sg')
+        ))
+    return add_class_prefixes_to_slots(slots, include_ng=False)
+
+
+def _build_pfv_vent_subject_3pl_obj_slots(
+    form_fst: pynini.Fst,
+    markers: PerfectiveVentiveMarkers,
+    get_features
+) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build slots for subject marking when object is 3pl."""
+    suffix_slots = []
+    for person, marker in markers.subject_3pl_obj.items():
+        rule = _make_marker_rule(marker)
+        suffix_slots.append((rule, get_features(sbj=person, obj='3pl')))
+
+    slots_w_class = add_class_prefixes_to_slots(suffix_slots, include_ng=False)
+    return [
+        (form_fst @ rule @ VOWEL_COALESCENCE_RULE, fv)
+        for rule, fv in slots_w_class
+    ]
+
+
+def _build_pfv_vent_object_slots(
+    form_fst: pynini.Fst,
+    markers: PerfectiveVentiveMarkers,
+    get_features
+) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build slots for object-only marking."""
+    suffix_slots = []
+    for person, marker in markers.object_suffixes.items():
+        rule = _make_marker_rule(marker)
+        suffix_slots.append((rule, get_features(obj=person)))
+
+    slots_w_class = add_class_prefixes_to_slots(suffix_slots, include_ng=False)
+    return [
+        (form_fst @ rule @ VOWEL_COALESCENCE_RULE, fv)
+        for rule, fv in slots_w_class
+    ]
+
+
+def _build_pfv_vent_combined_sbj_obj_slots(
+    form_fst: pynini.Fst,
+    markers: PerfectiveVentiveMarkers,
+    get_features
+) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build combined subject+object slots, filtering invalid combinations."""
+    slots = []
+
+    for sbj_person, sbj_marker in markers.subject_prefixes.items():
+        sbj_rule = _make_marker_rule(sbj_marker)
+
+        for obj_person, obj_marker in markers.object_suffixes.items():
+            # Skip same-person combinations (e.g., 1sg subject + 1sg object)
+            if sbj_person[0] == obj_person[0]:
+                continue
+
+            obj_rule = _make_marker_rule(obj_marker)
+            slots.append((
+                form_fst @ sbj_rule @ obj_rule,
+                get_features(sbj=sbj_person, obj=obj_person)
+            ))
+
+    return slots
+
 
 def add_perfective_ventive_personal_markers(
     form_fst: pynini.Fst,
 ) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
     """
-    Arguments:
-        form_fst:       FST representing a perfective ventive verb form
-    Returns:
-        slots_w_markers: List of Tuples of (FST, FeatureVector) with personal and class markers added
+    Add personal and class markers to perfective ventive verb forms.
 
-    Adds personal and class markers to perfective verb forms in the given slots.
-    Subject:  
-    - 1sg: jɛ́-  
-    - 2sg: á-  
-    - 3sg: CL-  
-    - 1du.incl: lə́-  
-    - 1pl.incl: lə́- -ŕ  
-    - 1pl.excl: ɲà-  
-    - 2pl: ɲá-  
-    - 3pl: CL-  
-    Subject w/ 3sg object:  
-    - 1sg: CL-  -ɛ́ŋí  
-    - 1sg: CL-  -áŋá  
-    - 3sg: CL-  -ŋ(ú)  
-    - 1du.incl: CL-  -ɜ́llí  
-    - 1pl.incl: CL-  -ɜ́llí -ŕ  
-    - 1pl.excl: CL-  -áɲâ  
-    - 2pl: CL- -áɲá  
-    - 3pl: CL- -ɜ́l  
-    Subject w/ 3pl object:  
-    - 1sg: CL- -ɛ́-ló  
-    - 2sg: CL- -á-ló  
-    - 3sg: CL- -l -ɔ́ŋ(ú)  
-    - 1du.incl: CL- -ɜ́llí  
-    - 1pl.incl: CL- -ɜ́llí -ŕ  
-    - 1pl.excl: CL- -áɲâ-l  
-    - 2pl: CL- -áɲá-l  
-    - 3pl: CL- -ɜ́l-ló  
-    Object:
-    - 1sg: -íŋî  
-    - 2sg: -áŋà  
-    - 3sg: kə̀- -ŋú  
-    - 1du.incl: -átɛ́  
-    - 1pl.incl: -átɛ́-ŕ  
-    - 1pl.excl: -éɲárɛ́  
-    - 2pl: -átɛ́  
-    - 3pl: CL-  
+    Arguments:
+        form_fst:   FST representing a perfective ventive verb form
+
+    Returns:
+        List of (FST, FeatureVector) tuples with personal and class markers added
     """
     tamd_strs = ["tam=perfective", "deixis=ventive"]
-    def get_features(sbj: str='unmarked', obj: str='unmarked', cl: str='unmarked') -> List[str]:
-        features_list = [INFLECTED_VERB]
-        features_list.extend(tamd_strs)
-        features_list.append(f"subject={sbj}")
-        features_list.append(f"object={obj}")
-        features_list.append(f"class={cl}")
-        features_list.append("wh=unmarked")
-        return features.FeatureVector(*features_list)
+    get_features = make_feature_builder(INFLECTED_VERB, tamd_strs)
+    markers = PERFECTIVE_VENTIVE_MARKERS
 
-    non_pronominal_slots = add_class_prefixes_to_slots([(form_fst, get_features())], include_ng=False)
+    slots = (
+        _build_pfv_vent_non_pronominal_slots(form_fst, get_features) +
+        _build_pfv_vent_subject_prefix_slots(form_fst, markers, get_features) +
+        _build_pfv_vent_subject_3sg_obj_slots(form_fst, markers, get_features) +
+        _build_pfv_vent_subject_3pl_obj_slots(form_fst, markers, get_features) +
+        _build_pfv_vent_object_slots(form_fst, markers, get_features) +
+        _build_pfv_vent_combined_sbj_obj_slots(form_fst, markers, get_features)
+    )
 
-    subject_prefixes = [
-        (prefix("jɛ́-"), get_features(sbj='1sg')),
-        (prefix("á-"), get_features(sbj='2sg')),
-        (prefix("lə́-"), get_features(sbj='1du.incl')),
-        (prefix("lə́")@suffix("-ŕ"), get_features(sbj='1pl.incl')),
-        (prefix("ɲà-"), get_features(sbj='1pl.excl')),
-        (prefix("ɲá-"), get_features(sbj='2pl')),
-    ]
-    subject_prefix_slots = [(form_fst@rule, features_vec) for rule, features_vec in subject_prefixes]
-
-    # subject with 3sg object
-    subject_suffixes_3sg_obj = [
-        (suffix("-íŋí"), get_features(sbj='1sg', obj='3sg')),
-        (suffix("-áŋá"), get_features(sbj='2sg', obj='3sg')),
-        (suffix("-ŋ")+suffix('ú').ques, get_features(sbj='3sg', obj='3sg')),
-        (suffix("-ɜ́llí"), get_features(sbj='1du.incl', obj='3sg')),
-        (suffix("-ɜ́llí-ŕ"), get_features(sbj='1pl.incl', obj='3sg')),
-        (suffix("-áɲà"), get_features(sbj='1pl.excl', obj='3sg')),
-        (suffix("-áɲá"), get_features(sbj='2pl', obj='3sg')),
-        (suffix("-ɜ́l"), get_features(sbj='3pl', obj='3sg')),
-    ]
-    # object marking handled w class prefixes
-    subject_suffixes_3sg_obj_slots = [
-        (form_fst@rule@VOWEL_COALESCENCE_RULE, features_vec)
-        for rule, features_vec in subject_suffixes_3sg_obj
-    ]
-    subject_suffixes_3sg_obj_slots = add_class_prefixes_to_slots(subject_suffixes_3sg_obj_slots, include_ng=False)
-
-    # subject with 3pl object
-    subject_suffixes_3pl_obj = [
-        (suffix("-ɛ́-ló"), get_features(sbj='1sg', obj='3pl')),
-        (suffix("-á-ló"), get_features(sbj='2sg', obj='3pl')),
-        (suffix("-l")@(suffix("-ɔ́ŋ")+suffix("ú").ques), get_features(sbj='3sg', obj='3pl')),
-        (suffix("-ɜ́llí"), get_features(sbj='1du.incl', obj='3pl')),
-        (suffix("-ɜ́llí-ŕ"), get_features(sbj='1pl.incl', obj='3pl')),
-        (suffix("-áɲâ-l"), get_features(sbj='1pl.excl', obj='3pl')),
-        (suffix("-áɲá-l"), get_features(sbj='2pl', obj='3pl')),
-        (suffix("-ɜ́l-ló"), get_features(sbj='3pl', obj='3pl')),
-    ]
-    subject_suffixes_3pl_obj = add_class_prefixes_to_slots(subject_suffixes_3pl_obj, include_ng=False)
-    subject_suffixes_3pl_obj_slots = [(form_fst@rule@VOWEL_COALESCENCE_RULE, features_vec) for rule, features_vec in subject_suffixes_3pl_obj]
-
-    # object marking
-    object_suffixes = [
-        (suffix("-íŋì"), get_features(obj='1sg')),
-        (suffix("-áŋà"), get_features(obj='2sg')),
-        (suffix("-ŋ")+suffix('ú').ques, get_features(obj='3sg')),
-        (suffix("-átɛ́"), get_features(obj='1du.incl')),
-        (suffix("-átɛ́-ŕ"), get_features(obj='1pl.incl')),
-        (suffix("-éɲárɛ́"), get_features(obj='1pl.excl')),
-        (suffix("-átɛ́"), get_features(obj='2pl')),
-    ]
-    object_slots = add_class_prefixes_to_slots(object_suffixes, include_ng=False)
-    object_slots = [(form_fst@rule@VOWEL_COALESCENCE_RULE, features_vec) for rule, features_vec in object_slots]
-
-    # joint subject+object marking
-    subject_object_slots = []
-    for sbj_rule, sbj_features_vec in subject_prefixes:
-        for obj_rule, obj_features_vec in object_suffixes:
-            subject_feature = sbj_features_vec.values['subject']
-            object_feature = obj_features_vec.values['object']
-            if subject_feature[0] == object_feature[0]:
-                # avoid duplicating person markers
-                # only valid combinations are 3sg/pl+3sg/pl,
-                # which were already handled
-                continue
-            combined_features_vec = get_features(sbj=subject_feature, obj=object_feature)
-            subject_object_slots.append((form_fst@sbj_rule@obj_rule, combined_features_vec))
-
-    slots_w_markers = non_pronominal_slots\
-        + subject_prefix_slots\
-        + subject_suffixes_3sg_obj_slots\
-        + subject_suffixes_3pl_obj_slots\
-        + object_slots\
-        + subject_object_slots
-
-    for rule, _ in slots_w_markers:
+    for rule, _ in slots:
         rule.optimize()
-    
-    return slots_w_markers
 
-def add_1pl_incl_r_suffix(slots: List[Tuple[pynini.Fst, features.FeatureVector]]
-) -> List[Tuple[pynini.Fst, features.FeatureVector]]:   
-    """
-    Adds -ŕ suffix for 1pl.incl forms in the given slots.
-    """
+    return slots
+
+
+# =============================================================================
+# Additional Person Marker Helpers
+# =============================================================================
+
+def add_1pl_incl_r_suffix(
+    slots: List[Tuple[pynini.Fst, features.FeatureVector]]
+) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Add -ŕ suffix for 1pl.incl forms in the given slots."""
     for rule, features_vec in slots[:]:
-        new_rule = rule@suffix('-ŕ')
+        new_rule = rule @ suffix('-ŕ')
         for role in ['subject', 'object']:
             new_features = features_vec.values.copy()
             new_features[role] = '1pl.incl'
-            new_features_vec = features.FeatureVector(INFLECTED_VERB, *[f"{k}={v}" for k, v in new_features.items()])
+            new_features_vec = features.FeatureVector(
+                INFLECTED_VERB,
+                *[f"{k}={v}" for k, v in new_features.items()]
+            )
             slots.append((new_rule, new_features_vec))
     return slots
+
 
 def add_imperative_object_markers(
     slots: List[tuple[pynini.Fst, features.FeatureVector]]
 ) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
     """
-    TODO
-    Object:
-        3pl: -l
+    TODO: Add object markers for imperative forms.
+    Object: 3pl: -l
     """
     ...
+
 
 def add_dependent_markers(
     slots: List[Tuple[pynini.Fst, features.FeatureVector]]
 ) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
-    """
-    TODO
-    """
+    """TODO: Add dependent markers."""
     ...
-    
 
-# slots for verb paradigms
+
+# =============================================================================
+# Stem Composition
+# =============================================================================
+
+@dataclass
+class StemComposer:
+    """
+    Encapsulates stem composition logic for a given FV class.
+
+    The composer handles the common pattern of preparing a root for inflection,
+    applying a tone rule, optionally applying rounding harmony, and finalizing
+    the form with tone rules.
+    """
+    a_morphome: str
+    o_morphome: str
+    e_morphome: str
+
+    def __post_init__(self):
+        self._prepare = REMOVE_HOMOPHONE_TAG @ ADD_PLACEHOLDER_TBU
+        self._finalize = FLOAT_TONE_RULE @ COMBINE_TONES_RULE
+
+    @property
+    def is_OV(self) -> bool:
+        """True if this is an ɔ-initial vowel class (triggers rounding harmony)."""
+        return self.a_morphome == 'ɔ'
+
+    def compose(self, tone_rule: pynini.Fst) -> pynini.Fst:
+        """Compose a stem with the given tone rule."""
+        return self._prepare @ tone_rule @ self._finalize
+
+    def compose_with_harmony(self, tone_rule: pynini.Fst) -> pynini.Fst:
+        """Compose a stem with rounding harmony applied."""
+        return self._prepare @ tone_rule @ ROUNDING_HARMONY @ self._finalize
+
+    def compose_conditional_harmony(self, tone_rule: pynini.Fst, use_harmony: bool) -> pynini.Fst:
+        """Compose a stem, applying harmony only if use_harmony is True."""
+        if use_harmony:
+            return self.compose_with_harmony(tone_rule)
+        return self.compose(tone_rule)
+
+    @classmethod
+    def for_class(cls, fv_class: str) -> 'StemComposer':
+        """Create a StemComposer for a given FV class."""
+        morphomes = CLASS2FV[fv_class]
+        return cls(
+            a_morphome=morphomes["a_morphome"],
+            o_morphome=morphomes["o_morphome"],
+            e_morphome=morphomes["e_morphome"],
+        )
+
+
+# =============================================================================
+# Verb Slot Builders
+# =============================================================================
+
+def _build_imperative_slots(composer: StemComposer) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build imperative itive and ventive slots."""
+    # Itive: o-morphome suffix, all high tone
+    it_suffix = fst(f"-{composer.o_morphome}{HIGH_TONE}")
+    it_stem = composer.compose_conditional_harmony(
+        ALL_HIGH_TONE_RULE,
+        use_harmony=composer.is_OV and composer.o_morphome == 'ɔ'
+    )
+
+    # Ventive: a-morphome suffix, all low tone
+    vent_suffix = fst(f"-{composer.a_morphome}{HIGH_TONE}")
+    vent_stem = composer.compose_conditional_harmony(ALL_LOW_TONE_RULE, use_harmony=composer.is_OV)
+
+    return [
+        (paradigms.suffix(it_suffix, it_stem), IMP_IT),
+        (paradigms.suffix(vent_suffix, vent_stem), IMP_VENT),
+    ]
+
+
+def _build_imperfective_slots(composer: StemComposer) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build imperfective itive and ventive slots."""
+    # Itive: a-morphome suffix with low tone, HL* tone pattern
+    it_suffix = fst(f"-{composer.a_morphome}{LOW_TONE}")
+    it_stem = composer.compose_conditional_harmony(HLSTAR_RULE, use_harmony=composer.is_OV)
+
+    # Ventive: o-morphome suffix with high tone, all low tone
+    vent_suffix = fst(f"-{composer.o_morphome}{HIGH_TONE}")
+    vent_stem = composer.compose_conditional_harmony(
+        ALL_LOW_TONE_RULE,
+        use_harmony=composer.is_OV and composer.o_morphome == 'ɔ'
+    )
+
+    slots = [
+        (paradigms.suffix(it_suffix, it_stem), IPFV_IT),
+        (paradigms.suffix(vent_suffix, vent_stem), IPFV_VENT),
+    ]
+    return add_1pl_incl_r_suffix(slots)
+
+
+def _build_perfective_slots(composer: StemComposer) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build perfective itive and ventive slots."""
+    # Itive: e-morphome suffix with low tone, HL* tone pattern
+    it_suffix = fst(f"-{composer.e_morphome}{LOW_TONE}")
+    it_stem = composer.compose(HLSTAR_RULE)
+    it_slots = [(paradigms.suffix(it_suffix, it_stem), PFV_IT)]
+    it_slots = add_1pl_incl_r_suffix(it_slots)
+
+    # Ventive: o-morphome suffix (same as imperfective ventive), all low tone
+    vent_suffix = fst(f"-{composer.o_morphome}{HIGH_TONE}")
+    vent_stem = composer.compose_conditional_harmony(
+        ALL_LOW_TONE_RULE,
+        use_harmony=composer.is_OV and composer.o_morphome == 'ɔ'
+    )
+    vent_form = paradigms.suffix(vent_suffix, vent_stem)
+    vent_slots = add_perfective_ventive_personal_markers(vent_form)
+    vent_slots = add_wh_suffixes_to_slots(vent_slots)
+
+    return [*vent_slots, *it_slots]
+
+
+def _build_infinitive_slots(composer: StemComposer) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build infinitive slot with ð-class prefix."""
+    inf_class = 'ð'
+    suffix_fst = fst(f"-{composer.a_morphome}{HIGH_TONE}")
+    tone_rule = add_class_prefix(ALL_HIGH_TONE_RULE, inf_class, prefix_tone=HIGH_TONE)
+    stem = composer.compose_conditional_harmony(tone_rule, use_harmony=composer.is_OV)
+    return [(paradigms.suffix(suffix_fst, stem), INFINITIVE)]
+
+
+def _build_dependent_slots(composer: StemComposer) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """Build dependent itive and ventive slots."""
+    # Itive: e-morphome suffix, all low tone
+    it_suffix = fst(f"-{composer.e_morphome}{LOW_TONE}")
+    it_stem = composer.compose(ALL_LOW_TONE_RULE)
+
+    # Ventive: a-morphome suffix, all low tone (with harmony if OV class)
+    vent_suffix = fst(f"-{composer.a_morphome}{LOW_TONE}")
+    vent_stem = composer.compose_conditional_harmony(ALL_LOW_TONE_RULE, use_harmony=composer.is_OV)
+
+    slots = [
+        (paradigms.suffix(it_suffix, it_stem), DEP_IT),
+        (paradigms.suffix(vent_suffix, vent_stem), DEP_VENT),
+    ]
+    return add_class_prefixes_to_slots(slots)
+
 
 @output_cache(__file__)
-def make_verb_slots(
-    fv_class: str,
-) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
-    root_slot = (STEM, VERB_ROOT)
+def make_verb_slots(fv_class: str) -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+    """
+    Create verb paradigm slots for a given FV class.
 
-    a_morphome = CLASS2FV[fv_class]["a_morphome"]
-    o_morphome = CLASS2FV[fv_class]["o_morphome"]
-    e_morphome = CLASS2FV[fv_class]["e_morphome"]
+    Arguments:
+        fv_class:   The FV class (e.g., 'aɔ', 'ao', 'au', etc.)
 
-    is_OV = a_morphome == 'ɔ'
-    
-    prepare_root_for_inflection = REMOVE_HOMOPHONE_TAG@ADD_PLACEHOLDER_TBU
-    finalize_form = FLOAT_TONE_RULE@COMBINE_TONES_RULE
+    Returns:
+        List of (FST, FeatureVector) tuples for all verb forms
+    """
+    composer = StemComposer.for_class(fv_class)
 
-    compose_stem = lambda stem_rule: prepare_root_for_inflection@stem_rule@finalize_form
-    compose_stem_harmony = lambda stem_rule: prepare_root_for_inflection\
-        @stem_rule\
-        @ROUNDING_HARMONY\
-        @finalize_form
-
-    ####################
-    # Imperative forms #
-    ####################
-
-    imp_it_suffix, imp_it_stem, imp_vent_suffix, imp_vent_stem =\
-        generate_imperative_forms(
-            a_morphome, o_morphome, is_OV, compose_stem, compose_stem_harmony
-        )
-    
-    imp_slots = [
-        (paradigms.suffix(imp_it_suffix, imp_it_stem), IMP_IT),
-        (paradigms.suffix(imp_vent_suffix, imp_vent_stem), IMP_VENT),
+    slots = [
+        (STEM, VERB_ROOT),
+        *_build_imperative_slots(composer),
+        *_build_imperfective_slots(composer),
+        *_build_perfective_slots(composer),
+        *_build_infinitive_slots(composer),
+        *_build_dependent_slots(composer),
     ]
 
-    ######################
-    # Imperfective forms #
-    ######################
-
-    # no class or personal markers for imperfective forms
-
-    ipfv_it_suffix, ipfv_it_stem, ipfv_vent_suffix, ipfv_vent_stem =\
-        generate_ipfv_forms(
-            a_morphome, o_morphome, is_OV, compose_stem, compose_stem_harmony
-        )
-    ipfv_slots = [
-        (paradigms.suffix(ipfv_it_suffix, ipfv_it_stem), IPFV_IT),
-        (paradigms.suffix(ipfv_vent_suffix, ipfv_vent_stem), IPFV_VENT),
-    ]
-    ipfv_slots = add_1pl_incl_r_suffix(ipfv_slots)
-
-    ####################
-    # Perfective forms #
-    ####################
-
-    # perfective ventive has class and personal markers
-    # perfective itive does not
-
-    pfv_it_suffix, pfv_it_stem, pfv_vent_suffix, pfv_vent_stem =\
-        generate_pfv_forms(
-            o_morphome, e_morphome, is_OV, compose_stem, compose_stem_harmony, ipfv_vent_suffix
-        )
-
-    pfv_it_slots=[(paradigms.suffix(pfv_it_suffix, pfv_it_stem), PFV_IT)]
-    pfv_it_slots = add_1pl_incl_r_suffix(pfv_it_slots)
-    pfv_vent_form = paradigms.suffix(pfv_vent_suffix, pfv_vent_stem)
-
-    pfv_vent_slots = add_perfective_ventive_personal_markers(pfv_vent_form)
-    pfv_vent_slots = add_wh_suffixes_to_slots(pfv_vent_slots)
-    pfv_slots = [*pfv_vent_slots, *pfv_it_slots]
-
-    ##############
-    # Infinitive #
-    ##############
-
-    # only one form, no deixis, class or personal markers
-
-    inf_suffix, inf_stem = generate_inf_forms(
-        a_morphome, is_OV, compose_stem, compose_stem_harmony
-    )
-    inf_slot = [(paradigms.suffix(inf_suffix, inf_stem), INFINITIVE)]
-
-    ###################
-    # Dependent forms #
-    ###################
-
-    # dependent forms have specific personal markers
-    # TODO: replace class prefixes with personal markers
-
-    dep_it_suffix, dep_it_stem, dep_vent_suffix, dep_vent_stem = generate_dependent_forms(
-        a_morphome, e_morphome, is_OV, compose_stem, compose_stem_harmony
-    )
-
-    dep_slots = [
-        (paradigms.suffix(dep_it_suffix, dep_it_stem), DEP_IT),
-        (paradigms.suffix(dep_vent_suffix, dep_vent_stem), DEP_VENT),
-    ]
-    dep_slots = add_class_prefixes_to_slots(dep_slots)
-
-    slots = [root_slot, *imp_slots, *ipfv_slots, *pfv_slots, *inf_slot, *dep_slots]
     for rule, _ in slots:
         rule.optimize()
+
     return slots
 
-def generate_dependent_forms(a_morphome, e_morphome, is_OV, compose_stem, compose_stem_harmony):
-    dep_it_suffix = fst(f"-{e_morphome}{LOW_TONE}")
-    dep_it_stem = compose_stem(ALL_LOW_TONE_RULE)
 
-    dep_vent_suffix = fst(f"-{a_morphome}{LOW_TONE}")
-    if is_OV:
-        dep_vent_stem = compose_stem_harmony(ALL_LOW_TONE_RULE)
-    else:
-        dep_vent_stem = dep_it_stem
-    return dep_it_suffix,dep_it_stem,dep_vent_suffix,dep_vent_stem
-
-def generate_inf_forms(a_morphome, is_OV, compose_stem, compose_stem_harmony):
-    inf_suffix = fst(f"-{a_morphome}{HIGH_TONE}")
-    inf_class = 'ð'
-    if is_OV:
-        inf_stem = compose_stem_harmony(add_class_prefix(
-            ALL_HIGH_TONE_RULE,
-            inf_class,
-            prefix_tone=HIGH_TONE,
-        ))
-    else:
-        inf_stem = compose_stem(add_class_prefix(
-            ALL_HIGH_TONE_RULE,
-            inf_class,
-            prefix_tone=HIGH_TONE,
-        ))
-        
-    return inf_suffix,inf_stem
-
-def generate_pfv_forms(o_morphome, e_morphome, is_OV, compose_stem, compose_stem_harmony, ipfv_vent_suffix):
-    pfv_it_suffix = fst(f"-{e_morphome}{LOW_TONE}")
-    pfv_it_stem = compose_stem(HLSTAR_RULE)
-
-    pfv_vent_suffix = ipfv_vent_suffix
-    if is_OV and o_morphome == 'ɔ':
-        pfv_vent_stem = compose_stem_harmony(ALL_LOW_TONE_RULE)
-    else:
-        pfv_vent_stem = compose_stem(ALL_LOW_TONE_RULE)
-    return pfv_it_suffix,pfv_it_stem,pfv_vent_suffix,pfv_vent_stem
-
-def generate_ipfv_forms(a_morphome, o_morphome, is_OV, compose_stem, compose_stem_harmony):
-    ipfv_it_suffix=fst(f"-{a_morphome}{LOW_TONE}")
-    if is_OV:
-        ipfv_it_stem = compose_stem_harmony(HLSTAR_RULE)
-    else:
-        ipfv_it_stem = compose_stem(HLSTAR_RULE)
-
-    ipfv_vent_suffix=fst(f"-{o_morphome}{HIGH_TONE}")
-    if is_OV and o_morphome == 'ɔ':
-        ipfv_vent_stem = compose_stem_harmony(ALL_LOW_TONE_RULE)
-    else:
-        ipfv_vent_stem = compose_stem(ALL_LOW_TONE_RULE)
-    return ipfv_it_suffix,ipfv_it_stem,ipfv_vent_suffix,ipfv_vent_stem
-
-def generate_imperative_forms(a_morphome, o_morphome, is_OV, compose_stem, compose_stem_harmony):
-    imp_it_suffix=fst(f"-{o_morphome}{HIGH_TONE}")
-    if is_OV and o_morphome == 'ɔ':
-        imp_it_stem=compose_stem_harmony(ALL_HIGH_TONE_RULE)
-    else:
-        imp_it_stem=compose_stem(ALL_HIGH_TONE_RULE)
-
-    imp_vent_suffix=fst(f"-{a_morphome}{HIGH_TONE}")
-    if is_OV:
-        imp_vent_stem=compose_stem_harmony(ALL_LOW_TONE_RULE)
-    else:
-        imp_vent_stem=compose_stem(ALL_LOW_TONE_RULE)
-    return imp_it_suffix,imp_it_stem,imp_vent_suffix,imp_vent_stem
+# =============================================================================
+# Paradigm Builders
+# =============================================================================
 
 @output_cache(__file__)
 def get_verb_stem_paradigm(
-        fv_class: str,
-        stems: Union[str, pynini.Fst, None]=None,
-        paradigm_name: Optional[str]=None,
+    fv_class: str,
+    stems: Union[str, pynini.Fst, None] = None,
+    paradigm_name: Optional[str] = None,
 ) -> paradigms.Paradigm:
+    """
+    Get a verb paradigm for stems without auxiliary.
+
+    Arguments:
+        fv_class:       The FV class (e.g., 'aɔ')
+        stems:          Optional stems to use (defaults to lexicon roots)
+        paradigm_name:  Optional paradigm name
+
+    Returns:
+        A Paradigm object for the given FV class
+    """
     slots = make_verb_slots(fv_class)
+
     if type(stems) is str:
         stems = [stems]
-    
+
     if type(stems) is list:
         stems = [fst(stem) for stem in stems]
     elif stems is None:
@@ -736,7 +828,7 @@ def get_verb_stem_paradigm(
             {"fv": fv_class, "part_of_speech": 'verb', 'aux': 'unmarked'}
         )
 
-    fv_paradigm = paradigms.Paradigm(
+    return paradigms.Paradigm(
         category=INFLECTED_VERB,
         name=paradigm_name,
         slots=slots,
@@ -745,25 +837,24 @@ def get_verb_stem_paradigm(
         boundary=BOUNDARY,
     )
 
-    return fv_paradigm
 
 @output_cache(__file__)
-def get_aux_paradigm() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
+def get_aux_paradigm() -> paradigms.Paradigm:
+    """Get the auxiliary paradigm."""
     aux_slots = []
     aux_slots.extend(build_itive_perfective_aux_forms())
     aux_slots.extend(build_imperfective_aux_forms())
     aux_slots = add_wh_suffixes_to_slots(aux_slots)
 
-    # arbitarily set lemma to IPFV_AUX w/ g class
+    # Set lemma to IPFV_AUX with g class
     lemma_features = IPFV_AUX.values.copy()
     lemma_features['class'] = 'g'
     lemma_feature_strs = [f"{feature}={value}" for feature, value in lemma_features.items()]
     aux_lemma = features.FeatureVector(INFLECTED_AUX, *lemma_feature_strs)
 
-    paradigm_name = stringify_lexeme_features(
-        {"part_of_speech": 'aux'}
-    )
-    aux_paradigm = paradigms.Paradigm(
+    paradigm_name = stringify_lexeme_features({"part_of_speech": 'aux'})
+
+    return paradigms.Paradigm(
         category=INFLECTED_AUX,
         name=paradigm_name,
         slots=aux_slots,
@@ -771,67 +862,115 @@ def get_aux_paradigm() -> List[Tuple[pynini.Fst, features.FeatureVector]]:
         stems=[fst("")],
         boundary=BOUNDARY,
     )
-    return aux_paradigm
+
+
+# =============================================================================
+# Verb+Aux Paradigm Helpers
+# =============================================================================
+
+def _allows_h_spread(feature_values: dict) -> bool:
+    """Check if H-tone spreading applies based on pronouns."""
+    return (
+        (feature_values['object'] in ['1du.incl', '1pl.incl', '1pl.excl', '2pl']) or
+        (
+            feature_values['subject'] in ['1du.incl', '1pl.incl', '2pl'] and
+            feature_values['object'].startswith('3')
+        )
+    )
+
+
+def _find_verb_slot(verb_paradigm, features_to_match: dict):
+    """Find the verb slot matching given features."""
+    matching_slots = [
+        slot for slot in verb_paradigm.slots
+        if slot[1].values == features_to_match
+    ]
+    assert len(matching_slots) == 1, f"Could not find verb slot for aux features {features_to_match}"
+    return matching_slots[0]
+
+
+def _compose_aux_verb_rule(aux_rule, verb_rule, deixis: str, ventive_allows_hspread: bool) -> pynini.Fst:
+    """Compose aux and verb FSTs with appropriate phonological rules."""
+    combined_rule = aux_rule + insert_fst(WORD_BOUNDARY_STR) + verb_rule
+    combined_rule = combined_rule @ FALL_BLOCKS_H_RULE @ VOWEL_COALESCENCE_RULE
+
+    if deixis == 'itive' or ventive_allows_hspread:
+        combined_rule = combined_rule @ H_SPREAD_RULE
+
+    combined_rule.optimize()
+    return combined_rule
+
 
 @output_cache(__file__)
 def get_verb_paradigm_w_aux(
-        verb_paradigm: Union[str, paradigms.Paradigm],
-        **paradigm_kwargs,
+    verb_paradigm: Union[str, paradigms.Paradigm],
+    **paradigm_kwargs,
 ) -> paradigms.Paradigm:
+    """
+    Get a verb paradigm with auxiliary forms.
+
+    Arguments:
+        verb_paradigm:  FV class string or existing Paradigm
+        **paradigm_kwargs:  Additional kwargs for get_verb_stem_paradigm
+
+    Returns:
+        A Paradigm object combining verb stems with auxiliary
+    """
     aux_paradigm = get_aux_paradigm()
-    verb_w_aux_slots = []
+
     if type(verb_paradigm) is str:
         verb_paradigm = get_verb_stem_paradigm(verb_paradigm, **paradigm_kwargs)
+
+    verb_w_aux_slots = []
+
     for aux_rule, feature_vector in aux_paradigm.slots:
         new_feature_values = feature_vector.values.copy()
-        # ignore forms where aux has wh=marked
+
+        # Skip forms where aux has wh=marked
         if new_feature_values['wh'] != 'unmarked':
             continue
 
-        # certain pronouns can trigger H-tone spreading from aux to ventive verbs
-        ventive_allows_hspread = (
-            (new_feature_values['object'] in ['1du.incl', '1pl.incl', '1pl.excl', '2pl']) or
-            (
-                new_feature_values['subject'] in ['1du.incl', '1pl.incl', '2pl'] and
-                new_feature_values['object'].startswith('3')
-            )
-        )
+        ventive_allows_hspread = _allows_h_spread(new_feature_values)
+
+        # Handle unmarked deixis by expanding to all values
         deixis_values = [new_feature_values['deixis']]
         if deixis_values[0] == 'unmarked':
             deixis_values = DEIXIS_VALUES
+
         for deixis in deixis_values:
-            new_feature_values['deixis']=deixis
+            new_feature_values['deixis'] = deixis
             new_feature_vector = features.FeatureVector(
                 INFLECTED_VERB,
-                *(f"{k}={v}" for k,v in new_feature_values.items())
+                *(f"{k}={v}" for k, v in new_feature_values.items())
             )
+
+            # Find matching verb slot
             features_to_match = new_feature_values.copy()
 
-            # set unmarked for subject, object, class to find verb slot
-            # except for 1pl.incl, as this is marked on the verb with -ŕ
-            # ignore for d-stems, which do not have suffixes
+            # Set unmarked for subject, object, class to find verb slot
+            # except for 1pl.incl, as this is marked on the verb with -ŕ
             if features_to_match['subject'] != '1pl.incl':
-                features_to_match['subject']='unmarked'
+                features_to_match['subject'] = 'unmarked'
             if features_to_match['object'] != '1pl.incl':
-                features_to_match['object']='unmarked'
-            features_to_match['class']= 'unmarked'
-            verb_slot = [slot for slot in verb_paradigm.slots if slot[1].values == features_to_match]
-            assert len(verb_slot) == 1, f"Could not find verb slot for aux features {features_to_match}"
-            verb_rule, _ = verb_slot[0]
-            combined_rule = aux_rule+insert_fst(WORD_BOUNDARY_STR)+verb_rule
-            combined_rule = combined_rule@FALL_BLOCKS_H_RULE@VOWEL_COALESCENCE_RULE
-            if deixis == 'itive' or ventive_allows_hspread:
-                combined_rule = combined_rule@H_SPREAD_RULE
-            combined_rule.optimize()
+                features_to_match['object'] = 'unmarked'
+            features_to_match['class'] = 'unmarked'
+
+            verb_rule, _ = _find_verb_slot(verb_paradigm, features_to_match)
+            combined_rule = _compose_aux_verb_rule(
+                aux_rule, verb_rule, deixis, ventive_allows_hspread
+            )
             verb_w_aux_slots.append((combined_rule, new_feature_vector))
 
+    # Add lemma slot
     lemma_slot = (SIGMASTAR, VERB_ROOT)
     verb_w_aux_slots.append(lemma_slot)
 
+    # Build paradigm
     lexical_flags = vectorize_lexeme_string(verb_paradigm.name).values
-    lexical_flags['aux']= 'true'
+    lexical_flags['aux'] = 'true'
     paradigm_name = stringify_lexeme_features(lexical_flags)
-    verb_w_aux_paradigm = paradigms.Paradigm(
+
+    return paradigms.Paradigm(
         category=INFLECTED_VERB,
         name=paradigm_name,
         slots=verb_w_aux_slots,
@@ -839,23 +978,29 @@ def get_verb_paradigm_w_aux(
         stems=verb_paradigm.stems,
         boundary=BOUNDARY,
     )
-    return verb_w_aux_paradigm
+
+
+# =============================================================================
+# Inflection Utilities
+# =============================================================================
 
 def inflect_verb_with_features(
-        root: str,
-        paradigm: Union[paradigms.Paradigm, str],
-        feature_dict: Dict[str, str],
-        expected_verb_type: Literal['stem', 'stem_and_aux', 'all']='all',
-    ) -> List[str]:
+    root: str,
+    paradigm: Union[paradigms.Paradigm, str],
+    feature_dict: Dict[str, str],
+    expected_verb_type: Literal['stem', 'stem_and_aux', 'all'] = 'all',
+) -> List[str]:
     """
+    Inflect a verb root with given features.
+
     Arguments:
-        root:           str indicating verb root to inflect
-        paradigm:       Paradigm object or str of FV class shorthand e.g. 'aɔ'
-        features:       dict mapping feature labels to values
-        expected_verb_type: Literal['stem', 'stem_and_aux', 'all']='all',
-                        (if paradigm is `Paradigm` object, this is ignored)
+        root:               Verb root string to inflect
+        paradigm:           Paradigm object or FV class shorthand (e.g., 'aɔ')
+        feature_dict:       Dict mapping feature labels to values
+        expected_verb_type: Which paradigm(s) to use
+
     Returns:
-        form:       list of strs of root verb inflected with given features
+        List of inflected form strings
     """
     if type(paradigm) is paradigms.Paradigm:
         pass
@@ -876,36 +1021,40 @@ def inflect_verb_with_features(
             feature_dict,
             expected_verb_type='stem_and_aux'
         )
-        forms = [*forms_stem, *forms_aux]
-        return forms
+        return [*forms_stem, *forms_aux]
+
     forms = []
     expected_keys = [feature.name for feature in INFLECTED_VERB.features]
-    features_filtered = {k:v for k,v in feature_dict.items() if k in expected_keys}
+    features_filtered = {k: v for k, v in feature_dict.items() if k in expected_keys}
     slot_for_features = [slot for slot in paradigm.slots if slot[1].values == features_filtered]
+
     for slot in slot_for_features:
         rule, _ = slot
-        form = get_lattice_strs(fst(root)@rule)
+        form = get_lattice_strs(fst(root) @ rule)
         forms.extend(form)
 
     return forms
 
-def inflect_aux_with_features(
-        feature_dict: Dict[str, str]
-    ) -> List[str]:
+
+def inflect_aux_with_features(feature_dict: Dict[str, str]) -> List[str]:
     """
+    Inflect the auxiliary with given features.
+
     Arguments:
-        feature_dict:   dict mapping feature labels to values
+        feature_dict:   Dict mapping feature labels to values
+
     Returns:
-        form:       list of strs of auxiliary inflected with given features
+        List of inflected auxiliary form strings
     """
     forms = []
     aux_paradigm = get_aux_paradigm()
     expected_keys = [feature.name for feature in INFLECTED_AUX.features]
-    features_filtered = {k:v for k,v in feature_dict.items() if k in expected_keys}
+    features_filtered = {k: v for k, v in feature_dict.items() if k in expected_keys}
     slot_for_features = [slot for slot in aux_paradigm.slots if slot[1].values == features_filtered]
+
     for slot in slot_for_features:
         rule, _ = slot
-        form = decode_fst_string(fst("")@rule)
+        form = decode_fst_string(fst("") @ rule)
         forms.append(form)
 
     return forms
