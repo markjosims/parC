@@ -260,7 +260,6 @@ def get_main_parser() -> Tuple[pynini.Fst, pynini.Fst, pynini.Fst]:
 
     lemmatizers = []
     analyzers = []
-    inflectors = []
 
     print("Adding lexical flags to paradigms...")
     for paradigm in all_paradigms:
@@ -269,7 +268,6 @@ def get_main_parser() -> Tuple[pynini.Fst, pynini.Fst, pynini.Fst]:
         input_lexical_flags = pynutil.delete(lexical_flag_vector.acceptor)
         lemmatizers.append(paradigm.lemmatizer+output_lexical_flags)
         analyzers.append(paradigm.analyzer+output_lexical_flags)
-        inflectors.append(paradigm.inflector+input_lexical_flags)
 
     print("Adding uninflected words...")
     # uninflected words have a single FST rather than a Paradigm object
@@ -281,20 +279,20 @@ def get_main_parser() -> Tuple[pynini.Fst, pynini.Fst, pynini.Fst]:
     print("Combining FSTs into global lemmatizer, analyzer, and inflector...")
     main_lemmatizer = pynini.union(*lemmatizers)
     main_analyzer = pynini.union(*analyzers)
-    main_inflector = pynini.union(*inflectors)
     main_lemmatizer.optimize()
     main_analyzer.optimize()
-    main_inflector.optimize()
 
     print("Appending EOS to input side...")
     main_lemmatizer = append_eos_to_input(main_lemmatizer, optional=True)
     main_analyzer = append_eos_to_input(main_analyzer, optional=True)
-    main_inflector = append_eos_to_input(main_inflector, optional=True)
 
     print("Adding tone processes...")
     main_lemmatizer = add_all_tone_processes_to_parser(main_lemmatizer)
     main_analyzer = add_all_tone_processes_to_parser(main_analyzer)
-    main_inflector = add_tone_processes_to_inflector(main_inflector)
+
+    print("Building main inflector...")
+    main_inflector = pynini.invert(main_lemmatizer)
+    main_inflector.optimize()
 
     return main_lemmatizer, main_analyzer, main_inflector
 
