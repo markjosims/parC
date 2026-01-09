@@ -211,10 +211,18 @@ def get_all_lexical_data() -> pd.DataFrame:
         csv_stem = os.path.splitext(csv_stem)[0]
         
         # verbs are a special case, since extended forms are built dynamically
-        if csv_path == 'verb':
-            df_list.append(get_all_verb_data())
+        if csv_stem == 'verb':
+            df = get_all_verb_data()
         else:
-            df_list.append(pd.read_csv(csv_path, keep_default_na=False))
+            df = pd.read_csv(csv_path, keep_default_na=False)
+
+        # add part_of_speech column if not already present
+        # either filename indicates part of speech, or (for data files
+        # with multiple parts of speech) the column is already present
+        if 'part_of_speech' not in df.columns:
+            df['part_of_speech'] = csv_stem
+
+        df_list.append(df)
 
     all_lexical_df = pd.concat(
         df_list,
