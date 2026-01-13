@@ -58,7 +58,7 @@ def get_adnominal_paradigm(part_of_speech: str) -> paradigms.Paradigm:
     root_slot = (SIGMASTAR, root_vector)
 
     slots = [root_slot]
-    slots += add_class_symbol_replacers_to_slot(inflected_slot)
+    slots += add_class_symbol_replacers_to_slot([inflected_slot])
     adnominal_paradigm = paradigms.Paradigm(
         category=category,
         slots=slots,
