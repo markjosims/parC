@@ -12,6 +12,7 @@ from src.constants import (
     TEST_CASE_DIR,
     AUX_LEMMA_STR,
     INFLECTED_POS,
+    POS_GROUPS,
 )
 from src.lexicon.extension_suffixes import get_derived_stem_and_fv, ALL_POSSIBLE_EXTENSION_SEQS
 from src.fst_helpers import fst
@@ -23,21 +24,27 @@ from glob import glob
 ## Data loading functions
 """
 
+@output_cache(LEXICON_DIR)
 def load_lexical_data(
-        part_of_speech: Literal[
-            'verb', 'nominal', 'adjective', 'adnominal', 'uninflected'
-        ],
+        part_of_speech: str,
 ) -> pd.DataFrame:
     """
     Loads lexical data from a CSV file based on the specified part of speech.
 
     Args:
         part_of_speech: The part of speech to load data for.
-                        One of 'verb', 'nominal', 'adjective',
-                        'adnominal', or 'uninflected'.
+                        For the two 'macro' parts of speech ('nominal' and 'adnominal'),
+                        either the macro name (corresponding to the csv filestem) or
+                        one of the included parts of speech may be used.
     Returns:
         A pandas DataFrame containing the lexical data for the specified part of speech.
     """
+    for pos_group_name, pos_for_group in POS_GROUPS.items():
+        if part_of_speech in pos_for_group:
+            csv_path = os.path.join(LEXICON_DIR, f"{pos_group_name}.csv")
+            df = pd.read_csv(csv_path, keep_default_na=False)
+            pos_mask = df['part_of_speech']==part_of_speech
+            return df[pos_mask]
     csv_path = os.path.join(LEXICON_DIR, f"{part_of_speech}.csv")
     lexical_df = pd.read_csv(csv_path, keep_default_na=False)
     return lexical_df
@@ -192,6 +199,7 @@ def get_verb_root_w_hyphen(root_no_hyphen: str, fv: Optional[str]=None) -> List[
 ## Global lexicon functions
 """
 
+@output_cache(LEXICON_DIR)
 def get_all_lexical_data() -> pd.DataFrame:
     """
     Combines all lexical data from verbs, nouns, adjectives,

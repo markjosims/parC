@@ -381,6 +381,18 @@ NOUN_FEATURE_ABBREVIATION_TO_VECTOR = {
 NOUN_FEATURE_ABBREVIATIONS = list(NOUN_FEATURE_ABBREVIATION_TO_VECTOR.keys())
 
 """
+## Wh Pronoun
+Wh pronouns in Tira are marked for case and number like regular nouns, e.g.
+ɔ́ɟɔ́ (who-NOM.SG) ɔ́ɟɔ́-ŋá (who-ACC.SG).
+"""
+
+WH_PRONOUN = features.Category(
+    NOUN_CASE,
+    NOUN_NUMBER,
+)
+WH_PRONOUN_ROOT = features.FeatureVector(WH_PRONOUN, "case=unmarked", "number=unmarked")
+
+"""
 ## Inalienable noun
 While possession in Tira is typically conveyed with a possessive pronoun
 (see Pronouns below), a subset of nouns in Tira are *inalienably possessed*.
@@ -453,12 +465,31 @@ ADJECTIVE_ROOT = features.FeatureVector(ADJECTIVE, "class=unmarked")
 """
 ## Demonstrative
 Demonstratives, like adjectives, are marked with a class prefix agreeing with the noun they modify. There are
-two demonstrative pronouns in Tira, the proximal demonstrative -âj (equivalent to 'this' in English) and the
-distal demonstrative -ɛ́ (equivalent to 'that' in English).
+three demonstrative pronouns in Tira, the proximal demonstrative CL-ɛ́ (equivalent to 'this' in English) and the
+distal demonstrative CL-âj (equivalent to 'that' in English), and locative distal demonstrative CL-ɔ̂n (equivalent
+to 'that/there' in English).
 """
 
 DEMONSTRATIVE = features.Category(ADNOMINAL_CLASS)
 DEMONSTRATIVE_ROOT = features.FeatureVector(DEMONSTRATIVE, "class=unmarked")
+
+"""
+## Possessive pronoun
+Possessive pronouns in Tira agree in class with the noun they modify and are marked for person and number
+of the possessor.
+"""
+
+POSSESSIVE_PRONOUN = features.Category(ADNOMINAL_CLASS, POSSESSOR_PERSON)
+POSSESSIVE_PRONOUN_ROOT = features.FeatureVector(POSSESSIVE_PRONOUN, "class=unmarked")
+
+"""
+## Possessive marker
+The possessive marker CL-ɛ̀ agrees in class with the possessum (item possessed), and as such shares the
+same feature as other adnominal categories.
+"""
+
+POSSESSIVE_MARKER = features.Category(ADNOMINAL_CLASS)
+POSSESSIVE_MARKER_ROOT = features.FeatureVector(POSSESSIVE_MARKER, "class=unmarked")
 
 """
 ## Lexical features
@@ -514,17 +545,30 @@ See `src/lexicon/phonology.py` for more information.
 
 POS2CATEGORY = {
     'noun': NOUN,
+    'wh_pronoun': WH_PRONOUN,
     'inalienable_noun': INALIENABLE_NOUN,
+    'adjective': ADJECTIVE,
     'demonstrative': DEMONSTRATIVE,
+    'possessive_pronoun': POSSESSIVE_PRONOUN,
+    'possessive_marker': POSSESSIVE_MARKER,
     'verb': INFLECTED_VERB,
     'aux': INFLECTED_AUX,
-    'adjective': ADJECTIVE,
     'adverb': None,
     'postposition': None,
     'adposition': None,
     'conjunction': None,
     'particle': None,
     'interjection': None,
+}
+
+POS2ROOT_VECTOR = {
+    'noun': NOUN_ROOT,
+    'wh_pronoun': WH_PRONOUN_ROOT,
+    'inalienable_noun': INALIENABLE_NOUN_ROOT,
+    'adjective': ADJECTIVE_ROOT,
+    'demonstrative': DEMONSTRATIVE_ROOT,
+    'possessive_pronoun': POSSESSIVE_PRONOUN_ROOT,
+    'possessive_marker': POSSESSIVE_MARKER_ROOT,
 }
 
 INFLECTED_POS = [
@@ -584,4 +628,15 @@ FEATURE2ABBREVIATION = {
     'progressive': 'PROG',
     'itive': 'IT',
     'ventive': 'VENT',
+}
+
+"""
+Certain parts of speech with similar inflectional behaviors are grouped
+in lexical data loading functions. Here I define a mapping from group names
+to lists of parts of speech.
+"""
+
+POS_GROUPS = {
+    'nominal': ['noun', 'wh_pronoun'],
+    'adnominal': ['demonstrative', 'possessive_pronoun', 'possessive_marker'],
 }
