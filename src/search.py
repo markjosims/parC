@@ -2,7 +2,7 @@ import pynini
 from pynini.lib import pynutil
 
 from typing import *
-from src.cache_decorators import fst_cache, output_cache
+from src.decorators import fst_cache, output_cache
 from src.fst_helpers import *
 from src.constants import (
     INSERT, DELETE, SUBSTITUTE,

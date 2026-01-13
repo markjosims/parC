@@ -12,7 +12,7 @@ TODO: Support inalienably possessed nouns.
 import pandas as pd
 import pynini
 from pynini.lib import features, paradigms, rewrite, pynutil
-from src.cache_decorators import output_cache
+from src.decorators import output_cache
 from src.lexicon.phonology import *
 from src.fst_helpers import *
 from src.lexicon import load_lexical_data

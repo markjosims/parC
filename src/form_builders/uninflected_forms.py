@@ -9,7 +9,7 @@ mapped from plain input strings to forms with homophone disambiguation tags
 in output, e.g. "nɛ̀" -> "nɛ̀(1)" 'in', "nɛ̀(2)" 'and'.
 """
 
-from src.cache_decorators import fst_cache
+from src.decorators import fst_cache
 from src.lexicon.phonology import REMOVE_HOMOPHONE_TAG
 from src.fst_helpers import decode_byte_str, fst, vectorize_lexeme_string
 from src.lexicon import load_lexical_data

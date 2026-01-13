@@ -5,7 +5,7 @@ and querying word glosses, roots, etc.
 
 import os
 import pandas as pd
-from src.cache_decorators import output_cache
+from src.decorators import output_cache
 from src.constants import (
     FV_CLASSES,
     LEXICON_DIR,

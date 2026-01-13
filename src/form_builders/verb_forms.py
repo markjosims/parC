@@ -24,7 +24,7 @@ would otherwise be attached to the verb stem.
 from dataclasses import dataclass
 import pynini
 from pynini.lib import features, paradigms
-from src.cache_decorators import output_cache
+from src.decorators import output_cache
 from src.form_builders.form_helpers import *
 from src.lexicon.phonology import *
 from src.fst_helpers import *

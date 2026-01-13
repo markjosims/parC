@@ -15,7 +15,7 @@ part of speech.
 
 from pynini.lib import paradigms, features
 from typing import *
-from src.cache_decorators import output_cache
+from src.decorators import output_cache
 from src.lexicon import load_lexical_data
 from src.form_builders.form_helpers import add_class_prefixes_to_slots, add_class_symbol_replacers_to_slot
 from src.constants import (
