@@ -7,7 +7,7 @@ and creates a main parser FST that combines them all.
 import pynini
 from pynini.lib import pynutil
 from src.constants import FV_CLASSES
-from src.form_builders.adnominal_forms import get_adjective_paradigm
+from src.form_builders.adnominal_forms import get_adjective_paradigm, get_all_adnominal_paradigms
 from src.form_builders.nominal_forms import get_all_nominal_paradigms
 from src.form_builders.verb_forms import (
     get_verb_stem_paradigm, get_aux_paradigm,
@@ -257,6 +257,7 @@ def get_main_parser() -> Tuple[pynini.Fst, pynini.Fst, pynini.Fst]:
     all_paradigms = get_verb_paradigms()
     all_paradigms.extend(get_all_nominal_paradigms())
     all_paradigms.append(get_adjective_paradigm())
+    all_paradigms.extend(get_all_adnominal_paradigms())
 
     lemmatizers = []
     analyzers = []
@@ -265,7 +266,6 @@ def get_main_parser() -> Tuple[pynini.Fst, pynini.Fst, pynini.Fst]:
     for paradigm in all_paradigms:
         lexical_flag_vector = vectorize_lexeme_string(paradigm.name)
         output_lexical_flags = pynutil.insert(lexical_flag_vector.acceptor)
-        input_lexical_flags = pynutil.delete(lexical_flag_vector.acceptor)
         lemmatizers.append(paradigm.lemmatizer+output_lexical_flags)
         analyzers.append(paradigm.analyzer+output_lexical_flags)
 
