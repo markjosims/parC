@@ -8,7 +8,7 @@ import pynini
 from pynini.lib import pynutil
 from src.constants import FV_CLASSES
 from src.form_builders.adnominal_forms import get_adjective_paradigm
-from src.form_builders.noun_forms import get_noun_paradigm
+from src.form_builders.nominal_forms import get_all_nominal_paradigms
 from src.form_builders.verb_forms import (
     get_verb_stem_paradigm, get_aux_paradigm,
     get_verb_paradigm_w_aux,
@@ -255,7 +255,7 @@ def get_main_parser() -> Tuple[pynini.Fst, pynini.Fst, pynini.Fst]:
 
     print("Gathering paradigms...")
     all_paradigms = get_verb_paradigms()
-    all_paradigms.append(get_noun_paradigm())
+    all_paradigms.extend(get_all_nominal_paradigms())
     all_paradigms.append(get_adjective_paradigm())
 
     lemmatizers = []
