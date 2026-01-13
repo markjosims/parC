@@ -103,7 +103,6 @@ def add_all_tone_processes_to_parser(parser_fst: pynini.Fst) -> pynini.Fst:
         parser_list.append(parser_fst_with_tone)
 
     parser_fst = pynini.union(*parser_list)
-    parser_fst.optimize()
     return parser_fst
 
 def add_process_to_parser(
@@ -289,6 +288,9 @@ def get_main_parser() -> Tuple[pynini.Fst, pynini.Fst, pynini.Fst]:
     print("Adding tone processes...")
     main_lemmatizer = add_all_tone_processes_to_parser(main_lemmatizer)
     main_analyzer = add_all_tone_processes_to_parser(main_analyzer)
+
+    main_lemmatizer.optimize()
+    main_analyzer.optimize()
 
     print("Building main inflector...")
     main_inflector = pynini.invert(main_lemmatizer)
