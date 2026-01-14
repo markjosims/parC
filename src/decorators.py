@@ -14,7 +14,7 @@ from src.constants.paths import CACHE_DIR
 # cache stacks
 FST_CACHE = []
 OUTPUT_CACHE = []
-CACHE_LIMIT = int(os.environ.get("TIRA_PARSER_CACHE_LIMIT", 100))
+CACHE_LIMIT = int(os.environ.get("TIRA_PARSER_CACHE_LIMIT", 10))
 
 @contextlib.contextmanager
 def Timer(operation_name: str):
