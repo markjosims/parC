@@ -75,5 +75,8 @@ def get_all_adnominal_paradigms() -> List[paradigms.Paradigm]:
     """
     adnominal_paradigms = []
     for pos in POS_GROUPS['adnominal']:
+        pos_df = load_lexical_data(part_of_speech=pos)
+        if pos_df.empty:
+            continue
         adnominal_paradigms.append(get_adnominal_paradigm(part_of_speech=pos))
     return adnominal_paradigms
