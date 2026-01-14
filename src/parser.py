@@ -10,10 +10,7 @@ from pynini.lib import pynutil
 from src.constants import FV_CLASSES
 from src.form_builders.adnominal_forms import get_adjective_paradigm, get_all_adnominal_paradigms
 from src.form_builders.nominal_forms import get_all_nominal_paradigms
-from src.form_builders.verb_forms import (
-    get_verb_stem_paradigm, get_aux_paradigm,
-    get_verb_paradigm_w_aux,
-)
+from src.form_builders.verb_forms import get_verb_paradigms
 from src.form_builders.uninflected_forms import get_uninflected_word_fst
 from src.fst_helpers import (
     delete_fst, fst, insert_fst, parse_lattice_outputs, get_features_fsa,

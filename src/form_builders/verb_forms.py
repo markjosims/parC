@@ -22,6 +22,7 @@ would otherwise be attached to the verb stem.
 """
 
 from dataclasses import dataclass
+from multiprocessing.pool import Pool
 import pynini
 from pynini.lib import features, paradigms
 from src.decorators import output_cache
@@ -790,7 +791,6 @@ def make_verb_slots(fv_class: str) -> List[Tuple[pynini.Fst, features.FeatureVec
 # Paradigm Builders
 # =============================================================================
 
-@output_cache(__file__)
 def get_verb_stem_paradigm(
     fv_class: str,
     stems: Union[str, pynini.Fst, None] = None,
@@ -894,7 +894,6 @@ def _compose_aux_verb_rule(aux_rule, verb_rule, deixis: str, ventive_allows_hspr
     return combined_rule
 
 
-@output_cache(__file__)
 def get_verb_paradigm_w_aux(
     verb_paradigm: Union[str, paradigms.Paradigm],
     **paradigm_kwargs,
@@ -972,6 +971,32 @@ def get_verb_paradigm_w_aux(
         boundary=BOUNDARY,
     )
 
+@output_cache(__file__, build_only=True)
+def _build_fv_paradigm_pair(fv_class):
+    """Helper function for parallel processing"""
+    fv_paradigm = get_verb_stem_paradigm(fv_class)
+    aux_paradigm = get_verb_paradigm_w_aux(fv_paradigm)
+    return fv_paradigm, aux_paradigm
+
+def get_verb_paradigms():
+    verb_paradigms = []
+    verb_paradigms.append(get_aux_paradigm())
+
+    # build paradigms in parallel, but don't return them from the worker processes
+    # with Pool() as pool:
+        # pool.map(_build_fv_paradigm_pair, FV_CLASSES)
+    # BUG: multiprocessing causes instability
+    # don't use multiprocessing for now
+    map(_build_fv_paradigm_pair, FV_CLASSES)
+
+    # now gather the built paradigms from disk
+    for fv_class in FV_CLASSES:
+        fv_paradigm = get_verb_stem_paradigm(fv_class)
+        fv_with_aux = get_verb_paradigm_w_aux(fv_paradigm)
+        verb_paradigms.append(fv_paradigm)
+        verb_paradigms.append(fv_with_aux)
+
+    return verb_paradigms
 
 # =============================================================================
 # Inflection Utilities
@@ -1051,3 +1076,6 @@ def inflect_aux_with_features(feature_dict: Dict[str, str]) -> List[str]:
         forms.append(form)
 
     return forms
+
+if __name__ == "__main__":
+    get_verb_paradigms()
