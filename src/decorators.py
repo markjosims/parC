@@ -6,7 +6,7 @@ import hashlib
 import pickle
 from functools import wraps
 from time import time, perf_counter
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Union
 import contextlib
 from loguru import logger
 from src.constants.paths import CACHE_DIR
@@ -247,12 +247,16 @@ def output_cache(current_file: str, build_only: bool = False) -> Any:
     return decorator
 
 def _log_fst_stats(
-        fst_list: List[pynini.Fst],
+        fst: Union[pynini.Fst, List[pynini.Fst]],
         func_name: str,
         args_str: str,
         fst_names: Optional[List[str]]=None
     ) -> None:
     """Log the number of states and arcs for each FST in the list."""
+    if isinstance(fst, pynini.Fst):
+        fst_list = [fst]
+    else:
+        fst_list = fst
     if fst_names is None:
         fst_names = [f"FST {i}" for i in range(len(fst_list))]
     for name, fst_obj in zip(fst_names, fst_list):
