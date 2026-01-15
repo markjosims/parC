@@ -464,14 +464,23 @@ ADJECTIVE_ROOT = features.FeatureVector(ADJECTIVE, "class=unmarked")
 
 """
 ## Demonstrative
-Demonstratives, like adjectives, are marked with a class prefix agreeing with the noun they modify. There are
-three demonstrative pronouns in Tira, the proximal demonstrative CL-ɛ́ (equivalent to 'this' in English) and the
+Demonstratives, like adjectives, are marked with a class prefix agreeing with the noun they modify.
+Example demonstratives in Tira are the proximal demonstrative CL-ɛ́ (equivalent to 'this' in English) and the
 distal demonstrative CL-âj (equivalent to 'that' in English), and locative distal demonstrative CL-ɔ̂n (equivalent
 to 'that/there' in English).
 """
 
 DEMONSTRATIVE = features.Category(ADNOMINAL_CLASS)
 DEMONSTRATIVE_ROOT = features.FeatureVector(DEMONSTRATIVE, "class=unmarked")
+
+"""
+## Quantifier
+Quantifiers are similar to demonstratives and adjectives in that they agree in class with the noun they modify.
+Example quantifiers in Tira include CL-ɛ̀nɛ̀ 'some' and CL-ɛ́nê 'any'.
+"""
+
+QUANTIFIER = features.Category(ADNOMINAL_CLASS)
+QUANTIFIER_ROOT = features.FeatureVector(QUANTIFIER, "class=unmarked")
 
 """
 ## Possessive pronoun
@@ -554,6 +563,7 @@ POS2CATEGORY = {
     'verb': INFLECTED_VERB,
     'aux': INFLECTED_AUX,
     'adverb': None,
+    'adverbial_quantifier': None,
     'postposition': None,
     'adposition': None,
     'conjunction': None,
@@ -567,6 +577,7 @@ POS2ROOT_VECTOR = {
     'inalienable_noun': INALIENABLE_NOUN_ROOT,
     'adjective': ADJECTIVE_ROOT,
     'demonstrative': DEMONSTRATIVE_ROOT,
+    'quantifier': QUANTIFIER_ROOT,
     'possessive_pronoun': POSSESSIVE_PRONOUN_ROOT,
     'possessive_marker': POSSESSIVE_MARKER_ROOT,
 }
@@ -638,5 +649,8 @@ to lists of parts of speech.
 
 POS_GROUPS = {
     'nominal': ['noun', 'wh_pronoun'],
-    'adnominal': ['demonstrative', 'possessive_pronoun', 'possessive_marker'],
+    'adnominal': [
+        'demonstrative', 'quantifier',
+        'possessive_pronoun', 'possessive_marker'
+    ],
 }
