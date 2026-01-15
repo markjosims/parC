@@ -246,7 +246,6 @@ def output_cache(current_file: str, build_only: bool = False) -> Any:
         return wrapper
     return decorator
 
-
 def _log_fst_stats(
         fst_list: List[pynini.Fst],
         func_name: str,
@@ -309,9 +308,7 @@ def fst_cache(current_file: str, num_fst: int=1) -> pynini.Fst:
                     f"Loaded FST for function {func.__name__} "
                     f"with args {args_str} from in-memory cache (num_fst={num_fst})"
                 )
-                if num_fst == 1:
-                    return cached_fsts[0]
-                return cached_fsts
+                f = cached_fsts
             elif all(cache_is_updated(current_file, cache_path) for cache_path in cache_paths):
                 logger.debug(
                     f"Loaded FST for function {func.__name__} "
@@ -324,12 +321,13 @@ def fst_cache(current_file: str, num_fst: int=1) -> pynini.Fst:
                     f"with args {args_str} and cache {cache_paths[0]} (num_fst={num_fst})"
                 )
                 f = func(*args, **kwargs)
-                if num_fst == 1:
-                    f = [f]
                 _log_fst_stats(f, func.__name__, args_str)
-                for fst_obj, cache_path in zip(f, cache_paths):
-                    fst_obj.write(cache_path)
-                    put_cached_fst_on_stack(cache_path, fst_obj)
+
+            if num_fst == 1:
+                f = [f]
+            for fst_obj, cache_path in zip(f, cache_paths):
+                fst_obj.write(cache_path)
+                put_cached_fst_on_stack(cache_path, fst_obj)
             if num_fst == 1:
                 return f[0]
             return f
