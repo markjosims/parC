@@ -1,16 +1,14 @@
-singular,plural,gloss,root,vowel_class
-ð-ɛ́t̪,r-ɛ́t̪,father,ɛ́t̪
-lɛ́ŋg,l-ɛ́l,mother,lɛ́ŋg
-íd̪ɛ́r,l-dɛ́r-l,maternal.aunt/uncle
-ɔ̀r,l-ɔ̀rà-l,sibling/cousin
-àrò,làrò,sibling/cousin
-ùrnɛ̀ŋg,l-ùrnɛ̀ŋg,grandparent/grandchild
-ùn,l-ùn,parent/child-in-law
-ɛ̀rə̀mt̪,l-rə̀mt̪̪,co-spouse
-ɛ̀máð,l-ɛ̀máð,close.friend
-ìb,l-ə̀b,sister's.husband/wive's.sister
-,l-ə̀b-àl,sister's.husband/wive's.sister
-ìj,l-ìj-l,brother's.spouse/husband's.sibling
-wa,l-áj-l,wife
-ɛ̀màn,l-ɛ̀màn,husband
-ɛ̀ðɛ̀ŋg,l-ɛ̀ðɛ̀ŋg,offspring
+singular,plural,gloss,root,vowel_class,grammatical_tone,comment
+ð-ɛt̪,r-ɛt̪,father,ɛt̪,lower,both,removed from nominal.csv
+lɛŋg,l-ɛl,mother,lɛŋg,lower,both,removed from nominal.csv
+íd̪ɛ́r,l-d̪ɛ́r-l,maternal.aunt/uncle,d̪ɛ́r,higher,none,
+ɔ̀r,l-ɔ̀rà-l,sibling/cousin,ɔ̀r,lower,none,
+ùrnɛ̀ŋg,l-ùrnɛ̀ŋg,grandparent/grandchild,ùrnɛ̀ŋg,higher,none,
+ùn,l-ùn,parent/child-in-law,ùn,higher,none,
+ɛ̀rə̀mt̪,l-rə̀mt̪,co-spouse,rə̀mt̪,higher,none,
+ɛ̀màð,l-ɛ̀màð,close.friend,ɛ̀màð,lower,none,
+ìb,l-ə̀b l-ə̀b-àl,sister's.husband/wive's.sister,ìb,higher,none,
+ìj,l-ìj-l,brother's.spouse/husband's.sibling,ìj,lower,none,
+wa,l-aj-l,wife,wa,lower,both,removed from nominal.csv
+ɛ̀màn,l-ɛ̀màn,husband,ɛ̀màn,lower,none,
+ɛ̀ðɛ̀ŋg,l-ɛ̀ðɛ̀ŋg,offspring,ɛ̀ðɛ̀ŋg,higher,none,

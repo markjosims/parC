@@ -276,6 +276,16 @@ def test_noun_inflection(nominal):
             })
             assert subform in predicted_forms
 
+@pytest.mark.parametrize("noun", load_test_case_data('gold_inalienable_nouns'))
+def test_inalienable_noun_inflection(noun):
+    form = noun.pop('gold_noun')
+    root = noun.pop('root')
+    noun.pop('fuzzy_noun', None)
+    noun.pop('fuzzy_edit', None)
+
+    predicted_forms = inflect_word(root, **noun)
+    assert form in predicted_forms
+
 """
 ## Auxiliary parsing and inflection tests
 """

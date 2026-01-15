@@ -399,26 +399,35 @@ While possession in Tira is typically conveyed with a possessive pronoun
 This means that they cannot occur without a possessive *suffix* indicating
 the possessor. These suffixes are particular to inalienably possessed nouns.
 
-1sg/1excl   -ɛ́j/áj
-2sg/2pl     -àló
-3sg/3pl     -ɛ́n
-1du         -ɜ̀lí
-1incl       -ɜ̀lír
+1sg/1pl.excl    -ɛ́j/áj
+2sg/2pl         -àló
+3sg/3pl         -ɛ́n
+1du.incl        -ɜ̀lí
+1pl.incl        -ɜ̀lí-r
 
 Inalienably possessed are generally kinship terms, e.g. ðɛt̪- 'father'
 and íd̪ɛ́r- 'maternal uncle/aunt'.
 
 """
 
-POSSESSOR_PERSON = features.Feature(
+INALIENABLE_POSSESSOR_PERSON_VALUES = [
+    "1sg/1pl.excl",
+    "2sg/2pl",
+    "3sg/3pl",
+    "1du.incl",
+    "1pl.incl",
+    "1pl.excl",
+]
+
+INALIENABLE_POSSESSOR_PERSON = features.Feature(
     "possessor",
     "unmarked",
-    *PERSON_AND_NUMBER_VALUES
+    *INALIENABLE_POSSESSOR_PERSON_VALUES
 )
 INALIENABLE_NOUN = features.Category(
     NOUN_CASE,
     NOUN_NUMBER,
-    POSSESSOR_PERSON,
+    INALIENABLE_POSSESSOR_PERSON,
 )
 
 NOMSG_INALIENABLE = features.FeatureVector(NOUN, "case=nominative", "number=singular")
@@ -488,6 +497,11 @@ Possessive pronouns in Tira agree in class with the noun they modify and are mar
 of the possessor.
 """
 
+POSSESSOR_PERSON = features.Feature(
+    "possessor",
+    "unmarked",
+    *PERSON_AND_NUMBER_VALUES,
+)
 POSSESSIVE_PRONOUN = features.Category(ADNOMINAL_CLASS, POSSESSOR_PERSON)
 POSSESSIVE_PRONOUN_ROOT = features.FeatureVector(POSSESSIVE_PRONOUN, "class=unmarked")
 
@@ -558,6 +572,7 @@ POS2CATEGORY = {
     'inalienable_noun': INALIENABLE_NOUN,
     'adjective': ADJECTIVE,
     'demonstrative': DEMONSTRATIVE,
+    'quantifier': QUANTIFIER,
     'possessive_pronoun': POSSESSIVE_PRONOUN,
     'possessive_marker': POSSESSIVE_MARKER,
     'verb': INFLECTED_VERB,
