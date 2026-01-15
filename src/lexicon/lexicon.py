@@ -24,7 +24,6 @@ from glob import glob
 ## Data loading functions
 """
 
-@output_cache(LEXICON_DIR)
 def load_lexical_data(
         part_of_speech: str,
 ) -> pd.DataFrame:
