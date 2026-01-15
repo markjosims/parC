@@ -240,6 +240,7 @@ def stringify_lexeme_features(
     feature_strs = []
     if type(lexeme_features) is features.FeatureVector:
         lexeme_features = lexeme_features.values
+    # ensure consistent ordering
     for feature in LEXEME.features:
         feature_value = lexeme_features.get(feature.name, 'unmarked')
         if feature_value == 'unmarked':
@@ -252,9 +253,9 @@ def stringify_lexeme_features(
 def vectorize_lexeme_string(lexeme_str: str, specify_unmarked: bool = True) -> features.FeatureVector:
     """
     Arguments:
-        lexeme_str:     String representation of lexeme-specific features
+        lexeme_str:     String representation of lexical flags
     Returns:
-        lexeme_vector:  FeatureVector containing lexeme-specific features
+        lexeme_vector:  FeatureVector containing lexical flags
     """
     feature_dict = {}
     for feature_str in lexeme_str.split():
