@@ -331,6 +331,13 @@ SUBSTITUTION_COSTS = [
     ('k', 'g', MINOR_EDIT_COST),
 
     ('r', 'ɾ', MINOR_EDIT_COST),        # tap written as trill
+
+    ('u', 'w', MINOR_EDIT_COST),        # glide~vowel interchange
+    ('w', 'u', MINOR_EDIT_COST),
+    ('o', 'w', MINOR_EDIT_COST),
+    ('w', 'o', MINOR_EDIT_COST),
+    ('i', 'j', MINOR_EDIT_COST),
+    ('j', 'i', MINOR_EDIT_COST),
 ]
 for intab_tone in TIRA_TONE_DIACS:
     for outtab_tone in TIRA_TONE_DIACS:
