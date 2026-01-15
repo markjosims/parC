@@ -79,7 +79,7 @@ def get_searchable_lexicon(
         lexicon = fst(lexicon)
     left_factor, right_factor = get_edit_factors(**edit_factor_kwargs)
     searchable_lexicon = right_factor@lexicon
-    searchable_lexicon.optimize()
+    searchable_lexicon.optimize().arcsort()
     return left_factor, searchable_lexicon
 
 @fst_cache(os.path.dirname(__file__), num_fst=2)
@@ -96,7 +96,7 @@ def get_searchable_main_parser(**edit_factor_kwargs) -> Tuple[pynini.Fst, pynini
     left_factor, right_factor = get_edit_factors(**edit_factor_kwargs)
     lexicon = pynini.project(main_lemmatizer, 'input')
     searchable_lexicon = right_factor@lexicon
-    searchable_lexicon.optimize()
+    searchable_lexicon.optimize().arcsort()
     return left_factor, searchable_lexicon
 
 @output_cache(__file__)
@@ -137,11 +137,14 @@ def get_edit_factors(
     delete_graph_left, delete_graph_right = _get_deletion_graph(deletions, delete_cost, sigma)
     sub_graph_left, sub_graph_right = _get_substitution_graph(substitutions, sub_cost, sigma)
 
-    edit_graph_left = pynini.union(insert_graph_left, delete_graph_left, sub_graph_left).optimize()
-    edit_graph_right = pynini.union(insert_graph_right, delete_graph_right, sub_graph_right).optimize()
+    edit_graph_left = pynini.union(insert_graph_left, delete_graph_left, sub_graph_left).optimize().arcsort()
+    edit_graph_right = pynini.union(insert_graph_right, delete_graph_right, sub_graph_right).optimize().arcsort()
     
     left_factor = _compose_edit_graph_w_sigma(edit_graph_left, sigma, bound)
     right_factor = _compose_edit_graph_w_sigma(edit_graph_right, sigma, bound)
+
+    left_factor.optimize().arcsort()
+    right_factor.optimize().arcsort()
 
     return left_factor, right_factor
 
@@ -161,7 +164,7 @@ def _compose_edit_graph_w_sigma(
             composed_factor.concat(edit_graph.ques).concat(sigma_star)
     else:
         composed_factor = edit_graph.union(sigma).closure()
-    composed_factor=composed_factor.optimize()
+    composed_factor=composed_factor.optimize().arcsort()
     return composed_factor
 
 def _get_insertion_graph(
@@ -329,10 +332,10 @@ def search_word(
 
     left_factor, searchable_lexicon = get_searchable_main_parser(bound=edit_bound)
     query_fst = fst(form)@left_factor
-    query_fst.optimize()
+    query_fst.optimize().arcsort()
     search_lattice = query_fst@searchable_lexicon
     search_lattice.project('output')
-    search_lattice.optimize()
+    search_lattice.optimize().arcsort()
     hits = get_lattice_strs_and_weights(
         search_lattice,
         nshortest=num_hits,
@@ -366,7 +369,7 @@ def search_for_hyphenated_form(
     """
     query_fst = fst(unparsed_form)@INSERT_HYPHEN_RULE
     search_lattice = query_fst@lattice
-    search_lattice.optimize()
+    search_lattice.optimize().arcsort()
     nbest_hits = get_lattice_strs_and_weights(
         search_lattice,
         nshortest=num_hits,

@@ -86,7 +86,7 @@ def add_all_tone_processes_to_parser(parser_fst: pynini.Fst) -> pynini.Fst:
     
     _log_fst_stats(parser_list, "add_all_tone_processes_to_parser[PRE-UNION]", f"parser_fst")
 
-    parser_fst = pynini.union(*parser_list).optimize()
+    parser_fst = pynini.union(*parser_list).optimize().arcsort()
     _log_fst_stats([parser_fst], "add_all_tone_processes_to_parser[POST-UNION]", f"parser_fst")
 
     return parser_fst
@@ -111,7 +111,7 @@ def add_process_to_parser(
     parser_w_rule = apply_rule_to_input(parser_fst, parser_input_projection,rule_fst)
     parser_w_shifted_features = shift_feature_value(parser_w_rule, feature_map)
     _log_fst_stats([parser_w_shifted_features], "add_process_to_parser", "parser_w_shifted_features")
-    return parser_w_shifted_features.optimize()
+    return parser_w_shifted_features.optimize().arcsort()
 
 def append_eos_to_input(
         parser: pynini.Fst,
@@ -137,12 +137,12 @@ def append_eos_to_input(
     else:
         forms_w_eos2forms_without_eos = parser_input + delete_fst(EOS)
 
-    forms_w_eos2forms_without_eos.optimize()
+    forms_w_eos2forms_without_eos.optimize().arcsort()
     # since the right side of this graph is equivalent to the input
     # side of `parser`, we can compose to get the desired FST
     # mapping forms with EOS to parses
     forms_w_eos = forms_w_eos2forms_without_eos @ parser
-    forms_w_eos.optimize()
+    forms_w_eos.optimize().arcsort()
 
     _log_fst_stats([forms_w_eos], "append_eos_to_input", f"parser with optional={optional}")
 
@@ -202,7 +202,7 @@ def apply_rule_to_input(
     # some rules are set to map non-applicable or vacuous inputs to epsilon
     # for this reason, we need to remove paths that are just epsilon on the input side
     parser_w_rule = SIGMA.plus @ parser_w_rule
-    parser_w_rule.optimize()
+    parser_w_rule.optimize().arcsort()
 
     _log_fst_stats([parser_w_rule], "apply_rule_to_input[FINAL]", "parser_w_rule")
 
@@ -236,9 +236,9 @@ def shift_feature_value(parser: pynini.Fst, feature_map: Dict[str, Tuple[str, st
             sigma_star=SIGMASTAR_W_SYMBOLS,
         )
 
-    feature_rewrite_rule.optimize()
+    feature_rewrite_rule.optimize().arcsort()
     parser_shifted = parser @ feature_rewrite_rule
-    parser_shifted.optimize()
+    parser_shifted.optimize().arcsort()
     return parser_shifted
 
 @fst_cache(_forms_dir, num_fst=3)
@@ -276,9 +276,9 @@ def get_main_parser() -> Tuple[pynini.Fst, pynini.Fst, pynini.Fst]:
     main_lemmatizer = pynini.union(*lemmatizers)
     main_analyzer = pynini.union(*analyzers)
     main_inflector = pynini.union(*inflectors)
-    main_lemmatizer.optimize()
-    main_analyzer.optimize()
-    main_inflector.optimize()
+    main_lemmatizer.optimize().arcsort()
+    main_analyzer.optimize().arcsort()
+    main_inflector.optimize().arcsort()
 
     _log_fst_stats(
         [main_lemmatizer, main_analyzer, main_inflector],
