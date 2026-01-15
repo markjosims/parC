@@ -971,7 +971,7 @@ def get_verb_paradigm_w_aux(
         boundary=BOUNDARY,
     )
 
-@output_cache(__file__, build_only=True)
+@output_cache(__file__)
 def _build_fv_paradigm_pair(fv_class):
     """Helper function for parallel processing"""
     fv_paradigm = get_verb_stem_paradigm(fv_class)
@@ -987,14 +987,8 @@ def get_verb_paradigms():
         # pool.map(_build_fv_paradigm_pair, FV_CLASSES)
     # BUG: multiprocessing causes instability
     # don't use multiprocessing for now
-    map(_build_fv_paradigm_pair, FV_CLASSES)
-
-    # now gather the built paradigms from disk
-    for fv_class in FV_CLASSES:
-        fv_paradigm = get_verb_stem_paradigm(fv_class)
-        fv_with_aux = get_verb_paradigm_w_aux(fv_paradigm)
-        verb_paradigms.append(fv_paradigm)
-        verb_paradigms.append(fv_with_aux)
+    for paradigm_tuple in map(_build_fv_paradigm_pair, FV_CLASSES):
+        verb_paradigms.extend(paradigm_tuple)
 
     return verb_paradigms
 
