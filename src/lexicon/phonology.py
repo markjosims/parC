@@ -48,25 +48,24 @@ REMOVE_DOUBLE_BOUNDARIES = pynini.cdrewrite(
     r=BOUNDARY,
     sigma_star=SIGMASTAR,
 ).optimize()
-
 ADD_TBU_MARKER = pynini.cdrewrite(
     tau=insert_fst(TONE_SLOT_STR),
     l=TBU,
     r=fst(''),
     sigma_star=SIGMASTAR
-)
+).optimize()
 REMOVE_TBU_MARKER_AFTER_ONSET_C = pynini.cdrewrite(
     tau=delete_fst(TONE_SLOT_STR),
     l=C@TBU,
     r=V,
     sigma_star=SIGMASTAR,
-)
+).optimize()
 REMOVE_TBU_MARKER_AFTER_CODA_C = pynini.cdrewrite(
     tau=delete_fst(TONE_SLOT_STR),
     l=TONE_SLOT+C@TBU,
     r=fst(),
     sigma_star=SIGMASTAR,
-)
+).optimize()
 CLEAN_TBU_MARKERS = pynini.cdrewrite(
     tau=delete_fst(TONE_SLOT_STR),
     l=fst(),
