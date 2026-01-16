@@ -45,6 +45,8 @@ def get_nominal_paradigm(part_of_speech: str) -> paradigms.Paradigm:
     (noun or pronoun).
     """
     df = load_lexical_data(part_of_speech=part_of_speech)
+    if df.empty:
+        raise ValueError(f"No lexical data found for part of speech: {part_of_speech}")
     slots = []
     root_col = df['root']
 
@@ -319,7 +321,11 @@ def get_all_nominal_paradigms() -> List[paradigms.Paradigm]:
     """
     nominal_paradigms = []
     for pos in POS_GROUPS['nominal']:
-        nominal_paradigms.append(get_nominal_paradigm(part_of_speech=pos))
+        try:
+            nominal_paradigms.append(get_nominal_paradigm(part_of_speech=pos))
+        except ValueError:
+            # no lexical data for this part of speech
+            continue
     nominal_paradigms.append(get_inalienable_noun_paradigm())
     return nominal_paradigms
 
