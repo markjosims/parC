@@ -24,6 +24,50 @@ from glob import glob
 ## Data loading functions
 """
 
+def get_macro_pos(
+        micro_pos: str
+) -> str:
+    """
+    Given a specific part of speech, returns the corresponding
+    'macro' part of speech (i.e., the name of the CSV file
+    from which the data is loaded).
+
+    Args:
+        micro_pos: The specific part of speech.
+    Returns:
+        The macro part of speech corresponding to the specific part of speech.
+    """
+    for pos_group_name, pos_for_group in POS_GROUPS.items():
+        if micro_pos in pos_for_group:
+            return pos_group_name
+    return micro_pos
+
+def get_pos_mask(
+        df: pd.DataFrame,
+        part_of_speech: str
+) -> pd.Series:
+    """
+    Returns a boolean mask for the given part of speech. This allows users to
+    specify either a 'macro' part of speech (e.g., 'nominal', 'adnominal',
+    'uninflected') or a specific part of speech (e.g. 'noun', 'adverb')
+    with the same function.
+
+    Args:
+        df: pandas DataFrame containing lexical data
+        part_of_speech: The part of speech to create a mask for.
+                        For the two 'macro' parts of speech ('nominal' and 'adnominal'),
+                        either the macro name (corresponding to the csv filestem) or
+                        one of the included parts of speech may be used.
+    Returns:
+        A pandas Series boolean mask for the specified part of speech.
+    """
+    if part_of_speech in POS_GROUPS:
+        pos_list = POS_GROUPS[part_of_speech]
+        pos_mask = df['part_of_speech'].isin(pos_list)
+    else:
+        pos_mask = df['part_of_speech']==part_of_speech
+    return pos_mask
+
 def load_lexical_data(
         part_of_speech: str,
 ) -> pd.DataFrame:
@@ -38,14 +82,13 @@ def load_lexical_data(
     Returns:
         A pandas DataFrame containing the lexical data for the specified part of speech.
     """
-    for pos_group_name, pos_for_group in POS_GROUPS.items():
-        if part_of_speech in pos_for_group:
-            csv_path = os.path.join(LEXICON_DIR, f"{pos_group_name}.csv")
-            df = pd.read_csv(csv_path, keep_default_na=False)
-            pos_mask = df['part_of_speech']==part_of_speech
-            return df[pos_mask]
-    csv_path = os.path.join(LEXICON_DIR, f"{part_of_speech}.csv")
+    macro_pos = get_macro_pos(part_of_speech)
+    csv_path = os.path.join(LEXICON_DIR, f"{macro_pos}.csv")
     lexical_df = pd.read_csv(csv_path, keep_default_na=False)
+    if macro_pos != part_of_speech:
+        # user specified 'micro' part of speech; filter accordingly
+        pos_mask = get_pos_mask(lexical_df, part_of_speech)
+        lexical_df = lexical_df.loc[pos_mask].reset_index(drop=True)
     return lexical_df
 
 def load_test_case_data(
@@ -314,18 +357,21 @@ def get_root_for_gloss(
         return [AUX_LEMMA_STR]
     all_lexical_data = get_all_lexical_data()
     gloss_mask = all_lexical_data['gloss']==gloss
-    if part_of_speech == 'uninflected':
-        pos_mask = ~all_lexical_data['part_of_speech'].isin(INFLECTED_POS)
+
+    # optionally filter by part of speech
+    if part_of_speech is not None:
+        pos_mask = get_pos_mask(all_lexical_data, part_of_speech)
         gloss_mask = gloss_mask & pos_mask
-    elif part_of_speech is not None:
-        pos_mask = all_lexical_data['part_of_speech']==part_of_speech
-        gloss_mask = gloss_mask & pos_mask
+
     if gloss_mask.sum()==0:
         if part_of_speech is not None:
             raise KeyError(f"Gloss {gloss} with part of speech {part_of_speech} not found in lexicon.")
         raise KeyError(f"Gloss {gloss} not found in lexicon.")
+    
     root_list = all_lexical_data.loc[gloss_mask, 'root'].tolist()
+
     if return_pos:
         pos_list = all_lexical_data.loc[gloss_mask, 'part_of_speech'].tolist()
         return list(zip(root_list, pos_list))
+    
     return root_list
