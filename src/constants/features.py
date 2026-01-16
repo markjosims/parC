@@ -600,6 +600,9 @@ POS2ROOT_VECTOR = {
 INFLECTED_POS = [
     k for k, v in POS2CATEGORY.items() if v is not None
 ]
+UNINFLECTED_POS = [
+    k for k, v in POS2CATEGORY.items() if v is None
+]
 
 
 POS_TAG = features.Feature(
@@ -668,4 +671,5 @@ POS_GROUPS = {
         'demonstrative', 'quantifier',
         'possessive_pronoun', 'possessive_marker'
     ],
+    'uninflected': UNINFLECTED_POS,
 }
