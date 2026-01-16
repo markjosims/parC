@@ -333,7 +333,7 @@ and accusative case are given below.
 CLð-gourd.NOM   CLð-good
 "The gourd is good"
 
-í-ŋɡ-á  nɔ́n-à   ðɔ̀nd-à      nd̪ɔ̀bà
+í-ŋg-á  nɔ́n-à   ðɔ̀nd-à      nd̪ɔ̀bà
 1sg-CLg see-FV  gourd-ACC   tomorrow
 
 ### Number

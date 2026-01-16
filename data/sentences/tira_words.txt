@@ -52,10 +52,10 @@ kə̀və̀lɛ̀ðɛ́ɲáɾɛ́
 ŋàɾɛ́
 kíjɔ̀l
 ðámíɲá
-ŋə̀tʃíŋɡɛ̀làlì
+ŋə̀tʃíŋgɛ̀làlì
 íŋgɜ́pínò
 nírɛ̀mnɛ̀t̪ɛ̀
-ávdʒìɡɛ́
+ávdʒìgɛ́
 ŋʊ́núːbà
 ðə́t̪ɾɛ́
 tʃǎ
@@ -66,7 +66,7 @@ ùɟí
 lùɽdʒénɛ́
 ládʒìðɜ̀tʃí
 ðúɽí
-ŋɡàðə́nɔ̀nà
+ŋgàðə́nɔ̀nà
 və́lɛ́ðínɔ́
 káðdɔ̀ŋə̀nɔ́
 ŋíjɔ́
@@ -116,7 +116,7 @@ t̪ávə̀lɛ̀ðɔ́
 lùʈìðí
 kándát̪à
 r̀ŋɔ̀
-ŋɡáŕlànd̪à
+ŋgáŕlànd̪à
 íì
 lòrâ
 ɔ́nì
@@ -148,7 +148,7 @@ īŋgáŋâʔvə̀lɛ̀ðà
 ðàlàgàrâj
 nɔ̀ná
 ɔ̀mnɛ́
-ŋ̀ɡáɽíɲîːnɔ̀
+ŋ̀gáɽíɲîːnɔ̀
 áprìɲâ
 ðílìtʃò
 ðɛ́kèɲà
@@ -163,10 +163,10 @@ nàɽàŋgár
 láʈùʈɔ́
 lǎmànɛ̀
 láŋt̪íðì
-ŋɡárà
+ŋgárà
 lǎŋíðà
 kìjìnìjí
-ŋ̀ɡád̪úrò
+ŋ̀gád̪úrò
 lávɔ́ɽɔ̀
 ŋìðə̀ní
 ðɛ́t̪ə́lí
@@ -179,7 +179,7 @@ káŋvə́lɛ̂ðɔ̀
 t̪ólé
 nàdámá
 já̂màrðɔ́
-ŋɡɔ́dɔ́ŋɔ̀nɔ̀
+ŋgɔ́dɔ́ŋɔ̀nɔ̀
 t̪óndì
 kə̀bùlìjɛ̀tʃí
 r̀lɔ́
@@ -200,14 +200,14 @@ àt̪éɲà
 lípíjò
 kɛ̀dùɾɔ̀t̪ɔ́
 làðábūðū
-íŋɡáŋà
+íŋgáŋà
 və̀lɛ̀tʃɔ̂
 kàpàt̪ɔ́
 íɛ̀nwàj
 káŋáŋà
 ðɛ́lɔ́ɽá
 ŋárðɛ̀
-ɪ̄ɡánònà
+ɪ̄gánònà
 ŋǎl̀və̀lɛ̀ːðɛ̀
 lávə̀lɛ̀ðɔ́
 kâi
@@ -233,7 +233,7 @@ wàj
 t̪ɔ̀lèɲáŋ
 káɾát̪ɔ́
 ɔ̀ɽtʃàtʃiðìjí
-ŋɡàɽíɲà
+ŋgàɽíɲà
 kɪ́tʃə̀lǒ
 kwɪ̀tʃə̀lò
 vr̀ðɔ̀ðɔ́
@@ -256,7 +256,7 @@ àprià
 kanós
 áɾt̪ɔ́l
 lòró
-ŋɡártʃà
+ŋgártʃà
 ŋùɽɟɛ̀n
 dùb
 ábá
@@ -267,7 +267,7 @@ ûnɛ̀ɾɛ̀
 ɲâjàt̪ìðó
 íŋgáðɪ́pɔ̀
 lǎllǒvə́lɛ̂ːðǎ
-ŋɡánɔ́nà
+ŋgánɔ́nà
 ɛ̀vɛ̀
 ɛ̀vlà
 ɔ́ɽdʒɔ̀tʃɔ̀nɔ̀
@@ -283,7 +283,7 @@ nàlbríð
 ɲɛ̌n
 ábɔ́ðà
 ùnɛ́rɛ́
-áɡánɔ́nà
+ágánɔ́nà
 làvràlːěː
 ùnɛ̀lír
 kɔ́tʃɔ̀ŋù
@@ -318,7 +318,7 @@ ldɔ̀ŋðàt̪ɛ̀
 ŋíbɔ̀
 ŋgálə́ŕvə́lɛ̂ðǎŕ
 kàðə́kə̂ltʃǎ
-ŋɡáŋɡá
+ŋgáŋgá
 àlɛ́là
 nátɛ́
 ŋgáŋà
@@ -374,7 +374,7 @@ kɛ́nɔ̂nà
 ɜ̂ɖí
 jèvə̀lɛ̀ðɔ́ló
 édɛ̄rɛ̄
-ŋɡávə̀lɛ̀ðà
+ŋgávə̀lɛ̀ðà
 kɛ́nɔ̀nɔ́
 ŋɛ́nê
 rə́ɽí
@@ -382,7 +382,7 @@ nɪ̀tʃə̀rðú
 ðə́ràtʃà
 ŋamɽaɾɛ
 ǹdɔ̀bà
-ŋɡártʃì
+ŋgártʃì
 lɛ̀ɖé
 lǎllúvə́lɛ̂ːðàló
 ílɛ̀ðɛ̀
@@ -415,7 +415,7 @@ lárùŋɔ̀t̪ɔ́
 kê
 núŋú
 lǎmìɲǐ
-ɪ́ŋɡàðɛ́nònà
+ɪ́ŋgàðɛ́nònà
 dè
 ùd̪ɔ̀
 ŋʊ̀mbòɽò
@@ -429,7 +429,7 @@ nàjén
 ŋóɽɛ́
 kə̀rùðɔ̀t̪ɔ́
 ráő
-lə̀tʃìŋɡìlàlì
+lə̀tʃìŋgìlàlì
 kàrt̪ɔ́
 ŋgɔ́ɽdʒɛ̀tʃíŋgɔ́ɽdʒɛ̀tʃí
 láɽá
@@ -442,7 +442,7 @@ lɜ̀
 lɪ̀cɪ̀ló
 nàlbàtʃʊ̂m
 ìdɔ̀ɽɔ̀
-íŋɡáʈɛ́və́lɛ̂ːðɛ̀
+íŋgáʈɛ́və́lɛ̂ːðɛ̀
 lə̀və̀lɛ̀ðáŋà
 lâŋó
 ŋùbòrùbúrɛ́
@@ -456,10 +456,10 @@ kàŋːʊ́
 wájí
 lábút̪à
 ŋgáɾǎ
-áɡáʈɛ́və́lɛ̂ːðɛ̀
-ðítʃíŋɡɛ́lálá
+ágáʈɛ́və́lɛ̂ːðɛ̀
+ðítʃíŋgɛ́lálá
 lìɛ́
-ŋɡǎŋîːvlɛ̀ːðɔ̀
+ŋgǎŋîːvlɛ̀ːðɔ̀
 ápɾìɲà
 ðɔ̀ːlà
 h
@@ -470,9 +470,9 @@ kūɽì
 úrū
 lɛ̀bɔ̀lɛ
 ɲájɛ̀ðàðɔ́
-ŋ̀ɡɛ̀ɲáːvə́lɛ̂ːðɛ̀
+ŋ̀gɛ̀ɲáːvə́lɛ̂ːðɛ̀
 kágə́tʃìðɔ̀
-ɪ̄ŋɡáðɛ́nôːnǎ
+ɪ̄ŋgáðɛ́nôːnǎ
 lúmɔ́n
 gʊ̀bʊ̂l
 ŋilɔɽilo
@@ -522,7 +522,7 @@ jɛ́ŋgɛ́n
 t̪ɔ̀wànì
 òndì
 ðùɽú
-ŋɡɛ́lcà
+ŋgɛ́lcà
 ðààrt̪ɔ́ðɛ́
 lɛ̀d̪ɛ̀ɾé
 ŋìjɔ́l
@@ -559,7 +559,7 @@ kâgàɾàt̪ɔ́
 jɛ́ɾɔ̀ðɔ́
 jɛ̀ìdìjíé
 ànt̪á
-ŋɡáŕlɜ̀nd̪ìjɔ̀
+ŋgáŕlɜ̀nd̪ìjɔ̀
 nátʃí
 ŋɔmɔ
 áŋí
@@ -576,13 +576,13 @@ kɜ́lûŋ
 lə̀vɛ̌r
 ŋíbì
 kúkùŋù
-làɡíðɛ̀
+làgíðɛ̀
 ɔ́ndì
 ngàðə́nɔ̀nà
 mɔ̀
 nɔ̀rɛ́
 ðɔ̀iɲá
-éɡûn
+égûn
 ílə̀ɲí
 ŋə̀ɲə́làtʃà
 ŋə̀və́lɛ̀ðɛ̀
@@ -592,7 +592,7 @@ ímídân
 kə̀və̀lɛ̀ðɛ́ŋì
 ŋó
 āːnū
-tʃíŋɡə́lálí
+tʃíŋgə́lálí
 ðɛ́t̪ɔ̀t̪à
 áɖɔ̀ŋnà
 kúdʑí
@@ -638,7 +638,7 @@ ùrɔ̀
 ɔ́ɾá
 nījɔ̀
 mnán
-áɡáŋîjàt̪à
+ágáŋîjàt̪à
 kɔ́ɽàt̪ɔ̀
 kábùlìjɛ̀tʃí
 jèrɔ́
@@ -681,7 +681,7 @@ ùnɔ̀
 làmɔ̀nɔ́
 unɛ̀ɾɛ̀
 lɛ̀kə̀ltʃí
-áɡáŋî́ː
+ágáŋî́ː
 ŕlɛ̀ɲì
 jáídìjɔ̀
 làjlàló
@@ -692,7 +692,7 @@ unɛɾɛkə̀ɔ̀ɽdʒɛ̀tʃáŋà
 ɾə́mná
 ɲàŋt̪ìðú
 ŋə̀t̪ɔ́t̪ɛ̀
-àvdʒèɡɛ̀
+àvdʒègɛ̀
 ládɔ́ŋðàt̪à
 tòlét̪àm
 évə́lɛ̀ðɛ̀
@@ -709,7 +709,7 @@ àbá
 ŋə́rt̪à
 ŋgálàpìjí
 lǎð
-ŋɡǎŋîːvlɛ̀ːðɔ́
+ŋgǎŋîːvlɛ̀ːðɔ́
 nárú
 ðə́wájá
 jànt̪ɔ́
@@ -759,11 +759,11 @@ ríjɛ́
 t̪àló
 ávlɛ̀ðɛ́ːŋɪ̌
 làvə̀ðàtʃí
-ŋɡɛ́tʃì
+ŋgɛ́tʃì
 amr̀ðà
 jávə́lɛ̀ðà
 ílì
-ŋ̀ɡáɽíɲîːnɔ̌
+ŋ̀gáɽíɲîːnɔ̌
 kə̀gɛ̀tʃìðú
 ŋɛ́ɾɛ́
 àór
@@ -781,7 +781,7 @@ ùdɔ́
 nàlkárò
 kávə́rlɛ̂ðǎ
 t̪òlèɲánù
-íŋɡáŋâːvlɛ̀ːdɔ́
+íŋgáŋâːvlɛ̀ːdɔ́
 və̀rlɛ̀ðɔ́
 jàvə́lɛ̂ːðɛ̀
 kágɛ́ɲàt̪à
@@ -854,11 +854,11 @@ lárðà
 àpɾìɲá
 lálːvə́lɛ̂ðɔ́
 ŋúðà
-íŋɡâŋìtʃɔ̀
+íŋgâŋìtʃɔ̀
 ðámìɲatʃiðɛ
 làmíɲɛ̀
 bùlà
-ɛ́ɡàló
+ɛ́gàló
 èdə̀ɽɔ̀l
 líd͡ʒí
 nɛ̀
@@ -877,7 +877,7 @@ jɛ́ŕlɛ̀nd̪ɪ̀nɔ̀
 kálvə́lɛ̀ðà
 ánù
 ðìdú
-ŋə̀tʃíŋɡə̀làlì
+ŋə̀tʃíŋgə̀làlì
 lɛ̀gàɾɛ́ɲí
 nájɛ̀
 ɛ́lò
@@ -891,7 +891,7 @@ kât̪ɔ́
 ðùɽūðɛ́
 ɛ̀lɛ̀
 ŋgkát̪íjɔ̀
-kɛ̀ɽìɲáɲàɡɛ̌
+kɛ̀ɽìɲáɲàgɛ̌
 ŋɛ̀ŋtʃíŋì
 ðàvə́lɛ̀ðɛ̀
 t̪ə́vɔ̂
@@ -927,7 +927,7 @@ kúɽǐ
 ŋgápɔ́
 àlkùrtʃɛ́
 ðə̀t̪ɾɛ̀
-ŋɡáŋvə́lɛ̂ðà
+ŋgáŋvə́lɛ̂ðà
 lávàràt̪ɔ́
 rŋɔ̀
 rɔ́mɔ̀
@@ -973,7 +973,7 @@ ləvə̀lɛ̀ðɔ́lə́ŋʊ
 làðúrú
 íɲɜ̀ɲì
 kàvɜ́ɽíjì
-ŋ̀ɡâːvlɛ̀ðɔ̀
+ŋ̀gâːvlɛ̀ðɔ̀
 kɜ́lóŋò
 nò
 íŋgárnà
@@ -1016,7 +1016,7 @@ nánʊ̀
 lábə́ɽàlò
 vàɾú
 ŋù
-íŋɡá
+íŋgá
 ɲálágâːrá
 ləŋevəlɛða
 ǹlə̀və̀r
@@ -1029,7 +1029,7 @@ t̪ə̀dúr
 ɛ́lə̀ŋà
 lə̀vàvɾǎ
 ŋwɜ́t̪í
-íŋɡánònà
+íŋgánònà
 àrt̪ìnɔ̀
 ɜ̀ŋtʃí
 jínɔ̀nìnɔ́
@@ -1092,7 +1092,7 @@ ùjɛ́lɛ̀
 ìŋnà
 ɛ́gàɾɔ́
 kɜ̀ɽìjí
-ɲáláɡâːɾà
+ɲálágâːɾà
 oídî
 ját̪ɛ̀
 nɔ̀mì
@@ -1111,7 +1111,7 @@ və́lɛ̂ðɛ̀
 kùwɔ̀
 ðów
 ɲáláː
-àvdʒìɡɛ̂
+àvdʒìgɛ̂
 nɛ̌
 ðə̀rnà
 t̪ə̀vé
@@ -1160,13 +1160,13 @@ láŋêvə̀lɛ̀ðǎ
 kápát̪ɛ̀
 ŋai
 ánìŋǐ
-ŋ̀ɡɛ́lǎ
+ŋ̀gɛ́lǎ
 kájɛ́nìjɔ̀
 ŋə̀mɛ́ðà
 ŋgkáútìðìjɔ̀
 ŋàɽǎ
 léŋt̪ɔ́
-áɡóú
+ágóú
 kʊ̀ndó
 ɲɛ̄ɦɛ̂n
 káɾɔ́ðìjɔ̀
@@ -1181,7 +1181,7 @@ jápìjɔ́
 lɛ́lvə́lɛ̂ðàlǒ
 ŋgévə́lɛ̀ðà
 kɛ́
-ðɛ́tʃìŋɡə̀làlà
+ðɛ́tʃìŋgə̀làlà
 ídíið
 ðɔ́ɽdʒɛ̀tʃà
 ât̪ɔ́
@@ -1199,7 +1199,7 @@ t̪òlì
 ŋə́ɲárvə́lɛ̀ðɛ̀
 ŋɛ́v̀lɛ̀ðɛ̀
 lápínɔ̀
-íŋɡóù
+íŋgóù
 ̀nɛ́
 vàɽán
 ɛ̀mànàlír
@@ -1285,7 +1285,7 @@ dɔ̀ŋðàt̪á
 laŋavəlɛða
 újə́lɛ́
 lùbút̪ú
-kàðə́ɡə̀ltʃà
+kàðə́gə̀ltʃà
 ŋ̀gàrɔ̀gɛ́
 tɔ́wə̀nì
 rár̀
@@ -1433,7 +1433,7 @@ t̪àmə̀ɾðɔ́
 kàgáɾíjì
 éɽò
 lávráðà
-nàɽàŋɡár
+nàɽàŋgár
 àɾt̪ɔ́
 t̪àdùrðɔ̀
 sɪ̀tʃə̀lò
@@ -1453,7 +1453,7 @@ lólà
 kɛ̀t̪ìjí
 kàtút̪ɛ̀tɛ̀
 ɔ̀ɾàlí
-ndɔ̀bàɡɛ̀
+ndɔ̀bàgɛ̀
 ɲàláŋâːvlɛ̀ːdɔ́
 nírí
 ðɛ́lìŋt̪à
@@ -1473,7 +1473,7 @@ kàdɔ́ŋðɛ̌
 ðàɾt̪ɔ́
 ŋʊ̀mút̪ɔ̀
 ŋgálvə́lɛ̂ðà
-ŋɡálátʃǎ
+ŋgálátʃǎ
 ðàŕ
 kìtʃəlò
 ɔ́ɟɔ̂ŋ
@@ -1486,7 +1486,7 @@ jɪ́lɛŋɔ́
 kítʃə́ló
 ɽíɲɔ́
 ŋɔ̀là
-àvdʒìɡɛ́
+àvdʒìgɛ́
 kàpɔ́
 lə̀dɜ́rlɜ̀lír
 ámbrá
@@ -1515,7 +1515,7 @@ sɛ̀
 làɽàt̪ɔ́
 mbrðɔ́
 lɪ̀tʃlò
-lɛ̂ŋɡɛ́n
+lɛ̂ŋgɛ́n
 álbríðɔ́
 ðìt̪rɔ́
 kágɛ́kágɛ́
@@ -1645,7 +1645,7 @@ lâvràðɔ́
 làúrɛ̀t̪ɛ̀
 nɛ̀ðá
 ɲʊ̀mbòɽò
-íŋɡâŋìtʃɔ̌
+íŋgâŋìtʃɔ̌
 jɛ̀və̀lɛ̀ðà
 ŋìðə̀nɔ́ŋǔ
 ðə́vɔ́ɽɔ́
@@ -1659,7 +1659,7 @@ lòlːò
 íjə́n
 àlò
 áprî
-látʃíŋɡɛ̀làlà
+látʃíŋgɛ̀làlà
 ímìdân
 ŋî
 kùtɪ̀ðìjíː
@@ -1737,7 +1737,7 @@ léɲǎl
 làúrmɛ̀ðɛ̀
 ðàpàt̪ɔ́
 kɪ̀tʃə̀lò
-ɪ́ŋɡáðɛ́nònà
+ɪ́ŋgáðɛ́nònà
 rə̀mə̀ná
 ŋgɔ̀t̪ɔ̀t̪ɔ́
 ðíɲé
@@ -1750,7 +1750,7 @@ íŋgáɾɔ̂t̪t̪ɔ̀
 làɾò
 jâŋú
 ðə́kèɲà
-áɡáŋíjàjàt̪à
+ágáŋíjàjàt̪à
 jòndò
 dʊ̀ɾɔ̀
 ɔ̀ðɔ̀ŋɪ̀nà
@@ -1763,7 +1763,7 @@ tʊ̀lɪ́
 lábŕt̪à
 íŋgâɾɔ̀t̪t̪ɔ́
 èðě
-làtʃíŋɡɛ̀làlì
+làtʃíŋgɛ̀làlì
 láɾt̪ɔ́l
 āprí
 ɔ́ɽdʒàtʃijɔ̀
@@ -1854,7 +1854,7 @@ nàɽìðɔ́
 lə̀rdà
 ɲàbðɔ́
 ɛ̀lə̀ŋà
-ŋɡá
+ŋgá
 líŋgáj
 ʃárə́n
 t̪ìjá
@@ -1867,7 +1867,7 @@ óːŋǒr
 nànò
 kíɲâlɛ̀ɾɛ́
 kʊ̀mbʊ́r
-ŋ̀ɡàːvə́lɛ̂ːðɛ̌
+ŋ̀gàːvə́lɛ̂ːðɛ̌
 ŋâl
 ŋgákl̀tʃí
 kálɔ̀ŋɔ́
@@ -1879,7 +1879,7 @@ lâŋàtʃí
 bʊ́lʊ̀
 ðàápàt̪ɛ̀
 lúɔ̀
-ŋɡěɲâːvlɛ̀ðɔ́
+ŋgěɲâːvlɛ̀ðɔ́
 r̀lɛ̀ɲí
 éɲɔ̂ŋɔ̀ŋnɔ́
 kìjí
@@ -1890,7 +1890,7 @@ á̂ɾt̪ɔ́
 íŋgáɾɔ́ðɛ̀
 kúkúŋù
 ŋúɽðìðɔ̀
-ŋɡájà
+ŋgájà
 làðírtʃɛ̀tʃɔ̀
 ŋálɛ̀ŋà
 úɽíðû
@@ -1908,7 +1908,7 @@ múðɔ́
 lákə̀ltʃí
 lìɟíː
 lə́vàrt̪ù
-káɽàŋɡár
+káɽàŋgár
 hɛ́ŋgárɔ́ðà
 làŋt̪ìðú
 t̪ìtʃò
@@ -1940,13 +1940,13 @@ èdɛ̀rɛ́
 kɜ̀ŋtʃìjìðɔ̀t̪ɔ́
 káùrìjí
 kúkú
-sɔ̀ɽíŋɡɔ̀
+sɔ̀ɽíŋgɔ̀
 ɛ̀ðɛ́
 ́óɾá
 kárːò
 ŋùpìɽìlá
 ùɾnɔ̀jáɾɔ́jɛ́
-ŋɡáŕlɜ̀nd̪ìt̪ɔ́
+ŋgáŕlɜ̀nd̪ìt̪ɔ́
 ŋùðà
 làðíjînɔ̀
 tôlé
@@ -2065,7 +2065,7 @@ ìɾí
 ðɛ́bùrŋà
 kǎndíjì
 lìd͡ʒí
-ŋɡɛ́là
+ŋgɛ́là
 lə́ŋitʃà
 kə̀bùlìjɪ̂l
 ŋ̀gáðə́rɔ̂ːðà
@@ -2158,12 +2158,12 @@ lìɾtʃɔ̀tʃɔ̀
 t̪ówànî́
 lǎlóvə́lɛ̂ðà
 lùt̪ùlú
-áɡàrǔ
+ágàrǔ
 kòːlà
 jâŋɔ́
 òlá
 lɜ̀llívə́lɛ̂ːðɛ̌rlù
-ŋɔ́ɽíŋɡɔ́
+ŋɔ́ɽíŋgɔ́
 lákártʃà
 lâlóvə́lɛ̂ðà
 nàvdʒìgɛ́
@@ -2182,7 +2182,7 @@ làtʃá
 ŋɔ̌ɽàt̪àǎ
 ídɜ́rɜ̀lí
 ŋâŋ̌
-íŋɡáŋâŋàtʃà
+íŋgáŋâŋàtʃà
 lɔ́ɽɔ́
 nə̀pɔ́l
 ndrɛ̀ð
@@ -2266,7 +2266,7 @@ lɛ̀ùɽðìðí
 ɲà
 láʈɛ́və́lɛ̂ðɔ́
 húrì
-ɲáláðə́ɡârà
+ɲáláðə́gârà
 ūnɛ̀rɛ̀
 tʃɔ̌
 kɔ̀kɔ̀
@@ -2360,7 +2360,7 @@ lâβùðú
 ðámákðɛ́ðá
 lɛ̀vàɾú
 ðə́nɔ̂nà
-ɪ̄ŋɡáðɛ́nôːnà
+ɪ̄ŋgáðɛ́nôːnà
 lə̀və̀lɛ̀ðɔ́lóŋò
 ŋánɔ̂nà
 jìbí
@@ -2372,7 +2372,7 @@ jávə̀lɛ̀ðɔ́
 lǎβùðì
 àmàθ
 váɽán
-ŋɡánɔ̂nǎ
+ŋgánɔ̂nǎ
 ŋgíŋagɛrɛ
 lə̀və̀lɛ̀ðɜ́ló
 ɔ̀rà
@@ -2436,7 +2436,7 @@ álɛ̌
 kə̀və̀lɛ̀ðáŋá
 lâvə̀lɛ̀ðɔ́
 t̪àúɽìðì
-ðɛ́ɡɛ́ltʃá
+ðɛ́gɛ́ltʃá
 lálōvə́lɛ̂ðà
 ɛ́lɔ́ŋù
 jàðɔ́jɛ́
@@ -2462,7 +2462,7 @@ ùnɛ̀ɾ̀
 lámɛ̌
 nɔ̀mná
 lǎt̪ì
-ŋ́ɡíðɛ̀
+ŋ́gíðɛ̀
 làbùðì
 kát̪íjà
 ðɛ́ðɛ́kúkù
@@ -2483,10 +2483,10 @@ rə̀tʃə̀lò
 jɛ́lvə́lɛ̂ðàlo
 láùɽìðàt̪ɔ́
 làkɔ́t̪ìnɛ̀
-ávdʒìɡɛ̀
+ávdʒìgɛ̀
 làɾt̪íŋí
 ŋìcə̀lò
-ŋɡáŋâl
+ŋgáŋâl
 lìdʒ͡í
 lávə̀lɛ̀ðɔ̀
 t̪ɛ́nɔ̀nɔ́
@@ -2514,7 +2514,7 @@ áprì̀
 t̪òːlìɲâ
 ŋə́wájà
 ŋ̀kéɲà
-ŋɡǎː
+ŋgǎː
 míɲàt̪ɛ̀
 kàjɛ́nìjì
 várát̪ó
@@ -2556,7 +2556,7 @@ álávə́lɛ̂ːðɛ̀
 ìdáŋá
 jàɾɔ́jɛ́
 ìrí
-ŋ̀ɡávə́lɛ̂ːðɛ̌
+ŋ̀gávə́lɛ̂ːðɛ̌
 ɔ̀ɽdʒɛ̀tʃí
 lìŋtʃáló
 kájɔ̀
@@ -2611,7 +2611,7 @@ káŋíŋ́
 úrmɛ̀ðɔ̀
 kónè
 làɾɔ̀
-ɲàlàðɛ́ɡâːɾà
+ɲàlàðɛ́gâːɾà
 kə̀rŋù
 jámlá
 lɔ́rɔ́
@@ -2660,14 +2660,14 @@ lábə́ɽǎ
 álpùrɔ́
 ðínɔ̀
 ðə́kə̀ltʃà
-ínɡálɔ́ɽà
+íngálɔ́ɽà
 sɔ̀ɲá
 àt̪áŋì
 ŋə̀dɔ́ŋðà
 làndɪ̀
 ìdì
 lájlálʊ́
-lɛ́ŋɡɛ̀n
+lɛ́ŋgɛ̀n
 èŋgáð
 ŋ̀rím
 lòʈùwɛ́lɛ̀
@@ -2686,7 +2686,7 @@ kìɲálɛ̂rɛ́
 ðàmbrðá
 ŋgkákàɾtʃìðú
 làúɽì
-ŋɡáŋátʃà
+ŋgáŋátʃà
 vàɽàn
 ɪ́ndɔ̀ɔ̌
 ðámɛ̀
@@ -2731,7 +2731,7 @@ kâdɔ̀ŋðɔ́
 və́lɛ̀ðɔ́ŕ
 ðɛ́tɛ́n
 égàːrɔ́
-ɡìcó
+gìcó
 ðámlá
 ùlùŋú
 ɛ́vàɾt̪à
@@ -2766,7 +2766,7 @@ làváɾì
 kǎndì
 kârɔ̄gɛ́
 lʊ́mbɛ̀
-ɲáláðɡàːɾà
+ɲáláðgàːɾà
 lɛ́ɲɛ́
 lit̪rɔ
 kàŋáŋà
@@ -2812,7 +2812,7 @@ lɜ̀ðìɲɔ́
 làt̪ə́vɛ̀
 áɾt̪ínɔ́r
 ʈút̪ú
-ŋɡáŋâ
+ŋgáŋâ
 ɛ́ðáj
 lɛ́jìnɔ̀
 kə̀və̀lɛ̀ːðɔ̂l
@@ -2864,9 +2864,9 @@ jɛ̀ɽìɲɔ́
 kɛ̀kɛ̀ɲìjí
 ùːɽí
 àt̪ə́và
-ŋɡɔ́t̪ìnɔ̀
+ŋgɔ́t̪ìnɔ̀
 lâbùrŋɔ́
-íŋɡanɔ́nà
+íŋganɔ́nà
 ŋə̀mà
 lúgɔ̀
 áòr
@@ -2930,7 +2930,7 @@ úrú
 kɜ̀lù
 ŋgkàkáɾtʃíðà
 ɟɛ̀n
-ŋɡājēːðà
+ŋgājēːðà
 ɲájɛ́ðàt̪à
 ðə̀dɛ̀ɽì
 tʃìtʃə̀lò
@@ -2977,7 +2977,7 @@ àɽə̀ŋàjt̪ɜ́lǒ
 ðə̀rə̀v
 kâpɔ̀t̪ɔ́
 kɛ̀ðɛ̀ðú
-áɡáŋîmàmàt̪à
+ágáŋîmàmàt̪à
 nd̪ɔ̀bàlɛ́
 nèlàɽǎ
 ŋɛ́nɔ̂nà
@@ -3041,8 +3041,8 @@ lìrdɜ̀dù
 údːɛ̀
 láùmɔ̀ðɔ́
 kə́ðə̀ŋnɔ́
-ŋ̀ɡádúrǒ
-ŋɡɛ́ltʃà
+ŋ̀gádúrǒ
+ŋgɛ́ltʃà
 lárúŋɔ̀t̪ɔ̀
 ŋɔ́tʃɔ́
 nàðàlàgàráì
@@ -3076,7 +3076,7 @@ ábúðát̪ɔ́
 lɜ́lːívə́lɛ̂ðɔ́rlɔ́
 ŋíjɛ̀
 kcɔldɛ̀rɛ̀
-ŋɡár̀lànd̪ɔ́
+ŋgár̀lànd̪ɔ́
 ðùcùbù
 ɖè
 ŋə̀və́lɛ̀ðà
@@ -3132,7 +3132,7 @@ làbùt̪ɔ́
 édɔ̀ɽɔ̀
 láɽìðì
 lávə̀lɔ̀t̪ɔ́
-nɡáðə́nà
+ngáðə́nà
 ŋóɽùwɛ́l
 ðávə́lɛ̀ðà
 làlːívə́lɛ̂ðɛ̀
@@ -3141,8 +3141,8 @@ lònɲà
 ǹdráðɛ̀
 ŋórá
 àbùðàt̪á
-ŋɡɛ́tʃɔ̀
-íŋɡɔ́
+ŋgɛ́tʃɔ̀
+íŋgɔ́
 láìrtʃɛ̀tʃí
 ðàŋvə́lɛ̂ːðɛ̀
 tʃùtʃú
@@ -3179,7 +3179,7 @@ lə̀mɛ̀rðàðìt̪ɔ̀
 ðɛ̀t̪áj
 ŋúdːɛ̀
 kájít̪ɔ̀
-ŋ̀ɡéɲáːvlɛ̂ðɔ́
+ŋ̀géɲáːvlɛ̂ðɔ́
 ŋij̀ɛ́
 ɛ̀mànàló
 ðùd̪ɔ̀
@@ -3196,7 +3196,7 @@ t̪àdúrɔ̀ða
 lɛ́ŋgálír
 ŋwɔ́
 lɛ̀ɽàɲìðǔ
-ŋɡɛ́ltʃì
+ŋgɛ́ltʃì
 íán
 t̪àməɾðɔ́
 lìtʃə̀lò
@@ -3207,7 +3207,7 @@ kámāɽāŋá
 kúkùŋðɔ́ndà
 kâvɔ̀ðɔ́
 làðɛ́ɲɛ̀làtʃà
-nàlɡàlgàrájɛ̀
+nàlgàlgàrájɛ̀
 làmút̪ɛ̀
 kàɾá
 ŋawuðɛ
@@ -3222,7 +3222,7 @@ ínɔ̂nɛ̀
 ŋìjajɔ́
 áːŋáʈɛ́
 kə̀rə̀mná
-ŋ̀ɡɛ̀və́lɛ̂ːðɛ̀
+ŋ̀gɛ̀və́lɛ̂ːðɛ̀
 núlʈúmʈánì
 lə̀və̀lɛ̀ðà
 ðɛ́ɲó
@@ -3262,7 +3262,7 @@ kárɔ̄gâbá
 ŋgɔ̂ɽtʃàtʃìt̪ɔ̀
 kə̀t̪ɔ́
 ànə̀ŋú
-ðàlɡàrâj
+ðàlgàrâj
 lə̀nɔ̀nɔ́
 kán
 ðə́t̪ɔ̀t̪à
@@ -3281,7 +3281,7 @@ làjlàj
 lɜ̀llí
 má
 nèvə́lɛ̀ðà
-ŋɡúkʊ̀
+ŋgúkʊ̀
 kə́ðīɲɔ́
 ɜ́ɖí
 lə̀gɛ̀tʃí
@@ -3291,7 +3291,7 @@ jùpì
 éràmná
 nìjɔ̌
 ŋáɽá
-ŋ̀ɡɛ̌ːɲâːvə̀lɛ̀ːðɛ̀
+ŋ̀gɛ̌ːɲâːvə̀lɛ̀ːðɛ̀
 d̪ùrɔ́
 ́dó
 ìngánɔ̂nǎ
@@ -3303,7 +3303,7 @@ lɛ́lvélɛ̂ðà
 jɛ́l
 káŋěn
 kàŕlànd̪á
-ŋɡɔ́t̪ìnɛ̀
+ŋgɔ́t̪ìnɛ̀
 àt̪ə́vɛ̀
 ŋàɽə̀ŋàt̪ìnó
 làbɔ̀ðɔ́
@@ -3352,7 +3352,7 @@ évé
 ŋɔ́ɽíŋgɔ́
 ŋávè
 və̀lɛ̀ða
-íŋɡáŋâːvlɛ̀ːdɔ̀
+íŋgáŋâːvlɛ̀ːdɔ̀
 ŕlɛ̀ɲi
 lɔ́ːɾɔ̀
 lòðì
@@ -3366,7 +3366,7 @@ nàɔðí
 láúdɔ̀
 jə̀və̀lɛ̀ðɔ́lə́ŋò
 nɛ̀ðɔ̀
-ŋɡáɽíɲínò
+ŋgáɽíɲínò
 lâmìɲí
 ɽót̪ɔ̀
 làβùðú
@@ -3419,7 +3419,7 @@ áló
 lɛ̀ùmɔ̀ðɔ̀ðɔ̀
 gàló
 làɾt̪áŋǎ
-jǐŋɡávə́lɛ̂ːðɛ̌
+jǐŋgávə́lɛ̂ːðɛ̌
 ŋɛ́nnê
 ŋéɲárvə́lɛ̀ðà
 ðúdːɔ́
@@ -3522,19 +3522,19 @@ lə̀vɜ̀ɽɔ̀
 àðá
 ɪ̀clò
 kéŋìn
-ŋ̀ɡíðɔ̀
+ŋ̀gíðɔ̀
 kàmɛ́ːðìt̪ə̀màn
 únɛ́ːrɛ̀
 ùtʃùl
 kɛ̀mɛ̀ðókúkù
-lɛ̀ŋɡɛ̀n
+lɛ̀ŋgɛ̀n
 ð̀ə̀gàrɔ̀ðɛ́
 ùnɛ̀ɾɛ
 kɛ̀ìdú
 ðúrmùðɔ́ðɛ̋
 t̪àuɔa
 látʃɔ̀
-ŋ̀ɡáɽíɲîːnò
+ŋ̀gáɽíɲîːnò
 jàrt̪ə́lɟí
 làd̪úɾì
 ŋ̀maɛ́ðɛ̀nɛ
@@ -3599,13 +3599,13 @@ lɜ́ðíɲìjɔ̀
 kàrúðɛ̀
 ùɽɔ́
 ŋə̀rɛ̀
-íŋɡávə́lɛ̂ːðɛ̀
+íŋgávə́lɛ̂ːðɛ̀
 ðɛ̀dɛ̀ɽì
 ɖòɾɪ̀
 ŋwùt̪út̪ú
 òn
 ŋə̀və́râ
-ŋ̀ɡàŋːvə́lɛ̂ːðɛ̀
+ŋ̀gàŋːvə́lɛ̂ːðɛ̀
 ládɔ̀ɽðàt̪ɔ́
 ðàrt̪ɔ́ð́
 ŋ̀gágéɲǎ
@@ -3613,7 +3613,7 @@ ládɔ̀ɽðàt̪ɔ́
 àɖɔ̀ŋnɔ̀
 ðādíjà
 jáít̪ɔ́
-íŋɡánɔ́nà
+íŋgánɔ́nà
 èɽó
 ní
 ŋəra
@@ -3633,7 +3633,7 @@ kákɛ́tʃɛ́tʃì
 ŋə̀búrŋánó
 ŋŋə̀má
 lə̀və̀lɛ̀ðáɲáló
-ŋ̀ɡàːvə́lɛ̂ːðɛ̀
+ŋ̀gàːvə́lɛ̂ːðɛ̀
 lɔ́tʃɔ̀
 àɾt̪ɔ́l
 ðà́tɔ́
@@ -3703,7 +3703,7 @@ mìɲàt̪á
 ʈúmt̪ánì
 ðə́míɲá
 ŋúɽìðì
-ǹdòbàɡɛ̀
+ǹdòbàgɛ̀
 lɛ̀ɖè
 rô
 ŋə̀váɾì
@@ -3720,7 +3720,7 @@ lùrìjɔ̀
 jə̀və̀lɛ̀ðɔ́lɔ́ŋʊ
 kàmiɲí
 éɲɔ̂ɽdʒɔ̀tʃɔ̀nɔ̀
-ŋ̀ɡàvə́lɛ̂ːðɛ̌
+ŋ̀gàvə́lɛ̂ːðɛ̌
 ðɔ́mɔ́ŋnɔ́
 làɾtɔ́
 ávə́lɛ̀ðà
@@ -3768,10 +3768,10 @@ jāŋkə̄ltʃà
 lâɳɖó
 r̀ðɛ̀
 ìðɔ̀ŋɔ̌
-íŋɡáléŋt̪à
+íŋgáléŋt̪à
 ðōlā
 lákɔ̀ðɔ́
-ŋ̀ɡǎŋîːvlɛ̀ːðɔ́
+ŋ̀gǎŋîːvlɛ̀ːðɔ́
 ðáŕ
 ðə̀və̀lɛ̀ðɛ́ŋí
 ðùgùbúlɔ́
@@ -3790,7 +3790,7 @@ ùnɛ̀ɾɛ̂
 ɔ̂ɽdʒɛ̀tʃíŋgɔ́ɽdʒɛ̀tʃí
 ðìcul̀
 óɾóðɛ́
-ŋɡāɖíjɐ̀ː
+ŋgāɖíjɐ̀ː
 kábá
 əná
 kávə́lɛ̂ːðà
@@ -3890,7 +3890,7 @@ t̪àðámrðà
 mùːzú
 ígùn
 ɲájɛ́ðàðɔ́
-ŋɡʊ̀blɔ̀ŋnɔ̀
+ŋgʊ̀blɔ̀ŋnɔ̀
 t̪ɔ̀lèɲâáŋ
 ðʊ́rʊ̀ŋɔ̀
 mùðù
@@ -3954,7 +3954,7 @@ láì
 ŋgǐɲâgɛ̀rɛ̀
 jàlə̀ŋɔ́
 júrmùðɔ́jɛ́
-ŋ̀ɡàvə́lɛ̂ːðɛ̀
+ŋ̀gàvə́lɛ̂ːðɛ̀
 úrmʊ́ðɔ̂
 ŋárlɔ̂ɲɔ̀
 ndòbagě
@@ -4001,7 +4001,7 @@ káɾú
 lākɔ́t̪à
 ŋə́́ndì
 kâvɜ̀ɽìjí
-áɡáŋîjàjàt̪à
+ágáŋîjàjàt̪à
 nd̪̞ɔ̀bà
 kìɲɔ́
 ŋə̀rːâ
@@ -4102,7 +4102,7 @@ jɛ́və̀lɛ̀ðáʈɛ́
 kàðə́vr̀lɛ̀ðó
 íŋgàŋâɽìɲà
 kɛ́ɾðɛ̀ðó
-ŋɡáŋ
+ŋgáŋ
 ðɛ̀dú
 ùmè
 lán
@@ -4131,7 +4131,7 @@ lǎnt̪ɛ̀
 ðɪ́dìjɔ́l
 ɛ̀ðɛ̌
 ndɔbàgɛ̀
-ŋ̀ɡɛ́ːvəlɛ̂ːðɔ́
+ŋ̀gɛ́ːvəlɛ̂ːðɔ́
 wɛ́
 kə́ðìɲɔ̄
 ɔ́rà
@@ -4180,7 +4180,7 @@ áŋó
 ðʊ̀ɖʊ̀
 ŋúðàr
 ŋátɛ́və́lɛ̂ðɛ̀
-ŋ̀ɡá
+ŋ̀gá
 r̀lɛ̀ɲɔ̀
 nɜ̀ðú
 lɔ̀dːɔ́
@@ -4265,7 +4265,7 @@ kát̪ɔ̀t̪ɔ́
 ŋɔ́ɲà
 bátʃʊ́m
 áŋɔ́ŋní
-ɲàŋɡú
+ɲàŋgú
 və́lɛ́tʃíðúr
 lɛ́ngɛ́n
 lə̀və̀lɛ̀ðɔ́lŋô
@@ -4274,7 +4274,7 @@ t̪ìmíŋì
 áɽə́ŋátô
 ðáɲì
 kə̀dɔ̀ɽðɔ̀t̪ɔ́
-ŋ̀ɡâlvə̀lɛ̀ːðó
+ŋ̀gâlvə̀lɛ̀ːðó
 luðó
 ŋmɽáɾɛ̀
 pònù
@@ -4367,11 +4367,11 @@ ùɽtʃâá
 nɪ̀tʃə̀rðù
 t̪ʊ́lɪ̄
 dìjò
-sɔ́ɽíŋɡɔ́
+sɔ́ɽíŋgɔ́
 ŋɔ̂ɽàt̪ɔ́
 áɣáðɛ́ɣàːɾà
 ɛ̀ɣɔ́
-ɪ̄ŋɡáðɛ́nônà
+ɪ̄ŋgáðɛ́nônà
 jáɔ́dɔ́tʃɔ̀
 jàó
 ɔ́ðə̀ŋìnà
@@ -4386,7 +4386,7 @@ lɛ́ðɛ́t̪ɛ́n
 ká
 ðàjɛ́ðì
 kâmɔ̀nt̪á
-âvdʒèɡɛ̀
+âvdʒègɛ̀
 ŋámɽàɾɛ́
 líjɔ́l
 kúkűŋ
@@ -4471,7 +4471,7 @@ kêː
 ŋàvɾá
 lə̀rɔ̀ðɔ̀
 ðúɽíðát̪á
-ðɛ́ɡɛ̀ltʃà
+ðɛ́gɛ̀ltʃà
 ðùpà
 àdàm
 ŋɔ́dà
@@ -4518,7 +4518,7 @@ làvə́lɛ̂ðɛ̀
 ðɛ́dɔ̀ɽɔ̀
 kìðìɲɔ́
 ŋʊ́t̪òːlīŋà
-ŋɡávə̀lɛ̀ðɔ́
+ŋgávə̀lɛ̀ðɔ́
 áít̪ɔ́
 lɛ̀rlɛ̀ɲí
 ðúɽtʃà
@@ -4577,10 +4577,10 @@ vɽán̋
 ɛ̀vàlá
 ɲárà
 kárŋɔ̀
-ŋ̀ɡád̪úrǒ
+ŋ̀gád̪úrǒ
 ŋgálàpìjɔ̀
 ðɔ̀mɔ̀tʃǎ
-ŋɡàɽíɲǎ
+ŋgàɽíɲǎ
 ŋìtʃɔ̀
 ìjɛ̀
 jǎl
@@ -4638,7 +4638,7 @@ lɜ̌ːŋtʃì
 ɲáláðɛ́lá
 ðɛ̀t̪àló
 lárúŋɔ̀
-ŋɡávə́lɛ̀ðà
+ŋgávə́lɛ̀ðà
 jàjú
 lárɔ̄lɛ́
 nɛ́léɲɛ́
@@ -4683,14 +4683,14 @@ làŋìðàt̪ɔ́
 rájù
 ár
 ɔ̀ɽtʃàtʃìðí
-ŋɡíɲáɡɛ́
+ŋgíɲágɛ́
 lùbút̪ɛ̀
 kàḿðj̀t̪ɛ̀
 ŋɛ̀rá
 kàʈɛ́və́lɛ̂ːðɛ̀
 làɾán
 ðɪ́ɲɔ̀
-rə̀ŋɡə̀lá
+rə̀ŋgə̀lá
 lùriɔ̀
 ré
 álárɛ́
@@ -4747,7 +4747,7 @@ ûɾnɔ̀
 t̪ʊ́lɪ̄ɲâ
 làíjɛ̀
 lə̀ɳɖó
-ŋɡāɖíjɐ̌ː
+ŋgāɖíjɐ̌ː
 irə̀lí
 kǎpít̪ɔ̀
 ŋə́ndì
@@ -4770,7 +4770,7 @@ àŋná
 kárɛ́ðà
 ànlì
 ́ó
-áɡílà
+ágílà
 lábrt̪à
 háɣàrǔ
 múðù
@@ -4813,7 +4813,7 @@ lə̀gàːró
 jǎŋtʃìnɛ̀
 ɛ̀nà
 nálə̀ŋɔ́
-və̀lɛ̀ðɔ́ŋɡá
+və̀lɛ̀ðɔ́ŋgá
 ðánɔ́r
 ɛ́rɛ́n
 rɛ́t̪áló
@@ -4829,7 +4829,7 @@ íbí
 kə̀lə̀ŋɔ́
 ŋɛ̀vɛ̀r
 lèt̪ɔ́
-iŋɡaŋaja
+iŋgaŋaja
 t̪ɔ́ɽɔ́
 kìɲárvə́lɛ̂ːðɛ̀
 áɽə́ŋát̪óː
@@ -4895,7 +4895,7 @@ kéɲɔ́
 ðə́t̪ə̀và
 ŋgìðɔ̀t̪ɔ́
 lə̀vr̀ðàt̪ɔ̀
-ŋɡájíð́ìnɔ̀
+ŋgájíð́ìnɔ̀
 dì
 lùɽìðú
 ìdɜ́rɛ̀j
@@ -4965,7 +4965,7 @@ t̪ə̀və̀lɛ̀ðɔ̀ŋ
 láɽát̪ɛ̀
 ŋîŋ
 ŋùva
-íŋɡáðít̪ò
+íŋgáðít̪ò
 kə̀rɛ̀ðú
 ànàŋá
 ŋmɽàːrɛ̀
@@ -4982,7 +4982,7 @@ lə̀kɔ̀t̪ɔ̀t̪ɔ́
 làrúŋɜ̀t̪ì
 ɔ́ɽtʃàtʃíðìjɔ̀
 ŋátʃà
-ŋ̀ɡàlvə́lɛ̂ːðɛ̌r
+ŋ̀gàlvə́lɛ̂ːðɛ̌r
 ǎl
 ŋgkât̪ìðú
 lɔ́bðà
@@ -5010,7 +5010,7 @@ lə́bǒ
 láwájàtʃà
 èvàrt̪ɔ̀
 nàtùdʒáj
-íŋɡáðóɽòt̪à
+íŋgáðóɽòt̪à
 tòlèɲá
 kát̪ɔ́t̪ɔ̀
 án
@@ -5059,7 +5059,7 @@ lúbúʈɛ́
 ðùdò
 ðámbrðà
 lárt̪ɔ́
-ŋ̀ɡánɔ̂nà
+ŋ̀gánɔ̂nà
 ânlí
 ŋə̀nɔ́nɛ̀
 ðə̀ə́r
@@ -5090,7 +5090,7 @@ kɔ̀ɽdʒɛ̀tʃáŋà
 ɛ̀ɾɛ̀ð
 vŕðɔ̀
 ídɜ́rálʊ́
-ɡɛ́
+gɛ́
 ŋàʈɛ́və́lɛ̀ðà
 ŋícɔ̀
 ɔ́ráj
@@ -5123,8 +5123,8 @@ ràmàn
 sɛ́ðìjú
 ágágâːra
 jèɽò
-ŋɡɔ̀ɔ́
-látʃìŋɡə̀làlí
+ŋgɔ̀ɔ́
+látʃìŋgə̀làlí
 làɣáɾì
 ɔ́ðə̀ŋìnǎ
 nôn
@@ -5146,7 +5146,7 @@ lə̀ɖɔ̀ŋðɔ́
 lájlɜ́lír
 ŋə̀və́lɛ̀tʃì
 làʈɛ́və́lɛ̂ːðɛ̀
-ɲɔ̀ɽíŋɡɔ́
+ɲɔ̀ɽíŋgɔ́
 álâvə̀lɛ̀ðɔ́r
 kúkû
 ŋàmɔ̀ðó
@@ -5205,7 +5205,7 @@ vɜ̀ɽì
 vɜ̀lír
 ðúdò
 áɖɔ̀ŋnɔ̌
-íŋɡɛ́là
+íŋgɛ́là
 làíbì
 ɜ̀ùɾ
 kə̀dɔ̀ŋðɔ́
@@ -5263,7 +5263,7 @@ áɾò
 ànò
 làðə́vr̀ðɔ̀
 ŋìðə̀níìdɔ̀t̪ɔ̀
-ŋ̀ɡǎŋîːí
+ŋ̀gǎŋîːí
 ŋɔ́mɛ́
 ɲɛ̄ɽcân
 àt̪áŋ
@@ -5287,7 +5287,7 @@ lìdɜ́rlɜ̀lú
 kàɾúŋî
 ījɔ̀
 lə̀rɽìɲàɲɔ́
-kàðə́ɡə̀ltʃǎ
+kàðə́gə̀ltʃǎ
 ŋə̀r̃ǐ
 ŋə̀búrŋà
 ɛ́rlɛ́nd̪íjí
@@ -5361,7 +5361,7 @@ və́lɛ́ðát̪ɔ́
 wǎj
 ðə́kíðɔ́
 ɖě
-ǹdòbàɡè
+ǹdòbàgè
 ɲátʃìló
 lávə́lɔ̀t̪ɔ̀
 lɛ̀bùlìjɛ́
@@ -5378,7 +5378,7 @@ kârùðɔ́
 ɛ́ðɛ̀ɲí
 t̪ànd̪àrù
 kávr̀lɛ̀ðɔ́
-ɲàɽíŋɡɔ̀
+ɲàɽíŋgɔ̀
 ró
 ràvə́lɛ̀ðɛ̀
 áɽə́ŋájt̪ɜ́ló
@@ -5410,7 +5410,7 @@ jípɔ́
 líŋtʃàlò
 lìt̪rɔ́
 láɖìjɔ́
-nd̪ɔ̀bàɡɛ̀
+nd̪ɔ̀bàgɛ̀
 jàmɲí
 lúrnɔ̋
 ɲàlɜ́ó
@@ -5439,7 +5439,7 @@ lə̀və̀lɛ̀ðɔ́rà
 láìðɔ́
 ̀àvə̀ðàtʃá
 rívs
-íŋɡáŋâ
+íŋgáŋâ
 íŋgátɔ̀
 ɪ̀lːɛ́ð
 jɔ́á
@@ -5463,7 +5463,7 @@ rə̀clò
 lǎmàtʃí
 ðàlgàráì
 ŋɔ́ɽdʒɛ̀tʃà
-ŋɡǎlvə́lɛ̂ːðór
+ŋgǎlvə́lɛ̂ːðór
 làɾðɔ́
 ɔ́ɾɛ̀
 jɜ̀ŋtʃi
@@ -5473,13 +5473,13 @@ úwɔ́
 de̋
 âl
 krɔ́ŋɔ́r
-íŋɡáŋâŋàtʃí
+íŋgáŋâŋàtʃí
 áɖám
 áláɽə̀ŋàt̪ǎr
 t̪ə̀mːàn
 ŋwɔ́bɛ́ɽɛ́
 kákáɾtʃàtʃì
-ðɛ́tʃíŋɡə́lálá
+ðɛ́tʃíŋgə́lálá
 úːɟɪ́
 káɔ́d̪ɔ́t̪àkáɔ́d̪ɔ́t̪à
 jàbɽɔ́t̪ɔ̀
@@ -5511,7 +5511,7 @@ ělɪ̌
 ndrèɟɛ̌n
 ŋə̀ðùɽú
 ŋúɽìðí
-kàɽìɲáɲàɡɛ̌
+kàɽìɲáɲàgɛ̌
 və̀lɔ̀tʃɔ́
 díò
 lə̀dɜ́rlèlú
@@ -5576,7 +5576,7 @@ àjóŋərɛ̀
 ŋòɖòɾɪ̀
 nàrè
 lámút̪ɔ̀
-ðìŋɡə̀lá
+ðìŋgə̀lá
 láíɖɔ̀t̪ɔ̀
 sábŕt̪ínò
 àrlá
@@ -5584,7 +5584,7 @@ kálvə̀lɛ̀ðɛ̀
 ðòɽáɾɛ́
 kârɔ́gɛ́
 àjén
-ŋɡád̪úrò
+ŋgád̪úrò
 ɽót̪ɔ
 kàkɛ́ɲíjì
 kə́ðìɲìjí
@@ -5596,12 +5596,12 @@ jâbòt̪ɔ́
 jónòré
 ɪ̀lí
 ùnɛ̀ré
-ŋɔ̀ɽíŋɡɔ̀
+ŋɔ̀ɽíŋgɔ̀
 ðàɾt̪íŋí
-íŋɡáŋâìlɔ̀t̪ɔ̀
+íŋgáŋâìlɔ̀t̪ɔ̀
 ŋɛ́ðùɽár
 jâmɔ̀nɔ́l
-ǹdɔ̀bàɡɛ̀
+ǹdɔ̀bàgɛ̀
 ðáwà
 láírtʃɛ̀tʃì
 ɪ̀ndɔ̌
@@ -5716,7 +5716,7 @@ ànŋá
 nàjínɔ̀
 lɛ̀vɛ́r
 jájɛ̀
-áɡáŋîmàt̪à
+ágáŋîmàt̪à
 ɲùmbòɽò
 írí
 íjón
@@ -5777,7 +5777,7 @@ kárì
 ɲɛ̀mbə̀ɽó
 ŋgâpìðɔ̀t̪ɔ́
 àrðá
-ŋɡájíðìnɔ̀
+ŋgájíðìnɔ̀
 ðɛ́ŋáŋá
 àðə̀ɲɛ́nɛ́
 láléŋt̪à
@@ -5802,9 +5802,9 @@ vŕðɔ̂ː
 áɽə́ŋájt̪ɜ́lǒ
 ìró
 láɛ́ɽðà
-áɡáðíjà
+ágáðíjà
 ɔ́ɾíɲɛ́
-íɡɛ̀ɲí
+ígɛ̀ɲí
 ɔ̂ɟɔ́ŋrɛ́
 lìtʃìlò
 lùɽtʃì
@@ -5814,7 +5814,7 @@ jít̪ə́vɛ̌
 kàŋ
 ŋgɔ̀t̪àt̪ɔ́
 lɛ́láló
-ŋɡánɔ̂nà
+ŋgánɔ̂nà
 ìrðɛ̀tʃí
 jàl
 aìt̪ɔ́
@@ -5828,7 +5828,7 @@ kə̀ŋàtʃáŋá
 áprìɲá
 ŋùlà
 ŋɔ́dɛ̌
-ŋɡɔ́ɽdʒɛ̀tʃɔ̀nɔ́
+ŋgɔ́ɽdʒɛ̀tʃɔ̀nɔ́
 lɽàɲìðɔ́
 lábùlíjé
 ɲàrɔ́
@@ -5899,7 +5899,7 @@ làðánt̪ɔ̀
 lə̀ɽávrè
 láùʈìðí
 kárɔ̀
-ŋɡó
+ŋgó
 lɪ̀tʃə̀lò
 ðúɖɔ̀
 kɛ̂nnɛ̀
@@ -5954,7 +5954,7 @@ lávɜ̀ɽí
 t̪áŋnɔ̀nɔ̀
 ɛ́rɛ̀ɲí
 jàŋóàprí
-lə̀tʃìŋɡìlàlà
+lə̀tʃìŋgìlàlà
 kə̀rlànd̪àt̪ɔ́
 áíɲár
 làllúvə́lɛ̂ːðɛ̌rlúnɛ̀ɾɛ̀
@@ -5979,7 +5979,7 @@ kǎpɜ́ìt̪ɔ̀
 lɛ̀àrdɛ̀dì
 kàgɛ́ɲát̪ɛ̀
 kàŋtʃìnìjí
-ɲáláðɛ́ɡâːɾà
+ɲáláðɛ́gâːɾà
 t̪ɾə́
 jɛ̀rlɜ̀nd̪ɪ̀nɔ̀
 lə̀rdì
@@ -6010,7 +6010,7 @@ láɖɔ̀ŋðɔ́
 ìmìdánŋwâ
 t̪ɔ̀lêŋ́
 lálə̀vtʃí
-ŋɡádɔ́ŋɔ̀nɔ̀
+ŋgádɔ́ŋɔ̀nɔ̀
 nɛ̀nɔ́nɛ̀
 náŋîjɛ̌
 ŋéðénɔ̀
@@ -6043,8 +6043,8 @@ èɖɔ̀ɽɔ̌
 ðə́lɔ̀ɽíŋí
 lɔ́ɽɔ̀gðɔ́
 ládìjà
-íŋɡáŋâvə̀lɛ̀ːðɛ̀
-ŋ̀ɡávə́lɛ̂ːðɛ̀
+íŋgáŋâvə̀lɛ̀ːðɛ̀
+ŋ̀gávə́lɛ̂ːðɛ̀
 lákéɲà
 ŋúrmʊ̀ðɔ̀
 ŋúɾɛ̀
@@ -6060,7 +6060,7 @@ lùmnɔ̀
 ɛɽɛ̌
 ðánóŕ
 ŋútʃɔ̋
-sɔ̀ɽìŋɡɔ́
+sɔ̀ɽìŋgɔ́
 lɛ̀bùlíjɪ́
 mnà
 áŋná
@@ -6095,7 +6095,7 @@ ǹdràlò
 kàútíðìjì
 ɳɖɔ̌n
 àlú
-íŋɡánɔ̀nà
+íŋgánɔ̀nà
 kájt̪ìŋì
 ŋárðó
 úŋátɛ́və́lɛ̂ðɛ̀
@@ -6158,7 +6158,7 @@ lùʈùwò
 lɛ́rà
 ŋə̀mìɲàt̪ɔ́
 ŋrɔ́bà
-làtʃíŋɡə̀làlì
+làtʃíŋgə̀làlì
 ɔ́ɟɔ̂ŋù
 ðálɛ̀ŋà
 lɛ́lvə́lɛ̂ðɔ́
@@ -6174,7 +6174,7 @@ káŋáŋá
 rə̀dú
 jàlvə́lɛ̂ðɛ̌
 ŋə̀mùt̪ɔ́l
-ndòbàɡɛ̀
+ndòbàgɛ̀
 ìðɔ̀ŋɔ̀
 lɔ́mán
 kárgɛ́
@@ -6215,11 +6215,11 @@ láùrmɛ̀ðɔ̀
 kâŋtɔ́ŋ
 lɔ́mɔ́nɛ̀
 ŋ̀gáʈɛ́və́lɛ̂ðɔ́r
-ŋɡāɖíjɐ̄ː
+ŋgāɖíjɐ̄ː
 ŋàŋtʃíŋì
 nàdám
 dìjó
-sàɽíŋɡɔ̀
+sàɽíŋgɔ̀
 kávə́lɛ̂ðà
 ŋ̀mɔ́θ
 kàmáðɛ̀t̺ɛ̀
@@ -6263,7 +6263,7 @@ ùnɛ́
 kàððàt̪̞ɔ́l
 kárlɔ̀ŋɔ̀
 kɜ̀ŋtʃìjí
-ŋɡǎŋâːvlɛ̀ːdɔ́
+ŋgǎŋâːvlɛ̀ːdɔ́
 ðáŋá
 aɽ
 kɔ́n
@@ -6280,7 +6280,7 @@ t̪ám̀rðá
 ìdáŋgɛ́
 və̀lɛ̀ðɔ̀
 kɔ́t̪ɔ̀t̪ɔ́
-áɡíɲárvə́lɛ̂ːðɛ̀
+ágíɲárvə́lɛ̂ːðɛ̀
 àɽá
 àníjò
 ŋɔ́ðɔ́ŋ
@@ -6293,7 +6293,7 @@ lʈúwɛ́l
 kə̀rdɔ́
 lómǎn
 ápɛ̀
-ðɛ́ɡàrtʃà
+ðɛ́gàrtʃà
 ŋ̀gɔ̀tɔ́
 óndǐ
 ŋáját̪à
@@ -6385,7 +6385,7 @@ rɛ̀mnà
 pínɔ́
 ájnɛ́
 ìɲárvlɛ̂ːðɔ́
-sɔ̀ɽíŋɡɔ́
+sɔ̀ɽíŋgɔ́
 t̪oli
 kɔ̀t̪à
 kìtʃɔ̀
@@ -6415,7 +6415,7 @@ kǎŋà
 ́
 ɔ́ɟɔ́
 ŋúɽíɲɛ́
-ŋə̀tʃíŋɡə̀làlà
+ŋə̀tʃíŋgə̀làlà
 lɛ̀pɔ́
 állárɔ́ðà
 èrt̪á
@@ -6556,7 +6556,7 @@ d̪úɾú
 ðɔ́ŋɔ̀ŋnɔ̀
 kàððɔ́gɛ́
 égàːró
-ɪ́ŋɡáw
+ɪ́ŋgáw
 ŋárlə̀ɲɔ̀
 ŋɛ̀ːn
 ŋàtá
@@ -6614,7 +6614,7 @@ láŋt̪à
 álpúró
 lə̀və́lɛ̀ðà
 ðə̀rt̪ɔ́ðɛ́
-ŋ̀ɡíðɛ̀
+ŋ̀gíðɛ̀
 ālbrīðɔ̀
 ðə́və́lɛ́ðà
 ílə̀ðɛ̀
@@ -6666,12 +6666,12 @@ ìɲávə́lɛ̀ðà
 álò
 ŋə́pɛ̀
 nàɾt̪á
-ðə́ɡáɾá
+ðə́gáɾá
 áɣáŋîvə̀lɛ̀ːðɛ̀
 nàdámà
 ðúːɽár
 ðɛ́və̀lɛ̀ðɔ̀
-nɡá
+ngá
 ídɜ́ɽí
 kàrt̪íŋǐ
 lə̀və̀lɛ̀ðɔ́lə́ŋʊ̀
@@ -6690,7 +6690,7 @@ káðɛ́və̀lèðɔ́
 lə̀wàjì
 kíjêðè
 ŋáró
-áɡáŋî
+ágáŋî
 ìlɛ́ð́ɛ̀
 lúɽvɔ́
 ɛ̀rə̀mt̪ɛ̀j
@@ -6750,7 +6750,7 @@ ndúŋ
 d̪úrɔ̌
 édɔ̀ɽɔ̌
 ðə̀rɔ́
-ŋɡěɲáːvlɛ̂ðɔ́
+ŋgěɲáːvlɛ̂ðɔ́
 írtʃɔ̀
 ŋgákl̀tʃàtʃí
 kàŋtʃîí
@@ -6865,7 +6865,7 @@ káŋî
 t̪àmɾ̀ðàt̪ɔ́
 ɛ̀və̀là
 kíjɔ́
-íŋɡárɛ́
+íŋgárɛ́
 ðùɽúðɛ̂
 lɔ̀rà
 àjɛ̀n
@@ -6961,7 +6961,7 @@ dûn
 ìðɔ̀ŋ
 ùɽìt̪á
 kə́nɔ́nà
-áɡáŋîvə̀lɛ̀ːðɛ̀
+ágáŋîvə̀lɛ̀ːðɛ̀
 t̪ə̀ɽá
 lə̀və́lɛ̀ðɛ̀
 kɔ̀ɽdʒɛ̀tʃíŋì
@@ -7003,7 +7003,7 @@ lákə́ltʃà
 kɛ̀nːɛ̀
 áwúɾ
 édɔ̌
-ɪ̄ŋɡáðɛ́nònǎ
+ɪ̄ŋgáðɛ́nònǎ
 nìlɛ́ðə
 wɛ̌n
 ànɲá
@@ -7082,13 +7082,13 @@ àpɾíɲǎ
 ŋárðɔ́
 ɪ́gáɾàð
 ŋɔ́tʃɛ́
-ðɛ́ɡártʃá
+ðɛ́gártʃá
 t̪âmɾ̀ðàt̪ɔ́
 lə̀və̀lɛ̀ðáɲàl
 ̀à
 tàðámrðà
 ŋgéɲávə́lɛ̀ðá
-ɪ́ŋɡáðɛ́ɡâːɾà
+ɪ́ŋgáðɛ́gâːɾà
 jùrú
 lǎjjà
 ɔ̀ɾàí
@@ -7102,7 +7102,7 @@ nínà
 làɾt̪áŋà
 ðírtʃə́tʃɔ̀
 álpúrɔ́
-ðàlɡàráj
+ðàlgàráj
 làjlɛ́n
 ásǎ
 láŋàlú
@@ -7130,7 +7130,7 @@ lɛ̀jìrí
 ɐ́ɾú
 rìtʃə̀lò
 bŕɽàɽìðì
-ŋɡǎŋvə́lɛ̂ːdɔ́
+ŋgǎŋvə́lɛ̂ːdɔ́
 lɛ́mǎð
 ðàlə̀ŋɔ́
 r̀lànd̪á
@@ -7144,7 +7144,7 @@ lɛ́lvə́lɛ̂ðɛ̀
 jàílɛ̀t̪ɛ̀
 là
 və́lɛ̀ðɛ̀ŕ
-ŋɡálátʃà
+ŋgálátʃà
 kɛ́rlɛ̀ɲì
 àɾðá
 lʊ̀ʈù
@@ -7154,7 +7154,7 @@ dɔ́ŋðát̪ɔ́
 jìlɔ̀t̪ɔ́
 óndè
 ðálə̀ŋà
-jíŋɡávə́lɛ̂ːðɛ̌
+jíŋgávə́lɛ̂ːðɛ̌
 ŋèdéɲâ
 wáló
 ŋɔ̀bò
@@ -7221,7 +7221,7 @@ úkùŋá
 làɔ́ŋɔ̀ŋnìjì
 ŋàlɔ́ɽɛ̀
 lʊbu
-ŋɡár̀lɜ̀nd̪ìt̪ɔ́
+ŋgár̀lɜ̀nd̪ìt̪ɔ́
 ɪ́ðʊ́n
 jáìdìjí
 ŋòú
@@ -7332,7 +7332,7 @@ ànùŋùl
 kâɾɔ̀ðɔ̀t̪ɔ́
 láùɽìðó
 ðálə̀ŋɔ́ŋ
-ŋə̀tʃíŋɡɛ̀làlà
+ŋə̀tʃíŋgɛ̀làlà
 ùɾnò
 ðɔ̀tʃɔ̀
 ájà
@@ -7383,7 +7383,7 @@ sáɖàn
 màɽù
 jìtʃìlìt̪àt̪ó
 nǎ
-lɔ́ɽàɡə̀ðà
+lɔ́ɽàgə̀ðà
 kɛ̀rlɛ̀nd̪ìjí
 t̪àŋó
 kɛ̀lɪ̀ŋɪ̀t̪ɔ́kɛ̀lɛ̀ŋɛ̀t̪ɔ́
@@ -7403,7 +7403,7 @@ úrɔ́t̪ɔ́
 ɜ̀rt̪ìnɔ́
 ŋgàɾó
 ŋúɔ́
-íŋɡáŋâvə̀lɛ̀ːðɛ̌
+íŋgáŋâvə̀lɛ̀ːðɛ̌
 ŋánɔ̂nt̪ɔ̀t̪a̋
 ánt̪ɔ̀
 kárŋìt̪ɔ̀
@@ -7412,7 +7412,7 @@ lǐɲálvə́lɛ̂ðɔ́
 lǎìlɔ̀ðɔ́
 lə̀t̪ə́vàŕ
 ðǎ
-iŋɡóɽɛ́
+iŋgóɽɛ́
 âɖɔ̀ŋnɔ́
 íŋgáθt̪ɔ̀
 nɔ̀nǎ
@@ -7431,7 +7431,7 @@ láló
 ðə́t̪ɔ̀
 làɣɛ́tʃì
 kácí
-ŋ̀ɡǎvə́lɛ̂ːðà
+ŋ̀gǎvə́lɛ̂ːðà
 rɛ́l
 kɛ̀ɲɛ̀làtʃálí
 jàmə̀ɾðɔ̀
@@ -7563,13 +7563,13 @@ ŕlànd̪à
 ŕpí
 ŋɔ̂ɽàt̪à
 lɛ́nnê
-ɪ́ŋɡáðɛ́nònǎ
+ɪ́ŋgáðɛ́nònǎ
 èðɔ̀ŋ
 ðúɽtʃá
 ŋǎi
 ðájá
 lápúɽìnɔ̀
-ŋɡɔ́tʃɔ̀
+ŋgɔ́tʃɔ̀
 kɪ̀ðɔ́
 ló
 ŋgâɾùŋú
@@ -7625,7 +7625,7 @@ jíɽìtʃàn
 jâŋǔ
 lə̀pɔ́
 lɛ́gàɾàt̪íŋí
-ŋɡɔ́ɽdʒɛ̀tʃɔ̀nɔ̀
+ŋgɔ́ɽdʒɛ̀tʃɔ̀nɔ̀
 ìdɛ̀ɽɔ̀
 jɔ̀ɖɔ̀
 t̪ɔ́wə̀nìàl
@@ -7646,12 +7646,12 @@ mùːðù
 kɜ́ní
 káì
 nʊ̀mɔ́
-ɲáŋɡù
+ɲáŋgù
 ŋɔ̀rá
 ŋgát̪ə̀và
 làɾɔ́
 nòló
-náɽàŋɡár
+náɽàŋgár
 kə̀t̪ɔ̀ðɔ̀t̪ɔ́
 lɜ́lvə́lɛ̂ðɔ́
 kàɽŋàt̪ó
@@ -7759,7 +7759,7 @@ láβúðà
 íŋǵnɔ́nà
 ŋgákàɾtʃìðú
 làɾt̪á
-ndɔ̀bàɡɛ̌
+ndɔ̀bàgɛ̌
 ðámàrðà
 rlɛ̀ŋì
 ŋ̀gáíjà
@@ -7769,7 +7769,7 @@ kàvə̀lɛ̂ðɛ̀
 ðɛ́dɔ́ŋðá
 kɛ́nːá
 èráð
-ŋɡɔ́
+ŋgɔ́
 ŋdúɛ̀t̪ɛ̌
 kàŋtʃíŋǐ
 ŋə̀mt̪ɛ́ɾɛ̀
@@ -7803,7 +7803,7 @@ bátʃóm̀
 lákáɾà
 ʃáɹɔ̀nʊ́
 ŋɔ̂t̪ɔ́
-ŋɡǎŋə́və́lɛ̂ːdɔ́
+ŋgǎŋə́və́lɛ̂ːdɔ́
 lìtʃìlɔ́
 lǎɽə̀ŋàt̪ɛ̀
 ŋə̀vɛ́
@@ -7823,7 +7823,7 @@ ládʒìðí
 kə̀və̀lɛ̀ðátɛ́r
 ðɛ́rd̪à
 lə̀ʈúm
-tʃìŋɡə̀làlá
+tʃìŋgə̀làlá
 kukǔ
 ɔ́ɖɔ̀
 lɛ́ŋgɛ̀n
@@ -7868,7 +7868,7 @@ kágít̪ɔ̀
 ɛ́ðɛ̌
 líŋtʃà
 kàgíðít̪ɛ̀
-ŋɡɔ́ɽdʒɛ̀tʃà
+ŋgɔ́ɽdʒɛ̀tʃà
 ŋə̀ɲə́làtʃi
 və̀lɛ̀tʃìðâ
 lɜ́dúɾɔ̀
@@ -7921,7 +7921,7 @@ múðɔ̀
 ɲɛ̀ɽà
 lɛ̀lɛ̀ŋìt̪ɔ́
 ûrmə̀ðɔ́
-ŋɔ̀ɽíŋɡɔ́
+ŋɔ̀ɽíŋgɔ́
 ðə́ɣɔ̀tʃɔ̀
 àvlà
 ŋɛ̀nɛ̀
@@ -7946,7 +7946,7 @@ kə̀blàt̪ò
 kɛ̀ìdɔ̀t̪ɔ́
 ðə̀mɔ̀tʃɔ́
 ŋwɔ́rà
-ŋ̀ɡǎː
+ŋ̀gǎː
 ìbɜ̀lʊ́
 ŋ̀gǎlə́ŋàt̪à
 ánɛ́
@@ -7989,7 +7989,7 @@ lòðà
 kâvìlɛ̀tʃɛ̀tʃí
 ìðɛ̀ŋgɜ̀lír
 ŋɔ́ɽà
-ɡɛ̌
+gɛ̌
 ðə̀t̪ɾɔ̀
 láɾə̀mná
 làllír
@@ -8025,7 +8025,7 @@ kàrt̪ìnáidí
 ɲàvə̀lɛ̀ðɛ̀
 ŋə̀váɾà
 ɔ̂rnɔ̀
-ŋɡádúrò
+ŋgádúrò
 àɽàŋgár
 lɛ́mbrà
 ɲàjɛ́ðà
@@ -8066,8 +8066,8 @@ àpɾì
 lə̀vrà
 níðú
 nàl
-lə̀ɡwɔ̀t̪ɔ́
-íŋɡóẁ
+lə̀gwɔ̀t̪ɔ́
+íŋgóẁ
 ŋə́və́lɛ̀ðɛ̀
 làvràlè
 ŋɔ́ɽɔ̀t̪ɔ́
@@ -8093,7 +8093,7 @@ r̃lɛɲi
 ápɹíɲá
 lèɲèlà
 láðà
-ŋ̀ɡàlvə́lɛ̂ːðɛ̀
+ŋ̀gàlvə́lɛ̂ːðɛ̀
 làlə̀ŋɔ́
 íŋgáʈɛ́və́lɛ̂ːðɛ̌r
 lɛ̀má
@@ -8107,7 +8107,7 @@ pə́ɽɔ̂
 kègàːró
 və́lɛ̀ðɔ̀
 nónó
-lɔ́ɽàɡðà
+lɔ́ɽàgðà
 ŋávə̀lɛ̀ðɔ́
 ð́r
 kìbɽánànò
@@ -8152,7 +8152,7 @@ újɛ́lɛ̀
 láʈúʈɔ̀
 kńnǎ
 ùlíŋgɛ̀
-úlíŋɡɛ̀
+úlíŋgɛ̀
 ɛ́làɾà
 lârðɔ́
 ŋə̀bə́ɽɛ̀
@@ -8186,8 +8186,8 @@ t̪ólè
 vɽân
 kɛ̀mìɲɔ̀
 ɛ́ŋə̀nàǎ
-ŋɡábə́ɽɪ̀nɔ̀
-héɡûn
+ŋgábə́ɽɪ̀nɔ̀
+hégûn
 láúmɔ̀ðɔ̀
 ðə́dɔ̀ŋðà
 ŋɛ́rɛ́gɛ̌
@@ -8239,7 +8239,7 @@ àprɛ̀ɲā
 nɐ́ɾú
 ŋìnéðàt̪ɛ̀
 ŋə̀ɽá
-ŋ̀ɡâːvlɛ̀ðɔ́
+ŋ̀gâːvlɛ̀ðɔ́
 lɔ̀mɔ̀
 kɜ̀ŋtʃíŋìǐ
 kàmə̀ɾðɔ́
@@ -8324,7 +8324,7 @@ màð̪ìnù
 kámɛ́ðà
 ðáɽá
 ŋàŋvə́lɛ̂ːðɛ̀
-ðàlɡàrâj́
+ðàlgàrâj́
 kàtúðìjì
 lɛ̂ŋgɛ̀n
 ɛ́l
@@ -8376,7 +8376,7 @@ lìdìjí
 jágɔ́t̪ìnɔ̌
 lə̀və̀lɛ̀ðálérló
 jâŋtʃìnɔ́
-ŋɡàlə́ŋàt̪à
+ŋgàlə́ŋàt̪à
 ɲálávə́lɛ̂ːðɛ̌
 ítí
 ŋə̀mbùɽú
@@ -8405,7 +8405,7 @@ áɽàŋgár
 lɛ̀kèɲɔ́
 lɔ́dːà
 lɛ́ŋgáj
-ɪ̄ŋɡáðɛ́nònà
+ɪ̄ŋgáðɛ́nònà
 ðɔ́ndɔ̌
 àprat̪ɔ̀
 t̪áŋ
@@ -8413,7 +8413,7 @@ ìɾɔ́
 kárè
 lə̀və̀lɛ̀ðâlló
 lákɔ́ðà
-kɛ̀tʃìŋɡàlàláʈɛ́r
+kɛ̀tʃìŋgàlàláʈɛ́r
 ŋgápìnó
 kə̀və̀lɛ̀ðɔ́
 kǎllɛ́rɛ́r
@@ -8421,7 +8421,7 @@ sáʈàn
 kàdúɾɛ́t̪ɛ̀
 ŋə́t̪ə́và
 nʊ̀mì
-ŋɡǎlvə́lɛ̂ːðó
+ŋgǎlvə́lɛ̂ːðó
 ɛ́gáí
 kɔ̀tʃɔ́
 jɛ̀ɽcàn
@@ -8429,7 +8429,7 @@ kə́lə̀ŋɔ́
 árǎ
 ʊ̄mɔ̄
 ná
-ŋ̀ɡɛ̌ɲâːvə̀lɛ̀ːðɛ̀
+ŋ̀gɛ̌ɲâːvə̀lɛ̀ːðɛ̀
 kúɽi
 nàvlà
 ðílɔ́ðɔ́
@@ -8494,7 +8494,7 @@ kàndát̪ɛ̀
 jə̀ŋàtʃí
 lə̀və̀lɛ̀ðɛ́ló
 léɲǎlvə́lɛ̂ːðɛ̀
-nd̪ɔ̀bàɡɛ́
+nd̪ɔ̀bàgɛ́
 ŋúbúʈɛ́
 kàdɔ́ŋðàt̪ɛ̀
 âɾù
@@ -8533,7 +8533,7 @@ àí
 kàt̪íjè
 ɲɛ́
 lɛ̀ɽðó
-ùrnàŋɡèí
+ùrnàŋgèí
 ɔ̂ɽdʒɛ̀tʃà
 lìdì
 kâkɔ̀t̪ɔ̀t̪ɔ́
@@ -8541,17 +8541,17 @@ òɾá
 ŋɛ́nùdab̀
 ŋɛ̀ŋɔ̀nɔ́
 rùɽì
-lə̀tʃìŋɡə̀làlí
+lə̀tʃìŋgə̀làlí
 kà
 tʃùbò
-ɲáɡɛ́
+ɲágɛ́
 lɛ́ŋgáí
 ŋùpɽílá
 índ̪ɔ́
 lə̀kə̀ltʃì
 ðúrmʊ́ðɔ́
 lâjú
-ŋ̀ɡàŋːvə́lɛ̂ːðɛ̌
+ŋ̀gàŋːvə́lɛ̂ːðɛ̌
 láíjà
 ìbɜ̀lí
 t̪ə́và
@@ -8559,7 +8559,7 @@ t̪ə́và
 lə̀rə̀r
 kɔ̀ŋɔ̂
 ákád̪úrɔ̀
-ɡʊ̀blɔ̀ŋnɔ́
+gʊ̀blɔ̀ŋnɔ́
 ŋɛ́nɛ́ðɛ̀lɛ̀ŋìt̪ɔ́
 t̪aŋ
 nɔ̀nɔ́
@@ -8592,7 +8592,7 @@ lɔ̀t̪ɔ̀
 t̪ábūðà
 kádʒà
 kɛ̀ɽɛ̀ðɔ́
-ŋɡábə́ɽìnɔ̀
+ŋgábə́ɽìnɔ̀
 ŋ́gàràt̪ɔ́l
 lǎlívə́lɛ̂ðɔ́
 lɪ̀cə̀ló
@@ -8611,7 +8611,7 @@ kúkù
 kɜ́lʊ̀
 ǹ
 làŋɔ́l
-ðə̀ŋɡə̀lá
+ðə̀ŋgə̀lá
 ìjáj
 ɛ́v́lɛ̀ðɛ̀
 bú
@@ -8686,7 +8686,7 @@ lâŋt̪ɔ́
 káŋátʃìnɛ̀
 lɛ̀rlànd̪ɔ́
 ŋɛ̀mbòɽó
-ðítʃìŋɡɛ̀làlà
+ðítʃìŋgɛ̀làlà
 ðə̀dɔ̀ɽ̀
 nìtʃɔ́lɔ̌
 ùrù
@@ -8700,7 +8700,7 @@ vɜ́ɽì
 ànáǒ
 làðɛ́rlœ̀ɲɔ̀
 ɛ̀ɽɛ̀
-ŋ̀ɡɛ̀və́lɛ̂ːðɛ̌
+ŋ̀gɛ̀və́lɛ̂ːðɛ̌
 égó
 ɽìtɔ̀
 ðáŋɔ́ŋnɔ́
@@ -8722,7 +8722,7 @@ kàìt̪ɔ́
 ðàðɛ́
 láí̀rtʃí
 jɛ̀lːírvə́lɛ̂ðɛ̌rló
-látʃìŋɡɛ̀làlí
+látʃìŋgɛ̀làlí
 júpì
 pɔ̂
 hɛ́ŋgɔ́ràðà
@@ -8743,7 +8743,7 @@ rɔ́
 ðúʈìðɔ̀
 jíɽìtʃìn
 ðábà
-ðə́ɡàɾà
+ðə́gàɾà
 lɔ̀ɽdʒɛ̀tʃí
 ɲɛ́ɖàn
 láílà
@@ -8758,7 +8758,7 @@ ìt̪ə̀ɾɔ́
 ŋáǒ
 ðáŋɔ̀ŋnɔ̀
 jâmrðù
-íŋɡârǎ
+íŋgârǎ
 kɑ́ðɑm̀ɔ̀t͡ʃɔ
 làɽə̀ŋàt̪ó
 ɔ̀ráí
@@ -8773,7 +8773,7 @@ lɔ́mɛ̀
 ùɾnɔ́
 àjènɛ̀
 və̀lɛ̀ðát̪ɛ́
-ðə́ɡìðɔ̀
+ðə́gìðɔ̀
 ɲáláŋâvə̀lɛ̀ðà
 ŋə̀rʊ́ŋɔ̀
 íŋgágâːrà
@@ -8820,7 +8820,7 @@ jàŋvə́lɛ̂ːðɛ̀
 vráðɔ́
 kúku
 èsám
-ŋ̀ɡǎlvə̀lɛ̀ːðɛ̀
+ŋ̀gǎlvə̀lɛ̀ːðɛ̀
 r̀cò
 lɜ̀ù
 kɔ́t̪ɔ́
@@ -8941,13 +8941,13 @@ úɽít̪ɔ́
 ɲìtʃə̀ló
 láv̀t̪ɔ́
 kə́ltʃí
-látʃíŋɡə̀làlà
+látʃíŋgə̀làlà
 káútíðìðì
 ðìcù
 ðɔ̀mɔ̀tʃà
 ŋə̀ŕlàndɛ̀
 ùɾɔ̀
-ŋɡáŕlɜ̀nd̪ìt̪ɔ̀
+ŋgáŕlɜ̀nd̪ìt̪ɔ̀
 ɛ̀rlɛ̀nd̪ɪ̀t̪ɔ́
 ŋábùðà
 nɛ́ɾâ
@@ -8956,7 +8956,7 @@ nɛ́ɾâ
 ðôɾà
 ŋòrô
 lɛ̀mɛ̀rðàðìnt̪ɔ̀
-ŋɡé
+ŋgé
 ùnɛ̀lí
 ðálə̀ŋɔ̌ŋ
 úd̪ɔ̀
@@ -9012,7 +9012,7 @@ làɛ́ɖì
 lə̀wàjí
 kùd̪ɔ̀t̪ɔ́
 ðùɽúðɛ́
-ŋɡwɔ̀t̪ɔ́
+ŋgwɔ̀t̪ɔ́
 ðàó
 lálːóvə́lɛ̂ðǎ
 ɪ́wɜ̀jnɔ́
@@ -9025,7 +9025,7 @@ árú
 líjɔ́
 át̪ájàt̪à
 unɛɾɛɛ̀
-ŋɡáŋì
+ŋgáŋì
 lákɔ̀t̪ɔ́
 jàðábɔ́ðà
 ŋâjɛ̀ðò
@@ -9035,7 +9035,7 @@ nɛ̀gɛ̀ðɔ̀l
 ŋɔ́ɾá
 lə̀ŋàŋɛ̀
 ɰákáɾìðà
-láðɡɔ̀tà
+láðgɔ̀tà
 ɔ̀ɽtʃi
 ŋɔ́
 ðìtʃə̀lò
@@ -9052,7 +9052,7 @@ nàrt̪á
 jə̀gàràt̪ɔ́
 ðɔ́mɔ̀tʃá
 kə́ŋɜ̀tʃìnɔ́
-ìŋɡávə́lɛ̂ːðɛ̀
+ìŋgávə́lɛ̂ːðɛ̀
 ɲàvə̀lɛ̀ːðáŋà
 lɔ̀rlà
 ŋə́pɔ̀
@@ -9125,10 +9125,10 @@ rilɛŋi
 ðə́gàɾàt̪íŋí
 ŋílɛ̀t̪ɛ̀
 ŋɔ́ɽɛ́
-ŋ̀ɡáɾà
+ŋ̀gáɾà
 wàjàtʃá
 kákàŋ
-ùlíŋɡɛ́
+ùlíŋgɛ́
 ùdʒí
 kɔ̀làː
 t̪ólèɲâ
@@ -9180,7 +9180,7 @@ ìbɜ̀lír
 íjɔ̀
 nɔ̀mnâ
 pʊ́lɔ̀
-ɲàɽíŋɡɔ́
+ɲàɽíŋgɔ́
 kùrŋú
 kɛ́lɛ̀ŋìt̪ɔ́
 ðə̀və̀lɛ̀ːðɔ́ŋ
@@ -9234,7 +9234,7 @@ íɾtʃɛ́tʃí
 àlbédà
 jíŋàtʃìt̪ɔ́
 ɔ̀bðí
-nd̪ɔ̀bàŋɡɔ́
+nd̪ɔ̀bàŋgɔ́
 út̪ìðí
 làɛ́ɽðì
 ŕlánd̪ɔ́
@@ -9270,7 +9270,7 @@ lɜ̌lːívə́lɛ̂ðɔ́
 káùmɔ̀t̪ɔ́
 ðɛ́ɣɛ́ltʃá
 tʃʊ̀mʊ̀
-íŋɡárà
+íŋgárà
 ɲálâvə̀lɛ̀ðɔ́
 jàɽó
 kə̀rlànd̪ɔ́
@@ -9280,7 +9280,7 @@ ìt̪ìlɔ́
 ndɔbeg
 lɜ́ó
 ŋə̀bó
-lɛ̀ŋɡɛ́n
+lɛ̀ŋgɛ́n
 lâɳɖú
 kìtʃìló
 ŋə́rà
@@ -9362,7 +9362,7 @@ jéɲál
 kàpìt̪ɔ́
 nɛ̀ɲú
 vàɾá
-háɡàrǔ
+hágàrǔ
 léɲàl
 jɛ̀gàɾtʃìnɔ́
 ánáv
@@ -9397,7 +9397,7 @@ tʃʊ̀mù
 llhh
 ǹdàbàgɛ̀
 ɜ̀nì
-sàɽíŋɡɔ́
+sàɽíŋgɔ́
 ŋàvə́lɛ̀ðɛ̀
 ðə́və̀lɛ̀ðɔ́
 ùnɛ̀ɾɛ̀
@@ -9493,7 +9493,7 @@ únɛ́ɾɛ̀
 ŋgápínìjɔ́
 lèɲálvə́lɛ̂ðàló
 làlívə́lɛ̂ðɛ̌r
-ɡâj
+gâj
 ímìdǎn
 íɖɔ̀t̪ɔ̀
 jàt̪ɔ́
@@ -9531,7 +9531,7 @@ jɛ̀rdɔ́
 ɛ̀βɛ̀
 ɰákáɾtʃíðàðà
 lèʈɛ́və́lɛ̀ðà
-áláðɛ́ɡâːɾǎ
+áláðɛ́gâːɾǎ
 jàt̪ɔ̀
 ðūːɽǐ
 kàɾt̪ɔ́l
@@ -9551,7 +9551,7 @@ kàðə́və̀rlɛ̀ðàt̪ó
 ðàlə̀ŋɔ̀ŋ
 ŋɛ́t̪ì
 jɛ́vlɛ̀tʃìt̪ɔ́
-lɪ́ŋɡɛ́n
+lɪ́ŋgɛ́n
 áprì
 t̪òlé
 lâɾōlɛ́
@@ -9565,7 +9565,7 @@ t̪oleɲa
 kákɔ́tʃɔ̀
 lùɽìðàt̪ɔ́
 kâmɛ̀ðó
-àvdʒìɡɛ̀
+àvdʒìgɛ̀
 káútíðìðɔ̀
 âŋt̪áʈɛ̀
 nɛ̀gɛ̀ðɔ́l
@@ -9576,7 +9576,7 @@ lákàɾú
 ŋgɔ́nì
 èmànàlò
 rɽǒ
-lɛ̀ɡàɾú
+lɛ̀gàɾú
 levəlɛða
 ìnd̪ɔ̀
 lálàtʃí
@@ -9587,7 +9587,7 @@ ùɽò
 ðɜ́ɽí
 vəlɛðɛ
 líɖì
-ŋɡár̀lɛ̀nd̪ìjí
+ŋgár̀lɛ̀nd̪ìjí
 ījéː
 èd̪ɔ̀ɽɔ́l
 ìmàɽðɛ́ná
@@ -9657,7 +9657,7 @@ rmàɲà
 ɾt̪ɔ́ðɛ́
 ālbrīðɔ̄
 ðə́ɽìɲà
-ŋɡápʊ́lɔ̀
+ŋgápʊ́lɔ̀
 àré
 vr̀ðìðú
 ʈòsò
@@ -9706,7 +9706,7 @@ kánɔ̂na
 ɛ́rɛ̀ɲì
 t̪àt̪ɔ́
 kirlɛɲi
-ɪ̄ŋɡɑ́nônà
+ɪ̄ŋgɑ́nônà
 lɛ̀lvə́lɛ̂ðɛ̀
 íŋgánɔ̀nà
 làɾt̪iɲarɛ
@@ -9796,9 +9796,9 @@ nɔ́kɛ̀n
 èd̪ɛ́ɾɛ́
 ndɔ̀́
 ɛ̀ɻɛ̀
-ŋɡǎdɔ̀ŋnɔ̌
+ŋgǎdɔ̀ŋnɔ̌
 ápít̪íŋí
-íŋɡáléŋə̀t̪à
+íŋgáléŋə̀t̪à
 lárðɛ̀
 ŋùlá
 rìtʃɔ̀
@@ -9833,7 +9833,7 @@ àwá
 lǎbŕt̪ɛ̀
 láŕlœ̀ɲɔ̀
 láúmɔ̀
-áɡát̪ə̀vɔ́
+ágát̪ə̀vɔ́
 ðɛ́lɔ̀ɽà
 áɛ
 àɲɲǎ
@@ -9958,7 +9958,7 @@ ìjár
 kɛ̂ɛ́
 lámɪ̀ðà
 ìdáŋà
-lɛ̀tʃìŋɡɛ̀làlí
+lɛ̀tʃìŋgɛ̀làlí
 lɽìɲɔ́
 ɛ́rlɛ́nd̪ít̪ɔ́
 ŋìjɛ́ðà
@@ -10005,7 +10005,7 @@ mɛ̀ðá
 ŋùbút̪ɛ̀
 lə́bʊ̀
 díjí
-ŋ̀ɡǎ̀lvə̀lɛ̀ːðɛ̀
+ŋ̀gǎ̀lvə̀lɛ̀ːðɛ̀
 làwɽíðì
 áprìɲà
 rùːɽár
@@ -10016,8 +10016,8 @@ t̪òlèɲá
 lírà
 ìjàt̪á
 ŋâó
-ŋ̀ɡáɾì
-ɲàlàðɛ́ɡàːɾà
+ŋ̀gáɾì
+ɲàlàðɛ́gàːɾà
 ðáŋàl
 pòn
 t̪ólēɲâ
@@ -10126,4 +10126,4 @@ lə̀t̪ɾɔ̀
 lə̀və̀lɛ̀ðáɲǎl
 ŋ̄ɛ̂ːn
 kúkù̀
-ɪ̄ŋɡánònà
+ɪ̄ŋgánònà
