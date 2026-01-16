@@ -326,8 +326,14 @@ SUBSTITUTION_COSTS = [
     ('ɔ', 'o', MINOR_EDIT_COST),    # o~ɔ interchange
     ('o', 'ɔ', MINOR_EDIT_COST),
 
+    ('ɔ', 'u', MINOR_EDIT_COST),    # o~u interchange
+    ('u', 'ɔ', MINOR_EDIT_COST),
+
     ('ʊ', 'o', MINOR_EDIT_COST),    # o~ʊ interchange
     ('o', 'ʊ', MINOR_EDIT_COST),
+
+    ('ʊ', 'u', MINOR_EDIT_COST),    # u~ʊ interchange
+    ('u', 'ʊ', MINOR_EDIT_COST),
 
     ('d', DENTAL_D, MINOR_EDIT_COST),   # dental stop written as alveolar
     ('t', DENTAL_T, MINOR_EDIT_COST),
