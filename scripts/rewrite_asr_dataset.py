@@ -1,4 +1,4 @@
-from src.search import rewrite_sentence
+from src.process_text import rewrite_sentence
 from src.parser import get_main_parser
 from scripts.dataset_builder import normalize_str, normalize_ipa
 from datasets import load_from_disk
