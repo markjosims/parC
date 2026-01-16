@@ -125,7 +125,7 @@ def add_class_symbol_replacers_to_slot(slot_list):
                 r = fst(''),
                 sigma_star = SIGMASTAR,
             )
-            new_stem = rewrite_rule @ stem
+            new_stem = stem @ rewrite_rule
             new_stem.optimize()
             features_with_class = features.FeatureVector(category, f"class={class_agree}", *feature_values)
             slots_w_class_prefixes.append((new_stem, features_with_class))
