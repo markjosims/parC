@@ -1,5 +1,4 @@
 import pynini
-from pynini.lib import pynutil
 
 from typing import *
 from src.decorators import fst_cache, output_cache
@@ -7,18 +6,14 @@ from src.fst_helpers import *
 from src.constants import (
     INSERT, DELETE, SUBSTITUTE,
     DEFAULT_INSERT_COST, DEFAULT_DELETE_COST, DEFAULT_SUBSTITUTE_COST,
-    DEFAULT_EDIT_BOUND, FV_CLASSES, SENTENCE_DIR,
+    DEFAULT_EDIT_BOUND, SENTENCE_DIR,
 )
-from src.process_text import get_annotation_markup_for_sentence
 from src.lexicon.phonology import (
     SIGMA, INSERTION_COSTS, DELETION_COSTS, SUBSTITUTION_COSTS,
     INSERT_HYPHEN_RULE
 )
-from src.parser import get_main_parser, add_analysis_and_gloss_to_parses, parse_is_root, parse_word
-from argparse import ArgumentParser
+from src.parser import get_main_parser, parse_is_root, parse_word
 import os
-import yaml
-from tqdm import tqdm
 from unidecode import unidecode
 import pandas as pd
 
