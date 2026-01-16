@@ -85,3 +85,10 @@ def get_all_adnominal_paradigms() -> List[paradigms.Paradigm]:
             continue
         adnominal_paradigms.append(get_adnominal_paradigm(part_of_speech=pos))
     return adnominal_paradigms
+
+if __name__ == "__main__":
+    # build/load the adnominal paradigms
+    # then drop into PDB for inspection/testing
+    adj_paradigm = get_adjective_paradigm()
+    adnominal_paradigms = get_all_adnominal_paradigms()
+    breakpoint()

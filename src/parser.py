@@ -448,3 +448,9 @@ def add_analysis_and_gloss_to_parses(
 
     
     return new_parses
+
+if __name__ == "__main__":
+    # build and cache the main parser FSTs
+    # then drop into PDB for inspection
+    main_lemmatizer, main_analyzer, main_inflector = get_main_parser()
+    breakpoint()
