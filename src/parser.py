@@ -441,8 +441,6 @@ def add_analysis_and_gloss_to_parses(
         new_parse['analyzed_form'] = analyses[0].split('[')[0]
 
         part_of_speech = parse["part_of_speech"]
-        if part_of_speech not in ['verb', 'noun', 'adjective']:
-            part_of_speech = 'uninflected'
         glosses = get_gloss_for_root(parse['root'], part_of_speech)
         for gloss in glosses:
             new_parse['gloss'] = gloss
