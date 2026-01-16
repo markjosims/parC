@@ -163,6 +163,14 @@ def get_inalienable_noun_paradigm() -> paradigms.Paradigm:
     Create Paradigm object for inalienably possessed nouns.
     """
     df = load_lexical_data(part_of_speech='inalienable_noun')
+
+    # some nouns have pronunciation variants separated by spaces
+    # explode the data frame to have one variant per row
+    df['singular'] = df['singular'].str.split()
+    df['plural'] = df['plural'].str.split()
+    df = df.explode('singular')
+    df = df.explode('plural')
+
     root_fsas = [fst(root) for root in df['root'].tolist()]
     
     slot_dicts = []
