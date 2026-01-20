@@ -11,12 +11,15 @@ for some forms.
 
 from typing import Tuple, List, Dict, Union
 from src.decorators import output_cache
-from src.forms.form_helpers import add_wh_suffixes_to_slots, features, fst, paradigms, suffix, add_class_prefixes_to_slots, make_feature_builder
-from src.fst_helpers import INFLECTED_AUX, IPFV_AUX, features, fst, insert_fst, stringify_lexeme_features
-from src.constants import INFLECTED_AUX
+from src.forms.form_helpers import (
+    add_wh_suffixes_to_slots, suffix,
+    add_class_prefixes_to_slots, make_feature_builder
+)
+from src.fst_helpers import fst, insert_fst, stringify_lexeme_features
+from src.constants import INFLECTED_AUX, IPFV_AUX
 import pynini
-from pynini.lib import features
-from src.lexicon.phonology import BOUNDARY, INFLECTED_AUX, IPFV_AUX, VOWEL_COALESCENCE_RULE, features, fst, paradigms
+from pynini.lib import features, paradigms
+from src.lexicon.phonology import VOWEL_COALESCENCE_RULE, BOUNDARY
 
 
 from dataclasses import dataclass
