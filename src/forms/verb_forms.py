@@ -429,7 +429,7 @@ def _build_infinitive_slots(composer: StemComposer) -> List[Tuple[pynini.Fst, fe
     """Build infinitive slot with ð-class prefix."""
     inf_class = 'ð'
     suffix_fst = fst(f"-{composer.a_morphome}{HIGH_TONE}")
-    tone_rule = add_class_prefix(ALL_HIGH_TONE_RULE, inf_class, prefix_tone=HIGH_TONE)
+    tone_rule = add_class_prefix(stem=ALL_HIGH_TONE_RULE, class_agree=inf_class, prefix_tone=HIGH_TONE)
     stem = composer.compose_conditional_harmony(tone_rule, use_harmony=composer.is_OV)
     return [(paradigms.suffix(suffix_fst, stem), INFINITIVE)]
 
