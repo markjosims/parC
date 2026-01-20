@@ -8,8 +8,6 @@ and WH suffixes specific to Tira nouns.
 """
 
 from typing import *
-from src.forms.form_helpers import List, Tuple, features, pynini, suffix
-from src.fst_helpers import INFLECTED_VERB, List, Tuple, features, fst, pynini
 from src.constants import CLASS_PREFIXES, HIGH_TONE, INFLECTED_VERB, LOW_TONE, CLASS_PLACEHOLDER
 from src.lexicon.phonology import DELETE_SCHWA_BEFORE_VOWEL, INFLECTED_VERB, SIGMASTAR, REMOVE_DOUBLE_BOUNDARIES, Dict, List, Tuple, features, pynini
 import pynini
