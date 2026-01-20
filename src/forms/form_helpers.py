@@ -339,19 +339,19 @@ def make_marker_rule(marker: Dict[str, Any]) -> pynini.Fst:
         -> suffix('X') + suffix('Y').ques
 
     """
-    suffix = marker.get('suffix', None)
-    prefix = marker.get('prefix', None)
+    suffix_str = marker.get('suffix', None)
+    prefix_str = marker.get('prefix', None)
 
 
-    if prefix is not None and suffix is not None:
-        prefix_rule = _get_affix_rule(prefix, prefix)
-        suffix_rule = _get_affix_rule(suffix, suffix)
+    if prefix_str is not None and suffix_str is not None:
+        prefix_rule = _get_affix_rule(prefix_str, prefix)
+        suffix_rule = _get_affix_rule(suffix_str, suffix)
         return prefix_rule @ suffix_rule
-    elif prefix is not None:
-        prefix_rule = _get_affix_rule(prefix, prefix)
+    elif prefix_str is not None:
+        prefix_rule = _get_affix_rule(prefix_str, prefix)
         return prefix_rule
-    elif suffix is not None:
-        suffix_rule = _get_affix_rule(suffix, suffix)
+    elif suffix_str is not None:
+        suffix_rule = _get_affix_rule(suffix_str, suffix)
         return suffix_rule
 
     raise ValueError(f"Unknown marker format: {marker}")
