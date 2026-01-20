@@ -145,7 +145,8 @@ def add_class_prefixes_to_slots(
         feature_values = [f"{feature}={value}" for feature, value in feature_dict.items()]
         for class_agree in prefixes:
             prefix = class_agree
-            if class_agree == 'ŋg':
+            # ŋg and k are allomoprhs of g class
+            if class_agree in  ['ŋg', 'k']:
                 class_agree = 'g'
             features_with_class = features.FeatureVector(category, f"class={class_agree}", *feature_values)
             prefixed_verb = add_class_prefix(class_agree=prefix, stem=stem)
