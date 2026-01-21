@@ -19,6 +19,8 @@ from src.fst_helpers import fst
 from typing import *
 import pynini
 from glob import glob
+import unicodedata
+from io import StringIO
 
 """
 ## Data loading functions
@@ -68,6 +70,27 @@ def get_pos_mask(
         pos_mask = df['part_of_speech']==part_of_speech
     return pos_mask
 
+def load_csv(
+    csv_path: str
+) -> pd.DataFrame:
+    """
+    Wraps `pandas.read_csv`, performs NFKD normalization on file
+    and explodes the `root` column into pronunciation variants.
+    """
+
+    # perform NFKD normalization on file contents
+    with open(csv_path, 'r', encoding='utf8') as f:
+        text = f.read()
+    text_norm = unicodedata.normalize('NFKD', text)
+
+    text_buffer = StringIO(text_norm)
+    df = pd.read_csv(text_buffer, keep_default_na=False)
+
+    # split pronunciation variants
+    df['root'] = df['root'].str.split(' ')
+    df = df.explode('root')
+    return df
+
 def load_lexical_data(
         part_of_speech: str,
 ) -> pd.DataFrame:
@@ -84,7 +107,7 @@ def load_lexical_data(
     """
     macro_pos = get_macro_pos(part_of_speech)
     csv_path = os.path.join(LEXICON_DIR, f"{macro_pos}.csv")
-    lexical_df = pd.read_csv(csv_path, keep_default_na=False)
+    lexical_df = load_csv(csv_path)
     if macro_pos != part_of_speech:
         # user specified 'micro' part of speech; filter accordingly
         pos_mask = get_pos_mask(lexical_df, part_of_speech)
@@ -103,7 +126,7 @@ def load_test_case_data(
         A list of dictionaries representing the test case data.
     """
     csv_path = os.path.join(TEST_CASE_DIR, f"{test_case_filename}.csv")
-    test_case_df = pd.read_csv(csv_path, keep_default_na=False)
+    test_case_df = load_csv(csv_path)
     return test_case_df.to_dict(orient='records')
 
 """
@@ -264,7 +287,7 @@ def get_all_lexical_data() -> pd.DataFrame:
         if csv_stem == 'verb':
             df = get_all_verb_data()
         else:
-            df = pd.read_csv(csv_path, keep_default_na=False)
+            df = load_csv(csv_path)
 
         # add part_of_speech column if not already present
         # either filename indicates part of speech, or (for data files
