@@ -19,6 +19,23 @@ def parse_printer(func):
         ]
     return wrapper
 
+def print_list_as_markdown_table(string_list):
+    if not string_list:
+        print("No results found.")
+        return
+    # Print header
+    print("| Tira | Translation | Gloss |")
+    print("|------| ------------|-------|")
+    for s in string_list:
+        print(f"| {' | '.join(s)} |")
+
+def search_printer(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        result = func(*args, **kwargs)
+        print_list_as_markdown_table(result)
+    return wrapper
+
 if __name__ == "__main__":
     fire.Fire({
         'parse_word': parse_printer(parse_word),
@@ -26,5 +43,5 @@ if __name__ == "__main__":
         'search_word': parse_printer(search_word),
         'get_gloss_for_root': get_gloss_for_root,
         'get_root_for_gloss': get_root_for_gloss,
-        'search_corpus': search_corpus,
+        'search_corpus': search_printer(search_corpus),
     })
