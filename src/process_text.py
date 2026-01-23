@@ -156,7 +156,11 @@ if __name__ == '__main__':
 
 
     for line in tqdm(lines):
-        sentence, translation, split, index = line.strip().split(',')
+        parts = line.strip().split(',')
+        # pad line with None if data are missing
+        while len(parts)<4:
+            parts.append(None)
+        sentence, translation, split, index = parts
         sentence = sentence.strip()
         # don't add EOS_STR since we're not parsing final lowering for now
         # sentence += EOS_STR
