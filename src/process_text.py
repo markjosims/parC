@@ -36,6 +36,7 @@ def get_annotation_markup_for_sentence(
                     (
                         predicted_form,
                         predicted_form_segmented,
+                        predicted_root,
                         predicted_gloss,
                         weight
                     ),
@@ -57,7 +58,7 @@ def get_annotation_markup_for_sentence(
     """
     markup_dict = {
         'sentence': sentence.removesuffix(EOS_STR),
-        'update_sentence': '',
+        'updated_sentence': '',
         'translation': translation,
         'split': split,
         'index': index,
@@ -88,10 +89,12 @@ def get_annotation_markup_for_sentence(
             gloss_str = get_gloss_str_from_dict(hit)
             predicted_form = hit['form']
             predicted_form_segmented = hit['analyzed_form']
+            root = hit['root']
             weight = hit['weight']
             word_obj['parses'][i]=[
                 predicted_form,
                 predicted_form_segmented,
+                root,
                 gloss_str,
                 round(weight, 2),
             ]
