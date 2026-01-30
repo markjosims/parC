@@ -1,11 +1,12 @@
-from typing import Dict, Literal, Optional, Tuple, Union, List
+from typing import Dict, Optional, Tuple, Union, List
 from dataclasses import dataclass, field
 import pandas as pd
-from src.constants import (
-    SUBJECT_PERSON_AND_NUMBER, OBJECT_PERSON_AND_NUMBER, CLASS_AGREE,
-    FEATURES_TO_VALUES
-)
+from src.constants import FEATURES_TO_VALUES
 from pynini import Fst
+
+"""
+Dataclasses and classes for constructing and querying affix markers
+"""
 
 @dataclass
 class Marker:
