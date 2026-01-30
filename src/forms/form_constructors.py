@@ -363,3 +363,15 @@ class ParadigmMarkers(FeatureQueryMixin):
             data[key] = marker_list
 
         return data
+    
+    def to_pandas(self) -> pd.DataFrame:
+        """
+        Convert the paradigm markers data to a pandas DataFrame.
+        Each row corresponds to a feature combination and its associated markers.
+        """
+        records = []
+        for feature_str, markers in self.data.items():
+            feature_dict = self._feature_str_to_dict(feature_str)
+            record = {**feature_dict, 'markers': markers}
+            records.append(record)
+        return pd.DataFrame(records)
