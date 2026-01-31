@@ -658,6 +658,43 @@ def get_verb_paradigms():
 
     return verb_paradigms
 
+def get_verb_paradigm_dict():
+    """
+    Get a dict mapping paradigm names to Paradigm objects.
+    Dict has shape:
+    {
+        'stem': {
+            'aɔ': Paradigm,
+            'ao': Paradigm,
+            ...
+        },
+        'stem_and_aux': {
+            'aɔ': Paradigm,
+            'ao': Paradigm,
+            ... 
+        },
+        'aux': Paradigm,
+    }
+    """
+    paradigms_list = get_verb_paradigms()
+    paradigm_dict = {
+        'stem': {},
+        'stem_and_aux': {},
+    }
+    aux_paradigm = [p for p in paradigms_list if p.name == 'aux=true'][0]
+    paradigm_dict['aux'] = aux_paradigm
+
+    for paradigm in paradigms_list:
+        if paradigm.name == 'aux=true':
+            continue
+        lexical_flags = vectorize_lexeme_string(paradigm.name).values
+        fv_class = lexical_flags['fv']
+        if lexical_flags['aux'] == 'true':
+            paradigm_dict['stem_and_aux'][fv_class] = paradigm
+        else:
+            paradigm_dict['stem'][fv_class] = paradigm
+    return paradigm_dict
+
 # =============================================================================
 # Inflection Utilities
 # =============================================================================
@@ -686,7 +723,7 @@ def inflect_verb_with_features(
         paradigm = get_verb_paradigm_w_aux(paradigm)
     elif type(paradigm) is str and expected_verb_type == 'stem':
         paradigm = get_verb_stem_paradigm(paradigm)
-    else:
+    else: # type(paradigm) is str and expected_verb_type == 'all'
         forms_stem = inflect_verb_with_features(
             root,
             get_verb_stem_paradigm(paradigm),
