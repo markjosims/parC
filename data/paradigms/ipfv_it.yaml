@@ -1,0 +1,25 @@
+# Imperfective itive paradigm
+kind: ParadigmMarkers
+order:
+  - root_tone
+  - final_vowel
+  - argument_marker
+  - class_prefix
+  - hiatus_resolution
+  - vowel_harmony
+  - tone_processes
+global_markers:
+  - rule: $hl_star_tone
+    order: root_tone
+  - rule: $final_vowel_A
+    order: final_vowel
+  - rule: $hiatus_resolution
+    order: hiatus_resolution
+features:
+  tam: imperfective
+  deixis: itive
+  class: $class_prefixes
+  object: $ipfv_object_markers
+contingent_features:
+  subject&class: $ipfv_subject_markers
+  subject&object: $ipfv_3object_markers
