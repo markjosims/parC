@@ -17,6 +17,7 @@ class Marker:
         prefix: String to be added as a prefix
         suffix: String to be added as a suffix
         replace: Pair of strings indicating a substring to be replaced and its replacement
+        suppletion: Full form to use instead of the base form
         rule: Name(s) of phonological rule(s) to apply (must be defined elsewhere)
         order: A unique name for ordering application of rules/affixes
         fst: (TODO) Finite State Transducer representing the marker (built automatically post-init)
@@ -24,7 +25,8 @@ class Marker:
     """
     prefix: Optional[str] = None
     suffix: Optional[str] = None
-    replace: Optional[List[Tuple[str, str]]] = None
+    replace: Optional[Tuple[str, str]] = None
+    suppletion: Optional[str] = None
     rule: Optional[Union[str, List[str]]] = None
     order: Optional[str] = None
     fst: Optional[Fst] = None  # Placeholder for FST object
@@ -33,6 +35,9 @@ class Marker:
         # TODO: convert marker input to FST
         if self.fst is not None:
             raise ValueError("FST should not be provided directly; it will be built automatically.")
+        if self.suppletion is not None:
+            if any([self.prefix, self.suffix, self.replace, self.rule]):
+                raise ValueError("Suppletion cannot be combined with other marker attributes.")
         # self.fst = build_fst_from_marker_input(self.marker_input)
     
 @dataclass
@@ -42,16 +47,20 @@ class FeatureMarkers:
     
     Usage:
     >>> marker = MarkerClass()
-    >>> marker.data['first_singular'] = [{'suffix': '-íŋí'}]
-    >>> marker.data['second_singular'] = [{'prefix': 'jɛ́-'}]
+    >>> marker.data['first_singular'] = Marker(suffix='-íŋí')
+    >>> marker.data['second_singular'] = Marker(prefix='jɛ́-')
     """
-    data: Dict[str, Marker] = field(default_factory=dict)
+    data: Dict[str, List[Marker]] = field(default_factory=dict)
 
     def __post_init__(self):
         # Set attributes dynamically based on keys in data
         for key, value in self.data.items():
             if not isinstance(value, dict):
                 raise ValueError(f"Marker value for {key} must be a dictionary.")
+            if isinstance(value, Marker):
+                value = [value]
+            elif not isinstance(value, list):
+                raise ValueError(f"Marker value for {key} must be a Marker or list of Markers.")
             setattr(self, key, value)
 
 class FeatureQueryMixin:
@@ -81,7 +90,7 @@ class FeatureQueryMixin:
             for feature, value in sorted(feature_dict.items())
         )
 
-    def get_marker(self, **feature_dict: str) -> Marker:
+    def get_marker(self, **feature_dict: str) -> List[Marker]:
         """
         Retrieve a marker based on a dictionary of feature values.
         """
@@ -110,9 +119,9 @@ class ContingentMarkers(FeatureMarkers, FeatureQueryMixin):
 
     Usage:
     >>> subj_obj_marker = ContingentMarkers()
-    >>> subj_obj_marker['object=third_singular subject=first_singular'] = [{'suffix': '-íŋí'}]
+    >>> subj_obj_marker['object=third_singular subject=first_singular'] = Marker(suffix='-íŋí')
     >>> subj_obj_marker.get_marker(subject_person='first_singular', object_person='third_singular')
-    [{'suffix': '-íŋí'}]
+    [Marker(suffix='-íŋí')]
     """
     def __post_init__(self):
         # Set feature names from the first key
@@ -320,7 +329,7 @@ class ParadigmMarkers(FeatureQueryMixin):
             feature_subset = {feature: feature_values[feature] for feature in features_for_marker}
             marker_part = contingent_marker_map.get_marker(**feature_subset)
             if marker_part:
-                marker.append(marker_part)
+                marker.extend(marker_part)
                 features_to_match -= set(features_for_marker)
         
         # then check standard markers
@@ -329,7 +338,7 @@ class ParadigmMarkers(FeatureQueryMixin):
             feature_value = feature_values[feature]
             marker_part = getattr(marker_map, feature_value, {})
             if marker_part:
-                marker.append(marker_part)
+                marker.extend(marker_part)
             else:
                 raise KeyError(
                     f"No marker found for feature '{feature}' with value '{feature_value}'."
