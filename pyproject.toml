@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tira-parser"
+version = "0.1.0"
+description = "Tira morphological parser using finite-state transducers"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "pandas",
+    "tqdm",
+    "wordfreq",
+    "pympi-ling",
+    "unidecode",
+    "openpyxl",
+    "pynini==2.1.6",
+    "graphviz",
+    "pydot",
+    "fire",
+    "pyyaml",
+    "RecursiveNamespace",
+    "loguru",
+    "flask>=3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ipykernel",
+]
+
+[project.scripts]
+tira = "src.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.csv", "*.yaml", "*.yml", "*.json", "*.txt", "*.xlsx"]
+
+[tool.setuptools.data-files]
+"data/lexicon" = ["data/lexicon/*.csv"]
+"data/test_cases" = ["data/test_cases/*.csv", "data/test_cases/*.yaml", "data/test_cases/*.json"]
+"data/sentences" = ["data/sentences/*.csv", "data/sentences/*.txt", "data/sentences/*.json"]
+"data/paradigms" = ["data/paradigms/*.yaml"]
+"data/excel" = ["data/excel/*.xlsx", "data/excel/*.csv"]
+"data/elan" = ["data/elan/*.csv"]
+"data/rules" = ["data/rules/*"]
