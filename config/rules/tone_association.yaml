@@ -19,5 +19,5 @@ rules:
       Remove TBUs from sonorant consonants in syllable codas
     input_pattern: "<TBU>"
     output_pattern: ""
-    left_context: "<V>"
-    right_context: "(<C>|<EOS>)"
+    left_context: "<V><TBU><C>"
+    right_context: "[EOS]"
