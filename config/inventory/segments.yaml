@@ -28,10 +28,10 @@ data:
     stops:
       repr: "<PLSV>"
       voiced:
-        repr: "<D>"
+        repr: "<P>"
         items: ['b', 'd̪', 'd', 'ɟ', 'g']
       voiceless:
-        repr: "<T>"
+        repr: "<B>"
         items: ['p', 't̪', 't', 'c', 'k', 'ʔ']
     nasals:
       repr: "<N>"
