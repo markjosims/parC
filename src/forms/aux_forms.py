@@ -113,7 +113,7 @@ IMPERFECTIVE_AUX_MARKERS = AuxPersonMarkers(
     subject_3sg_obj={
         '1sg': 'ɛ́',
         '2sg': 'á',
-        '3sg': 'á-l',
+        '3sg': '-ŋ',
         '1du.incl': 'á-l',
         '1pl.incl': 'á-l',
         '1pl.excl': 'éɲâ',
