@@ -57,9 +57,9 @@ python -m src.cli get_gloss_for_root ap
 # output
 carry
 
-python -m src.cli get_gloss_for_root ap
+python -m src.cli get_root_for_gloss carry
 # output
-carry
+ap
 ```
 
 ### Search corpus
