@@ -3,6 +3,9 @@ kind: ContingentFeatureMarkers
 global_attributes:
   order: argument_marker
 features:
+- subject
+- object
+markers:
   object:
     3sg:
       subject:

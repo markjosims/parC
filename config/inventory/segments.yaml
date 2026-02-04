@@ -29,27 +29,27 @@ data:
       repr: "<PLSV>"
       voiced:
         repr: "<P>"
-        items: ['b', 'd̪', 'd', 'ɟ', 'g']
+        phones: ['b', 'd̪', 'd', 'ɟ', 'g']
       voiceless:
         repr: "<B>"
-        items: ['p', 't̪', 't', 'c', 'k', 'ʔ']
+        phones: ['p', 't̪', 't', 'c', 'k', 'ʔ']
     nasals:
       repr: "<N>"
-      items: ['m', 'n', 'ɲ', 'ŋ']
+      phones: ['m', 'n', 'ɲ', 'ŋ']
     fricatives:
       repr: "<F>"
-      items: ['f', 'v', 'ð', 's', 'ʃ', 'h']
+      phones: ['f', 'v', 'ð', 's', 'ʃ', 'h']
     resonants:
       repr: "<R>"
-      items: ['l', 'r', 'ɾ', 'ɽ', 'j', 'w']
+      phones: ['l', 'r', 'ɾ', 'ɽ', 'j', 'w']
   vowels:
     repr: "<V>"
     high:
       repr: "<V_HIGH>"
-      items: ['i', 'ɪ', 'u', 'ʊ']
+      phones: ['i', 'ɪ', 'u', 'ʊ']
     mid:
       repr: "<V_MID>"
-      items: ['e', 'ɛ', 'ə', 'ɜ', 'o', 'ɔ']
+      phones: ['e', 'ɛ', 'ə', 'ɜ', 'o', 'ɔ']
     low:
       repr: "<V_LOW>"
-      items: ['a']
+      phones: ['a']

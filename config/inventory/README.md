@@ -20,9 +20,10 @@ data:
 Flags are automatically cleaned up when an FST is decoded into strings.
 
 Note the following symbols are reserved:
-- `\Phone`: Any phone (non-flag) in the inventory.
-- `\Flag`: Any flag in the inventory.
-- `\Sigma`: Any item in the inventory, phone(me) or flag.
+- `<Phone>`: Any phone (non-flag) in the inventory.
+- `<Flag>`: Any flag in the inventory.
+- `<Sigma>`: Any item in the inventory, phone(me) or flag.
+- `<Empty>`: No input or output, useful for deletion and insertion rules.
 - `-`: Morpheme boundary
 - `[BOS]`: Beginning of string
 - `[EOS]`: End of string

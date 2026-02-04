@@ -2,19 +2,19 @@
 kind: FeatureMarkers
 global_attributes:
   order: argument_marker
-features:
-  object:
-    1sg:
-      suffix: -ŋɛ̂
-    2sg:
-      suffix: -ŋâ
-    1du.incl:
-      suffix: -tɛ́
-    1pl.incl:
-      suffix: -tɛ́
-    1pl.excl:
-      suffix: -éɲár
-    2pl:
-      suffix: -tɛ́
-    3pl:
-      suffix: {(-ĺ)|(-ló)}
+feature: object
+markers:
+  1sg:
+    suffix: -ŋɛ̂
+  2sg:
+    suffix: -ŋâ
+  1du.incl:
+    suffix: -tɛ́
+  1pl.incl:
+    suffix: -tɛ́
+  1pl.excl:
+    suffix: -éɲár
+  2pl:
+    suffix: -tɛ́
+  3pl:
+    suffix: {(-ĺ)|(-ló)}

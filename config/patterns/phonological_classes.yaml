@@ -1,0 +1,5 @@
+kind: Patterns
+patterns:
+  - Non-High vowel: 
+      pattern: "(<M>|<L>)"
+      repr: "<V_NonHigh>"
