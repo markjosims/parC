@@ -48,6 +48,9 @@ def search_parses():
             weight = result.get('weight', 0)
             if weight is None or (isinstance(weight, float) and math.isnan(weight)):
                 weight = 0
+            updated_str = result.get('updated_str', None)
+            if not updated_str:
+                result['updated_str'] = result['word']
             result['color'] = get_weight_color(float(weight), max_weight=10)
         return jsonify({'results': results, 'columns': PARSE_COLUMNS})
     except Exception as e:
