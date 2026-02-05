@@ -12,14 +12,16 @@
     overflow: hidden;
 }
 
-/* Left panel: file tree */
+/* Left panel: category browser */
 .file-panel {
-    width: 240px;
-    min-width: 200px;
+    width: 260px;
+    min-width: 220px;
     border-right: 1px solid #dee2e6;
     overflow-y: auto;
     background: #f8f9fa;
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
 }
 .file-panel .panel-header {
     padding: 0.5rem 0.75rem;
@@ -29,26 +31,51 @@
     justify-content: space-between;
     align-items: center;
     background: #e9ecef;
+    flex-shrink: 0;
 }
-.file-tree { padding: 0.25rem 0; }
-.file-tree ul { list-style: none; padding-left: 1rem; margin: 0; }
-.file-tree > ul { padding-left: 0.5rem; }
-.tree-item {
-    padding: 0.2rem 0.5rem;
+/* Category accordion */
+.cat-accordion {
+    flex: 1;
+    overflow-y: auto;
+}
+.cat-section { border-bottom: 1px solid #dee2e6; }
+.cat-header {
+    display: flex;
+    align-items: center;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #495057;
+    cursor: pointer;
+    user-select: none;
+    background: #e9ecef;
+}
+.cat-header:hover { background: #dee2e6; }
+.cat-header::before { content: '\25B6'; font-size: 0.55em; margin-right: 0.5rem; transition: transform 0.15s; }
+.cat-section.open .cat-header::before { transform: rotate(90deg); }
+.cat-header .cat-count {
+    margin-left: auto;
+    font-size: 0.7rem;
+    font-weight: 400;
+    color: #6c757d;
+}
+.cat-body { display: none; }
+.cat-section.open .cat-body { display: block; }
+.file-list-item {
+    padding: 0.3rem 0.75rem 0.3rem 1.5rem;
     cursor: pointer;
     font-size: 0.85rem;
-    border-radius: 3px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.tree-item:hover { background: #dee2e6; }
-.tree-item.active { background: #0d6efd; color: #fff; }
-.tree-dir > .tree-item::before { content: '\25B6 '; font-size: 0.6em; }
-.tree-dir.open > .tree-item::before { content: '\25BC '; font-size: 0.6em; }
-.tree-dir > ul { display: none; }
-.tree-dir.open > ul { display: block; }
-.tree-file > .tree-item::before { content: '\1F4C4 '; font-size: 0.75em; }
+.file-list-item:hover { background: #dee2e6; }
+.file-list-item.active { background: #0d6efd; color: #fff; }
+.file-list-item.dirty::after {
+    content: ' \2022';
+    color: #fd7e14;
+    font-weight: bold;
+}
 
 /* Center panel: editor */
 .editor-panel {
@@ -114,6 +141,33 @@
 .ref-symbol { color: #6610f2; }
 .ref-name { color: #0d6efd; }
 .reserved-symbols code { font-size: 0.82rem; }
+.ref-expand-btn {
+    cursor: pointer;
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-left: 0.25rem;
+    vertical-align: middle;
+}
+.ref-expand-btn:hover { color: #0d6efd; }
+.ref-detail-box {
+    margin: 0.15rem 0 0.4rem 0.75rem;
+    padding: 0.35rem 0.5rem;
+    background: #f0f0f0;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    border: 1px solid #dee2e6;
+}
+.ref-detail-box code { font-size: 0.78rem; }
+
+/* Unsaved changes indicator */
+.dirty-indicator {
+    display: none;
+    color: #fd7e14;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+}
+.dirty-indicator.show { display: inline; }
 
 /* Form styles */
 .form-section {
@@ -282,13 +336,13 @@
 {% block full_content %}
 <div class="config-layout">
 
-    <!-- LEFT: File Browser -->
+    <!-- LEFT: Category Browser -->
     <div class="file-panel">
         <div class="panel-header">
-            <span>Config Files</span>
-            <button class="btn btn-sm btn-outline-primary" onclick="showNewFileDialog()" title="New file">+</button>
+            <span>Configs</span>
+            <button class="btn btn-sm btn-outline-primary" onclick="showNewFileDialog()" title="New config">+</button>
         </div>
-        <div class="file-tree" id="fileTree">
+        <div class="cat-accordion" id="catAccordion">
             <p class="text-muted p-2" style="font-size:0.85rem">Loading...</p>
         </div>
     </div>
@@ -297,18 +351,18 @@
     <div class="editor-panel" id="editorPanel">
         <div class="empty-state" id="emptyState">
             <h5>Config Editor</h5>
-            <p>Select a file from the tree to edit, or create a new config file.</p>
-            <p class="hint-text">
-                Config types: Paradigm, FeatureMarkers, ContingentFeatureMarkers,
-                Rules, Patterns, Inventory, FeatureDefinitions, FeatureCombinations, PartOfSpeech
-            </p>
+            <p>Select a config from the left panel, or click <strong>+</strong> to create a new one.</p>
         </div>
         <div id="editorContent" style="display:none">
             <div class="panel-header">
-                <span id="editorFilePath"></span>
+                <div>
+                    <span id="editorFilePath"></span>
+                    <span class="dirty-indicator" id="dirtyIndicator">unsaved changes</span>
+                </div>
                 <div>
                     <span class="badge kind-badge bg-secondary" id="editorKind"></span>
-                    <button class="btn btn-sm btn-primary ms-2" onclick="saveFile()">Save</button>
+                    <button class="btn btn-sm btn-outline-secondary ms-2" onclick="showRenameDialog()" title="Rename">Rename</button>
+                    <button class="btn btn-sm btn-primary ms-1" onclick="saveFile()">Save</button>
                 </div>
             </div>
 
@@ -350,6 +404,7 @@
                     <div><code>&lt;Phone&gt;</code> &mdash; any phone</div>
                     <div><code>&lt;Flag&gt;</code> &mdash; any flag</div>
                     <div><code>&lt;Sigma&gt;</code> &mdash; any item</div>
+                    <div><code>&lt;Empty&gt;</code> &mdash; no input/output (deletion/insertion)</div>
                     <div><code>-</code> &mdash; morpheme boundary</div>
                     <div><code>[BOS]</code> &mdash; start of string</div>
                     <div><code>[EOS]</code> &mdash; end of string</div>
@@ -373,39 +428,47 @@
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label">Directory</label>
-                    <select class="form-select" id="newFileDir">
-                        <option value="paradigms">paradigms</option>
-                        <option value="markers">markers</option>
-                        <option value="rules">rules</option>
-                        <option value="patterns">patterns</option>
-                        <option value="features">features</option>
-                        <option value="inventory">inventory</option>
-                        <option value="parts_of_speech">parts_of_speech</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Filename (without .yaml)</label>
+                    <label class="form-label">Name (without .yaml)</label>
                     <input type="text" class="form-control" id="newFileName" placeholder="e.g. my_markers">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Config Kind</label>
+                    <label class="form-label">Type</label>
                     <select class="form-select" id="newFileKind">
                         <option value="Paradigm">Paradigm</option>
-                        <option value="FeatureMarkers">FeatureMarkers</option>
-                        <option value="ContingentFeatureMarkers">ContingentFeatureMarkers</option>
+                        <option value="FeatureMarkers">Feature Markers</option>
+                        <option value="ContingentFeatureMarkers">Contingent Feature Markers</option>
                         <option value="Rules">Rules</option>
                         <option value="Patterns">Patterns</option>
                         <option value="Inventory">Inventory</option>
-                        <option value="FeatureDefinitions">FeatureDefinitions</option>
-                        <option value="FeatureCombinations">FeatureCombinations</option>
-                        <option value="PartOfSpeech">PartOfSpeech</option>
+                        <option value="FeatureDefinitions">Feature Definitions</option>
+                        <option value="FeatureCombinations">Feature Combinations</option>
+                        <option value="PartOfSpeech">Part of Speech</option>
                     </select>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" onclick="createNewFile()">Create</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rename File Modal -->
+<div class="modal fade" id="renameModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">Rename File</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">New name (without .yaml)</label>
+                <input type="text" class="form-control" id="renameInput" placeholder="new_name">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="confirmRename()">Rename</button>
             </div>
         </div>
     </div>
@@ -437,6 +500,31 @@ let currentFile = null;   // { path, raw, parsed }
 let references = {};      // from /api/references
 let fileTreeData = [];
 let pendingDeletePath = null;
+let isDirty = false;
+
+// Kind -> directory mapping
+const KIND_TO_DIR = {
+    'Inventory': 'inventory',
+    'FeatureDefinitions': 'features',
+    'FeatureCombinations': 'features',
+    'Rules': 'rules',
+    'Paradigm': 'paradigms',
+    'PartOfSpeech': 'parts_of_speech',
+    'Patterns': 'patterns',
+    'FeatureMarkers': 'markers',
+    'ContingentFeatureMarkers': 'markers',
+};
+
+// Category -> directories mapping (which dirs to show in each tab)
+const CATEGORY_DIRS = {
+    'Features': ['features'],
+    'Inventory': ['inventory'],
+    'Markers': ['markers'],
+    'Paradigms': ['paradigms'],
+    'Parts of Speech': ['parts_of_speech'],
+    'Rules': ['rules'],
+    'Patterns': ['patterns'],
+};
 
 // ============================================================
 // Initialization
@@ -446,83 +534,109 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ============================================================
-// File Tree
+// File Tree & Category Tabs
 // ============================================================
 async function loadTree() {
     const resp = await fetch('/config/api/tree');
     fileTreeData = await resp.json();
-    renderTree(fileTreeData, document.getElementById('fileTree'));
+    renderFileList();
 }
 
-function renderTree(items, container) {
-    container.innerHTML = '';
-    const ul = document.createElement('ul');
-    for (const item of items) {
-        ul.appendChild(buildTreeNode(item));
-    }
-    container.appendChild(ul);
-}
-
-function buildTreeNode(item) {
-    const li = document.createElement('li');
-    if (item.type === 'directory') {
-        li.className = 'tree-dir open';
-        const div = document.createElement('div');
-        div.className = 'tree-item';
-        div.textContent = item.name;
-        div.addEventListener('click', (e) => {
-            e.stopPropagation();
-            li.classList.toggle('open');
-        });
-        li.appendChild(div);
-        if (item.children && item.children.length) {
-            const childUl = document.createElement('ul');
-            for (const child of item.children) {
-                childUl.appendChild(buildTreeNode(child));
+/** Get files for a given category from the tree data. */
+function getFilesForCategory(category) {
+    const dirs = CATEGORY_DIRS[category] || [];
+    const files = [];
+    for (const dir of dirs) {
+        const dirNode = fileTreeData.find(n => n.type === 'directory' && n.name === dir);
+        if (dirNode && dirNode.children) {
+            for (const child of dirNode.children) {
+                if (child.type === 'file') files.push(child);
             }
-            li.appendChild(childUl);
         }
-    } else {
-        li.className = 'tree-file';
-        const div = document.createElement('div');
-        div.className = 'tree-item';
-        div.textContent = item.name;
-        div.dataset.path = item.path;
-        div.addEventListener('click', () => openFile(item.path));
-        // Right-click context for delete
-        div.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            pendingDeletePath = item.path;
-            document.getElementById('deleteFileName').textContent = item.path;
-            new bootstrap.Modal(document.getElementById('deleteModal')).show();
-        });
-        li.appendChild(div);
     }
-    return li;
+    return files;
+}
+
+const CATEGORY_ORDER = ['Features', 'Inventory', 'Markers', 'Paradigms', 'Parts of Speech', 'Rules', 'Patterns'];
+
+function renderFileList() {
+    const container = document.getElementById('catAccordion');
+    container.innerHTML = '';
+
+    for (const cat of CATEGORY_ORDER) {
+        const files = getFilesForCategory(cat);
+        const section = document.createElement('div');
+        section.className = 'cat-section';
+        // Auto-open the section containing the current file
+        const hasActive = currentFile && files.some(f => f.path === currentFile.path);
+        if (hasActive) section.classList.add('open');
+
+        const header = document.createElement('div');
+        header.className = 'cat-header';
+        header.textContent = cat;
+        const count = document.createElement('span');
+        count.className = 'cat-count';
+        count.textContent = files.length;
+        header.appendChild(count);
+        header.addEventListener('click', () => section.classList.toggle('open'));
+        section.appendChild(header);
+
+        const body = document.createElement('div');
+        body.className = 'cat-body';
+        for (const file of files) {
+            const item = document.createElement('div');
+            item.className = 'file-list-item';
+            if (currentFile && currentFile.path === file.path) item.classList.add('active');
+            item.dataset.path = file.path;
+            item.textContent = file.name.replace(/\.ya?ml$/, '');
+            item.addEventListener('click', () => openFile(file.path));
+            item.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                pendingDeletePath = file.path;
+                document.getElementById('deleteFileName').textContent = file.name;
+                new bootstrap.Modal(document.getElementById('deleteModal')).show();
+            });
+            body.appendChild(item);
+        }
+        section.appendChild(body);
+        container.appendChild(section);
+    }
 }
 
 // ============================================================
 // File Operations
 // ============================================================
 async function openFile(path) {
-    // Highlight in tree
-    document.querySelectorAll('.tree-item.active').forEach(el => el.classList.remove('active'));
-    const el = document.querySelector(`.tree-item[data-path="${CSS.escape(path)}"]`);
-    if (el) el.classList.add('active');
+    // Prompt to save if there are unsaved changes
+    if (isDirty && currentFile && currentFile.path !== path) {
+        const choice = confirm('You have unsaved changes. Save before switching files?');
+        if (choice) {
+            await saveFile();
+        }
+    }
 
     const resp = await fetch(`/config/api/file?path=${encodeURIComponent(path)}`);
     const data = await resp.json();
     if (data.error) { alert(data.error); return; }
 
     currentFile = data;
+    markClean();
     document.getElementById('emptyState').style.display = 'none';
     document.getElementById('editorContent').style.display = 'block';
-    document.getElementById('editorFilePath').textContent = path;
+    const fileName = path.split('/').pop().replace(/\.ya?ml$/, '');
+    document.getElementById('editorFilePath').textContent = fileName;
     document.getElementById('rawEditor').value = data.raw;
 
     const kind = (data.parsed && data.parsed.kind) || '';
     document.getElementById('editorKind').textContent = kind || 'unknown';
     buildFormEditor(kind, data.parsed || {});
+
+    // Update file list highlighting
+    renderFileList();
+
+    // Listen for changes on raw editor
+    document.getElementById('rawEditor').removeEventListener('input', markDirtyHandler);
+    document.getElementById('rawEditor').addEventListener('input', markDirtyHandler);
 }
 
 async function saveFile() {
@@ -549,9 +663,11 @@ async function saveFile() {
     });
     const result = await resp.json();
     if (result.error) { alert('Save error: ' + result.error); return; }
+    markClean();
     // Reload references in case names changed
     await loadReferences();
     // Re-open to refresh parsed
+    isDirty = false; // prevent prompt on re-open
     await openFile(currentFile.path);
 }
 
@@ -561,10 +677,11 @@ function showNewFileDialog() {
 }
 
 async function createNewFile() {
-    const dir = document.getElementById('newFileDir').value;
     const name = document.getElementById('newFileName').value.trim();
     const kind = document.getElementById('newFileKind').value;
     if (!name) { alert('Enter a filename'); return; }
+    const dir = KIND_TO_DIR[kind];
+    if (!dir) { alert('Unknown config type'); return; }
     const path = `${dir}/${name}.yaml`;
     const content = `kind: ${kind}\n`;
     const resp = await fetch('/config/api/file', {
@@ -593,6 +710,67 @@ async function confirmDelete() {
     pendingDeletePath = null;
     await loadTree();
     await loadReferences();
+    renderFileList();
+}
+
+// ============================================================
+// Dirty (unsaved changes) tracking
+// ============================================================
+function markDirty() {
+    if (!isDirty) {
+        isDirty = true;
+        document.getElementById('dirtyIndicator').classList.add('show');
+    }
+}
+
+function markClean() {
+    isDirty = false;
+    document.getElementById('dirtyIndicator').classList.remove('show');
+}
+
+function markDirtyHandler() { markDirty(); }
+
+// Attach form change listener after building form
+function observeFormChanges() {
+    const formEditor = document.getElementById('formEditor');
+    if (!formEditor) return;
+    formEditor.addEventListener('input', markDirtyHandler);
+    formEditor.addEventListener('change', markDirtyHandler);
+}
+
+// Warn before leaving page with unsaved changes
+window.addEventListener('beforeunload', (e) => {
+    if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+// ============================================================
+// Rename
+// ============================================================
+function showRenameDialog() {
+    if (!currentFile) return;
+    const currentName = currentFile.path.split('/').pop().replace(/\.ya?ml$/, '');
+    document.getElementById('renameInput').value = currentName;
+    new bootstrap.Modal(document.getElementById('renameModal')).show();
+}
+
+async function confirmRename() {
+    if (!currentFile) return;
+    const newName = document.getElementById('renameInput').value.trim();
+    if (!newName) { alert('Enter a new name'); return; }
+    const resp = await fetch('/config/api/file/rename', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ old_path: currentFile.path, new_name: newName }),
+    });
+    const result = await resp.json();
+    if (result.error) { alert(result.error); return; }
+    bootstrap.Modal.getInstance(document.getElementById('renameModal')).hide();
+    await loadTree();
+    await loadReferences();
+    await openFile(result.new_path);
 }
 
 // ============================================================
@@ -615,9 +793,9 @@ function renderReferences() {
     const acc = document.getElementById('refAccordion');
     acc.innerHTML = '';
 
-    const sectionOrder = ['inventory', 'patterns', 'rules', 'markers', 'features', 'parts_of_speech', 'paradigms'];
+    const sectionOrder = ['patterns', 'inventory', 'rules', 'markers', 'features', 'parts_of_speech', 'paradigms'];
     const sectionLabels = {
-        inventory: 'Inventory Symbols',
+        inventory: 'Inventory',
         patterns: 'Patterns',
         rules: 'Rules',
         markers: 'Markers',
@@ -633,6 +811,38 @@ function renderReferences() {
         const id = `ref-${section}`;
         const div = document.createElement('div');
         div.className = 'accordion-item';
+
+        let bodyContent = buildRefContent(section, items);
+
+        // Inject inventory class REPRs into the Patterns section
+        if (section === 'patterns') {
+            const invItems = references['inventory'] || [];
+            let invReprHtml = '';
+            for (const invItem of invItems) {
+                if (invItem.symbols) {
+                    for (const sym of invItem.symbols) {
+                        const hasItems = sym.items && sym.items.length;
+                        const hasChildren = sym.child_reprs && sym.child_reprs.length;
+                        const iid = 'invpat-detail-' + Math.random().toString(36).slice(2, 8);
+                        invReprHtml += `<div class="ref-item ms-2" onclick="insertRef('${sym.repr}')" title="Inventory class">
+                            <span class="ref-symbol">${escapeHtml(sym.repr)}</span>`;
+                        if (hasItems || hasChildren) {
+                            invReprHtml += `<span class="ref-expand-btn" onclick="event.stopPropagation(); toggleRefDetail('${iid}')" title="Show members">&#9432;</span>`;
+                        }
+                        invReprHtml += `</div>`;
+                        if (hasItems) {
+                            invReprHtml += `<div id="${iid}" class="ref-detail-box" style="display:none">${sym.items.map(escapeHtml).join(', ')}</div>`;
+                        } else if (hasChildren) {
+                            invReprHtml += `<div id="${iid}" class="ref-detail-box" style="display:none">${sym.child_reprs.map(escapeHtml).join(', ')}</div>`;
+                        }
+                    }
+                }
+            }
+            if (invReprHtml) {
+                bodyContent += `<hr style="margin:0.4rem 0"><div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Inventory Classes</div>` + invReprHtml;
+            }
+        }
+
         div.innerHTML = `
             <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button"
@@ -641,7 +851,7 @@ function renderReferences() {
                 </button>
             </h2>
             <div id="${id}" class="accordion-collapse collapse" data-bs-parent="#refAccordion">
-                <div class="accordion-body">${buildRefContent(section, items)}</div>
+                <div class="accordion-body">${bodyContent}</div>
             </div>`;
         acc.appendChild(div);
     }
@@ -651,48 +861,92 @@ function buildRefContent(section, items) {
     let html = '';
     for (const item of items) {
         html += `<div class="ref-item" onclick="insertRef('${item.ref}')" title="Click to copy">
-            <span class="ref-name">${item.ref}</span>
-            <span class="text-muted"> (${item.kind || ''})</span>
+            <span class="ref-name">${escapeHtml(item.ref)}</span>
+            <span class="text-muted"> (${escapeHtml(item.kind || '')})</span>
         </div>`;
 
         // Show extra detail depending on type
         if (section === 'inventory' && item.symbols) {
             for (const sym of item.symbols) {
+                const hasItems = sym.items && sym.items.length;
+                const hasChildren = sym.child_reprs && sym.child_reprs.length;
+                const sid = 'inv-detail-' + Math.random().toString(36).slice(2, 8);
                 html += `<div class="ref-item ms-2" onclick="insertRef('${sym.repr}')">
-                    <span class="ref-symbol">${sym.repr}</span>
-                    ${sym.items.length ? '<span class="text-muted"> ' + sym.items.join(', ') + '</span>' : ''}
-                </div>`;
+                    <span class="ref-symbol">${escapeHtml(sym.repr)}</span>`;
+                if (hasItems || hasChildren) {
+                    html += `<span class="ref-expand-btn" onclick="event.stopPropagation(); toggleRefDetail('${sid}')" title="Show members">&#9432;</span>`;
+                }
+                html += `</div>`;
+                if (hasItems) {
+                    html += `<div id="${sid}" class="ref-detail-box" style="display:none">${sym.items.map(escapeHtml).join(', ')}</div>`;
+                } else if (hasChildren) {
+                    html += `<div id="${sid}" class="ref-detail-box" style="display:none">${sym.child_reprs.map(escapeHtml).join(', ')}</div>`;
+                }
             }
         }
         if (section === 'patterns' && item.patterns) {
             for (const p of item.patterns) {
-                html += `<div class="ref-item ms-2" onclick="insertRef('${p.repr}')">
-                    <span class="ref-symbol">${p.repr}</span>
-                    <span class="text-muted"> ${p.name}</span>
+                const pid = 'pat-detail-' + Math.random().toString(36).slice(2, 8);
+                html += `<div class="ref-item ms-2" onclick="insertRef('${p.repr}')" title="Click to copy repr">
+                    <span class="ref-symbol">${escapeHtml(p.repr)}</span>
+                    <span class="text-muted"> ${escapeHtml(p.name)}</span>
+                    <span class="ref-expand-btn" onclick="event.stopPropagation(); toggleRefDetail('${pid}')" title="Show regex">&#9432;</span>
+                </div>
+                <div id="${pid}" class="ref-detail-box" style="display:none">
+                    <code>${escapeHtml(p.pattern || '')}</code>
                 </div>`;
             }
         }
         if (section === 'rules' && item.rule_names) {
             for (const rn of item.rule_names) {
+                const rid = 'rule-detail-' + Math.random().toString(36).slice(2, 8);
+                const detail = (item.rule_details && item.rule_details[rn]) || {};
+                let detailHtml = '';
+                if (detail.description) {
+                    detailHtml += `<div class="mb-1">${escapeHtml(detail.description)}</div>`;
+                }
+                if (detail.rule_sequence) {
+                    detailHtml += `<code>${escapeHtml(detail.rule_sequence.join(' \u2192 '))}</code>`;
+                } else if (detail.string_map) {
+                    detailHtml += `<code>(string map)</code>`;
+                } else if (detail.input_pattern !== undefined) {
+                    const inp = detail.input_pattern || '';
+                    const out = detail.output_pattern !== undefined ? detail.output_pattern : '';
+                    const lc = detail.left_context || '';
+                    const rc = detail.right_context || '';
+                    const ctx = (lc || rc) ? ` / ${lc ? escapeHtml(lc) + ' ' : ''}_ ${rc ? escapeHtml(rc) : ''}` : '';
+                    detailHtml += `<code>${escapeHtml(inp)} &gt; ${escapeHtml(out)}${ctx}</code>`;
+                }
                 html += `<div class="ref-item ms-2" onclick="insertRef('$${rn}')">
-                    <span class="ref-name">$${rn}</span>
-                </div>`;
+                    <span class="ref-name">$${escapeHtml(rn)}</span>
+                    <span class="ref-expand-btn" onclick="event.stopPropagation(); toggleRefDetail('${rid}')" title="Show details">&#9432;</span>
+                </div>
+                <div id="${rid}" class="ref-detail-box" style="display:none">${detailHtml}</div>`;
             }
         }
         if (section === 'markers' && item.values) {
             html += `<div class="ms-2 text-muted" style="font-size:0.78rem">
-                feature: ${item.feature || ''} &mdash; values: ${item.values.join(', ')}
+                feature: ${escapeHtml(item.feature || '')} &mdash; values: ${item.values.map(escapeHtml).join(', ')}
             </div>`;
         }
         if (section === 'features' && item.features) {
             for (const [fname, fvals] of Object.entries(item.features)) {
                 html += `<div class="ms-2 text-muted" style="font-size:0.78rem">
-                    ${fname}: ${Array.isArray(fvals) ? fvals.join(', ') : fvals}
+                    ${escapeHtml(fname)}: ${Array.isArray(fvals) ? fvals.map(escapeHtml).join(', ') : escapeHtml(String(fvals))}
                 </div>`;
             }
         }
     }
     return html;
+}
+
+function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function toggleRefDetail(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
 function insertRef(ref) {
@@ -736,6 +990,8 @@ function buildFormEditor(kind, data) {
             Use the Raw YAML tab to edit, or set a valid <code>kind</code> field.
         </div>`;
     }
+    // Start observing form changes for dirty tracking
+    observeFormChanges();
 }
 
 // ============================================================

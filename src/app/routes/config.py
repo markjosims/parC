@@ -42,15 +42,31 @@ def _build_tree(root_dir):
 
 
 def _collect_symbols_from_inventory(data, symbols=None):
-    """Recursively extract repr -> items/phones/flags from inventory data."""
+    """Recursively extract repr -> items/phones/flags from inventory data.
+
+    For parent groups (no direct phones/flags), collects child group reprs instead.
+    """
     if symbols is None:
         symbols = []
     if not isinstance(data, dict):
         return symbols
     repr_val = data.get('repr')
     items = data.get('items') or data.get('phones') or data.get('flags')
+
+    # Collect child sub-group reprs
+    child_reprs = []
+    for key, val in data.items():
+        if key in ('repr', 'items', 'phones', 'flags'):
+            continue
+        if isinstance(val, dict) and val.get('repr'):
+            child_reprs.append(val['repr'])
+
     if repr_val:
-        symbols.append({'repr': repr_val, 'items': items or []})
+        entry = {'repr': repr_val, 'items': items or []}
+        if not items and child_reprs:
+            entry['child_reprs'] = child_reprs
+        symbols.append(entry)
+
     for key, val in data.items():
         if key in ('repr', 'items', 'phones', 'flags'):
             continue
@@ -78,9 +94,29 @@ def _collect_references():
                     doc = yaml.safe_load(f)
                 if isinstance(doc, dict):
                     info['kind'] = doc.get('kind', '')
-                    # For rules files, extract individual rule names
+                    # For rules files, extract individual rule names and details
                     if doc.get('kind') == 'Rules' and isinstance(doc.get('rules'), dict):
                         info['rule_names'] = list(doc['rules'].keys())
+                        rule_details = {}
+                        for rname, rdef in doc['rules'].items():
+                            if isinstance(rdef, dict):
+                                detail = {}
+                                if rdef.get('description'):
+                                    detail['description'] = rdef['description'].strip()
+                                if rdef.get('input_pattern'):
+                                    detail['input_pattern'] = rdef['input_pattern']
+                                if rdef.get('output_pattern') is not None:
+                                    detail['output_pattern'] = rdef['output_pattern']
+                                if rdef.get('left_context'):
+                                    detail['left_context'] = rdef['left_context']
+                                if rdef.get('right_context'):
+                                    detail['right_context'] = rdef['right_context']
+                                if rdef.get('rule_sequence'):
+                                    detail['rule_sequence'] = rdef['rule_sequence']
+                                if rdef.get('string_map'):
+                                    detail['string_map'] = True
+                                rule_details[rname] = detail
+                        info['rule_details'] = rule_details
                     # For inventory files, extract symbols
                     if doc.get('kind') == 'Inventory' and isinstance(doc.get('data'), dict):
                         info['symbols'] = _collect_symbols_from_inventory(doc['data'])
@@ -91,16 +127,20 @@ def _collect_references():
                             info['values'] = list(doc['markers'].keys())
                     if doc.get('kind') == 'ContingentFeatureMarkers':
                         info['features'] = doc.get('features', [])
-                    # For patterns, extract repr values
+                    # For patterns, extract repr values and pattern strings
                     if doc.get('kind') == 'Patterns' and isinstance(doc.get('patterns'), list):
                         reprs = []
                         for p in doc['patterns']:
                             if isinstance(p, dict):
                                 for pname, pdef in p.items():
                                     if isinstance(pdef, dict) and 'repr' in pdef:
+                                        pat = pdef.get('pattern', '')
+                                        if isinstance(pat, list):
+                                            pat = ', '.join(str(x) for x in pat)
                                         reprs.append({
                                             'name': pname,
                                             'repr': pdef['repr'],
+                                            'pattern': str(pat),
                                         })
                         info['patterns'] = reprs
                     # For features, extract feature names and values
@@ -201,6 +241,33 @@ def delete_file():
     try:
         os.remove(full_path)
         return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/api/file/rename', methods=['POST'])
+def rename_file():
+    data = request.get_json()
+    if not data or 'old_path' not in data or 'new_name' not in data:
+        return jsonify({'error': 'old_path and new_name required'}), 400
+    old_full = _safe_path(data['old_path'])
+    if old_full is None or not os.path.isfile(old_full):
+        return jsonify({'error': 'File not found'}), 404
+    new_name = data['new_name'].strip()
+    if not new_name:
+        return jsonify({'error': 'New name cannot be empty'}), 400
+    if not new_name.endswith(('.yaml', '.yml')):
+        new_name += '.yaml'
+    new_full = os.path.join(os.path.dirname(old_full), new_name)
+    new_full = os.path.normpath(new_full)
+    if not new_full.startswith(CONFIG_ROOT):
+        return jsonify({'error': 'Invalid path'}), 400
+    if os.path.exists(new_full):
+        return jsonify({'error': 'A file with that name already exists'}), 409
+    try:
+        os.rename(old_full, new_full)
+        new_rel = os.path.relpath(new_full, CONFIG_ROOT)
+        return jsonify({'ok': True, 'new_path': new_rel})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
