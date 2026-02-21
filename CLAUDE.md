@@ -28,6 +28,9 @@ data/lexicon/*.csv             ->  lexical roots with glosses
 
 The YAML config READMEs (`config/paradigms/README.md`, `config/rules/README.md`, `data/lexicon/README.md`) document the intended schema. When working on the refactor, these READMEs are the source of truth for how configs should behave.
 
+The refactor will start by adding new scripts that mimic the functionality of existing code.
+For example `form_constructors.py` encapsulates the functionality of `forms/*.py`.
+
 ## Commands
 
 ### Install
@@ -62,7 +65,7 @@ flask --app src.app.app run
 
 ## Architecture
 
-### Key modules
+### Key modules (old)
 
 - **`src/parser.py`** - Top-level entry points: `parse_word()`, `inflect_word()`, `get_main_parser()`. Composes all paradigm FSTs with tone processes (left H spreading, final lowering).
 - **`src/fst_helpers.py`** - FST factory (`fst()`), string encode/decode, lattice path extraction, gloss formatting, symbol table management. The `fst()` factory is used pervasively to create FSTs with consistent symbol tables.
@@ -75,7 +78,10 @@ flask --app src.app.app run
 - **`src/decorators.py`** - `fst_cache()` saves compiled FSTs to `.cache/`; `output_cache()` caches function outputs. Both use MD5 hashing.
 - **`src/constants/`** - Feature definitions (`features.py`), phoneme inventory (`symbol_table.py`), path constants (`paths.py`).
 
-### YAML config schema (new approach)
+### New modules
+- **`src/fst.py`** - Functions for compiling and decoding FSTs based on patterns and rule syntax as defined in the YAML files
+
+### YAML config schema (new approach) smart over
 
 Config files reference each other with `$name` syntax (e.g., `$person_suffixes` imports `config/markers/person_suffixes.yaml`).
 
