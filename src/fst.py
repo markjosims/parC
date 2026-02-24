@@ -291,8 +291,8 @@ class _PatternParser:
 
     Grammar:
         expr   ::= term ('|' term)*
-        factor ::= atom ('*' | '+' | '?')?
         term   ::= factor+
+        factor ::= atom ('*' | '+' | '?')?
         atom   ::= ref | special | literal | '(' expr ')'
     """
 
@@ -302,11 +302,17 @@ class _PatternParser:
         self._registry = registry
 
     def _peek(self) -> Optional[Tuple[str, str]]:
+        """
+        Return token at current position without advancing position
+        """
         if self._pos < len(self._tokens):
             return self._tokens[self._pos]
         return None
 
     def _consume(self) -> Tuple[str, str]:
+        """
+        Return token at current position and advance position
+        """
         tok = self._tokens[self._pos]
         self._pos += 1
         return tok
@@ -324,6 +330,7 @@ class _PatternParser:
         """term ::= factor+"""
         # A term must have at least one factor
         result = self._parse_factor()
+        # Join factors until a right parenthesis or pipe operator is found
         while True:
             tok = self._peek()
             if tok is None:
