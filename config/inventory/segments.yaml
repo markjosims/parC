@@ -41,15 +41,18 @@ data:
       phones: ['f', 'v', 'ð', 's', 'ʃ', 'h']
     resonants:
       repr: "<R>"
-      phones: ['l', 'r', 'ɾ', 'ɽ', 'j', 'w']
+      phones: ['l', 'r', 'ɾ', 'ɽ']
+      glides:
+        repr: "<Glide>"
+        phones: ['j', 'w']
   vowels:
     repr: "<V>"
     high:
-      repr: "<V_HIGH>"
+      repr: "<V_High>"
       phones: ['i', 'ɪ', 'u', 'ʊ']
     mid:
-      repr: "<V_MID>"
+      repr: "<V_Mid>"
       phones: ['e', 'ɛ', 'ə', 'ɜ', 'o', 'ɔ']
     low:
-      repr: "<V_LOW>"
+      repr: "<V_Low>"
       phones: ['a']

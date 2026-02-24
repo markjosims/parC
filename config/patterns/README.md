@@ -2,6 +2,9 @@
 A pattern is a Finite State Acceptor (FSA) describing a language of strings that can be used as part of the input or output of a rule.
 Patterns are YAML dictionaries that consist of two keys, 'pattern' and 'repr'.
 The 'pattern' attribute is a single string or a list of strings, where each string is essentially a regular expression that can be interpreted as an FSA.
+Patterns may reference 'repr' strings from the inventory, but not other patterns.
+For instance the 'Non-High-Vowel' pattern in  `phonological_classes.yaml` references the mid and low reprs `<V_Mid>` and `<V_Low>` from the inventory.
+However, another pattern cannot reference 'Non-High-Vowel' in its definition, e.g. a pattern 'Non-High-Vowel-or-Glide' must be written `(<V_Mid>|<V_Low>|<Glide>)`, it cannot be written `(<V_NonHigh>|<Glide>)`.
 When a pattern is a list of strings, it is compiled as the union over each string.
 The 'repr' attribute, as is the case for classes in [Inventory](config/inventory/README.md) objects, is a unique string that can be used to refer to the pattern.
 Like `Inventory` classes, the 'repr' string must be surrounded by angle braces.
