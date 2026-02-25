@@ -224,14 +224,16 @@ def build_inventory_registry(config: dict) -> Dict[str, pynini.Fst]:
 # Order matters: longest matches first.
 _TOKEN_RE = re.compile(
     r"""
-    (?P<special>  \[BOS\] | \[EOS\]   )  |   # BOS/EOS special tokens
-    (?P<ref>      <[^>]+>              )  |   # <X> registry references
+    (?P<special>  \[BOS\] | \[EOS\]   )  |   # BOS/EOS special tokens TODO: add remaining special tokens
+    (?P<ref>      <[^>]+>             )  |   # <X> registry references
     (?P<op>       [*+?|]              )  |   # operators
     (?P<paren>    [()]                )  |   # grouping
-    (?P<literal>  .                   )       # any other character (Unicode)
+    (?P<literal>  .                   )      # any other character (Unicode)
     """,
-    re.VERBOSE | re.DOTALL,
+    re.VERBOSE | re.DOTALL | re.UNICODE,
 )
+# TODO: check behavior of named groups with python.re so that `_PatternParser`
+# can use the token types directly instead of hardcoding strings like "ref", "special", etc.
 
 def _tokenize_pattern(pattern_str: str) -> List[Tuple[str, str]]:
     """
@@ -251,6 +253,7 @@ def _tokenize_pattern(pattern_str: str) -> List[Tuple[str, str]]:
     while i < len(text):
         # Try special multi-char symbols first
         matched = False
+        # TODO doesn't re-use _TOKEN_RE, should this be fixed?
         for tok_type, tok_re in [
             ("special", re.compile(r"\[BOS\]|\[EOS\]")),
             ("ref", re.compile(r"<[^>]+>")),
@@ -294,6 +297,11 @@ class _PatternParser:
         term   ::= factor+
         factor ::= atom ('*' | '+' | '?')?
         atom   ::= ref | special | literal | '(' expr ')'
+
+    TODO: Current behavior is to construct a _PatternParser for a single string
+    change so that we initialize a _PatternParser with the registry and
+    then call parse_expr() for each pattern string
+    so we can reuse the same parser instance.
     """
 
     def __init__(self, tokens: List[Tuple[str, str]], registry: Dict[str, pynini.Fst]):
@@ -409,6 +417,8 @@ def compile_pattern_str(pattern_str: str, registry: Dict[str, pynini.Fst]) -> py
     Returns:
         FSA accepting the language described by pattern_str.
     """
+
+    # base case: empty string
     if pattern_str == "":
         return fst("")
     tokens = _tokenize_pattern(pattern_str)
@@ -422,6 +432,10 @@ def compile_pattern_str(pattern_str: str, registry: Dict[str, pynini.Fst]) -> py
 
 def compile_patterns(config: dict, registry: Dict[str, pynini.Fst]) -> Dict[str, pynini.Fst]:
     """
+    TODO: Since patterns can build off other patterns,
+    we'll need to define an order of compilation based off which
+    YAML files import which, or do a topological sort based on pattern references.
+
     Compile all patterns from a Patterns config into the registry.
 
     Iterates over the 'patterns' list, compiles each 'pattern' string
@@ -436,6 +450,8 @@ def compile_patterns(config: dict, registry: Dict[str, pynini.Fst]) -> Dict[str,
     patterns_list = config.get("patterns", [])
     for entry in patterns_list:
         # Each entry is either {name: {pattern: ..., repr: ...}} or flat
+        # TODO: this is not true, the YAML structure requires pattern and repr
+        # attributes for each pattern
         if isinstance(entry, dict):
             for _name, spec in entry.items():
                 if not isinstance(spec, dict):
@@ -463,6 +479,8 @@ def _compile_simple_rule(
     output_pattern = rule_dict.get("output_pattern", "")
     left_context = rule_dict.get("left_context", "")
     right_context = rule_dict.get("right_context", "")
+    # TODO: full words should be allowed in the YAML
+    # i.e. 'left-to-right' or 'right-to-left' vs. 'ltr', 'rtl'
     direction = rule_dict.get("direction", "ltr")
     sigma_str = rule_dict.get("sigma_star", None)
 
@@ -542,6 +560,9 @@ def compile_rule(
         compiled_cache: Optional mutable cache to avoid recompilation.
     Returns:
         Compiled FST for this rule.
+
+    # TODO: validate rule dict contains keys 'input/output_pattern' XOR
+    'string_map' XOR 'rule_sequence'
     """
     if compiled_cache is None:
         compiled_cache = {}
@@ -638,6 +659,10 @@ def compile_marker_dict(
     # Handle suppletion first (incompatible with other ops)
     if "suppletion" in marker_dict:
         suppletive_form = marker_dict["suppletion"]
+        # TODO: test this code
+        # I'd expect cross(SIGMASTAR, suppletive_form)
+        # should be all that's needed
+
         # Maps any input to the suppletive form
         suppletive_fsa = fst(suppletive_form)
         result = pynini.compose(
@@ -701,6 +726,8 @@ def compile_feature_markers(
         rules:    Compiled rules dict.
     Returns:
         Dict mapping feature value string to list of compiled FSTs.
+
+    TODO: validate feature values against Features config
     """
     global_attributes = config.get("global_attributes", {})
     markers_spec = config.get("markers", {})
@@ -708,6 +735,10 @@ def compile_feature_markers(
     result: Dict[str, List[pynini.Fst]] = {}
 
     for feature_value, marker_val in markers_spec.items():
+        # TODO: we need to remember marker order
+        # instead of storing a list of FSTs, store a list
+        # of Tuple(pynini.Fst, str), where the str is the
+        # unique name for the ordering stage
         fsts: List[pynini.Fst] = []
 
         if marker_val is None:
@@ -767,6 +798,11 @@ def compile_contingent_markers(
         for key, value in node.items():
             if isinstance(value, dict):
                 # Check if this is a leaf marker dict (has marker keys)
+                # TODO: instead of checking for marker keys, check whether the key
+                # is a feature specified in config.features: List[str]
+                # if not, THEN check intersection with marker keys
+                # if the key is neither a listed feature nor a marker key,
+                # throw a value error
                 marker_keys = {"prefix", "suffix", "replace", "rule", "suppletion"}
                 if marker_keys.intersection(value.keys()) or not value:
                     # Leaf: compile as marker dict
@@ -801,6 +837,9 @@ _STRIP_SYMBOLS = {TONE_SLOT_STR, TONE_PLACEHOLDER_STR, CLASS_PLACEHOLDER, EOS_ST
 
 def decode_fst_string(encoded_str: str) -> str:
     """
+    TODO: Handle string decoding logic later
+    Fix config compilation first.
+
     Decode an FST output string to human-readable IPA.
 
     Reverses the encoding applied by encode_fst_string():
