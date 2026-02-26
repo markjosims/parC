@@ -22,7 +22,7 @@ invariant_features:
   - gender
 ```
 All invariant features must be listed in a column in the relevant CSV file.
-For example, if 'gender' were not a column in `noun.csv`, the compiler would through an error upon reading `noun.yaml`.
+For example, if 'gender' were not a column in `noun.csv`, the compiler would throw an error upon reading `noun.yaml`.
 
 Another optional attribute is 'lexical_flags'.
 Each value of 'lexical_flags' is the name of a column in the CSV file.
