@@ -11,6 +11,7 @@ All higher-level config-driven code will depend on it.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import re
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple, Union
@@ -37,6 +38,7 @@ from src.fst_helpers import (
     set_symbols,
 )
 from src.lexicon.phonology import SIGMASTAR
+from src.registry_utils import ConfigConstructorMixin
 
 # ---------------------------------------------------------------------------
 # Config directory map: kind → subdirectory
@@ -56,6 +58,57 @@ _KIND_TO_SUBDIR: Dict[str, str] = {
     "FeatureCombinations": "features",
 }
 
+# TODO implement classes
+
+class InventoryRegistry(ConfigConstructorMixin):
+    # initialize with a list of convig dicts
+    def __init__(self):
+        ...
+        
+    def from_yaml(self):
+        ...
+
+    def _build_symbol_table(self):
+        ...
+
+    def _update_data(self):
+        ...
+
+class PatternList(ConfigConstructorMixin):
+    def __init__(self): 
+        ...
+
+class Pattern:
+    def __init__(self):
+        ...
+
+class RuleList(ConfigConstructorMixin):
+    def __init__(self):
+        ...
+
+class Rule:
+    def __init__(self):
+        ...
+
+class FstRegistry(InventoryRegistry):
+    def __init__(self):
+        ...
+        
+    def from_yaml(self):
+        ...
+        
+    def _update_from_patterns(self):
+        ...
+        
+    def _update_from_rules(self):
+        ...
+    
+
+@dataclass
+class InventoryItem:
+    def __init__(self):
+        ...
+        
 # ---------------------------------------------------------------------------
 # Section 1: Config Loading
 # ---------------------------------------------------------------------------
