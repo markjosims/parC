@@ -12,61 +12,63 @@ All higher-level config-driven code will depend on it.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple, Union
-
+from typing import Dict, List, Optional, Sequence, Tuple, Union, Literal
+from loguru import logger
 import pynini
 import yaml
 import unicodedata
 
-from src.constants import (
-    BOUNDARY_STR,
-    CLASS_PLACEHOLDER,
-    EOS_STR,
-    SYMBOL2DIAC,
-    TONE_PLACEHOLDER_STR,
-    TONE_SLOT_STR,
-    TIRA_SYMBOL_TO_CHAR,
-    WORD_BOUNDARY_STR,
-)
-from src.fst_helpers import (
-    delete_fst,
-    encode_fst_string,
-    fst,
-    insert_fst,
-    set_symbols,
-)
-from src.lexicon.phonology import SIGMASTAR
-from src.registry_utils import ConfigConstructorMixin
-
-# ---------------------------------------------------------------------------
-# Config directory map: kind → subdirectory
-# ---------------------------------------------------------------------------
-
-CONFIG_DIR = Path("config")
-
-_KIND_TO_SUBDIR: Dict[str, str] = {
-    "Inventory": "inventory",
-    "Patterns": "patterns",
-    "Rules": "rules",
-    "FeatureMarkers": "markers",
-    "ContingentFeatureMarkers": "markers",
-    "Paradigm": "paradigms",
-    "PartsOfSpeech": "parts_of_speech",
-    "FeatureDefinition": "features",
-    "FeatureCombinations": "features",
-}
+from src.registry_utils import Registry
 
 # TODO implement classes
 
-class InventoryRegistry(ConfigConstructorMixin):
-    # initialize with a list of convig dicts
-    def __init__(self):
-        ...
+class InventoryRegistry(Registry):
+    def __init__(self, config_dir: os.PathLike):
+        super().__init__(kind="Inventory", config_dir=config_dir)
         
-    def from_yaml(self):
-        ...
+    def load_all_configs(self):
+        config_items = {}
+        for config in self.config_list:
+            config_data = self.load_data_from_config(config)
+            # check for collisions
+            for key in config_data:
+                if key in config_items:
+                    logger.error(f"Duplicate inventory item '{key}' found in multiple config files.")
+                    raise ValueError(f"Duplicate inventory item '{key}' found in multiple config files.")
+            config_items.update(config_data)
+        return config_items
+
+    def load_data_from_config(self, config: dict) -> Dict[str, InventoryItem]:
+        top_classes = config.get("data", [])
+        if not top_classes:
+            logger.error("No top-level inventory classes found in config")
+            return
+        
+        # get flat list of items
+        items_with_children = [
+            InventoryItem._initialize_inventory_item(item) for item in top_classes
+        ]
+        flat_items = top_classes[:]
+        while items_with_children:
+            current_item = items_with_children.pop(0)
+            for child in current_item.children:
+                flat_items.append(child)
+                if child.children:
+                    items_with_children.append(child)
+
+        # make dict mapping ref to item
+        config_items = {item.value: item for item in flat_items}
+        return config_items
+
+    def _flatten_inventory_item(self, item: InventoryItem) -> List[InventoryItem]:
+        """Recursively flatten an InventoryItem and its children."""
+        items = [item]
+        for child in item.children:
+            items.extend(self._flatten_inventory_item(child))
+        return items
 
     def _build_symbol_table(self):
         ...
@@ -74,7 +76,54 @@ class InventoryRegistry(ConfigConstructorMixin):
     def _update_data(self):
         ...
 
-class PatternList(ConfigConstructorMixin):
+@dataclass
+class InventoryItem:
+    """
+    Represents an item in the inventory, which may be a phone,
+    flag or class.
+    Attributes:
+        value: The string value of the item (e.g. "a", "[TBU]", "<V>").
+        type: The type of the item, one of "phone", "flag", or "class".
+        children: List of child InventoryItems (for nested structures).
+        parent: Optional reference to parent InventoryItem (for upward traversal).
+    """
+    value: str
+    type: Literal["phone", "flag", "class"]
+    children: List[InventoryItem] = []
+    parent: Optional[InventoryItem] = None
+
+    def _initialize_inventory_item(item_dict: dict, parent: Optional[InventoryItem] = None) -> InventoryItem:
+        """
+        Builds an InventoryItem from a config dict
+        If config has children (nested dicts), recursively
+        build child InventoryItems and attach to parent
+        """
+        inventory_item = InventoryItem(
+            value=item_dict["_ref"],
+            type="class",
+            children=[],
+            parent=parent
+        )
+
+        children = []
+        for key, value in item_dict.items():
+            if key == '_phones':
+                for phone in value:
+                    child = InventoryItem(value=phone, type="phone", parent=inventory_item)
+                    children.append(child)
+            elif key == '_flags':
+                for flag in value:
+                    child = InventoryItem(value=flag, type="flag", parent=inventory_item)
+                    children.append(child)
+            elif isinstance(value, dict):
+                child = InventoryItem._initialize_inventory_item(value, parent=inventory_item)
+                children.append(child)
+
+        inventory_item.children = children
+        return inventory_item
+
+
+class PatternList(Registry):
     def __init__(self): 
         ...
 
@@ -82,7 +131,7 @@ class Pattern:
     def __init__(self):
         ...
 
-class RuleList(ConfigConstructorMixin):
+class RuleList(Registry):
     def __init__(self):
         ...
 
@@ -114,63 +163,7 @@ class InventoryItem:
 # ---------------------------------------------------------------------------
 
 
-def _find_config_file(name: str) -> Path:
-    """Search all config subdirectories for <name>.yaml."""
-    for subdir in _KIND_TO_SUBDIR.values():
-        candidate = CONFIG_DIR / subdir / f"{name}.yaml"
-        if candidate.exists():
-            return candidate
-    raise FileNotFoundError(
-        f"Config file '{name}.yaml' not found in any config subdirectory."
-    )
 
-
-def resolve_ref(name: str) -> dict:
-    """
-    Resolve a $name cross-file reference.
-
-    Strips the leading '$', searches all config subdirectories for
-    <name>.yaml, and returns the raw (un-resolved) YAML dict.
-    """
-    if name.startswith("$"):
-        name = name[1:]
-    path = _find_config_file(name)
-    with path.open(encoding="utf-8") as f:
-        return yaml.safe_load(f)
-
-
-def _resolve_values(obj):
-    """
-    Recursively walk a deserialized YAML structure.
-    Any string value starting with '$' is replaced by the fully-resolved
-    content of the referenced config file.
-    """
-    if isinstance(obj, str):
-        if obj.startswith("$"):
-            ref_dict = resolve_ref(obj)
-            return _resolve_values(ref_dict)
-        return obj
-    elif isinstance(obj, list):
-        return [_resolve_values(item) for item in obj]
-    elif isinstance(obj, dict):
-        return {key: _resolve_values(value) for key, value in obj.items()}
-    else:
-        return obj
-
-
-def load_config(path: Union[Path, str]) -> dict:
-    """
-    Load a YAML config file and recursively resolve all $name references.
-
-    Arguments:
-        path: Path to the YAML config file.
-    Returns:
-        Fully-resolved config dict.
-    """
-    path = Path(path)
-    with path.open(encoding="utf-8") as f:
-        raw = yaml.safe_load(f)
-    return _resolve_values(raw)
 
 
 # ---------------------------------------------------------------------------

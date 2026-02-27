@@ -9,16 +9,10 @@ CONFIG_KINDS = [
     'FeatureMarkers', 'Inventory', 'Paradigm', 'PartOfSpeech', 'Patterns'
 ]
 
-def validate_by_kind(target_kind, config_dir="config", schema_dir="config/schemas"):
-    """
-    Iterates through all YAML files and validates only those matching the target_kind.
-    The schema is expected to be named '{hammer_case_kind}.schema.json'.
-    """
-    config_path = Path(config_dir)
-    schema_path = Path(schema_dir)
-    
+def load_schema(target_kind: str, schema_dir="config/schemas"):
     # Generate schema filename from kind
     schema_filename = f"{target_kind}.json"
+    schema_path = Path(schema_dir)
     schema_file_path = schema_path / schema_filename
 
     if not schema_file_path.exists():
@@ -28,15 +22,26 @@ def validate_by_kind(target_kind, config_dir="config", schema_dir="config/schema
     try:
         with open(schema_file_path, 'r', encoding='utf-8') as f:
             schema = json.load(f)
+        return schema
     except Exception as e:
         logger.error(f"Failed to load schema {schema_filename}: {e}")
+        return
+
+def validate_files_by_type(target_kind, config_dir="config", schema_dir="config/schemas"):
+    """
+    Iterates through all YAML files and validates only those matching the target_kind.
+    The schema is expected to be named '{hammer_case_kind}.schema.json'.
+    """
+    config_path = Path(config_dir)
+    schema = load_schema(target_kind, schema_dir)
+    if not schema:
+        logger.error(f"Cannot validate {target_kind} due to missing schema.")
         return
 
     # Find all YAML files
     yaml_files = list(config_path.glob('**/*.yaml')) + list(config_path.glob('**/*.yml'))
     
     logger.info(f"Searching for files of kind '{target_kind}' in {config_dir}...")
-    logger.info(f"Using schema: {schema_filename}")
     
     stats = {"matched": 0, "passed": 0, "failed": 0}
 
@@ -87,7 +92,7 @@ def validate_by_kind(target_kind, config_dir="config", schema_dir="config/schema
 def main():
     for kind in CONFIG_KINDS:
         print(f"Validating {kind}...")
-        validate_by_kind(kind)
+        validate_files_by_type(kind)
 
 
 if __name__ == '__main__':
