@@ -2,17 +2,23 @@ import os
 import yaml
 from pathlib import Path
 from glob import glob
-from typing import Union
+from typing import Union, Optional, List
 from jsonschema import validate, ValidationError
 from src.config_utils import load_schema
 from loguru import logger
 
 class Registry:
-    def __init__(self, kind: str, config_dir: os.PathLike): 
+    def __init__(self, kind: str, config_list: Optional[List[dict]]=None): 
         self.kind = kind
         self.schema = load_schema(kind)
-        self.config_dir = Path(config_dir)
-        self.config_list = self.load_config_files()
+        self.config_list = config_list
+
+    @classmethod
+    def from_config_dir(cls, kind: str, config_dir: os.PathLike) -> Registry:
+        registry = cls(kind=kind)
+        registry.config_dir = Path(config_dir)
+        registry.config_list = registry.load_config_files()
+        return registry
 
     def load_config_files(self) -> dict:
         """
@@ -22,6 +28,9 @@ class Registry:
         for filename in self._glob_config_files():
             with open(filename, 'r') as f:
                 config_data = yaml.safe_load(f)
+
+                # store filepath for config
+                config_data['source_path'] = filename
                 if config_data.get('kind') == self.kind:
                     try:
                         validate(instance=config_data, schema=self.schema)

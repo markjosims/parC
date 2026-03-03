@@ -23,10 +23,22 @@ import unicodedata
 
 from src.registry_utils import Registry
 
-class InventoryRegistry(Registry):
-    def __init__(self, config_dir: os.PathLike):
-        super().__init__(kind="Inventory", config_dir=config_dir)
-        self.data = self.load_all_configs()
+class FsmMixin:
+    def fsa(self, fsa_input) -> pynini.Fst:
+        ...
+
+    def fst(self, fst_input, fst_output) -> pynini.Fst:
+        ...
+
+    def fsm_string(self, fsm, project_type: str='output') -> str:
+        ...
+
+class InventoryRegistry(Registry, FsmMixin):
+
+    @classmethod
+    def from_config_dir(cls, config_dir: str) -> InventoryRegistry:
+        registry = super().from_config_dir(kind="Inventory", config_dir=config_dir)
+        registry.data = registry.load_all_configs()
         
     def load_all_configs(self):
         config_items = {}
@@ -40,7 +52,11 @@ class InventoryRegistry(Registry):
             config_items.update(config_data)
         return config_items
 
-    def load_data_from_config(self, config: dict) -> Dict[str, InventoryItem]:
+    def load_data_from_config(
+            self,
+            config: dict,
+            source: os.PathLike,
+        ) -> Dict[str, InventoryItem]:
         top_classes = config.get("data", [])
         if not top_classes:
             logger.error("No top-level inventory classes found in config")
@@ -85,24 +101,43 @@ class InventoryItem:
         type: The type of the item, one of "phone", "flag", or "class".
         children: List of child InventoryItems (for nested structures).
         parent: Optional reference to parent InventoryItem (for upward traversal).
+        source: Optional string indicating filepath item originates from.
+        acceptor: pynini.Fst accepting the item (or, for classes, any member of the item).
+            Note this should NOT be passed as an argument but instead be assigned by an
+            InventoryRegistry class.
     """
     value: str
     type: Literal["phone", "flag", "class"]
     children: List[InventoryItem] = field(default_factory=list)
     parent: Optional[InventoryItem] = None
+    source: Optional[os.PathLike] = None
+    acceptor: Optional[pynini.Fst] = None
+
+    def __post_init__(self):
+        if self.acceptor is not None:
+            raise ValueError("Acceptor should not be passed on init but constructed by a Registry object.")
 
     @classmethod
-    def from_config(cls, item_dict: dict, parent: Optional[InventoryItem] = None) -> InventoryItem:
+    def from_config(
+            cls,
+            item_dict: dict,
+            parent: Optional[InventoryItem] = None,
+    ) -> InventoryItem:
         """
         Builds an InventoryItem from a config dict
         If config has children (nested dicts), recursively
         build child InventoryItems and attach to parent
         """
+
+        # get source filepath if specified
+        source_path = item_dict.get('source', None)
+
         inventory_item = cls(
             value=item_dict["_ref"],
             type="class",
             children=[],
-            parent=parent
+            parent=parent,
+            source=source_path,
         )
 
         children = []
@@ -126,6 +161,7 @@ class PatternList(Registry):
     def __init__(self): 
         ...
 
+@dataclass
 class Pattern:
     def __init__(self):
         ...
