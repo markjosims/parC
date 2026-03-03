@@ -14,4 +14,4 @@ pyyaml
 RecursiveNamespace
 unidecode
 loguru
-jsonscema
+jsonschema
