@@ -14,7 +14,7 @@ rules:
       A vowel is deleted before another vowel across morpheme boundaries.
       Equivalent to V > V / _V
     input_pattern: "<V>-?"
-    output_pattern: ""
+    output_pattern: null
     # right_context: another vowel
     # note: if we put this in the 'input_pattern', it would delete both vowels
     right_context: "<V>"

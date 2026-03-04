@@ -14,7 +14,7 @@ class Registry:
         self.config_list = config_list
 
     @classmethod
-    def from_config_dir(cls, kind: str, config_dir: os.PathLike) -> Registry:
+    def from_config_dir(cls, kind: str, config_dir: os.PathLike) -> 'Registry':
         registry = cls(kind=kind)
         registry.config_dir = Path(config_dir)
         registry.config_list = registry.load_config_files()

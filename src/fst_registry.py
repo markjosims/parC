@@ -20,6 +20,7 @@ from loguru import logger
 import pynini
 import yaml
 import unicodedata
+from graphlib import TopologicalSorter
 
 from src.registry_utils import Registry
 
@@ -39,6 +40,7 @@ class InventoryRegistry(Registry, FsmMixin):
     def from_config_dir(cls, config_dir: str) -> InventoryRegistry:
         registry = super().from_config_dir(kind="Inventory", config_dir=config_dir)
         registry.data = registry.load_all_configs()
+        return registry
         
     def load_all_configs(self):
         config_items = {}
@@ -55,7 +57,6 @@ class InventoryRegistry(Registry, FsmMixin):
     def load_data_from_config(
             self,
             config: dict,
-            source: os.PathLike,
         ) -> Dict[str, InventoryItem]:
         top_classes = config.get("data", [])
         if not top_classes:
@@ -158,13 +159,118 @@ class InventoryItem:
         return inventory_item
 
 class PatternList(Registry):
-    def __init__(self): 
-        ...
+    def __init__(self):
+        super().__init__(kind="Pattern")
+        self.build_dependency_graph()
+
+    @classmethod
+    def from_config_dir(cls, config_dir: str) -> PatternList:
+        pattern_list = super().from_config_dir(kind="Pattern", config_dir=config_dir)
+        pattern_list.data = pattern_list.load_all_configs()
+        pattern_list.build_dependency_graph()
+        return pattern_list
+
+    def load_all_configs(self):
+        config_items = {}
+        for config in self.config_list:
+            config_data = self.load_data_from_config(config)
+            # check for collisions
+            for key in config_data:
+                if key in config_items:
+                    logger.error(f"Duplicate pattern '{key}' found in multiple config files.")
+                    raise ValueError(f"Duplicate pattern '{key}' found in multiple config files.")
+            config_items.update(config_data)
+        return config_items
+
+    def load_data_from_config(
+            self,
+            config: dict,
+        ) -> Dict[str, Pattern]:
+        patterns = config.get("data", [])
+        if not patterns:
+            logger.error("No patterns found in config")
+            return
+        
+        patterns_list = [Pattern.from_config(p) for p in patterns]
+
+        # make dict mapping ref to item
+        config_items = {item._ref: item for item in patterns_list}
+        return config_items
+    
+    def build_dependency_graph(self):
+        """
+        Populates `uses` and `used_by` fields for all pattern objects
+        based on which patterns reference which other patterns in their
+        pattern strings. Stores dependency chains in `self.dependency_graph`,
+        and a topologically sorted list of patterns in `self.patterns_sorted`.
+        """
+        dependency_graph = {}
+
+        for pattern in self.data.values():
+            # get list of patterns this pattern uses
+            used_by = []
+            uses = []
+            dependency_graph[pattern._ref] = set()
+            for other_pattern in self.data.values():
+                if pattern._ref in other_pattern.value:
+                    used_by.append(other_pattern._ref)
+
+                if other_pattern._ref in pattern.value:
+                    uses.append(other_pattern._ref)
+                    dependency_graph[pattern._ref].add(other_pattern._ref)
+
+            pattern.used_by = used_by
+            pattern.uses = uses
+
+        self.dependency_graph = dependency_graph
+        pattern_refs_sorted = list(TopologicalSorter(dependency_graph).static_order())
+        patterns_sorted = [self.data[ref] for ref in pattern_refs_sorted]
+        self.patterns_sorted = patterns_sorted
 
 @dataclass
 class Pattern:
-    def __init__(self):
-        ...
+    """
+    Represents a pattern which is a shorthand FSA to be used for defining rules.
+
+    Attributes:
+        value: The string value of the pattern (e.g. "(<V>|<R>|<N>)").
+        _ref: The registry reference string for this pattern (e.g. "<VowelClass>").
+        source: Optional string indicating filepath pattern originates from.
+        acceptor: pynini.Fst accepting the pattern language.
+    """
+    value: str
+    _ref: str
+    used_by: List[Pattern] = field(default_factory=list)
+    uses: List[Pattern] = field(default_factory=list)
+    source: Optional[os.PathLike] = None
+    acceptor: Optional[pynini.Fst] = None
+
+    def __post_init__(self):
+        if self.acceptor is not None:
+            raise ValueError("Acceptor should not be passed on init but constructed by a Registry object.")
+        if self.used_by:
+            raise ValueError("Used_by should not be passed on init but constructed by a Registry object.")
+        if self.uses:
+            raise ValueError("Uses should not be passed on init but constructed by a Registry object.")
+        
+    @classmethod
+    def from_config(
+            cls,
+            item_dict: dict,
+    ) -> Pattern:
+        """
+        Builds a Pattern from a config dict.
+        """
+
+        # get source filepath if specified
+        source_path = item_dict.get('source', None)
+
+        pattern = cls(
+            value=item_dict["pattern"],
+            _ref=item_dict["_ref"],
+            source=source_path,
+        )
+        return pattern
 
 class RuleList(Registry):
     def __init__(self):
