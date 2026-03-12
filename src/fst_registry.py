@@ -42,7 +42,7 @@ class InventoryRegistry(Registry, FsmMixin):
         registry.data = registry.load_all_configs()
         return registry
         
-    def load_all_configs(self):
+    def load_all_configs(self) -> Dict[str, InventoryItem]:
         config_items = {}
         for config in self.config_list:
             config_data = self.load_data_from_config(config)
@@ -61,7 +61,7 @@ class InventoryRegistry(Registry, FsmMixin):
         top_classes = config.get("data", [])
         if not top_classes:
             logger.error("No top-level inventory classes found in config")
-            return
+            return {}
         
         # get flat list of items
         inventory_items = []
@@ -85,12 +85,40 @@ class InventoryRegistry(Registry, FsmMixin):
         for child in item.children:
             items.extend(self._flatten_inventory_item(child))
         return items
+    
+    def _get_tokens_from_class(self, item: InventoryItem) -> List[str]:
+        """Recursively collect all phone/flag tokens from an InventoryItem subtree."""
+        tokens = []
+        if item.type in ("phone", "flag"):
+            tokens.append(item.value)
+        for child in item.children:
+            tokens.extend(self._get_tokens_from_class(child))
+        return tokens
 
     def _build_symbol_table(self):
-        ...
+        symbols = pynini.SymbolTable()
+        for item in self.data.values():
+            if item.type in ("phone", "flag"):
+                symbols.add_symbol(item.value)
+        self.symbols = symbols
+
+    def _build_acceptors(self):
+        acceptors = {}
+        for class_key in self.classes:
+            item = self.data[class_key]
+            tokens = self._get_tokens_from_class(item)
+            acceptor = pynini.union(*[self.fsa(token) for token in tokens]).optimize()
+            acceptors[class_key] = acceptor
 
     def _update_data(self):
-        ...
+        self.classes = [key for key, item in self.data.items() if item.type == "class"]
+        self.phones = [key for key, item in self.data.items() if item.type == "phone"]
+        self.flags = [key for key, item in self.data.items() if item.type == "flag"]
+
+        self._build_symbol_table()
+
+    def fsa(self, fsa_input) -> pynini.Fst:
+        return pynini.accep(fsa_input, token_type=self.symbols)
 
 @dataclass
 class InventoryItem:
@@ -115,6 +143,27 @@ class InventoryItem:
     acceptor: Optional[pynini.Fst] = None
 
     def __post_init__(self):
+        if self.type == "class" and self.children is None:
+            raise ValueError("Class items must have children")
+        if self.type in ("phone", "flag") and self.children:
+            raise ValueError("Phone and flag items cannot have children")
+        
+        if (
+            (self.type == "class") and
+            (not self.value.startswith("<") or not self.value.endswith(">"))
+        ):
+            raise ValueError("Class items must have values that start with '<' and end with '>'")
+        if (
+            (self.type == "flag") and
+            (not self.value.startswith("[") or not self.value.endswith("]"))
+        ):
+            raise ValueError("Flag items must have values that start with '[' and end with ']'")
+        if (
+            (self.type == "phone") and
+            (self.value.startswith("<") or self.value.startswith("["))
+        ):
+            raise ValueError("Phone items cannot have values that start with '<' or '['")
+
         if self.acceptor is not None:
             raise ValueError("Acceptor should not be passed on init but constructed by a Registry object.")
 

@@ -30,13 +30,14 @@ class Registry:
                 config_data = yaml.safe_load(f)
 
                 # store filepath for config
-                config_data['source_path'] = filename
+                config_data['source_path'] = str(filename)
                 if config_data.get('kind') == self.kind:
                     try:
                         validate(instance=config_data, schema=self.schema)
                         config_list.append(config_data)
                     except ValidationError as e:
                         logger.error(f"Invalid config file {filename}: {e}")
+                        raise ValidationError(f"Invalid config file {filename}: {e}")
         return config_list
 
 
