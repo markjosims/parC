@@ -6,6 +6,10 @@
   "required": ["kind", "features", "combinations"],
   "additionalProperties": false,
   "properties": {
+    "source_path": {
+      "type": "string",
+      "description": "The file path from which this config was loaded."
+    },
     "kind": {
       "type": "string",
       "const": "FeatureCombinations"
