@@ -10,26 +10,26 @@ markers:
     3sg:
       subject:
         1sg:
-          prefix: <CL>-
+          prefix: "[CL]-"
           suffix: -ɛ́
         2sg:
-          prefix: <CL>-
+          prefix: "[CL]-"
           suffix: -á
         3sg:
-          prefix: <CL>-
+          prefix: "[CL]-"
           suffix: -ŋ
         1du.incl:
-          prefix: <CL>-
+          prefix: "[CL]-"
           suffix: -á-l
         1pl.incl:
-          prefix: <CL>-
+          prefix: "[CL]-"
           suffix: -á-l
         1pl.excl:
-          prefix: <CL>-
+          prefix: "[CL]-"
           suffix: -éɲâ
         2pl:
-          prefix: <CL>-
+          prefix: "[CL]-"
           suffix: -éɲá
         3pl:
-          prefix: <CL>-
+          prefix: "[CL]-"
           suffix: -l

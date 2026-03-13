@@ -2,7 +2,7 @@ kind: Inventory
 data:
   tone_flags:
     _ref: "<TONE_SLOT>"
-    _flags: ["<TBU>", "<FLOAT>"]
+    _flags: ["[TBU]", "[FLOAT]"]
   tones:
     _ref: "<T>"
     F:
