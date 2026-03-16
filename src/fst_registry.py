@@ -26,14 +26,10 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 import os
-import re
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, Literal
+from typing import Dict, List, Optional, Tuple, Literal
 from loguru import logger
 import pynini
 from pynini import FstProperties
-import yaml
-import unicodedata
 from graphlib import TopologicalSorter
 
 from src.registry_utils import Registry
@@ -731,10 +727,14 @@ class FstRegistry(Registry):
         in the inventory, as well as special symbols.
         """
         symbols = pynini.SymbolTable()
+        symbols.add_symbol(self.epsilon)
         for item in self.phones:
             symbols.add_symbol(item)
         for item in self.flags:
             symbols.add_symbol(item)
+        for item in self.boundary_fsa_symbols:
+            symbols.add_symbl(item)
+        
         self.symbols = symbols
         self._symbol_table_built = True
 
