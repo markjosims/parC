@@ -21,3 +21,50 @@ rules:
     output_pattern: ""
     left_context: "<V>[TBU]<C>"
     right_context: "[EOS]"
+  clear_all_tones:
+    description: >
+      Remove all tone markings from the input
+    input_pattern: "<T>"
+    output_pattern: ""
+  clear_first_tone:
+    description: >
+      Remove the tone marking from the first TBU in a word
+    input_pattern: "[TBU]<T>"
+    output_pattern: "[TBU]"
+    left_context: "[BOS]<Phone>+"
+  all_low_tone:
+    description: >
+      Assign a low tone to all TBUs
+    input_pattern: "[TBU]"
+    output_pattern: "[TBU][L]"
+  replace_all_tones_with_low:
+    description: >
+      Replace any existing tone with a low tone on all TBUs
+    rule_sequence: [clear_all_tones, all_low_tone]
+  fill_low_tone:
+    description: >
+      Assign a low tone to any TBU that does not already have a tone (expects a string with some tones already assigned).
+    input_pattern: "[TBU]"
+    output_pattern: "[TBU][L]"
+    right_context: "{^<T>}"
+  first_syllable_high_tone:
+    description: >
+      Assign a high tone to the first TBU in a word (expects a string with all tones removed).
+    input_pattern: "[TBU]"
+    output_pattern: "[TBU][H]"
+    left_context: "[BOS]<Phone>+"
+  replace_first_tone_with_high:
+    description: >
+      Replace the tone on the first TBU in a word with a high tone
+      (expects a string with tones already assigned).
+    rule_sequence: [clear_first_tone, first_syllable_high_tone]
+    test_mappings:
+    - ["kùkù", "kúkù"]
+    - ["kuku", "kúku"]
+    - ["kúkù", "kúkù"]
+    - ["kùkú", "kúkú"]
+  hl_star_tone:
+    description: >
+      Assign a high tone to the first TBU and a low tone to all subsequent TBUs in a word
+      (expects a string with all tones removed).
+    rule_sequence: [clear_all_tones, first_syllable_high_tone, all_low_tone]
