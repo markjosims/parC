@@ -852,6 +852,8 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             tokens["unary_operator"].append(Token(value=op, type="unary_operator"))
         for op in self.pipe_operator:
             tokens["pipe_operator"].append(Token(value=op, type="pipe_operator"))
+        for op in self.caret_operator:
+            tokens["caret_operator"].append(Token(value=op, type="caret_operator"))
         for ref in self.reserved_refs:
             acceptor = self._token_acceptor(ref)
             tokens["ref"].append(Token(value=ref, type="special_ref", acceptor=acceptor))
@@ -902,6 +904,8 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             return "unary_operator"
         elif starting_char  == self.pipe_operator:
             return "pipe_operator"
+        elif starting_char == self.caret_operator:
+            return "caret_operator"
         elif starting_char in self.left_delimiters:
             return "left_delimiter"
         elif starting_char in self.right_delimiters:
@@ -1193,12 +1197,20 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         
         # curly braces indicate union of tokens
         if left_delimiter == r'{':
+            # check if group begins with caret operator, which indicates negation of the union
+            is_negated = False
+            if tokens[current_index].type == 'caret_operator':
+                is_negated = True
+                current_index+=1
             expected_right_delimiter = r'}'
             factor_list, current_index = self._parse_factor_sequence(
                 tokens=tokens,
                 initial_index=current_index,
             )
-            inner_expression = pynini.union(*factor_list)
+            if not is_negated:
+                inner_expression = pynini.union(*factor_list)
+            else:
+                inner_expression = pynini.difference(self.sigma, pynini.union(*factor_list))
 
         # parentheses indicate a single expression
         elif left_delimiter == r'(':
@@ -1403,8 +1415,8 @@ class Token:
     type: Literal[
         "phone", "flag", "class_ref", "pattern_ref",
         "bos_eos", "special_ref", "unary_operator",
-        "pipe_operator", "boundary", "left_delimiter",
-        "right_delimiter",
+        "pipe_operator", "caret_operator", "boundary",
+        "left_delimiter", "right_delimiter",
     ]
     acceptor: Optional[Acceptor] = None
 
@@ -1414,10 +1426,8 @@ class Token:
         operators and delimiters should not have acceptors,
         all other types should have them.
         """
-        if (self.type in (
-                'unary_operator', 'pipe_operator',
-                'left_delimiter', 'right_delimiter',
-            )
+        if (
+            self.type.endswith("operator") or self.type.endswith("delimiter")
         ):
             if self.acceptor is not None:
                 raise ValueError(
