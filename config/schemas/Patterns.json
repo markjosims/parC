@@ -41,6 +41,20 @@
               "type": "string",
               "pattern": "^<.+>$",
               "description": "A unique string surrounded by angle braces used to refer to this pattern in other rules or patterns."
+            },
+            "test_include": {
+              "type": "array",
+              "description": "List of strings the pattern should accept.",
+              "items": {
+                "type": "string"
+              }
+            },
+            "test_exclude": {
+              "type": "array",
+              "description": "List of strings the pattern should not accept.",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false

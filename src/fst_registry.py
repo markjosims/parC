@@ -332,6 +332,8 @@ class Pattern(Acceptor):
     used_by: List[Pattern] = field(default_factory=list)
     uses: List[Pattern] = field(default_factory=list)
     source: Optional[os.PathLike] = None
+    test_includes: List[str] = field(default_factory=list)
+    test_excludes: List[str] = field(default_factory=list)
 
 
     def __post_init__(self):
@@ -530,6 +532,7 @@ class Rule(Transducer):
     # metadata
     source: Optional[os.PathLike] = None
     description: Optional[str] = None
+    test_mappings: List[Tuple[str, str]] = field(default_factory=list)
 
 
     def __post_init__(self):
@@ -648,6 +651,10 @@ class Rule(Transducer):
         for attr_name in ('left_context', 'right_context'):
             if attr_name in config:
                 config[attr_name] = Acceptor(config[attr_name])
+
+        # cast test input, output string arrays to tuples
+        if 'test_mappings' in config:
+            config['test_mappings'] = [tuple(mapping) for mapping in config['test_mappings']]
 
         rule = cls(**config)
         return rule
@@ -1265,6 +1272,53 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             rule=rule.fst,
             token_type=self.symbols,
         )
+    
+    def test_pattern_includes(self):
+        """
+        For each pattern in the registry, test that all strings in its `includes` field
+        are accepted by the pattern's FSA.
+        """
+        for pattern in self.patterns.values():
+            for test_str in pattern.test_includes:
+                fsa = self.fsa(test_str)
+                intersection = pynini.intersect(pattern.fsa, fsa)
+                if intersection.start() == pynini.NO_STATE_ID:
+                    raise ValueError(
+                        f"Pattern '{pattern._ref}' failed includes test for string '{test_str}'. "
+                        "Check that the pattern is correctly specified and that the test string is correct."
+                    )
+    
+    def test_pattern_excludes(self):
+        """
+        For each pattern in the registry, test that all strings in its `excludes` field
+        are not accepted by the pattern's FSA.
+        """
+        for pattern in self.patterns.values():
+            for test_str in pattern.test_excludes:
+                fsa = self.fsa(test_str)
+                intersection = pynini.intersect(pattern.fsa, fsa)
+                if intersection.start() != pynini.NO_STATE_ID:
+                    raise ValueError(
+                        f"Pattern '{pattern._ref}' failed excludes test for string '{test_str}'. "
+                        "Check that the pattern is correctly specified and that the test string is correct."
+                    )
+                
+    def test_rule_mappings(self):
+        """
+        For each rule in the registry, test that all input-output string pairs in its `test_mappings` field
+        are correctly mapped by the rule's FST.
+        """
+        for rule in self.rules.values():
+            for input_str, expected_output_str in rule.test_mappings:
+                output_fsa = self.apply_rule(input_str, rule._ref)
+                output_fsa = pynini.project(output_fsa, project_type='output')
+                expected_output_fsa = self.fsa(expected_output_str)
+                intersection = pynini.intersect(output_fsa, expected_output_fsa)
+                if intersection.start() == pynini.NO_STATE_ID:
+                    raise ValueError(
+                        f"Rule '{rule._ref}' failed test mapping for input '{input_str}' and expected output '{expected_output_str}'. "
+                        "Check that the rule is correctly specified and that the test mapping is correct."
+                    )
         
 
     def fsm_strings_and_weights(
@@ -1357,7 +1411,7 @@ class Token:
     def __post_init__(self):
         """
         Check if Token has acceptor if it is of the appropriate type.
-        'op', 'left_delimiter' and 'right_delimiter' should not have acceptors,
+        operators and delimiters should not have acceptors,
         all other types should have them.
         """
         if (self.type in (

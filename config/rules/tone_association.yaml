@@ -36,7 +36,7 @@ rules:
     description: >
       Assign a low tone to all TBUs
     input_pattern: "[TBU]"
-    output_pattern: "[TBU][L]"
+    output_pattern: "[TBU]<L>"
   replace_all_tones_with_low:
     description: >
       Replace any existing tone with a low tone on all TBUs
@@ -45,13 +45,13 @@ rules:
     description: >
       Assign a low tone to any TBU that does not already have a tone (expects a string with some tones already assigned).
     input_pattern: "[TBU]"
-    output_pattern: "[TBU][L]"
+    output_pattern: "[TBU]<L>"
     right_context: "{^<T>}"
   first_syllable_high_tone:
     description: >
       Assign a high tone to the first TBU in a word (expects a string with all tones removed).
     input_pattern: "[TBU]"
-    output_pattern: "[TBU][H]"
+    output_pattern: "[TBU]<H>"
     left_context: "[BOS]<Phone>+"
   replace_first_tone_with_high:
     description: >
