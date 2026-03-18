@@ -415,5 +415,7 @@ Used in Pattern `pattern` fields, Rule `input_pattern`/`output_pattern`/`left_co
 | `?` | Optional (0 or 1) |
 | `\|` | Union |
 | `(`, `)` | Grouping |
+| `{`, `}` | Union |
+| `^` | Negation, only valid inside a union i.e. `{^abc}` |
 
 The `FstRegistry.parse_pattern()` method tokenizes these strings and builds pynini acceptors via recursive descent.
