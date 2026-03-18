@@ -1,0 +1,20 @@
+# Preterite suffixes for -er and -ir verbs (identical endings)
+# comer: comí, comiste, comió, comimos, comisteis, comieron
+# vivir: viví, viviste, vivió, vivimos, vivisteis, vivieron
+kind: FeatureMarkers
+feature: person_number
+global_attributes:
+  order: suffixation
+markers:
+  1sg:
+    suffix: "-í"
+  2sg:
+    suffix: "-iste"
+  3sg:
+    suffix: "-ió"
+  1pl:
+    suffix: "-imos"
+  2pl:
+    suffix: "-isteis"
+  3pl:
+    suffix: "-ieron"

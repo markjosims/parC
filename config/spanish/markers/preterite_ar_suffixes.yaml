@@ -1,0 +1,19 @@
+# Preterite suffixes for -ar verbs
+# hablar: hablé, hablaste, habló, hablamos, hablasteis, hablaron
+kind: FeatureMarkers
+feature: person_number
+global_attributes:
+  order: suffixation
+markers:
+  1sg:
+    suffix: "-é"
+  2sg:
+    suffix: "-aste"
+  3sg:
+    suffix: "-ó"
+  1pl:
+    suffix: "-amos"
+  2pl:
+    suffix: "-asteis"
+  3pl:
+    suffix: "-aron"
