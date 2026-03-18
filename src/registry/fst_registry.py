@@ -35,7 +35,7 @@ from graphlib import TopologicalSorter
 from src.constants import CONFIG_DIR
 
 from src.fst_utils import Acceptor, Transducer, is_acceptor
-from src.registry_utils import Registry, ReservedSymbolMixin
+from src.registry.registry_utils import Registry, ReservedSymbolMixin
 
 class InventoryRegistry(Registry):
     """
@@ -327,7 +327,7 @@ class Pattern(Acceptor):
         source: Optional string indicating filepath pattern originates from.
         fsa: pynini.Fst accepting the pattern language.
     """
-    value: str = ''
+    value: Union[str, List[str]] = ''
     _ref: str = ''
     used_by: List[Pattern] = field(default_factory=list)
     uses: List[Pattern] = field(default_factory=list)
@@ -693,6 +693,11 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         self._rule_transducers_built = False
         self.initialized = False
 
+        if not self.inventory:
+            # don't try to initialize if inventory is empty
+            # instead leave the registry in an uninitialized state
+            return
+
         self.initialize()
         if not self.initialized:
             raise ValueError("Error occurred while initializing FstRegistry, check logs.")
@@ -998,23 +1003,32 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             rule.right_context.set_acceptor(right_context_fsa)
         return left_context_fsa, right_context_fsa
         
-    def parse_pattern(self, input_str: Union[str, Acceptor, None]) -> pynini.Fst:
+    def parse_pattern(
+            self,
+            pattern_input: Union[str, Acceptor, List[str], None]
+        ) -> pynini.Fst:
         """
         Interprets a pattern string as an FSA.
         """
-        if isinstance(input_str, Acceptor):
-            if input_str.acceptor_built:
-                logger.info(f"Redundant call on pattern {input_str._ref} with existing acceptor")
-                return input_str.fsa
-            input_str = input_str.value
-        if not input_str:
+        if isinstance(pattern_input, Acceptor):
+            if pattern_input.acceptor_built:
+                logger.info(f"Redundant call on pattern {pattern_input._ref} with existing acceptor")
+                return pattern_input.fsa
+            pattern_input = pattern_input.value
+        if not pattern_input:
             return pynini.accep('', token_type=self.symbols)
+        elif isinstance(pattern_input, list):
+            acceptors = []
+            for sub_pattern in pattern_input:
+                sub_acceptor = self.parse_pattern(sub_pattern)
+                acceptors.append(sub_acceptor)
+            return pynini.union(*acceptors)
         try:
-            tokens = self._tokenize_str(input_str)
+            tokens = self._tokenize_str(pattern_input)
             acceptor = self._parse_tokens(tokens)
         except Exception as e:
             raise Exception(
-                f"Error occurred while parsing pattern {input_str} ",
+                f"Error occurred while parsing pattern {pattern_input} ",
                 e
             )
         return acceptor
