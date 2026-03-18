@@ -5,7 +5,8 @@ from flask import Blueprint, render_template, request, jsonify
 bp = Blueprint('config', __name__)
 
 CONFIG_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'config'))
-
+if 'CONFIG_ROOT' in os.environ:
+    CONFIG_ROOT = os.path.normpath(os.environ['CONFIG_ROOT'])
 
 def _safe_path(relative_path):
     """Resolve a relative path under CONFIG_ROOT, preventing directory traversal."""
