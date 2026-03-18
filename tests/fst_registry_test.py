@@ -1,6 +1,6 @@
 import pytest
 
-from src.fst_registry import (
+from src.registry.fst_registry import (
     InventoryRegistry, InventoryItem,
     Pattern, PatternRegistry,
     Rule, RuleRegistry,

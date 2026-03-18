@@ -2,8 +2,8 @@ import os
 
 import pytest
 
-from src.feature_registry import FeatureValueCombinations
-from src.marker_registry import (
+from src.registry.feature_registry import FeatureValueCombinations
+from src.registry.marker_registry import (
     ContingentMarkers,
     ContingentMarkersRegistry,
     FeatureMarkers,

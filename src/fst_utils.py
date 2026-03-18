@@ -2,7 +2,7 @@ import pynini
 from pynini.lib import paradigms
 from typing import Optional
 from dataclasses import dataclass, field
-from src.registry_utils import ReservedSymbolMixin
+from src.registry.registry_utils import ReservedSymbolMixin
 
 def is_acceptor(fsa: pynini.Fst) -> bool:
     return fsa.properties(pynini.ACCEPTOR, True)
