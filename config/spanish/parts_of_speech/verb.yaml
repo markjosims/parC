@@ -1,0 +1,4 @@
+kind: PartOfSpeech
+name: verb
+features: [tense_mood, person_number, conjugation_class]
+lexical_flags: [spelling_class]

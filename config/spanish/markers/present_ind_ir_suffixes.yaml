@@ -1,0 +1,19 @@
+# Present indicative suffixes for -ir verbs
+# vivir: vivo, vives, vive, vivimos, vivís, viven
+kind: FeatureMarkers
+feature: person_number
+global_attributes:
+  order: suffixation
+markers:
+  1sg:
+    suffix: "-o"
+  2sg:
+    suffix: "-es"
+  3sg:
+    suffix: "-e"
+  1pl:
+    suffix: "-imos"
+  2pl:
+    suffix: "-ís"
+  3pl:
+    suffix: "-en"

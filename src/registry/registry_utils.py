@@ -148,8 +148,11 @@ class ReservedSymbolMixin:
     plus = '+'
     optional = '?'
     union = '|'
+    caret = '^'
     left_paren = '('
     right_paren = ')'
+    # curly braces indicate union of tokens, e.g. {A B} matches either A or B
+    # similar to square brackets in regex
     left_brace = '{'
     right_brace = '}'
 
@@ -157,6 +160,7 @@ class ReservedSymbolMixin:
     right_delimiters = (right_paren, right_brace)
     unary_operators = (star, plus, optional)
     pipe_operator = union # (for now) pipe operator is only binary operator
+    caret_operator = caret # for negation in braced expressions
     reserved_refs = (phone_ref, flag_ref, epsilon_ref, sigma_ref)
     bos_eos_flags = (bos, eos)
     boundary_symbols = (affix_boundary, clitic_boundary)

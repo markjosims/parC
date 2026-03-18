@@ -1,6 +1,6 @@
 import pytest
 
-from src.fst_registry import (
+from src.registry.fst_registry import (
     InventoryRegistry, InventoryItem,
     Pattern, PatternRegistry,
     Rule, RuleRegistry,
@@ -275,6 +275,9 @@ def test_fst_registry_acceptors():
         )
         assert predicted_output == []
 
+"""
+Hard-coded pattern and rule tests
+"""
 
 @pytest.mark.parametrize(
     ("pattern_ref", "input_string"),
@@ -401,3 +404,19 @@ def test_rule_nonapplication(rule_ref, input_string):
     predicted_output = reg.apply_rule(input_string, rule_ref)
     predicted_output = reg.fsm_string(predicted_output)
     assert predicted_output == input_string
+
+"""
+Pattern and rule tests from config using methods from `FstRegistry`
+"""
+
+def test_pattern_includes():
+    reg = FstRegistry.from_config_dir(CONFIG_DIR)
+    reg.test_pattern_includes()
+
+def test_pattern_excludes():
+    reg = FstRegistry.from_config_dir(CONFIG_DIR)
+    reg.test_pattern_excludes()
+
+def test_rule_mappings():
+    reg = FstRegistry.from_config_dir(CONFIG_DIR)
+    reg.test_rule_mappings()

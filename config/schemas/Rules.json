@@ -111,6 +111,19 @@
               "sigma_star": {
                 "type": "string",
                 "description": "Pattern defining the alphabet/language context (default usually Sigma*)."
+              },
+              "test_mappings": {
+                "type": "array",
+                "description": "List of string pairs representing expected input-output mappings for the rule.",
+                "items": {
+                  "type": "array",
+                  "description": "Single input/output pair.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                }
               }
             }
           }

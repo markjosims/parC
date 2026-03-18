@@ -1,0 +1,20 @@
+# Imperfect indicative suffixes for -er and -ir verbs (identical endings)
+# comer: comía, comías, comía, comíamos, comíais, comían
+# vivir: vivía, vivías, vivía, vivíamos, vivíais, vivían
+kind: FeatureMarkers
+feature: person_number
+global_attributes:
+  order: suffixation
+markers:
+  1sg:
+    suffix: "-ía"
+  2sg:
+    suffix: "-ías"
+  3sg:
+    suffix: "-ía"
+  1pl:
+    suffix: "-íamos"
+  2pl:
+    suffix: "-íais"
+  3pl:
+    suffix: "-ían"

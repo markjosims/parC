@@ -5,15 +5,15 @@ import pytest
 import yaml
 
 from src.constants import CONFIG_DIR
-from src.feature_registry import FeatureValueCombinations, FeaturesRegistry
-from src.marker_registry import ContingentMarkers, FeatureMarkers, Marker, MarkerRegistry
+from src.registry.feature_registry import FeatureValueCombinations, FeaturesRegistry
+from src.registry.marker_registry import ContingentMarkers, FeatureMarkers, Marker, MarkerRegistry
+from src.registry.paradigm_registry import ParadigmMarkers
 
 
 PARADIGM_CONFIG = Path(CONFIG_DIR) / "paradigms" / "ipfv_it.yaml"
 
 
 def _import_paradigm_markers():
-    from src.paradigm_registry import ParadigmMarkers
 
     return ParadigmMarkers
 

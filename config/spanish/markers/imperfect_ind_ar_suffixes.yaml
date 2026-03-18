@@ -1,0 +1,19 @@
+# Imperfect indicative suffixes for -ar verbs
+# hablar: hablaba, hablabas, hablaba, hablábamos, hablabais, hablaban
+kind: FeatureMarkers
+feature: person_number
+global_attributes:
+  order: suffixation
+markers:
+  1sg:
+    suffix: "-aba"
+  2sg:
+    suffix: "-abas"
+  3sg:
+    suffix: "-aba"
+  1pl:
+    suffix: "-ábamos"
+  2pl:
+    suffix: "-abais"
+  3pl:
+    suffix: "-aban"
