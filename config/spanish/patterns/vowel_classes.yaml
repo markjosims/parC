@@ -6,34 +6,34 @@ patterns:
     test_includes:
     - e
     - i
-    - é
-    - í
+    - é
+    - í
     test_excludes:
     - a
     - o
     - u
-    - á
-    - ó
-    - ú
-    - ü
+    - á
+    - ó
+    - ú
+    - ü
     - p
     - s
 - Back vowel:
-    pattern: '{aouáóú}'
+    pattern: '{aouáóú}'
     _ref: <V_Back>
     test_includes:
     - a
     - o
     - u
-    - á
-    - ó
-    - ú
+    - á
+    - ó
+    - ú
     test_excludes:
     - e
     - i
-    - é
-    - í
-    - ü
+    - é
+    - í
+    - ü
     - p
     - s
 - Theme vowel:
@@ -46,13 +46,13 @@ patterns:
     test_excludes:
     - o
     - u
-    - á
-    - é
-    - í
-    - ó
-    - ú
+    - á
+    - é
+    - í
+    - ó
+    - ú
 - Any vowel including accented:
-    pattern: (<V_Plain>|<V_Acc>|ü)
+    pattern: (<V_Plain>|<V_Acc>|ü)
     _ref: <V_Any>
     test_includes:
     - a
@@ -60,12 +60,12 @@ patterns:
     - i
     - o
     - u
-    - á
-    - é
-    - í
-    - ó
-    - ú
-    - ü
+    - á
+    - é
+    - í
+    - ó
+    - ú
+    - ü
     test_excludes:
     - p
     - t
