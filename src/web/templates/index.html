@@ -29,7 +29,6 @@
           <p class="muted">Config type is editable as raw YAML.</p>
 
           <form method="post" action="{{ url_for('web.config_editor') }}" class="grid">
-            <input type="hidden" name="config_token" value="{{ config_token }}">
             <input type="hidden" name="editor_kind" value="{{ editor_kind }}">
 
             <label>
@@ -43,7 +42,7 @@
             </label>
 
             <div class="actions">
-              <button type="submit" name="action" value="save">Save YAML</button>
+              <button type="submit" name="action" value="save" formaction="{{ url_for('web.config_editor') }}">Save YAML</button>
             </div>
           </form>
         </section>

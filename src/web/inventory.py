@@ -8,11 +8,7 @@ from typing import Any
 
 import yaml
 
-from src.web.configs import (
-    load_uploaded_config_entry,
-    save_uploaded_config_text,
-    safe_file_path,
-)
+from src.web.configs import safe_file_path
 
 
 INVENTORY_DIR_NAME = "inventory"
@@ -124,31 +120,6 @@ def suggested_inventory_path(file_stem: str) -> str:
     if not safe_stem:
         return ""
     return f"{INVENTORY_DIR_NAME}/{safe_stem}.yaml"
-
-
-def load_uploaded_inventory_state(token: str, relative_path: str) -> dict[str, Any]:
-    document = load_uploaded_config_entry(token, relative_path)["parsed"]
-    if not isinstance(document, dict) or document.get("kind") != "Inventory":
-        raise ValueError(f"{relative_path} is not an Inventory config")
-
-    return {
-        "path": relative_path,
-        "kind": "Inventory",
-        "nodes": _nodes_from_mapping(document.get("data", {})),
-    }
-
-
-def save_uploaded_inventory(token: str, state: dict[str, Any]) -> str:
-    relative_path = state.get("path", "").strip()
-    if not relative_path:
-        raise ValueError("A file path is required")
-
-    if INVENTORY_DIR_NAME not in Path(relative_path).parts:
-        raise ValueError("Path must point to a YAML file inside an inventory directory.")
-
-    return save_uploaded_config_text(token, relative_path, inventory_yaml(state))
-
-
 def find_node(nodes: list[dict[str, Any]], node_id: str) -> dict[str, Any] | None:
     for node in nodes:
         if node.get("id") == node_id:

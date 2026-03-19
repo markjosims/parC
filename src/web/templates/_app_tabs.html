@@ -1,3 +1,3 @@
 <nav class="tabs">
-  <a class="tab {% if active_tab == 'config' %}active{% endif %}" href="{% if config_token %}{{ url_for('web.index', config_token=config_token) }}{% else %}{{ url_for('web.index') }}{% endif %}">Grammar config</a>
+  <a class="tab {% if active_tab == 'config' %}active{% endif %}" href="{{ url_for('web.index') }}">Grammar config</a>
 </nav>

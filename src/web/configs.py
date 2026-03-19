@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-import json
-import secrets
-import shutil
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +18,6 @@ KIND_DIRECTORY_NAMES = {
     "PartOfSpeech": "parts_of_speech",
 }
 PREFERRED_KIND_ORDER = tuple(KIND_DIRECTORY_NAMES)
-UPLOAD_SESSIONS: dict[str, dict[str, Any]] = {}
 
 
 def normalize_config_dir(config_dir: str) -> Path | None:
@@ -38,7 +33,7 @@ def normalize_config_dir(config_dir: str) -> Path | None:
 
 
 def safe_file_path(config_dir: str, relative_path: str) -> Path | None:
-    root = normalize_config_dir(config_dir)
+    root = _config_root(config_dir)
     if root is None:
         return None
     path = (root / relative_path).resolve()
@@ -52,15 +47,8 @@ def safe_file_path(config_dir: str, relative_path: str) -> Path | None:
 
 
 def list_config_yaml_files(config_dir: str) -> list[dict[str, str]]:
-    root = normalize_config_dir(config_dir)
-    if root is None:
-        return []
-
-    files: list[dict[str, str]] = []
-    for path in sorted(root.rglob("*.y*ml")):
-        relative_path = str(path.relative_to(root))
-        files.append(_entry_from_content(relative_path, path.read_text(encoding="utf-8")))
-    return files
+    root = _config_root(config_dir)
+    return [_load_entry_from_path(root, path) for path in _yaml_paths(root)]
 
 
 def detect_yaml_kind(config_dir: str, relative_path: str) -> str | None:
@@ -69,10 +57,11 @@ def detect_yaml_kind(config_dir: str, relative_path: str) -> str | None:
 
 
 def load_config_entry(config_dir: str, relative_path: str) -> dict[str, Any]:
+    root = _config_root(config_dir)
     path = safe_file_path(config_dir, relative_path)
-    if path is None or not path.exists():
+    if root is None or path is None or not path.exists():
         raise FileNotFoundError(relative_path)
-    return _entry_from_content(relative_path, path.read_text(encoding="utf-8"))
+    return _load_entry_from_path(root, path)
 
 
 def save_config_text(config_dir: str, relative_path: str, content: str) -> str:
@@ -85,84 +74,6 @@ def save_config_text(config_dir: str, relative_path: str, content: str) -> str:
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
-    return relative_path
-
-
-def create_manifest_session(payload: str) -> str:
-    manifest = json.loads(payload)
-    token = secrets.token_urlsafe(16)
-    entries: dict[str, dict[str, Any]] = {}
-    for item in manifest.get("files", []):
-        relative_path = str(item.get("path", "")).strip()
-        if not relative_path.endswith((".yaml", ".yml")):
-            continue
-        content = str(item.get("content", ""))
-        entries[relative_path] = _entry_from_content(relative_path, content)
-
-    UPLOAD_SESSIONS[token] = {
-        "label": str(manifest.get("label") or _session_label(entries)),
-        "files": entries,
-    }
-    return token
-
-
-def get_upload_session(token: str) -> dict[str, Any] | None:
-    return UPLOAD_SESSIONS.get(token)
-
-
-def materialize_upload_session(token: str) -> Path:
-    session = get_upload_session(token)
-    if not session:
-        raise ValueError("Upload session not found.")
-
-    root = Path(tempfile.gettempdir()) / "parser_tira_uploads" / token
-    if root.exists():
-        shutil.rmtree(root)
-    root.mkdir(parents=True, exist_ok=True)
-
-    for relative_path, entry in session["files"].items():
-        path = (root / relative_path).resolve()
-        try:
-            path.relative_to(root)
-        except ValueError as exc:
-            raise ValueError(f"Invalid uploaded path: {relative_path}") from exc
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(entry.get("content", ""), encoding="utf-8")
-
-    return root
-
-
-def list_uploaded_yaml_files(token: str) -> list[dict[str, str]]:
-    session = get_upload_session(token)
-    if not session:
-        return []
-    return [session["files"][path] for path in sorted(session["files"])]
-
-
-def detect_uploaded_yaml_kind(token: str, relative_path: str) -> str | None:
-    try:
-        entry = load_uploaded_config_entry(token, relative_path)
-    except FileNotFoundError:
-        return None
-    kind = entry.get("kind")
-    return kind if isinstance(kind, str) and kind else None
-
-
-def load_uploaded_config_entry(token: str, relative_path: str) -> dict[str, Any]:
-    session = get_upload_session(token)
-    if not session or relative_path not in session["files"]:
-        raise FileNotFoundError(relative_path)
-    return session["files"][relative_path]
-
-
-def save_uploaded_config_text(token: str, relative_path: str, content: str) -> str:
-    session = get_upload_session(token)
-    if not session:
-        raise ValueError("Upload session not found.")
-    if not relative_path.strip():
-        raise ValueError("A file path is required")
-
-    session["files"][relative_path] = _entry_from_content(relative_path, content)
     return relative_path
 
 
@@ -225,6 +136,21 @@ def _default_content(kind: str) -> str:
     return f"kind: {kind}\n"
 
 
+def _config_root(config_dir: str) -> Path | None:
+    return normalize_config_dir(config_dir)
+
+
+def _yaml_paths(root: Path | None) -> list[Path]:
+    if root is None:
+        return []
+    return sorted(path for path in root.rglob("*") if path.is_file() and path.suffix in {".yaml", ".yml"})
+
+
+def _load_entry_from_path(root: Path, path: Path) -> dict[str, Any]:
+    relative_path = str(path.relative_to(root))
+    return _entry_from_content(relative_path, path.read_text(encoding="utf-8"))
+
+
 def _entry_from_content(relative_path: str, content: str) -> dict[str, Any]:
     try:
         parsed = yaml.safe_load(content) or {}
@@ -239,13 +165,3 @@ def _entry_from_content(relative_path: str, content: str) -> dict[str, Any]:
         "parsed": parsed if isinstance(parsed, dict) else {},
         "kind": kind if isinstance(kind, str) else "",
     }
-
-
-def _session_label(entries: dict[str, dict[str, Any]]) -> str:
-    if not entries:
-        return "Uploaded directory"
-    first_path = next(iter(sorted(entries)))
-    first_parts = Path(first_path).parts
-    if first_parts:
-        return first_parts[0]
-    return "Uploaded directory"

@@ -5,10 +5,11 @@ import json
 import uuid
 from pathlib import Path
 from typing import Any
+import unicodedata
 
 import yaml
 
-from src.web.configs import load_uploaded_config_entry, save_uploaded_config_text, safe_file_path
+from src.web.configs import safe_file_path
 
 
 PATTERNS_DIR_NAME = "patterns"
@@ -47,20 +48,6 @@ def load_patterns_state(config_dir: str, relative_path: str) -> dict[str, Any]:
         "kind": "Patterns",
         "patterns": _patterns_from_document(document.get("patterns", [])),
     }
-
-
-def load_uploaded_patterns_state(token: str, relative_path: str) -> dict[str, Any]:
-    document = load_uploaded_config_entry(token, relative_path)["parsed"]
-    if not isinstance(document, dict) or document.get("kind") != "Patterns":
-        raise ValueError(f"{relative_path} is not a Patterns config")
-
-    return {
-        "path": relative_path,
-        "kind": "Patterns",
-        "patterns": _patterns_from_document(document.get("patterns", [])),
-    }
-
-
 def state_from_json(payload: str | None) -> dict[str, Any]:
     if not payload:
         return new_patterns_state()
@@ -117,19 +104,6 @@ def save_patterns(config_dir: str, state: dict[str, Any]) -> str:
     with path.open("w", encoding="utf-8") as handle:
         handle.write(patterns_yaml(state))
     return relative_path
-
-
-def save_uploaded_patterns(token: str, state: dict[str, Any]) -> str:
-    relative_path = state.get("path", "").strip()
-    if not relative_path:
-        raise ValueError("A file path is required")
-
-    if PATTERNS_DIR_NAME not in Path(relative_path).parts:
-        raise ValueError("Path must point to a YAML file inside a patterns directory.")
-
-    return save_uploaded_config_text(token, relative_path, patterns_yaml(state))
-
-
 def _ensure_ids(state: dict[str, Any]) -> dict[str, Any]:
     updated = copy.deepcopy(state)
     updated["patterns"] = [_ensure_pattern_ids(pattern) for pattern in updated.get("patterns", [])]
@@ -171,8 +145,9 @@ def _patterns_from_document(document_patterns: list[Any]) -> list[dict[str, Any]
         pattern["name"] = str(name)
         pattern["ref"] = str(value.get("_ref", ""))
         raw_pattern = value.get("pattern", "")
+        norm_pattern = unicodedata.normalize('NFKD', str(raw_pattern))
 
-        pattern["pattern_text"] = str(raw_pattern)
+        pattern["pattern_text"] = norm_pattern
         includes = value.get("test_includes", [])
         excludes = value.get("test_excludes", [])
         pattern["test_includes"] = ", ".join(str(entry) for entry in includes if str(entry))

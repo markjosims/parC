@@ -10,10 +10,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
-from watchdog.observers import Observer
+from watchdog.observers import Observer, ObserverType
 
 
-def start_watcher(config_dir: str, cache: dict) -> Observer:
+def start_watcher(config_dir: str, cache: dict) -> ObserverType:
     """Start a watchdog observer that clears *cache* when YAML files change."""
     handler = _YamlChangeHandler(config_dir, cache)
     observer = Observer()

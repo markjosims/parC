@@ -8,7 +8,7 @@ from typing import Any
 
 import yaml
 
-from src.web.configs import load_uploaded_config_entry, save_uploaded_config_text, safe_file_path
+from src.web.configs import safe_file_path
 
 
 RULES_DIR_NAME = "rules"
@@ -47,20 +47,6 @@ def load_rules_state(config_dir: str, relative_path: str) -> dict[str, Any]:
         "kind": "Rules",
         "rules": _rules_from_document(document.get("rules", {})),
     }
-
-
-def load_uploaded_rules_state(token: str, relative_path: str) -> dict[str, Any]:
-    document = load_uploaded_config_entry(token, relative_path)["parsed"]
-    if not isinstance(document, dict) or document.get("kind") != "Rules":
-        raise ValueError(f"{relative_path} is not a Rules config")
-
-    return {
-        "path": relative_path,
-        "kind": "Rules",
-        "rules": _rules_from_document(document.get("rules", {})),
-    }
-
-
 def state_from_json(payload: str | None) -> dict[str, Any]:
     if not payload:
         return new_rules_state()
@@ -115,19 +101,6 @@ def save_rules(config_dir: str, state: dict[str, Any]) -> str:
     with path.open("w", encoding="utf-8") as handle:
         handle.write(rules_yaml(state))
     return relative_path
-
-
-def save_uploaded_rules(token: str, state: dict[str, Any]) -> str:
-    relative_path = state.get("path", "").strip()
-    if not relative_path:
-        raise ValueError("A file path is required")
-
-    if RULES_DIR_NAME not in Path(relative_path).parts:
-        raise ValueError("Path must point to a YAML file inside a rules directory.")
-
-    return save_uploaded_config_text(token, relative_path, rules_yaml(state))
-
-
 def _ensure_ids(state: dict[str, Any]) -> dict[str, Any]:
     updated = copy.deepcopy(state)
     updated["rules"] = [_ensure_rule_ids(rule) for rule in updated.get("rules", [])]

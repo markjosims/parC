@@ -8,7 +8,7 @@
         <summary>{{ group.kind }} <span class="muted">({{ group.count }})</span></summary>
         <div class="file-list">
           {% for item in group.config_items %}
-            <a class="file-link {% if item.path == selected_path %}active{% endif %}" href="{% if config_token %}{{ url_for('web.index', config_token=config_token, path=item.path) }}{% else %}{{ url_for('web.index', path=item.path) }}{% endif %}">{{ item.label }}</a>
+            <a class="file-link {% if item.path == selected_path %}active{% endif %}" href="{{ url_for('web.index', path=item.path) }}">{{ item.label }}</a>
           {% endfor %}
         </div>
       </details>
@@ -17,7 +17,6 @@
 
   <form method="post" action="{{ url_for('web.config_editor') }}" class="grid">
     <h3>Create config file</h3>
-    <input type="hidden" name="config_token" value="{{ config_token }}">
     <label>
       Config type
       <select name="new_kind">

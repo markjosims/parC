@@ -97,7 +97,6 @@
   <p class="muted">Rule files use a structured editor for simple rewrites, string maps, and rule sequences. Use `null` for explicit deletion outputs.</p>
 
   <form method="post" action="{{ url_for('web.config_editor') }}" class="grid" id="rules-editor-form">
-    <input type="hidden" name="config_token" value="{{ config_token }}">
     <input type="hidden" name="editor_kind" value="Rules">
     <textarea name="state" hidden>{{ state_json }}</textarea>
 
@@ -108,7 +107,7 @@
 
     <div class="actions">
       <button type="submit" name="action" value="add-rule" formaction="{{ url_for('web.rules_add_entry') }}">Add rule</button>
-      <button type="submit" name="action" value="save">Save YAML</button>
+      <button type="submit" name="action" value="save" formaction="{{ url_for('web.config_editor') }}">Save YAML</button>
     </div>
 
     <div id="rule-entry-list">
