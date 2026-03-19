@@ -1,23 +1,74 @@
-# Spanish vowel natural classes for spelling rules and suffix conditioning
 kind: Patterns
 patterns:
-  - Front vowel:
-      pattern: "(e|i|é|í)"
-      _ref: "<V_Front>"
-      test_includes: ["e", "i", "é", "í"]
-      test_excludes: ["a", "o", "u", "á", "ó", "ú", "ü", "p", "s"]
-  - Back vowel:
-      pattern: "(a|o|u|á|ó|ú)"
-      _ref: "<V_Back>"
-      test_includes: ["a", "o", "u", "á", "ó", "ú"]
-      test_excludes: ["e", "i", "é", "í", "ü", "p", "s"]
-  - Theme vowel:
-      pattern: "(a|e|i)"
-      _ref: "<ThemeV>"
-      test_includes: ["a", "e", "i"]
-      test_excludes: ["o", "u", "á", "é", "í", "ó", "ú"]
-  - Any vowel including accented:
-      pattern: "(<V_Plain>|<V_Acc>|ü)"
-      _ref: "<V_Any>"
-      test_includes: ["a", "e", "i", "o", "u", "á", "é", "í", "ó", "ú", "ü"]
-      test_excludes: ["p", "t", "s", "m", "n"]
+- Front vowel:
+    pattern: '{eiéí}'
+    _ref: <V_Front>
+    test_includes:
+    - e
+    - i
+    - é
+    - í
+    test_excludes:
+    - a
+    - o
+    - u
+    - á
+    - ó
+    - ú
+    - ü
+    - p
+    - s
+- Back vowel:
+    pattern: '{aouáóú}'
+    _ref: <V_Back>
+    test_includes:
+    - a
+    - o
+    - u
+    - á
+    - ó
+    - ú
+    test_excludes:
+    - e
+    - i
+    - é
+    - í
+    - ü
+    - p
+    - s
+- Theme vowel:
+    pattern: '{aei}'
+    _ref: <ThemeV>
+    test_includes:
+    - a
+    - e
+    - i
+    test_excludes:
+    - o
+    - u
+    - á
+    - é
+    - í
+    - ó
+    - ú
+- Any vowel including accented:
+    pattern: (<V_Plain>|<V_Acc>|ü)
+    _ref: <V_Any>
+    test_includes:
+    - a
+    - e
+    - i
+    - o
+    - u
+    - á
+    - é
+    - í
+    - ó
+    - ú
+    - ü
+    test_excludes:
+    - p
+    - t
+    - s
+    - m
+    - n
