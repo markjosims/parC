@@ -5,4 +5,4 @@ rules:
     string_map:
     - [o, ue]
     - [e, ie]
-    right_context: "C+"
+    right_context: "<C>+"

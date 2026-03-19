@@ -22,13 +22,9 @@
       "pattern": "^\\$.*",
       "description": "Path to another config to inherit markers from."
     },
-    "global_attributes": {
-      "type": "object",
-      "description": "Attributes applied to every marker defined in this file.",
-      "properties": {
-        "order": { "type": "string" }
-      },
-      "additionalProperties": true
+    "global_order": {
+      "type": "string",
+      "description": "Allows specifying a default value for the 'order' attribute."
     },
     "markers": {
       "type": "object",
@@ -55,19 +51,11 @@
     "marker": {
       "type": "object",
       "properties": {
-        "suffix": { "type": "string" },
-        "prefix": { "type": "string" },
-        "replace": {
-          "type": "array",
-          "minItems": 2,
-          "maxItems": 2,
-          "items": { "type": "string" }
+        "type": { 
+          "type": "string" ,
+          "enum": ["prefix", "suffix", "infix", "replace", "suppletion", "rule"]
         },
-        "rule": { 
-          "type": "string",
-          "pattern": "^\\$.*" 
-        },
-        "suppletion": { "type": "string" },
+        "value": { "type": "string" },
         "order": { "type": "string" },
         "comment": { "type": "string" }
       },

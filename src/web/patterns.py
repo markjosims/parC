@@ -141,10 +141,10 @@ def _ensure_pattern_ids(pattern: dict[str, Any]) -> dict[str, Any]:
     current.setdefault("id", uuid.uuid4().hex)
     current.setdefault("name", "")
     current.setdefault("ref", "")
-    current.setdefault("pattern_kind", "regex")
     current.setdefault("pattern_text", "")
     current.setdefault("test_includes", "")
     current.setdefault("test_excludes", "")
+    current.setdefault("test_results", None)
     return current
 
 
@@ -153,7 +153,6 @@ def _blank_pattern() -> dict[str, Any]:
         "id": uuid.uuid4().hex,
         "name": "",
         "ref": "",
-        "pattern_kind": "regex",
         "pattern_text": "",
         "test_includes": "",
         "test_excludes": "",
@@ -172,12 +171,8 @@ def _patterns_from_document(document_patterns: list[Any]) -> list[dict[str, Any]
         pattern["name"] = str(name)
         pattern["ref"] = str(value.get("_ref", ""))
         raw_pattern = value.get("pattern", "")
-        if isinstance(raw_pattern, list):
-            pattern["pattern_kind"] = "list"
-            pattern["pattern_text"] = ", ".join(str(entry) for entry in raw_pattern)
-        else:
-            pattern["pattern_kind"] = "regex"
-            pattern["pattern_text"] = str(raw_pattern)
+
+        pattern["pattern_text"] = str(raw_pattern)
         includes = value.get("test_includes", [])
         excludes = value.get("test_excludes", [])
         pattern["test_includes"] = ", ".join(str(entry) for entry in includes if str(entry))
@@ -195,10 +190,7 @@ def _document_patterns(patterns: list[dict[str, Any]]) -> list[dict[str, Any]]:
         entry: dict[str, Any] = {}
         pattern_value = pattern.get("pattern_text", "").strip()
         if pattern_value:
-            if pattern.get("pattern_kind") == "list":
-                entry["pattern"] = _split_csv(pattern_value)
-            else:
-                entry["pattern"] = pattern_value
+            entry["pattern"] = pattern_value
         ref = pattern.get("ref", "").strip()
         if ref:
             entry["_ref"] = ref
@@ -219,7 +211,6 @@ def _update_patterns_from_form(patterns: list[dict[str, Any]], form: Any) -> lis
         current = copy.deepcopy(pattern)
         current["name"] = form.get(f"name-{pattern_id}", current.get("name", "")).strip()
         current["ref"] = form.get(f"ref-{pattern_id}", current.get("ref", "")).strip()
-        current["pattern_kind"] = form.get(f"pattern_kind-{pattern_id}", current.get("pattern_kind", "regex"))
         current["pattern_text"] = form.get(f"pattern_text-{pattern_id}", current.get("pattern_text", "")).strip()
         current["test_includes"] = form.get(f"test_includes-{pattern_id}", current.get("test_includes", "")).strip()
         current["test_excludes"] = form.get(f"test_excludes-{pattern_id}", current.get("test_excludes", "")).strip()

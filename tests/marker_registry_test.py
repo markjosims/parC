@@ -11,7 +11,7 @@ from src.registry.marker_registry import (
     Marker,
     MarkerRegistry,
 )
-from src.constants import CONFIG_DIR
+from src.constants import EXAMPLE_CONFIG_DIR
 
 
 def test_marker_from_config_merges_global_attributes_and_normalizes_replace():
@@ -53,7 +53,7 @@ def test_marker_rejects_suppletion_combined_with_other_attributes():
 
 
 def test_feature_markers_from_config_builds_dynamic_attributes_and_global_marker():
-    config_path = os.path.join(CONFIG_DIR, "markers", "person_markers.yaml")
+    config_path = os.path.join(EXAMPLE_CONFIG_DIR, "markers", "person_markers.yaml")
     config = {
         "feature": "person",
         "global_attributes": {"order": "outer_suffixation"},
@@ -91,7 +91,7 @@ def test_feature_markers_from_config_builds_dynamic_attributes_and_global_marker
 
 
 def test_contingent_markers_from_config_flattens_explicit_nesting_and_supports_lookup():
-    config_path = os.path.join(CONFIG_DIR, "markers", "contingent_markers.yaml")
+    config_path = os.path.join(EXAMPLE_CONFIG_DIR, "markers", "contingent_markers.yaml")
     config = {
         "features": ["subject", "object"],
         "global_attributes": {"order": "argument_marker"},
@@ -196,9 +196,9 @@ def test_feature_value_combinations_rejects_inconsistent_feature_sets():
 
 
 def test_marker_registries_load_real_project_configs():
-    feature_registry = FeatureMarkersRegistry.from_config_dir(CONFIG_DIR)
-    contingent_registry = ContingentMarkersRegistry.from_config_dir(CONFIG_DIR)
-    marker_registry = MarkerRegistry.from_config_dir(CONFIG_DIR)
+    feature_registry = FeatureMarkersRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
+    contingent_registry = ContingentMarkersRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
+    marker_registry = MarkerRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
 
     assert set(feature_registry.data) >= {
         "class_prefixes",
@@ -228,7 +228,7 @@ def test_marker_registries_load_real_project_configs():
 
 
 def test_marker_registry_get_raises_for_unknown_name():
-    marker_registry = MarkerRegistry.from_config_dir(CONFIG_DIR)
+    marker_registry = MarkerRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
 
     with pytest.raises(KeyError, match="No marker config found"):
         marker_registry.get("does_not_exist")

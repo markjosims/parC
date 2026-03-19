@@ -6,10 +6,10 @@ from src.registry.fst_registry import (
     Rule, RuleRegistry,
     FstRegistry,
 )
-from src.constants import CONFIG_DIR
+from src.constants import EXAMPLE_CONFIG_DIR
 
 def test_inventory_registry():
-    reg = InventoryRegistry.from_config_dir(CONFIG_DIR)
+    reg = InventoryRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
 
     assert hasattr(reg, 'data')
     data = reg.data
@@ -60,7 +60,7 @@ def test_inventory_registry():
         assert item.value in expected_flags
 
 def test_pattern_list():
-    pattern_list = PatternRegistry.from_config_dir(CONFIG_DIR)
+    pattern_list = PatternRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
     
     assert hasattr(pattern_list, 'data')
 
@@ -158,7 +158,7 @@ def test_pattern_list():
 
 
 def test_rule_list():
-    rule_list = RuleRegistry.from_config_dir(CONFIG_DIR)
+    rule_list = RuleRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
     assert hasattr(rule_list, 'data')
 
     # test sample members
@@ -199,7 +199,7 @@ def test_rule_list():
 
 
 def test_fst_registry_acceptors():
-    reg = FstRegistry.from_config_dir(CONFIG_DIR)
+    reg = FstRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
 
     expected_phones = [
         'b', 'd̪', 'd', 'ɟ', 'g',
@@ -309,7 +309,7 @@ Hard-coded pattern and rule tests
     ],
 )
 def test_fst_registry_patterns_accept_expected_strings(pattern_ref, input_string):
-    reg = FstRegistry.from_config_dir(CONFIG_DIR)
+    reg = FstRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
 
     predicted_output = reg.fsm_string(
         reg.fsa(input_string) @ reg.patterns[pattern_ref].fsa
@@ -343,7 +343,7 @@ def test_fst_registry_patterns_accept_expected_strings(pattern_ref, input_string
     ],
 )
 def test_fst_registry_patterns_reject_unexpected_strings(pattern_ref, input_string):
-    reg = FstRegistry.from_config_dir(CONFIG_DIR)
+    reg = FstRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
 
     predicted_output = reg.fsm_strings(
         reg.fsa(input_string) @ reg.patterns[pattern_ref].fsa
@@ -374,7 +374,7 @@ def test_fst_registry_patterns_reject_unexpected_strings(pattern_ref, input_stri
     ],
 )
 def test_rule_application(rule_ref, input_string, expected_output):
-    reg = FstRegistry.from_config_dir(CONFIG_DIR)
+    reg = FstRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
 
     predicted_output = reg.apply_rule(input_string, rule_ref)
     predicted_output = reg.fsm_string(predicted_output)
@@ -399,7 +399,7 @@ def test_rule_application(rule_ref, input_string, expected_output):
     ],
 )
 def test_rule_nonapplication(rule_ref, input_string):
-    reg = FstRegistry.from_config_dir(CONFIG_DIR)
+    reg = FstRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
 
     predicted_output = reg.apply_rule(input_string, rule_ref)
     predicted_output = reg.fsm_string(predicted_output)
@@ -410,13 +410,13 @@ Pattern and rule tests from config using methods from `FstRegistry`
 """
 
 def test_pattern_includes():
-    reg = FstRegistry.from_config_dir(CONFIG_DIR)
+    reg = FstRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
     reg.test_pattern_includes()
 
 def test_pattern_excludes():
-    reg = FstRegistry.from_config_dir(CONFIG_DIR)
+    reg = FstRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
     reg.test_pattern_excludes()
 
 def test_rule_mappings():
-    reg = FstRegistry.from_config_dir(CONFIG_DIR)
+    reg = FstRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
     reg.test_rule_mappings()

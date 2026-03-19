@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
 from flask import Blueprint, redirect, render_template, request, url_for
 import yaml
-import pynini
 
 from src.web.configs import (
     create_manifest_session,
@@ -17,9 +15,7 @@ from src.web.configs import (
     list_uploaded_yaml_files,
     load_config_entry,
     load_uploaded_config_entry,
-    materialize_upload_session,
     new_text_config_state,
-    normalize_config_dir,
     save_config_text,
     save_uploaded_config_text,
     suggested_config_path,
@@ -50,6 +46,18 @@ from src.web.patterns import (
     state_to_json as patterns_state_to_json,
     update_state_from_form as update_patterns_state_from_form,
 )
+from src.web.rules import (
+    add_rule,
+    load_rules_state,
+    load_uploaded_rules_state,
+    remove_rule,
+    rules_yaml,
+    save_rules,
+    save_uploaded_rules,
+    state_from_json as rules_state_from_json,
+    state_to_json as rules_state_to_json,
+    update_state_from_form as update_rules_state_from_form,
+)
 from flask import current_app as app
 
 
@@ -61,7 +69,7 @@ FST_REGISTRY_CACHE: dict[str, tuple[float, FstRegistry]] = {}
 def scan_config():
     manifest = request.form.get("manifest", "")
     if not manifest:
-        return render_template("select_config.html", error="Choose a directory first.")
+        return redirect(url_for("web.index", error="Choose a directory first."))
     token = create_manifest_session(manifest)
     return redirect(url_for("web.index", config_token=token))
 
@@ -69,21 +77,20 @@ def scan_config():
 @bp.get("/")
 def index():
     config_token = request.args.get("config_token", "").strip()
-    selected_config_dir = request.args.get("config_dir", "").strip()
     selected_path = request.args.get("path", "").strip()
     message = request.args.get("message")
     error = request.args.get("error")
 
-    # check for default config dir in dev environment
-    if app.debug and not config_token and not selected_config_dir:
-        selected_config_dir = os.environ.get("CONFIG_DIR", "").strip()
-
-    if not config_token and not selected_config_dir:
-        return render_template("select_config.html", error=error)
-
-    source = _resolve_source(config_token, selected_config_dir)
+    source = _resolve_source(config_token)
     if source.get("error"):
-        return render_template("select_config.html", error=source["error"])
+        state = new_text_config_state(relative_path=selected_path)
+        return _render_page(
+            source,
+            state,
+            selected_path=selected_path,
+            selected_kind=state.get("kind") or None,
+            error=source["error"],
+        )
 
     state = _load_editor_state(source, selected_path)
     return _render_page(
@@ -96,107 +103,13 @@ def index():
     )
 
 
-@bp.route("/parser-test", methods=["GET", "POST"])
-def parser_test():
-    config_token = request.values.get("config_token", "").strip()
-    selected_config_dir = request.values.get("config_dir", "").strip()
-
-    
-
-    selected_source_label = ""
-
-    if config_token:
-        upload_session = get_upload_session(config_token)
-        if upload_session is None:
-            return render_template("select_config.html", error="Uploaded config session not found.")
-        try:
-            config_dir = str(materialize_upload_session(config_token))
-        except ValueError as exc:
-            return render_template("select_config.html", error=str(exc))
-        selected_source_label = upload_session["label"]
-    else:
-        if not selected_config_dir:
-            return render_template("select_config.html", error="Select a valid config directory first.")
-        normalized_config_dir = normalize_config_dir(selected_config_dir)
-        if normalized_config_dir is None:
-            return render_template("select_config.html", error=f"Directory not found: {selected_config_dir}")
-        config_dir = str(normalized_config_dir)
-        selected_source_label = config_dir
-
-    parser_input = request.values.get("parser_input", "").strip()
-    selected_pattern = request.values.get("path", "").strip()
-    outputs: list[str] = []
-    message = None
-    error = None
-
-    try:
-        registry = _get_fst_registry(config_dir)
-    except Exception as exc:
-        registry = None
-        error = str(exc)
-
-    pattern_items: list[dict[str, str]] = []
-    if registry is not None:
-        pattern_items = [
-            {
-                "label": ref,
-                "path": ref,
-                "source": Path(pattern.source).name if getattr(pattern, "source", None) else "",
-            }
-            for ref, pattern in sorted(registry.patterns.items())
-        ]
-        if not selected_pattern and pattern_items:
-            selected_pattern = pattern_items[0]["path"]
-
-    selected_pattern_obj = registry.patterns.get(selected_pattern) if registry is not None and selected_pattern else None
-
-    if request.method == "POST" and registry is not None and selected_pattern:
-        try:
-            pattern_fsa = registry.parse_pattern(selected_pattern)
-            input_fsa = registry.fsa(parser_input)
-            intersection = pynini.intersect(pattern_fsa, input_fsa)
-            if intersection.start() == pynini.NO_STATE_ID:
-                message = f"{selected_pattern} does not accept {parser_input!r}."
-            else:
-                outputs = registry.fsm_strings(intersection, nshortest=20)
-                message = f"{selected_pattern} accepts {parser_input!r}."
-        except Exception as exc:
-            error = str(exc)
-
-    return render_template(
-        "parser_test.html",
-        active_tab="parser",
-        selected_config_dir="" if config_token else config_dir,
-        config_token=config_token,
-        selected_source_label=selected_source_label,
-        accordion_groups=[
-            {
-                "kind": "Pattern",
-                "dom_id": "parser-group-pattern",
-                "count": len(pattern_items),
-                "config_items": pattern_items,
-            }
-        ],
-        selected_path=selected_pattern,
-        selected_pattern=selected_pattern,
-        selected_pattern_obj=selected_pattern_obj,
-        parser_input=parser_input,
-        outputs=outputs,
-        message=message,
-        error=error,
-    )
-
-
 @bp.post("/config")
 def config_editor():
     action = request.form.get("action", "")
     config_token = request.form.get("config_token", "").strip()
-    selected_config_dir = request.form.get("config_dir", "").strip()
-    if not config_token and not selected_config_dir:
-        return render_template("select_config.html", error="Select a valid config directory first.")
-    source = _resolve_source(config_token, selected_config_dir)
+    source = _resolve_source(config_token)
     if source.get("error"):
-        return render_template("select_config.html", error=source["error"])
+        return redirect(url_for("web.index", error=source["error"]))
 
     editor_kind = request.form.get("editor_kind", "").strip()
     message = None
@@ -234,12 +147,9 @@ def config_editor():
 
 @bp.post("/inventory/add-child/<node_id>")
 def inventory_add_child(node_id: str):
-    source = _resolve_source(
-        request.form.get("config_token", "").strip(),
-        request.form.get("config_dir", "").strip(),
-    )
+    source = _resolve_source(request.form.get("config_token", "").strip())
     if source.get("error"):
-        return render_template("select_config.html", error=source["error"])
+        return redirect(url_for("web.index", error=source["error"]))
 
     state = state_from_json(request.form.get("state"))
     state = update_state_from_form(state, request.form)
@@ -254,12 +164,9 @@ def inventory_add_child(node_id: str):
 
 @bp.post("/inventory/remove-node/<node_id>")
 def inventory_remove_node(node_id: str):
-    source = _resolve_source(
-        request.form.get("config_token", "").strip(),
-        request.form.get("config_dir", "").strip(),
-    )
+    source = _resolve_source(request.form.get("config_token", "").strip())
     if source.get("error"):
-        return render_template("select_config.html", error=source["error"])
+        return redirect(url_for("web.index", error=source["error"]))
 
     state = state_from_json(request.form.get("state"))
     state = update_state_from_form(state, request.form)
@@ -274,12 +181,9 @@ def inventory_remove_node(node_id: str):
 
 @bp.post("/patterns/add-entry")
 def patterns_add_entry():
-    source = _resolve_source(
-        request.form.get("config_token", "").strip(),
-        request.form.get("config_dir", "").strip(),
-    )
+    source = _resolve_source(request.form.get("config_token", "").strip())
     if source.get("error"):
-        return render_template("select_config.html", error=source["error"])
+        return redirect(url_for("web.index", error=source["error"]))
 
     state = patterns_state_from_json(request.form.get("state"))
     state = update_patterns_state_from_form(state, request.form)
@@ -294,12 +198,9 @@ def patterns_add_entry():
 
 @bp.post("/patterns/remove-entry/<pattern_id>")
 def patterns_remove_entry(pattern_id: str):
-    source = _resolve_source(
-        request.form.get("config_token", "").strip(),
-        request.form.get("config_dir", "").strip(),
-    )
+    source = _resolve_source(request.form.get("config_token", "").strip())
     if source.get("error"):
-        return render_template("select_config.html", error=source["error"])
+        return redirect(url_for("web.index", error=source["error"]))
 
     state = patterns_state_from_json(request.form.get("state"))
     state = update_patterns_state_from_form(state, request.form)
@@ -312,7 +213,77 @@ def patterns_remove_entry(pattern_id: str):
     )
 
 
-def _resolve_source(config_token: str, selected_config_dir: str) -> dict[str, Any]:
+@bp.post("/patterns/run-tests/<pattern_id>")
+def patterns_run_tests(pattern_id: str):
+    source = _resolve_source(request.form.get("config_token", "").strip())
+    if source.get("error"):
+        return redirect(url_for("web.index", error=source["error"]))
+
+    state = patterns_state_from_json(request.form.get("state"))
+    state = update_patterns_state_from_form(state, request.form)
+
+    error = None
+    target = next((p for p in state["patterns"] if p["id"] == pattern_id), None)
+    if target is None:
+        error = "Pattern not found in editor state."
+    else:
+        ref = target.get("ref", "").strip()
+        includes = _split_test_strings(target.get("test_includes", ""))
+        excludes = _split_test_strings(target.get("test_excludes", ""))
+        try:
+            config_dir = _local_config_dir()
+            registry = _get_fst_registry(config_dir)
+            results = registry.test_pattern(ref, includes, excludes)
+            target["test_results"] = results
+        except KeyError:
+            error = f"Pattern ref '{ref}' not found in saved configs — save the file first."
+        except Exception as exc:
+            error = str(exc)
+
+    return _render_page(
+        source,
+        state,
+        selected_path=state.get("path", ""),
+        selected_kind="Patterns",
+        error=error,
+    )
+
+
+@bp.post("/rules/add-entry")
+def rules_add_entry():
+    source = _resolve_source(request.form.get("config_token", "").strip())
+    if source.get("error"):
+        return redirect(url_for("web.index", error=source["error"]))
+
+    state = rules_state_from_json(request.form.get("state"))
+    state = update_rules_state_from_form(state, request.form)
+    state = add_rule(state)
+    return _render_page(
+        source,
+        state,
+        selected_path=state.get("path", ""),
+        selected_kind="Rules",
+    )
+
+
+@bp.post("/rules/remove-entry/<rule_id>")
+def rules_remove_entry(rule_id: str):
+    source = _resolve_source(request.form.get("config_token", "").strip())
+    if source.get("error"):
+        return redirect(url_for("web.index", error=source["error"]))
+
+    state = rules_state_from_json(request.form.get("state"))
+    state = update_rules_state_from_form(state, request.form)
+    state = remove_rule(state, rule_id)
+    return _render_page(
+        source,
+        state,
+        selected_path=state.get("path", ""),
+        selected_kind="Rules",
+    )
+
+
+def _resolve_source(config_token: str) -> dict[str, Any]:
     if config_token:
         upload_session = get_upload_session(config_token)
         if upload_session is None:
@@ -320,22 +291,21 @@ def _resolve_source(config_token: str, selected_config_dir: str) -> dict[str, An
         yaml_files = list_uploaded_yaml_files(config_token)
         return {
             "selected_source_label": upload_session["label"],
-            "selected_config_dir": "",
             "config_token": config_token,
             "yaml_files": yaml_files,
         }
 
-    if not selected_config_dir:
-        return {"error": None}
-
-    normalized_config_dir = normalize_config_dir(selected_config_dir)
-    if normalized_config_dir is None:
-        return {"error": f"Directory not found: {selected_config_dir}"}
-
-    config_dir = str(normalized_config_dir)
+    try:
+        config_dir = _local_config_dir()
+    except RuntimeError as exc:
+        return {
+            "error": str(exc),
+            "selected_source_label": "",
+            "config_token": "",
+            "yaml_files": [],
+        }
     return {
         "selected_source_label": config_dir,
-        "selected_config_dir": config_dir,
         "config_token": "",
         "yaml_files": list_config_yaml_files(config_dir),
     }
@@ -354,6 +324,8 @@ def _load_editor_state(source: dict[str, Any], selected_path: str) -> dict[str, 
         return _load_inventory_state_for_source(source, selected_path)
     if entry.get("kind") == "Patterns":
         return _load_patterns_state_for_source(source, selected_path)
+    if entry.get("kind") == "Rules":
+        return _load_rules_state_for_source(source, selected_path)
 
     return {
         "path": selected_path,
@@ -365,19 +337,19 @@ def _load_editor_state(source: dict[str, Any], selected_path: str) -> dict[str, 
 def _load_entry(source: dict[str, Any], relative_path: str) -> dict[str, Any]:
     if source["config_token"]:
         return load_uploaded_config_entry(source["config_token"], relative_path)
-    return load_config_entry(source["selected_config_dir"], relative_path)
+    return load_config_entry(_local_config_dir(), relative_path)
 
 
 def _load_inventory_state_for_source(source: dict[str, Any], relative_path: str) -> dict[str, Any]:
     if source["config_token"]:
         return load_uploaded_inventory_state(source["config_token"], relative_path)
-    return load_inventory_state(source["selected_config_dir"], relative_path)
+    return load_inventory_state(_local_config_dir(), relative_path)
 
 
 def _load_patterns_state_for_source(source: dict[str, Any], relative_path: str) -> dict[str, Any]:
     if source["config_token"]:
         return load_uploaded_patterns_state(source["config_token"], relative_path)
-    return load_patterns_state(source["selected_config_dir"], relative_path)
+    return load_patterns_state(_local_config_dir(), relative_path)
 
 
 def _new_editor_state(kind: str, relative_path: str) -> dict[str, Any]:
@@ -393,6 +365,12 @@ def _new_editor_state(kind: str, relative_path: str) -> dict[str, Any]:
             "kind": "Patterns",
             "patterns": [],
         }
+    if kind == "Rules":
+        return {
+            "path": relative_path,
+            "kind": "Rules",
+            "rules": [],
+        }
     return new_text_config_state(kind, relative_path)
 
 
@@ -403,6 +381,9 @@ def _state_from_form(form: Any, editor_kind: str) -> dict[str, Any]:
     if editor_kind == "Patterns":
         state = patterns_state_from_json(form.get("state"))
         return update_patterns_state_from_form(state, form)
+    if editor_kind == "Rules":
+        state = rules_state_from_json(form.get("state"))
+        return update_rules_state_from_form(state, form)
 
     content = form.get("content", "")
     return {
@@ -416,15 +397,19 @@ def _save_state(source: dict[str, Any], state: dict[str, Any]) -> str:
     if state.get("kind") == "Inventory":
         if source["config_token"]:
             return save_uploaded_inventory(source["config_token"], state)
-        return save_inventory(source["selected_config_dir"], state)
+        return save_inventory(_local_config_dir(), state)
     if state.get("kind") == "Patterns":
         if source["config_token"]:
             return save_uploaded_patterns(source["config_token"], state)
-        return save_patterns(source["selected_config_dir"], state)
+        return save_patterns(_local_config_dir(), state)
+    if state.get("kind") == "Rules":
+        if source["config_token"]:
+            return save_uploaded_rules(source["config_token"], state)
+        return save_rules(_local_config_dir(), state)
 
     if source["config_token"]:
         return save_uploaded_config_text(source["config_token"], state["path"], state["content"])
-    return save_config_text(source["selected_config_dir"], state["path"], state["content"])
+    return save_config_text(_local_config_dir(), state["path"], state["content"])
 
 
 def _render_page(
@@ -440,7 +425,6 @@ def _render_page(
         "index.html",
         active_tab="config",
         selected_source_label=source.get("selected_source_label", ""),
-        selected_config_dir=source.get("selected_config_dir", ""),
         config_token=source.get("config_token", ""),
         yaml_files=yaml_files,
         yaml_groups=group_yaml_files_by_kind(yaml_files),
@@ -470,6 +454,8 @@ def _editor_state_json(state: dict[str, Any]) -> str:
         return state_to_json(state)
     if state.get("kind") == "Patterns":
         return patterns_state_to_json(state)
+    if state.get("kind") == "Rules":
+        return rules_state_to_json(state)
     return ""
 
 
@@ -478,7 +464,22 @@ def _editor_yaml_preview(state: dict[str, Any]) -> str:
         return inventory_yaml(state)
     if state.get("kind") == "Patterns":
         return patterns_yaml(state)
+    if state.get("kind") == "Rules":
+        return rules_yaml(state)
     return state.get("content", "")
+
+
+def _load_rules_state_for_source(source: dict[str, Any], relative_path: str) -> dict[str, Any]:
+    if source["config_token"]:
+        return load_uploaded_rules_state(source["config_token"], relative_path)
+    return load_rules_state(_local_config_dir(), relative_path)
+
+
+def _local_config_dir() -> str:
+    config_dir = app.config.get("CONFIG_DIR")
+    if not config_dir:
+        raise RuntimeError("CONFIG_DIR is not configured for the Flask app.")
+    return str(config_dir)
 
 
 def _get_fst_registry(config_dir: str) -> FstRegistry:
@@ -497,3 +498,10 @@ def _yaml_tree_mtime(config_dir: str) -> float:
     root = Path(config_dir)
     mtimes = [path.stat().st_mtime for path in root.rglob("*.y*ml")]
     return max(mtimes, default=0.0)
+
+
+def _split_test_strings(value: str) -> list[str]:
+    """Split a comma-separated test string into a list, stripping whitespace."""
+    if not value:
+        return []
+    return [s.strip() for s in value.split(",") if s.strip()]

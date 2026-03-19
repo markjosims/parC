@@ -4,13 +4,13 @@ from pathlib import Path
 import pytest
 import yaml
 
-from src.constants import CONFIG_DIR
+from src.constants import EXAMPLE_CONFIG_DIR
 from src.registry.feature_registry import FeatureValueCombinations, FeaturesRegistry
 from src.registry.marker_registry import ContingentMarkers, FeatureMarkers, Marker, MarkerRegistry
 from src.registry.paradigm_registry import ParadigmMarkers
 
 
-PARADIGM_CONFIG = Path(CONFIG_DIR) / "paradigms" / "ipfv_it.yaml"
+PARADIGM_CONFIG = Path(EXAMPLE_CONFIG_DIR) / "paradigms" / "ipfv_it.yaml"
 
 
 def _import_paradigm_markers():
@@ -24,7 +24,7 @@ def _load_ipfv_it_config():
 
 
 def _build_ipfv_feature_combinations():
-    features_registry = FeaturesRegistry.from_config_dir(CONFIG_DIR)
+    features_registry = FeaturesRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
     feature_values = deepcopy(
         features_registry.feature_registry.features_to_values
     )
@@ -54,7 +54,7 @@ def _build_ipfv_feature_combinations():
 
 
 def _build_ipfv_marker_objects():
-    marker_registry = MarkerRegistry.from_config_dir(CONFIG_DIR)
+    marker_registry = MarkerRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
     class_prefixes = marker_registry.get("class_prefixes")
     object_markers = marker_registry.get("ipfv_obj_markers")
 
@@ -81,7 +81,7 @@ def _build_ipfv_marker_objects():
 def test_paradigm_markers_combine_global_standard_and_contingent_markers_for_ipfv_slots():
     ParadigmMarkers = _import_paradigm_markers()
     ipfv_it = _load_ipfv_it_config()
-    contingent = MarkerRegistry.from_config_dir(CONFIG_DIR).get("ipfv_3person_obj_markers")
+    contingent = MarkerRegistry.from_config_dir(EXAMPLE_CONFIG_DIR).get("ipfv_3person_obj_markers")
 
     paradigm = ParadigmMarkers(
         feature_value_combinations=_build_ipfv_feature_combinations(),

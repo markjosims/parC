@@ -16,3 +16,4 @@ unidecode
 loguru
 jsonschema
 dotenv
+watchdog

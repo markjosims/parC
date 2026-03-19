@@ -1,13 +1,20 @@
 import yaml
 import json
 
-from app import app
+from src.web import create_app
 from src.web.configs import create_manifest_session, get_upload_session, list_config_yaml_files, normalize_config_dir
 from src.web.inventory import inventory_yaml, load_inventory_state, safe_inventory_path
 from src.web.patterns import load_patterns_state, patterns_yaml
+from src.web.rules import load_rules_state, rules_yaml
 
 
 CONFIG_DIR = "config/spanish"
+
+
+def _client():
+    app = create_app(CONFIG_DIR)
+    app.config["TESTING"] = True
+    return app.test_client()
 
 
 def test_safe_inventory_path_rejects_non_inventory_files():
@@ -60,7 +67,7 @@ def test_manifest_session_stores_yaml_entries():
 
 
 def test_scan_config_route_accepts_manifest():
-    client = app.test_client()
+    client = _client()
     response = client.post(
         "/scan-config",
         data={
@@ -83,12 +90,11 @@ def test_scan_config_route_accepts_manifest():
 
 
 def test_index_supports_non_inventory_yaml_editor():
-    client = app.test_client()
+    client = _client()
 
     response = client.get(
         "/",
         query_string={
-            "config_dir": CONFIG_DIR,
             "path": "markers/present_ind_ar_suffixes.yaml",
         },
     )
@@ -113,12 +119,11 @@ def test_config_editor_saves_uploaded_non_inventory_yaml():
         )
     )
 
-    client = app.test_client()
+    client = _client()
     response = client.post(
         "/config",
         data={
             "config_token": token,
-            "config_dir": "",
             "editor_kind": "Marker",
             "path": "markers/demo.yaml",
             "content": "kind: Marker\nvalue: new\n",
@@ -151,12 +156,11 @@ def test_patterns_yaml_round_trip_uses_patterns_shape():
 
 
 def test_index_supports_patterns_editor():
-    client = app.test_client()
+    client = _client()
 
     response = client.get(
         "/",
         query_string={
-            "config_dir": CONFIG_DIR,
             "path": "patterns/vowel_classes.yaml",
         },
     )
@@ -164,3 +168,35 @@ def test_index_supports_patterns_editor():
     assert response.status_code == 200
     assert b"Pattern editor" in response.data
     assert b"Add pattern" in response.data
+
+
+def test_load_rules_state_reads_existing_rules():
+    state = load_rules_state(CONFIG_DIR, "rules/accentuation.yaml")
+
+    assert state["kind"] == "Rules"
+    assert state["rules"]
+    assert state["rules"][0]["name"] == "diphthongization"
+
+
+def test_rules_yaml_round_trip_uses_rules_shape():
+    state = load_rules_state(CONFIG_DIR, "rules/accentuation.yaml")
+
+    document = yaml.safe_load(rules_yaml(state))
+
+    assert document["kind"] == "Rules"
+    assert "diphthongization" in document["rules"]
+
+
+def test_index_supports_rules_editor():
+    client = _client()
+
+    response = client.get(
+        "/",
+        query_string={
+            "path": "rules/accentuation.yaml",
+        },
+    )
+
+    assert response.status_code == 200
+    assert b"Rules editor" in response.data
+    assert b"Add rule" in response.data

@@ -7,8 +7,9 @@ PROJECT_ROOT = os.path.dirname(
     )
 )
 
-CONFIG_DIR = os.path.join(PROJECT_ROOT, "config")
-SCHEMA_DIR = os.path.join(CONFIG_DIR, 'schemas')
+CONFIG_ROOT = os.path.join(PROJECT_ROOT, "config")
+EXAMPLE_CONFIG_DIR = os.path.join(CONFIG_ROOT, "example")
+SCHEMA_DIR = os.path.join(CONFIG_ROOT, 'schemas')
 
 # pynini constants
 

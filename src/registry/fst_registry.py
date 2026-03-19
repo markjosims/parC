@@ -32,9 +32,9 @@ import pynini
 from pynini.lib import rewrite
 from pynini import FstProperties
 from graphlib import TopologicalSorter
-from src.constants import CONFIG_DIR
+from src.constants import EXAMPLE_CONFIG_DIR
 
-from src.fst_utils import Acceptor, Transducer, is_acceptor
+from src.fst_utils import Acceptor, TransducerList, Prefix, Suffix
 from src.registry.registry_utils import Registry, ReservedSymbolMixin
 
 class InventoryRegistry(Registry):
@@ -486,7 +486,7 @@ class RuleRegistry(Registry, ReservedSymbolMixin):
         self.rules_sorted = rules_sorted
 
 @dataclass
-class Rule(Transducer):
+class Rule(TransducerList):
     """
     Dataclass for phonological rules. Rules can be of three types:
     - Simple rules: defined by input and output patterns
@@ -523,8 +523,6 @@ class Rule(Transducer):
 
     # attributes for all rules
     direction: Literal['ltr', 'rtl', 'sim'] = 'ltr'   
-    transducer: Union[pynini.Fst, List[pynini.Fst]] = None
-
 
     # references to other objects
     used_by: List[Rule] = field(default_factory=list)
@@ -587,21 +585,6 @@ class Rule(Transducer):
             )
         self.rule_sequence = rule_sequence
         self.dependencies_built = True
-
-    def set_transducer(self, fst: Union[pynini.Fst, List[pynini.Fst]]):
-        if self.transducer is not None:
-            raise ValueError("Transducer cannot be overridden.")
-        
-        if isinstance(fst, list):
-            for f in fst:
-                if is_acceptor(f):
-                    raise ValueError("Transducer must be a non-vacuous FST or list of non-vacuous FSTs")
-        elif isinstance(fst, pynini.Fst):
-            if is_acceptor(fst):
-                raise ValueError("Transducer must be a non-vacuous FST or list of non-vacuous FSTs")
-        
-        self.fst = fst
-        self.transducer_built = True
         
 
     def __str__(self):
@@ -656,7 +639,6 @@ class Rule(Transducer):
         if 'test_mappings' in config:
             config['test_mappings'] = [tuple(mapping) for mapping in config['test_mappings']]
 
-        breakpoint()
         rule = cls(**config)
         return rule
 
@@ -692,7 +674,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         self._sigmas_built = False
         self._pattern_acceptors_built = False
         self._rule_transducers_built = False
-        self.initialized = False
+        self.is_initialized = False
 
         if not self.inventory:
             # don't try to initialize if inventory is empty
@@ -700,7 +682,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             return
 
         self.initialize()
-        if not self.initialized:
+        if not self.is_initialized:
             raise ValueError("Error occurred while initializing FstRegistry, check logs.")
     
     @classmethod
@@ -722,7 +704,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         - Pattern acceptors (FSAs for each pattern config)
         - Rule transducers (FSTs for each rule config)
         """
-        if self.initialized:
+        if self.is_initialized:
             logger.warning("FstRegistry already initialized, returning...")
             return
         self._build_symbol_table()
@@ -732,7 +714,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         self._build_token_map()
         self._build_pattern_acceptors()
         self._build_rule_transducers()
-        self.initialized = True
+        self.is_initialized = True
 
     def _build_symbol_table(self):
         """
@@ -955,7 +937,9 @@ class FstRegistry(Registry, ReservedSymbolMixin):
 
     def _parse_rule(self, rule: Rule) -> Union[pynini.Fst, List[pynini.Fst]]:
         """
-        Constructs all acceptors and transducers
+        Constructs all acceptors and transducers needed for a context-sensitive
+        rule and returns the rule transducer or list of transducers (for a rule
+        sequence)
         """
         if rule.type == "rule_sequence":
             return [sub_rule.fst for sub_rule in rule.rule_sequence]
@@ -1273,6 +1257,58 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         """
         return self.parse_pattern(fsa_input)
     
+    def acceptor(
+            self,
+            fsa_input: str,
+            acceptor_class: Acceptor = Acceptor
+        ) -> Acceptor:
+        """
+        Given a pattern string and an uninitialized `Acceptor` class,
+        return an initialized the `Acceptor` with a built FSA
+        """
+        fsa = self.fsa(fsa_input)
+        acceptor: Acceptor = acceptor_class(fsa_input)
+        acceptor.set_acceptor(fsa)
+        return acceptor
+    
+    def prefix(self, prefix_str: str) -> Prefix:
+        """
+        Returns a `Prefix` object with an initialized FST
+        """
+        prefix = Prefix(prefix_str)
+        prefix_fsa = self.fsa(prefix_str)
+        prefix.set_transducer(prefix_fsa)
+        return prefix
+    
+    def suffix(self, suffix_str: str) -> Suffix:
+        """
+        Returns a `Suffix` object with an initialized FST
+        """
+        suffix = Prefix(suffix_str)
+        suffix_fsa = self.fsa(suffix_str)
+        suffix.set_transducer(suffix_fsa)
+        return suffix
+    
+    def replace_transducer(
+            self,
+            input_pattern: str,
+            output_pattern: str
+        ) -> Rule:
+        """
+        Returns a context-free anonymous Rule that replaces
+        the input pattern with the output.
+        """
+        input_acceptor = self.acceptor(input_pattern)
+        output_acceptor = self.acceptor(output_pattern)
+        replace_rule = Rule(
+            input_pattern=input_acceptor,
+            output_pattern=output_acceptor,
+        )
+        rule_fst = self._parse_rule(replace_rule)
+        replace_rule.set_transducer(rule_fst)
+        return replace_rule
+
+    
     def apply_rule(
             self,
             rule_input: Union[str, pynini.Fst],
@@ -1340,7 +1376,56 @@ class FstRegistry(Registry, ReservedSymbolMixin):
                         f"Pattern '{pattern._ref}' failed excludes test for string '{test_str}'. "
                         "Check that the pattern is correctly specified and that the test string is correct."
                     )
-                
+
+    def test_pattern(
+        self,
+        pattern_ref: str,
+        test_includes: List[str],
+        test_excludes: List[str],
+    ) -> dict:
+        """
+        Test explicit include/exclude strings against the compiled FSA for a
+        single pattern.
+
+        Returns a dict with per-string results and an overall ``all_pass`` flag::
+
+            {"ref": "<V>", "results": [...], "all_pass": True}
+
+        Raises ``KeyError`` if *pattern_ref* is not in the registry.
+        """
+        if pattern_ref not in self.patterns:
+            raise KeyError(
+                f"Pattern ref '{pattern_ref}' not found in registry."
+            )
+        pattern = self.patterns[pattern_ref]
+
+        results: List[dict] = []
+        all_pass = True
+
+        for test_str in test_includes:
+            try:
+                input_fsa = self.fsa(test_str)
+                intersection = pynini.intersect(pattern.fsa, input_fsa)
+                passed = intersection.start() != pynini.NO_STATE_ID
+            except Exception:
+                passed = False
+            results.append({"string": test_str, "type": "include", "pass": passed})
+            if not passed:
+                all_pass = False
+
+        for test_str in test_excludes:
+            try:
+                input_fsa = self.fsa(test_str)
+                intersection = pynini.intersect(pattern.fsa, input_fsa)
+                passed = intersection.start() == pynini.NO_STATE_ID
+            except Exception:
+                passed = False
+            results.append({"string": test_str, "type": "exclude", "pass": passed})
+            if not passed:
+                all_pass = False
+
+        return {"ref": pattern_ref, "results": results, "all_pass": all_pass}
+
     def test_rule_mappings(self):
         """
         For each rule in the registry, test that all input-output string pairs in its `test_mappings` field
@@ -1483,7 +1568,7 @@ class Token:
 
 if __name__ == '__main__':
     # test initializing each config
-    inventory_reg = InventoryRegistry.from_config_dir(CONFIG_DIR)
-    pattern_reg = PatternRegistry.from_config_dir(CONFIG_DIR)
-    rule_reg = RuleRegistry.from_config_dir(CONFIG_DIR)
-    fst_reg = FstRegistry.from_config_dir(CONFIG_DIR)
+    inventory_reg = InventoryRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
+    pattern_reg = PatternRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
+    rule_reg = RuleRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
+    fst_reg = FstRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)

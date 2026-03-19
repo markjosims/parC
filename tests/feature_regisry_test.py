@@ -2,18 +2,18 @@ import os
 
 import pytest
 
-from src.feature_registry import (
+from src.registry.feature_registry import (
     Feature,
     FeatureCombinationsRegistry,
     FeatureRegistry,
     FeatureValueCombinations,
     FeaturesRegistry,
 )
-from src.constants import CONFIG_DIR
+from src.constants import EXAMPLE_CONFIG_DIR
 
 
 def test_feature_from_config_builds_feature():
-    config_path = os.path.join(CONFIG_DIR, "features", "verb_and_adjective.yaml")
+    config_path = os.path.join(EXAMPLE_CONFIG_DIR, "features", "verb_and_adjective.yaml")
     feature = Feature.from_config(
         name="tam",
         values=["imperfective", "perfective", "imperative"],
@@ -115,7 +115,7 @@ def test_feature_combinations_registry_load_data_from_config_normalizes_unmarked
     )
     registry = FeatureCombinationsRegistry(feature_registry=feature_registry)
 
-    config_path = os.path.join(CONFIG_DIR, "features", "verb_feature_combinations.yaml")
+    config_path = os.path.join(EXAMPLE_CONFIG_DIR, "features", "verb_feature_combinations.yaml")
     data = registry.load_data_from_config(
         {
             "features": ["tam", "deixis", "class_marker", "subject", "object"],
@@ -171,9 +171,9 @@ def test_feature_combinations_registry_rejects_undefined_features():
 
 
 def test_feature_and_combination_registries_load_real_project_configs():
-    feature_registry = FeatureRegistry.from_config_dir(CONFIG_DIR)
+    feature_registry = FeatureRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
     combinations_registry = FeatureCombinationsRegistry.from_config_dir(
-        CONFIG_DIR,
+        EXAMPLE_CONFIG_DIR,
         feature_registry=feature_registry,
     )
 
@@ -237,7 +237,7 @@ def test_feature_and_combination_registries_load_real_project_configs():
 
 
 def test_features_registry_orchestrates_feature_and_combination_lookup():
-    registry = FeaturesRegistry.from_config_dir(CONFIG_DIR)
+    registry = FeaturesRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
 
     tam = registry.get_feature("tam")
     combos = registry.get_feature_combinations("verb_feature_combinations")
@@ -254,7 +254,7 @@ def test_features_registry_orchestrates_feature_and_combination_lookup():
 
 
 def test_features_registry_getters_raise_for_unknown_names():
-    registry = FeaturesRegistry.from_config_dir(CONFIG_DIR)
+    registry = FeaturesRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
 
     with pytest.raises(KeyError, match="No feature found"):
         registry.get_feature("does_not_exist")

@@ -1,6 +1,6 @@
 import pynini
 from pynini.lib import paradigms
-from typing import Optional
+from typing import Optional, Union, List
 from dataclasses import dataclass, field
 from src.registry.registry_utils import ReservedSymbolMixin
 
@@ -56,6 +56,29 @@ class Transducer:
             raise ValueError("Transducer cannot be overridden.")
         if is_acceptor(fst):
             raise ValueError("Must be a non-vacuous FST")
+        self.fst = fst
+        self.transducer_built = True
+
+class TransducerList(Transducer):
+    """
+    Wrapper for FSTs allowing for the actual FST object to
+    be a list of FSTs, to be applied in sequence.
+    """
+
+    fst: Union[pynini.Fst, List[pynini.Fst], None] = None
+
+    def set_transducer(self, fst: Union[pynini.Fst, List[pynini.Fst]]):
+        if self.fst is not None:
+            raise ValueError("Transducer cannot be overridden.")
+        
+        if isinstance(fst, list):
+            for f in fst:
+                if is_acceptor(f):
+                    raise ValueError("Transducer must be a non-vacuous FST or list of non-vacuous FSTs")
+        elif isinstance(fst, pynini.Fst):
+            if is_acceptor(fst):
+                raise ValueError("Transducer must be a non-vacuous FST or list of non-vacuous FSTs")
+        
         self.fst = fst
         self.transducer_built = True
 

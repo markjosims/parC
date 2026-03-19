@@ -21,6 +21,8 @@
         {% include "_inventory_editor.html" %}
       {% elif editor_kind == "Patterns" %}
         {% include "_pattern_editor.html" %}
+      {% elif editor_kind == "Rules" %}
+        {% include "_rules_editor.html" %}
       {% else %}
         <section class="panel" id="config-editor-panel">
           <h2>{% if editor_kind %}{{ editor_kind }} editor{% else %}Config editor{% endif %}</h2>
@@ -28,7 +30,6 @@
 
           <form method="post" action="{{ url_for('web.config_editor') }}" class="grid">
             <input type="hidden" name="config_token" value="{{ config_token }}">
-            <input type="hidden" name="config_dir" value="{{ selected_config_dir }}">
             <input type="hidden" name="editor_kind" value="{{ editor_kind }}">
 
             <label>
