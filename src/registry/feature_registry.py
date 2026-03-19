@@ -22,7 +22,7 @@ from typing import Dict, List, Optional, Union
 import pandas as pd
 from loguru import logger
 
-from src.registry_utils import Registry
+from src.registry.registry_utils import Registry
 
 
 @dataclass
