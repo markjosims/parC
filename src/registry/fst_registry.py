@@ -462,14 +462,16 @@ class RuleRegistry(Registry, ReservedSymbolMixin):
 
             if rule.type == "rule_sequence":
                 sub_rules = []
-                sub_rule_refs = rule.rule_sequence[:]
-                for sub_rule in rule.rule_sequence:
-                    rule_name = sub_rule.removeprefix("$")
-                    if rule_name in self.data:
-                        sub_rules.append(self.data[rule_name])
+                sub_rule_refs = [
+                    ref.removeprefix("$")
+                    for ref in rule.rule_sequence
+                ]
+                for sub_rule in sub_rule_refs:
+                    if sub_rule in self.data:
+                        sub_rules.append(self.data[sub_rule])
                     else:
                         raise KeyError(
-                            f"Rule '{rule_name}' referenced in rule sequence for "\
+                            f"Rule '{sub_rule}' referenced in rule sequence for "\
                             f"'{rule._ref}' not found in registry."
                         )
                 rule.set_dependencies(
