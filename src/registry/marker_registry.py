@@ -59,9 +59,39 @@ class Marker(TransducerList):
         value: String to be interpreted as formative
         order: Stage name controlling application order within a paradigm
     """
-    type: Literal["prefix", "suffix", "replace", "suppletion", "rule"]
+    value: Union[str, Tuple[str, str]] = ""
+    type: Literal["prefix", "suffix", "replace", "suppletion", "rule"] = "suffix"
     order: Optional[str] = None
     comment: Optional[str] = None
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        if not self.value:
+            raise ValueError("Marker must have value")
+
+        if self.type == "replace":
+            if type(self.value) is not tuple:
+                raise ValueError(
+                    "Markers of type 'replace' must have a tuple of length 2 "
+                    f"but got {type(self.value)}"
+                )
+            if len(self.value) != 2:
+                raise ValueError(
+                    "Markers of type 'replace' must have a tuple of length 2 "
+                    f"but got {len(self.value)}"
+                )
+        
+        elif type(self.value) is tuple:
+            raise ValueError(
+                "Only 'replace' markers may have a tuple value "
+                f"but got tuple for marker type {self.type}"
+            )
+        
+        elif self.type not in ("prefix", "suffix", "suppletion", "rule"):
+            raise ValueError(f"Unrecognized marker type {self.type}")
+        
+
 
     @classmethod
     def from_config(
@@ -98,6 +128,8 @@ class Marker(TransducerList):
         This should be the default `Marker` constructor, as we generally expect
         that Marker definitions in the config may be a list, singleton, or null.
         """
+
+        # coerce config to list for unified processing
         if config is None:
             config = []
         elif isinstance(config, dict):
