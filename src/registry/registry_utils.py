@@ -1,7 +1,7 @@
 import os
 import yaml
 from pathlib import Path
-from glob import glob
+import unicodedata
 from typing import Union, Optional, List
 from jsonschema import validate, ValidationError
 from src.config_utils import load_schema
@@ -43,7 +43,11 @@ class Registry:
         config_list = []
         for filename in self._glob_config_files():
             with open(filename, 'r') as f:
-                config_data = yaml.safe_load(f)
+                content = f.read()
+                content_norm = unicodedata.normalize(
+                    'NFKD', content
+                )
+                config_data = yaml.safe_load(content_norm)
 
                 # store filepath for config
                 config_data['source_path'] = str(filename)
