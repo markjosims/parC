@@ -1,6 +1,27 @@
+"""
+Implements the `Paradigm` and `GrammarRegistry` classes, which
+are the highest-level objects in the registry system.
+
+The `Paradigm` class describes a paradigm or sub-paradigm in the
+linguistic sense, represented here as a set of `Marker` lists over
+a feature space. It also provides logic for defining the order of
+application for markers, and for selecting stems and principle parts
+from the lexicon.
+
+The `GrammarRegistry` class orchestrates all registries for a given language.
+[At present, the `GrammarRegistry` is essentially a wrapper over the
+`MarkerRegistry` and `FstRegistry`, but it will eventually also include
+the `LexiconRegistry`, and will directly load in `Paradigm` objects.
+Since paradigm objects are themselves the the highest level of abstraction
+in the registry system, there is no intermediate `ParadigmRegistry` class.]
+"""
+
 from src.registry.registry_utils import Registry
 from src.registry.marker_registry import MarkerRegistry
-from typing import List
+from src.registry.fst_registry import FstRegistry
+from src.registry.feature_registry import FeatureRegistry
+from src.registry.lexicon_registry import LexiconRegistry
+from typing import List, Optional
 
 class Paradigm:
     """
@@ -135,7 +156,30 @@ class Paradigm:
     #         records.append(record)
     #     return pd.DataFrame(records)
 
-class ParadigmRegistry(Registry):
+class GrammarRegistry(Registry):
     """
-    Registry for paradigm objects.
+    Orchestrates all registries for a given language.
     """
+    def __init__(
+        self,
+        marker_registry: MarkerRegistry,
+        lexicon_registry: LexiconRegistry,
+        paradigms: Optional[List[Paradigm]] = None,
+    ):
+        self.marker_registry = marker_registry
+        self.lexicon_registry = lexicon_registry
+        
+        self.fst_registry: FstRegistry = marker_registry.fst_registry
+        self.feature_registry: FeatureRegistry = marker_registry.feature_registry
+
+        self.paradigms = paradigms or []
+    
+    @staticmethod
+    def from_config_dir(cls, config_dir: str) -> 'GrammarRegistry':
+        """
+        [TODO: implement factory method]
+        """
+        return cls(
+            marker_registry=MarkerRegistry.from_config_dir(config_dir),
+            lexicon_registry=LexiconRegistry.from_config_dir(config_dir),
+        )

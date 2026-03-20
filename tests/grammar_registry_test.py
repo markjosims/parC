@@ -7,7 +7,7 @@ import yaml
 from src.constants import EXAMPLE_CONFIG_DIR
 from src.registry.feature_registry import FeatureValueCombinations, FeatureRegistry
 from src.registry.marker_registry import ContingentMarkers, FeatureMarkers, Marker, MarkerRegistry
-from src.registry.paradigm_registry import ParadigmMarkers
+from src.registry.grammar_registry import ParadigmMarkers
 
 
 PARADIGM_CONFIG = Path(EXAMPLE_CONFIG_DIR) / "paradigms" / "ipfv_it.yaml"
