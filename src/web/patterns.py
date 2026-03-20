@@ -8,6 +8,7 @@ import unicodedata
 import yaml
 
 from src.web.editor_base import BaseEditor, split_csv
+from src.registry.grammar_registry import GrammarRegistry
 
 
 class PatternsEditor(BaseEditor):
@@ -50,11 +51,12 @@ class PatternsEditor(BaseEditor):
             "test_results": None,
         }
 
-    def _run_test(self, item: dict[str, Any], registry: Any) -> dict:
+    def _run_test(self, item: dict[str, Any], registry: GrammarRegistry) -> dict:
+        fst_reg = registry.fst_registry
         ref = item.get("ref", "").strip()
         includes = split_csv(item.get("test_includes", ""))
         excludes = split_csv(item.get("test_excludes", ""))
-        return registry.test_pattern(ref, includes, excludes)
+        return fst_reg.test_pattern(ref, includes, excludes)
 
     def _update_items_from_form(
         self, patterns: list[dict[str, Any]], form: Any

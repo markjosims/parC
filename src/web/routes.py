@@ -17,6 +17,8 @@ from src.web.configs import (
     suggested_config_path,
 )
 from src.registry.fst_registry import FstRegistry
+from src.registry.grammar_registry import GrammarRegistry
+from src.web.features import FeatureDefinitionsEditor
 from src.web.inventory import InventoryEditor
 from src.web.patterns import PatternsEditor
 from src.web.rules import RulesEditor
@@ -24,12 +26,13 @@ from flask import current_app as app
 
 
 bp = Blueprint("web", __name__)
-FST_REGISTRY_CACHE: dict[str, tuple[float, FstRegistry]] = {}
+GRAMMAR_REGISTRY_CACHE: dict[str, tuple[float, GrammarRegistry]] = {}
 
 EDITORS = {
     "Inventory": InventoryEditor(),
     "Patterns": PatternsEditor(),
     "Rules": RulesEditor(),
+    "FeatureDefinitions": FeatureDefinitionsEditor(),
 }
 
 
@@ -90,6 +93,7 @@ def config_editor():
         try:
             _save_state(state)
             message = f"Saved {state['path']}"
+            page_context = _config_page_context()
         except ValueError as exc:
             error = str(exc)
 
@@ -161,6 +165,16 @@ def rules_run_tests(rule_id: str):
     return _run_tests_handler("Rules", rule_id)
 
 
+@bp.post("/features/add-entry")
+def features_add_entry():
+    return _add_item_handler("FeatureDefinitions")
+
+
+@bp.post("/features/remove-entry/<feature_id>")
+def features_remove_entry(feature_id: str):
+    return _remove_item_handler("FeatureDefinitions", feature_id)
+
+
 @bp.post("/rules/add-entry")
 def rules_add_entry():
     return _add_item_handler("Rules")
@@ -198,7 +212,7 @@ def _run_tests_handler(kind: str, item_id: str):
     state = editor.update_from_form(state, request.form)
 
     config_dir = _local_config_dir()
-    registry = _get_fst_registry(config_dir)
+    registry = _get_grammar_registry(config_dir)
     state, error = editor.run_tests(state, item_id, registry)
 
     return _render_page(
@@ -347,15 +361,15 @@ def _local_config_dir() -> str:
     return str(config_dir)
 
 
-def _get_fst_registry(config_dir: str) -> FstRegistry:
+def _get_grammar_registry(config_dir: str) -> GrammarRegistry:
     cache_key = str(Path(config_dir))
     current_stamp = _yaml_tree_mtime(cache_key)
-    cached = FST_REGISTRY_CACHE.get(cache_key)
+    cached = GRAMMAR_REGISTRY_CACHE.get(cache_key)
     if cached is not None and cached[0] == current_stamp:
         return cached[1]
 
-    registry = FstRegistry.from_config_dir(cache_key)
-    FST_REGISTRY_CACHE[cache_key] = (current_stamp, registry)
+    registry = GrammarRegistry.from_config_dir(cache_key)
+    GRAMMAR_REGISTRY_CACHE[cache_key] = (current_stamp, registry)
     return registry
 
 

@@ -13,6 +13,7 @@ KIND_DIRECTORY_NAMES = {
     "Patterns": "patterns",
     "Rule": "rules",
     "Feature": "features",
+    "FeatureDefinitions": "features",
     "Marker": "markers",
     "Paradigm": "paradigms",
     "PartOfSpeech": "parts_of_speech",

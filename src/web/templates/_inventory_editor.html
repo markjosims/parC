@@ -143,6 +143,12 @@
         currentNotices.replaceWith(nextNotices);
       }
 
+      const nextSidebar = doc.querySelector("#config-sidebar");
+      const currentSidebar = document.querySelector("#config-sidebar");
+      if (nextSidebar && currentSidebar) {
+        currentSidebar.replaceWith(nextSidebar);
+      }
+
       currentPanel.replaceWith(nextPanel);
 
       let focusNode = null;

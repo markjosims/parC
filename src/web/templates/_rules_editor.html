@@ -21,17 +21,19 @@
         <textarea name="description-{{ rule.id }}" data-initial="{{ rule.description }}" data-def-field placeholder="Short explanation">{{ rule.description }}</textarea>
       </label>
 
-      {% if rule.rule_type == "string_map" %}
+      <div class="rule-type-fields" data-for-type="string_map" {% if rule.rule_type != "string_map" %}hidden{% endif %}>
         <label>
           String map
           <textarea name="string_map_text-{{ rule.id }}" data-initial="{{ rule.string_map_text }}" data-def-field placeholder="o => ue&#10;e => ie">{{ rule.string_map_text }}</textarea>
         </label>
-      {% elif rule.rule_type == "rule_sequence" %}
+      </div>
+      <div class="rule-type-fields" data-for-type="rule_sequence" {% if rule.rule_type != "rule_sequence" %}hidden{% endif %}>
         <label>
           Rule sequence
           <textarea name="rule_sequence_text-{{ rule.id }}" data-initial="{{ rule.rule_sequence_text }}" data-def-field placeholder="clear_all_tones&#10;first_syllable_high_tone">{{ rule.rule_sequence_text }}</textarea>
         </label>
-      {% else %}
+      </div>
+      <div class="rule-type-fields" data-for-type="simple_rule" {% if rule.rule_type != "simple_rule" %}hidden{% endif %}>
         <div class="two-col">
           <label>
             Input pattern
@@ -42,7 +44,7 @@
             <textarea name="output_pattern-{{ rule.id }}" data-initial="{{ rule.output_pattern }}" data-def-field placeholder="ɛ or null">{{ rule.output_pattern }}</textarea>
           </label>
         </div>
-      {% endif %}
+      </div>
 
       <div class="two-col">
         <label>
@@ -189,6 +191,17 @@
 
   _initRuleDirtyTracking();
 
+  // --- Rule type toggle (client-side only) ---
+  document.addEventListener("change", function(event) {
+    var select = event.target;
+    if (!select.name || !select.name.startsWith("rule_type-")) return;
+    var node = select.closest("[data-rule-id]");
+    if (!node) return;
+    node.querySelectorAll(".rule-type-fields").forEach(function(div) {
+      div.hidden = div.dataset.forType !== select.value;
+    });
+  });
+
   // --- AJAX form submission ---
   document.addEventListener("submit", async (event) => {
     const form = event.target;
@@ -243,6 +256,12 @@
 
       if (nextNotices && currentNotices) {
         currentNotices.replaceWith(nextNotices);
+      }
+
+      const nextSidebar = doc.querySelector("#config-sidebar");
+      const currentSidebar = document.querySelector("#config-sidebar");
+      if (nextSidebar && currentSidebar) {
+        currentSidebar.replaceWith(nextSidebar);
       }
 
       currentPanel.replaceWith(nextPanel);

@@ -9,14 +9,14 @@ def create_app(config_dir: str | None = None) -> Flask:
     validated = _validated_config_dir(config_dir)
     app.config["CONFIG_DIR"] = validated
 
-    from src.web.routes import bp, FST_REGISTRY_CACHE
+    from src.web.routes import bp, GRAMMAR_REGISTRY_CACHE
 
     app.register_blueprint(bp)
 
     if validated:
         from src.web.watcher import start_watcher
 
-        app.config["WATCHER"] = start_watcher(validated, FST_REGISTRY_CACHE)
+        app.config["WATCHER"] = start_watcher(validated, GRAMMAR_REGISTRY_CACHE)
 
     return app
 

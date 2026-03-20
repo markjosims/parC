@@ -1,7 +1,7 @@
 """
 Watchdog file watcher for the Flask web app.
 
-Invalidates the FstRegistry cache when YAML config files change on disk,
+Invalidates the GrammarRegistry cache when YAML config files change on disk,
 so the next request rebuilds the registry from fresh configs.
 """
 

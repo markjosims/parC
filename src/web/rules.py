@@ -7,6 +7,7 @@ from typing import Any
 import yaml
 
 from src.web.editor_base import BaseEditor
+from src.registry.grammar_registry import GrammarRegistry
 
 
 class RulesEditor(BaseEditor):
@@ -56,10 +57,11 @@ class RulesEditor(BaseEditor):
             "test_results": None,
         }
 
-    def _run_test(self, item: dict[str, Any], registry: Any) -> dict:
+    def _run_test(self, item: dict[str, Any], registry: GrammarRegistry) -> dict:
+        fst_reg = registry.fst_registry
         name = item.get("name", "").strip()
         mappings = _split_pairs(item.get("test_mappings_text", ""))
-        return registry.test_rule(name, mappings)
+        return fst_reg.test_rule(name, mappings)
 
     def _update_items_from_form(
         self, rules: list[dict[str, Any]], form: Any
