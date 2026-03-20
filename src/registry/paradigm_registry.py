@@ -2,7 +2,7 @@ from src.registry.registry_utils import Registry
 from src.registry.marker_registry import MarkerRegistry
 from typing import List
 
-class ParadigmMarkers(Registry):
+class Paradigm:
     """
     Object for combining marker objects based on multiple feature values.
     Allows combination of standard marker objects (i.e. for one feature each)
@@ -127,3 +127,8 @@ class ParadigmMarkers(Registry):
     #         record = {**feature_dict, 'markers': markers}
     #         records.append(record)
     #     return pd.DataFrame(records)
+
+class ParadigmRegistry(Registry):
+    """
+    Registry for paradigm objects.
+    """
