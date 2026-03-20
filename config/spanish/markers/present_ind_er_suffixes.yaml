@@ -2,18 +2,23 @@
 # comer: como, comes, come, comemos, coméis, comen
 kind: FeatureMarkers
 feature: person_number
-global_attributes:
-  order: suffixation
+global_order: suffixation
 markers:
   1sg:
-    suffix: "-o"
+    type: suffix
+    value: "-o"
   2sg:
-    suffix: "-es"
+    type: suffix
+    value: "-es"
   3sg:
-    suffix: "-e"
+    type: suffix
+    value: "-e"
   1pl:
-    suffix: "-emos"
+    type: suffix
+    value: "-emos"
   2pl:
-    suffix: "-éis"
+    type: suffix
+    value: "-éis"
   3pl:
-    suffix: "-en"
+    type: suffix
+    value: "-en"

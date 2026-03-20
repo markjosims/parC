@@ -344,8 +344,7 @@ Since er/ir merger eliminates the need for ContingentFeatureMarkers in most tens
 ```yaml
 kind: FeatureMarkers
 feature: person_number
-global_attributes:
-  order: suffixation
+global_order: suffixation
 markers:
   1sg:
     suffix: "-o"
@@ -368,8 +367,7 @@ Shared by both -er and -ir paradigms (identical endings):
 ```yaml
 kind: FeatureMarkers
 feature: person_number
-global_attributes:
-  order: suffixation
+global_order: suffixation
 markers:
   1sg:
     suffix: "-í"
@@ -392,8 +390,7 @@ Global marker used by future and conditional paradigms. Maps conjugation_class t
 ```yaml
 kind: FeatureMarkers
 feature: conjugation_class
-global_attributes:
-  order: infinitive_stem
+global_order: infinitive_stem
 markers:
   ar:
     suffix: "-ar"
@@ -410,8 +407,7 @@ These attach after the infinitive stem (hablar+é, comer+é, vivir+é), so no cl
 ```yaml
 kind: FeatureMarkers
 feature: person_number
-global_attributes:
-  order: suffixation
+global_order: suffixation
 markers:
   1sg:
     suffix: "-é"

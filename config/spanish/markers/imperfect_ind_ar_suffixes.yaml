@@ -2,18 +2,23 @@
 # hablar: hablaba, hablabas, hablaba, hablábamos, hablabais, hablaban
 kind: FeatureMarkers
 feature: person_number
-global_attributes:
-  order: suffixation
+global_order: suffixation
 markers:
   1sg:
-    suffix: "-aba"
+    type: suffix
+    value: "-aba"
   2sg:
-    suffix: "-abas"
+    type: suffix
+    value: "-abas"
   3sg:
-    suffix: "-aba"
+    type: suffix
+    value: "-aba"
   1pl:
-    suffix: "-ábamos"
+    type: suffix
+    value: "-ábamos"
   2pl:
-    suffix: "-abais"
+    type: suffix
+    value: "-abais"
   3pl:
-    suffix: "-aban"
+    type: suffix
+    value: "-aban"

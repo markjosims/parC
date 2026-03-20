@@ -2,15 +2,20 @@ kind: Paradigm
 part_of_speech: verb
 order: [root_tone, final_vowel, argument_marker, class_prefix, resolve_hiatus, vowel_harmony, tone_processes]
 global_markers:
-  - rule: "$hl_star_tone"
+  - type: rule
+    value: "$hl_star_tone"
     order: root_tone
-  - rule: "$final_vowel_A"
+  - type: rule
+    value: "$final_vowel_A"
     order: final_vowel
-  - rule: "$resolve_hiatus"
+  - type: rule
+    value: "$resolve_hiatus"
     order: resolve_hiatus
-  - rule: "$vowel_harmony"
+  - type: rule
+    value: "$vowel_harmony"
     order: vowel_harmony
-  - rule: "$float_tones"
+  - type: rule
+    value: "$float_tones"
     order: tone_processes
 features:
   class_marker: "$class_prefixes"

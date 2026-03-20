@@ -2,18 +2,23 @@
 # vivir: vivo, vives, vive, vivimos, vivís, viven
 kind: FeatureMarkers
 feature: person_number
-global_attributes:
-  order: suffixation
+global_order: suffixation
 markers:
   1sg:
-    suffix: "-o"
+    type: suffix
+    value: "-o"
   2sg:
-    suffix: "-es"
+    type: suffix
+    value: "-es"
   3sg:
-    suffix: "-e"
+    type: suffix
+    value: "-e"
   1pl:
-    suffix: "-imos"
+    type: suffix
+    value: "-imos"
   2pl:
-    suffix: "-ís"
+    type: suffix
+    value: "-ís"
   3pl:
-    suffix: "-en"
+    type: suffix
+    value: "-en"

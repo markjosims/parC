@@ -1,23 +1,26 @@
 kind: FeatureDefinitions
 features:
   tense_mood:
-    - present_ind
-    - preterite
-    - imperfect_ind
-    - future
-    - conditional
-    - present_subj
-    - imperfect_subj_ra
-    - imperfect_subj_se
-    - imperative
-    - infinitive
-    - gerund
-    - past_participle
+  - present_ind
+  - preterite
+  - imperfect_ind
+  - future
+  - conditional
+  - present_subj
+  - imperfect_subj_ra
+  - imperfect_subj_se
+  - imperative
+  - infinitive
+  - gerund
+  - past_participle
   person_number:
-    - 1sg
-    - 2sg
-    - 3sg
-    - 1pl
-    - 2pl
-    - 3pl
-  conjugation_class: [ar, er, ir]
+  - 1sg
+  - 2sg
+  - 3sg
+  - 1pl
+  - 2pl
+  - 3pl
+  conjugation_class:
+  - ar
+  - er
+  - ir

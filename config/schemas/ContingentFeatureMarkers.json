@@ -26,7 +26,7 @@
     },
     "global_marker": {
       "type": "array",
-      "items": { "$ref": "#/definitions/marker" },
+      "items": { "$ref": "./FeatureMarkers.json#/definitions/marker" },
       "description": "A marker or list of markers applied to all forms in this paradigm."
     },
     "markers": {
@@ -36,32 +36,15 @@
     }
   },
   "definitions": {
-    "marker": {
-      "type": "object",
-      "properties": {
-        "type": { 
-          "type": "string" ,
-          "enum": ["prefix", "suffix", "infix", "replace", "suppletion", "rule"]
-        },
-        "value": { "oneOf": [
-          { "type": "string" },
-          { "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 2 }
-          ]
-        },
-        "order": { "type": "string" },
-        "comment": { "type": "string" }
-      },
-      "additionalProperties": false
-    },
     "nestedNode": {
       "type": "object",
       "additionalProperties": {
         "oneOf": [
           { "type": "null" },
-          { "$ref": "#/definitions/marker" },
+          { "$ref": "./FeatureMarkers.json#/definitions/marker" },
           {
             "type": "array",
-            "items": { "$ref": "#/definitions/marker" }
+            "items": { "$ref": "./FeatureMarkers.json#/definitions/marker" }
           },
           {
             "type": "object",

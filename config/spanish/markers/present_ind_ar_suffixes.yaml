@@ -2,18 +2,23 @@
 # hablar: hablo, hablas, habla, hablamos, habláis, hablan
 kind: FeatureMarkers
 feature: person_number
-global_attributes:
-  order: suffixation
+global_order: suffixation
 markers:
   1sg:
-    suffix: "-o"
+    type: suffix
+    value: "-o"
   2sg:
-    suffix: "-as"
+    type: suffix
+    value: "-as"
   3sg:
-    suffix: "-a"
+    type: suffix
+    value: "-a"
   1pl:
-    suffix: "-amos"
+    type: suffix
+    value: "-amos"
   2pl:
-    suffix: "-áis"
+    type: suffix
+    value: "-áis"
   3pl:
-    suffix: "-an"
+    type: suffix
+    value: "-an"

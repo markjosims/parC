@@ -3,18 +3,23 @@
 # vivir: vivía, vivías, vivía, vivíamos, vivíais, vivían
 kind: FeatureMarkers
 feature: person_number
-global_attributes:
-  order: suffixation
+global_order: suffixation
 markers:
   1sg:
-    suffix: "-ía"
+    type: suffix
+    value: "-ía"
   2sg:
-    suffix: "-ías"
+    type: suffix
+    value: "-ías"
   3sg:
-    suffix: "-ía"
+    type: suffix
+    value: "-ía"
   1pl:
-    suffix: "-íamos"
+    type: suffix
+    value: "-íamos"
   2pl:
-    suffix: "-íais"
+    type: suffix
+    value: "-íais"
   3pl:
-    suffix: "-ían"
+    type: suffix
+    value: "-ían"
