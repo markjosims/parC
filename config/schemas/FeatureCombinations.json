@@ -21,6 +21,9 @@
         "type": "string"
       }
     },
+    "combinations": {"$ref": "#/definitions/combinations"}
+  },
+  "definitions": {
     "combinations": {
       "type": "array",
       "minItems": 1,

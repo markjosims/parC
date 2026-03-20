@@ -3,7 +3,7 @@
   "title": "Paradigm",
   "description": "Configuration defining an inflectional paradigm or sub-paradigm.",
   "type": "object",
-  "required": ["kind", "part_of_speech", "features", "markers"],
+  "required": ["kind", "part_of_speech", "markers"],
   "properties": {
     "source_path": {
       "type": "string",
@@ -35,12 +35,6 @@
       "items": { "$ref": "./FeatureMarkers.json#/definitions/marker" },
       "description": "Markers or rules applied to every form in the paradigm."
     },
-    "features": {
-      "type": "array",
-      "items": { "type": "string" },
-      "minItems": 1,
-      "description": "List of features that define the paradigm's dimensions."
-    },
     "markers": {
       "type": "object",
       "description": "Mapping of features to their markers or import files.",
@@ -61,9 +55,10 @@
     "feature_combinations": {
       "oneOf": [
         { "type": "string", "pattern": "^\\$.*" },
-        { "type": "array", "items": { "type": "string", "pattern": "^\\$.*" } }
+        { "type": "array", "items": { "type": "string", "pattern": "^\\$.*" } },
+        { "$ref": "./FeatureCombinations.json#/definitions/combinations" }
       ],
-      "description": "Imported configuration(s) defining valid feature cross-products."
+      "description": "Imported or inline configuration(s) defining valid feature cross-products. If blank, all combinations of features are generated."
     },
     "contingent_features": {
       "type": "object",
