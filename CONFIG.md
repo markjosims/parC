@@ -256,8 +256,7 @@ Like FeatureMarkers but maps **combinations** of multiple features to a formativ
 ```yaml
 kind: ContingentFeatureMarkers
 features: [feature_a, feature_b]
-global_attributes:
-  order: <stage_name>
+global_order: <stage_name>
 markers:
   <outer_feature>:
     <outer_value>:
