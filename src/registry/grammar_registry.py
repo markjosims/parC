@@ -174,7 +174,7 @@ class GrammarRegistry(Registry):
 
         self.paradigms = paradigms or []
     
-    @staticmethod
+    @classmethod
     def from_config_dir(cls, config_dir: str) -> 'GrammarRegistry':
         """
         [TODO: implement factory method]
