@@ -4,6 +4,7 @@
   "description": "Schema for defining morphological formatives for a single feature.",
   "type": "object",
   "required": ["kind", "feature", "markers"],
+  "additionalProperties": false,
   "properties": {
     "source_path": {
       "type": "string",
@@ -26,6 +27,11 @@
       "type": "string",
       "description": "Allows specifying a default value for the 'order' attribute."
     },
+    "global_marker": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/marker" },
+      "description": "A marker or list of markers applied to all forms in this paradigm."
+    },
     "markers": {
       "type": "object",
       "description": "Map of feature values to their morphological realizations.",
@@ -38,12 +44,6 @@
             "items": { "$ref": "#/definitions/marker" }
           }
         ]
-      },
-      "properties": {
-        "global_marker": {
-          "description": "A marker applied to all forms in this paradigm.",
-          "$ref": "#/definitions/marker"
-        }
       }
     }
   },
@@ -55,7 +55,11 @@
           "type": "string" ,
           "enum": ["prefix", "suffix", "infix", "replace", "suppletion", "rule"]
         },
-        "value": { "type": "string" },
+        "value": { "oneOf": [
+          { "type": "string" },
+          { "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 2 }
+          ]
+        },
         "order": { "type": "string" },
         "comment": { "type": "string" }
       },

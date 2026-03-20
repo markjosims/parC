@@ -89,46 +89,53 @@ class Prefix(Transducer):
     passed to the `value` field where the first character is a
     boundary symbol ('-' or '=')
     """
-    stem: Acceptor = field(default_factory=Acceptor)
+    stem: pynini.Fst = field(default_factory=pynini.Fst)
 
     def __post_init__(self):
         super().__post_init__()
 
         if (
             (not self.value) or
-            (self.value[0] not in ReservedSymbolMixin.boundary_symbols)
+            (self.value.strip("()")[-1] not in ReservedSymbolMixin.boundary_symbols)
         ):
             raise ValueError(
                 "Prefixes require the `value` attribute to be specified " +\
-                "with a string that begins with a boundary symbol " +\
-                str(ReservedSymbolMixin.boundary_symbols) +\
-                f"but got {self.value}"
-            )
-        
-    def set_transducer(self, fsa: pynini.Fst, stem: Optional[pynini.Fst]=None):
-        fst = paradigms.prefix(fsa, stem)
-        return super().set_transducer(fst)
-        
-class Suffix(Transducer):
-    """
-    Wraps the `Transducer` class but requires that a string be
-    passed to the `value` field where the last character is a
-    boundary symbol ('-' or '=')
-    """
-    def __post_init__(self):
-        super().__post_init__()
-
-        if (
-            (not self.value) or
-            (self.value[-1] not in ReservedSymbolMixin.boundary_symbols)
-        ):
-            raise ValueError(
-                "Suffixes require the `value` attribute to be specified " +\
                 "with a string that ends with a boundary symbol " +\
                 str(ReservedSymbolMixin.boundary_symbols) +\
                 f"but got {self.value}"
             )
         
     def set_transducer(self, fsa: pynini.Fst, stem: Optional[pynini.Fst]=None):
+        if stem is None:
+            stem = self.stem
+        fst = paradigms.prefix(fsa, stem)
+        return super().set_transducer(fst)
+        
+@dataclass
+class Suffix(Transducer):
+    """
+    Wraps the `Transducer` class but requires that a string be
+    passed to the `value` field where the last character is a
+    boundary symbol ('-' or '=')
+    """
+    stem: pynini.Fst = field(default_factory=pynini.Fst)
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        if (
+            (not self.value) or
+            (self.value.strip("()")[0] not in ReservedSymbolMixin.boundary_symbols)
+        ):
+            raise ValueError(
+                "Suffixes require the `value` attribute to be specified " +\
+                "with a string that begins with a boundary symbol " +\
+                str(ReservedSymbolMixin.boundary_symbols) +\
+                f"but got {self.value}"
+            )
+        
+    def set_transducer(self, fsa: pynini.Fst, stem: Optional[pynini.Fst]=None):
+        if stem is None:
+            stem = self.stem
         fst = paradigms.suffix(fsa, stem)
         return super().set_transducer(fst)

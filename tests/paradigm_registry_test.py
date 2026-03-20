@@ -5,17 +5,13 @@ import pytest
 import yaml
 
 from src.constants import EXAMPLE_CONFIG_DIR
-from src.registry.feature_registry import FeatureValueCombinations, FeaturesRegistry
+from src.registry.feature_registry import FeatureValueCombinations, FeatureRegistry
 from src.registry.marker_registry import ContingentMarkers, FeatureMarkers, Marker, MarkerRegistry
 from src.registry.paradigm_registry import ParadigmMarkers
 
 
 PARADIGM_CONFIG = Path(EXAMPLE_CONFIG_DIR) / "paradigms" / "ipfv_it.yaml"
 
-
-def _import_paradigm_markers():
-
-    return ParadigmMarkers
 
 
 def _load_ipfv_it_config():
@@ -24,7 +20,7 @@ def _load_ipfv_it_config():
 
 
 def _build_ipfv_feature_combinations():
-    features_registry = FeaturesRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
+    features_registry = FeatureRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
     feature_values = deepcopy(
         features_registry.feature_registry.features_to_values
     )
@@ -79,7 +75,6 @@ def _build_ipfv_marker_objects():
 
 
 def test_paradigm_markers_combine_global_standard_and_contingent_markers_for_ipfv_slots():
-    ParadigmMarkers = _import_paradigm_markers()
     ipfv_it = _load_ipfv_it_config()
     contingent = MarkerRegistry.from_config_dir(EXAMPLE_CONFIG_DIR).get("ipfv_3person_obj_markers")
 
@@ -150,8 +145,6 @@ def test_paradigm_markers_combine_global_standard_and_contingent_markers_for_ipf
 
 
 def test_paradigm_markers_contingent_markers_take_priority_over_standard_markers():
-    ParadigmMarkers = _import_paradigm_markers()
-
     feature_combinations = FeatureValueCombinations(
         combinations=[
             {"object": "3sg", "subject": "1sg"},
@@ -193,8 +186,6 @@ def test_paradigm_markers_contingent_markers_take_priority_over_standard_markers
 
 
 def test_paradigm_markers_require_feature_names_to_match_feature_combinations():
-    ParadigmMarkers = _import_paradigm_markers()
-
     feature_combinations = FeatureValueCombinations(
         combinations=[{"subject": "1sg", "object": "1sg"}],
         features_to_values={
@@ -216,8 +207,6 @@ def test_paradigm_markers_require_feature_names_to_match_feature_combinations():
 
 
 def test_paradigm_markers_reject_overlapping_contingent_feature_sets():
-    ParadigmMarkers = _import_paradigm_markers()
-
     feature_combinations = FeatureValueCombinations(
         combinations=[{"object": "3sg", "subject": "1sg", "class_marker": "l"}],
         features_to_values={
@@ -247,8 +236,6 @@ def test_paradigm_markers_reject_overlapping_contingent_feature_sets():
 
 
 def test_paradigm_markers_reject_unknown_order_stage_from_any_marker():
-    ParadigmMarkers = _import_paradigm_markers()
-
     feature_combinations = FeatureValueCombinations(
         combinations=[{"object": "1sg"}],
         features_to_values={"object": ["1sg", "unmarked"]},
@@ -270,8 +257,6 @@ def test_paradigm_markers_reject_unknown_order_stage_from_any_marker():
 
 
 def test_paradigm_markers_place_unordered_markers_after_all_ordered_stages():
-    ParadigmMarkers = _import_paradigm_markers()
-
     feature_combinations = FeatureValueCombinations(
         combinations=[{"class_marker": "l", "object": "1sg"}],
         features_to_values={

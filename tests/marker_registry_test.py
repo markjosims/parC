@@ -41,13 +41,14 @@ def test_marker_list_from_config_handles_none_single_and_multiple_markers():
         [None, None], global_order="x"
     ) == []
 
-    single = Marker.list_from_config([{"suffix": "-ap"}], global_order="outer")
+    single = Marker.list_from_config([{"type": "suffix", "value": "-ap"}], global_order="outer")
     assert len(single) == 1
-    assert single[0].suffix == "-ap"
+    assert single[0].type == "suffix"
+    assert single[0].value == "-ap"
     assert single[0].order == "outer"
 
     multiple = Marker.list_from_config(
-        [{"suffix": "-te"}, {"replace": ["dt", "tt"]}],
+        [{"type": "suffix", "value": "-te"}, {"type": "replace", "value": ["dt", "tt"]}],
         global_order="shared"
     )
     assert len(multiple) == 2
@@ -75,7 +76,7 @@ def test_feature_markers_from_config_builds_dynamic_attributes_and_global_marker
             "2sg": [
                 {"type": "suffix", "value": "-te", "order": "suffixation"},
                 {"type": "replace", "value": ["dt", "tt"], "order": "assimilation"},
-            ], #STOPPEDHERE
+            ],
             "3sg": None,
         },
         "source_path": config_path,
@@ -85,18 +86,23 @@ def test_feature_markers_from_config_builds_dynamic_attributes_and_global_marker
 
     assert markers.feature == "person"
     assert markers.source == config_path
-    assert markers.global_attributes == {"order": "outer_suffixation"}
-    assert len(markers.global_marker) == 1
-    assert markers.global_marker[0].prefix == "pre-"
+    assert markers.global_order == "outer_suffixation"
+    assert len(markers.global_markers) == 1
+    assert markers.global_markers[0].type == "prefix"
+    assert markers.global_markers[0].value == "pre-"
 
-    assert len(markers.data["1sg"]) == 1
-    assert markers.data["1sg"][0].suffix == "-o"
+    assert len(markers.data["1sg"]) == 2
+    assert markers.data["1sg"][0].value == "-o"
+    assert markers.data["1sg"][0].type == "suffix"
     assert markers.data["1sg"][0].order == "outer_suffixation"
-    assert markers.data["2sg"][0].suffix == "-te"
+    assert len(markers.data["2sg"]) == 3
+    assert markers.data["2sg"][0].value == "-te"
+    assert markers.data["2sg"][0].type == "suffix"
     assert markers.data["2sg"][0].order == "suffixation"
-    assert markers.data["2sg"][1].replace == ("dt", "tt")
+    assert markers.data["2sg"][1].value == ("dt", "tt")
+    assert markers.data["2sg"][1].type == "replace"
     assert markers.data["2sg"][1].order == "assimilation"
-    assert markers.data["3sg"] == []
+    assert len(markers.data["3sg"]) == 1
 
     assert markers.__dict__["1sg"] == markers.data["1sg"]
     assert markers.__dict__["2sg"] == markers.data["2sg"]
@@ -106,13 +112,19 @@ def test_contingent_markers_from_config_flattens_explicit_nesting_and_supports_l
     config_path = os.path.join(EXAMPLE_CONFIG_DIR, "markers", "contingent_markers.yaml")
     config = {
         "features": ["subject", "object"],
-        "global_attributes": {"order": "argument_marker"},
+        "global_order": "argument_marker",
         "markers": {
             "object": {
                 "3sg": {
                     "subject": {
-                        "1sg": {"prefix": "[CL]-", "suffix": "-e"},
-                        "2sg": {"prefix": "[CL]-", "suffix": "-a"},
+                        "1sg": [
+                            {"type": "prefix", "value": "[CL]-"},
+                            {"type": "suffix", "value": "-e"}
+                        ],
+                        "2sg": [
+                            {"type": "prefix", "value": "[CL]-"},
+                            {"type": "suffix", "value": "-a"},
+                        ]
                     }
                 }
             }
@@ -130,9 +142,11 @@ def test_contingent_markers_from_config_flattens_explicit_nesting_and_supports_l
     }
 
     subject_1sg = markers.get_marker(subject="1sg", object="3sg")
-    assert len(subject_1sg) == 1
-    assert subject_1sg[0].prefix == "[CL]-"
-    assert subject_1sg[0].suffix == "-e"
+    assert len(subject_1sg) == 2
+    assert subject_1sg[0].value == "[CL]-"
+    assert subject_1sg[0].type == "prefix"
+    assert subject_1sg[1].type == "suffix"
+    assert subject_1sg[1].value == "-e"
     assert subject_1sg[0].order == "argument_marker"
 
 
@@ -141,11 +155,11 @@ def test_contingent_markers_supports_implicit_nesting():
         "features": ["tense", "person"],
         "markers": {
             "present": {
-                "1sg": {"suffix": "-o"},
-                "2sg": {"suffix": "-as"},
+                "1sg": {"type": "suffix", "value": "-o"},
+                "2sg": {"type": "suffix", "value": "-as"},
             },
             "past": {
-                "1sg": {"suffix": "-e"},
+                "1sg": {"type": "suffix", "value": "-e"},
             },
         },
     }
@@ -157,13 +171,16 @@ def test_contingent_markers_supports_implicit_nesting():
         "person=2sg tense=present",
         "person=1sg tense=past",
     }
-    assert markers.get_marker(person="2sg", tense="present")[0].suffix == "-as"
+    assert markers.get_marker(person="2sg", tense="present")[0].type == "suffix"
+    assert markers.get_marker(person="2sg", tense="present")[0].value == "-as"
 
 
 def test_contingent_markers_get_marker_raises_for_unknown_combination():
     markers = ContingentMarkers(
         features=["subject", "object"],
-        data={"object=3sg subject=1sg": [Marker(prefix="[CL]-")]},
+        data={"object=3sg subject=1sg": [
+            Marker(type="prefix", value="[CL]-")
+        ]},
     )
 
     with pytest.raises(KeyError, match="No marker found"):
@@ -222,21 +239,25 @@ def test_marker_registries_load_real_project_configs():
     subj_markers = marker_registry.get("ipfv_subj_markers")
     assert isinstance(subj_markers, FeatureMarkers)
     assert subj_markers.feature == "subject"
-    assert subj_markers.data["1sg"][0].prefix == "íŋ-<CL>-"
+    assert subj_markers.data["1sg"][0].type == "prefix"
+    assert subj_markers.data["1sg"][0].value == "íŋ-[CL]-"
     assert subj_markers.data["1sg"][0].order == "argument_marker"
 
     class_prefixes = marker_registry.get("class_prefixes")
     assert isinstance(class_prefixes, FeatureMarkers)
-    assert class_prefixes.data["l"][0].replace == ("[CL]", "l")
+    assert class_prefixes.data["l"][0].type == "replace"
+    assert class_prefixes.data["l"][0].value == ("[CL]", "l")
     assert class_prefixes.data["l"][0].order == "class_prefix"
 
     obj_3sg = marker_registry.get("ipfv_3person_obj_markers")
     assert isinstance(obj_3sg, ContingentMarkers)
     markers = obj_3sg.get_marker(subject="1sg", object="3sg")
-    assert len(markers) == 1
-    assert markers[0].prefix == "[CL]-"
-    assert markers[0].suffix == "-ɛ́"
-    assert markers[0].order == "argument_marker"
+    assert len(markers) == 2
+    assert markers[0].type == "prefix"
+    assert markers[0].value == "[CL]-"
+    assert markers[1].type == "suffix"
+    assert markers[1].value == "-ɛ́"
+    assert markers[1].order == "argument_marker"
 
 
 def test_marker_registry_get_raises_for_unknown_name():

@@ -1,0 +1,5 @@
+kind: Inventory
+data:
+  slot_flags:
+    _ref: "<Slot>"
+    _flags: ["[CL]"]

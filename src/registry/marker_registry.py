@@ -32,7 +32,8 @@ from dataclasses import dataclass, field
 
 from loguru import logger
 
-from src.fst_utils import TransducerList, Prefix, Suffix
+from src.fst_utils import TransducerList
+from src.registry.feature_registry import FeatureRegistry
 from src.registry.fst_registry import FstRegistry
 from src.registry.registry_utils import Registry
 
@@ -102,6 +103,9 @@ class Marker(TransducerList):
         """
         Build a Marker from a YAML marker dict. Returns None for null (zero-marking).
         """
+        if type(global_order) is not str and global_order is not None:
+            raise ValueError(f"Expected global_order to be a string or None, but got {type(global_order)}")
+
         order = config.get('order', global_order)
         value = config['value']
         marker_type = config['type']
@@ -137,10 +141,14 @@ class Marker(TransducerList):
 
         markers = []
         for item in config:
+            if item is None:
+                continue
             marker = cls.from_config(item, global_order=global_order)
             if marker is not None:
                 markers.append(marker)
-        markers.extend(global_markers)
+        
+        # add global markers
+        markers.extend(cls.from_config(m, global_order=global_order) for m in global_markers)
         return markers
 
     def __str__(self):
@@ -195,6 +203,9 @@ class FeatureMarkers:
                 global_markers=global_markers,
                 global_order=global_order,
             )
+        global_markers = Marker.list_from_config(
+            global_markers, global_order=global_order
+        )
 
         return cls(
             feature=feature,
@@ -263,12 +274,12 @@ class ContingentMarkers(FeatureQueryMixin):
     Attributes:
         features: List of feature names this config covers
         data: Dict mapping stringified feature combos to Marker lists
-        global_attributes: Attributes applied to every marker
+        global_order: Order applied to every marker
         source: Filepath this config was loaded from
     """
     features: List[str] = field(default_factory=list)
     data: Dict[str, List[Marker]] = field(default_factory=dict)
-    global_attributes: dict = field(default_factory=dict)
+    global_order: Optional[str] = None
     source: Optional[os.PathLike] = None
 
     def __post_init__(self):
@@ -279,20 +290,20 @@ class ContingentMarkers(FeatureQueryMixin):
         """Build a ContingentMarkers from a full YAML config dict."""
         features = config.get('features', [])
         source = config.get('source_path')
-        global_attrs = config.get('global_attributes', {})
+        global_order = config.get('global_order', None)
         markers_config = config.get('markers', {})
 
         data = _flatten_contingent_markers(
             node=markers_config,
             all_features=features,
             assigned={},
-            global_attrs=global_attrs,
+            global_order=global_order,
         )
 
         return cls(
             features=features,
             data=data,
-            global_attributes=global_attrs,
+            global_order=global_order,
             source=source,
         )
 
@@ -310,7 +321,7 @@ def _flatten_contingent_markers(
     node: dict,
     all_features: List[str],
     assigned: Dict[str, str],
-    global_attrs: dict,
+    global_order: Optional[str],
 ) -> Dict[str, List[Marker]]:
     """
     Recursively flatten a nested contingent-marker YAML structure into a flat
@@ -328,7 +339,7 @@ def _flatten_contingent_markers(
     if not unassigned:
         # All features assigned — node is a marker config (base case)
         # Build Marker objects
-        markers = Marker.list_from_config(node, global_attrs)
+        markers = Marker.list_from_config(node, global_order=global_order)
         key = ' '.join(f"{f}={v}" for f, v in sorted(assigned.items()))
         result[key] = markers
         return result
@@ -346,7 +357,7 @@ def _flatten_contingent_markers(
             for feat_val, sub_node in node[feat_name].items():
                 new_assigned = {**assigned, feat_name: feat_val}
                 result.update(_flatten_contingent_markers(
-                    sub_node, all_features, new_assigned, global_attrs,
+                    sub_node, all_features, new_assigned, global_order,
                 ))
     else:
         # Keys are values for the next unassigned feature (implicit)
@@ -356,7 +367,7 @@ def _flatten_contingent_markers(
                 continue
             new_assigned = {**assigned, next_feat: feat_val}
             result.update(_flatten_contingent_markers(
-                sub_node, all_features, new_assigned, global_attrs,
+                sub_node, all_features, new_assigned, global_order,
             ))
 
     return result
@@ -376,19 +387,15 @@ class FeatureMarkersRegistry(Registry):
         self,
         data: Optional[Dict[str, FeatureMarkers]] = None,
         config_lists: Optional[List[dict]] = None,
-        fst_registry: Optional[FstRegistry] = None,
     ):
         super().__init__(
             kind="FeatureMarkers", data=data, config_list=config_lists
         )
-        self.fst_registry = fst_registry
 
     @classmethod
     def from_config_dir(cls, config_dir: str) -> FeatureMarkersRegistry:
         registry = super().from_config_dir(config_dir=config_dir)
         registry.data = registry.load_all_configs()
-        fst_registry = FstRegistry.from_config_dir(config_dir)
-        registry.fst_registry = fst_registry
         return registry
 
     def load_all_configs(self) -> Dict[str, FeatureMarkers]:
@@ -472,9 +479,10 @@ class ContingentMarkersRegistry(Registry):
 
 class MarkerRegistry:
     """
-    Orchestrates FeatureMarkersRegistry, ContingentMarkersRegistry
-    and FstRegistry. Uses the lattermost to compile FSTs for markers
-    contained in the former two classes.
+    Orchestrates FeatureMarkersRegistry, ContingentMarkersRegistry,
+    FeatureRegistry and FstRegistry. Uses the lattermost to compile FSTs for markers
+    contained in the former two classes, uses FeatureRegistry to validate all feature
+    combintions and values listed.
     """
 
     def __init__(
@@ -482,6 +490,7 @@ class MarkerRegistry:
         feature_markers_registry: FeatureMarkersRegistry,
         contingent_markers_registry: ContingentMarkersRegistry,
         fst_registry: FstRegistry,
+        feature_registry: FeatureRegistry,
     ):
         self.feature_markers_registry = feature_markers_registry
         self.contingent_markers_registry = contingent_markers_registry
@@ -493,6 +502,9 @@ class MarkerRegistry:
             contingent_markers_registry.data
         )
         self.fst_registry = fst_registry
+        self.feature_registry = feature_registry
+        self.features = feature_registry.features
+        self.feature_combinations = feature_registry.feature_combinations
 
         self.is_initialized = False
         self.initialize()
@@ -510,23 +522,67 @@ class MarkerRegistry:
         fst_registry = FstRegistry.from_config_dir(
             config_dir
         )
+        feature_registry = FeatureRegistry.from_config_dir(
+            config_dir
+        )
         return cls(
             feature_markers_registry,
             contingent_markers_registry,
             fst_registry,
+            feature_registry
         )
     
+    def _validate_feature_values(self):
+        """
+        Iterate through every `FeatureMarkers` object and check its features
+        are supported by `self.feature_registry`
+        """
+        for markers_name, markers in self.feature_markers.items():
+            feature_name = markers.feature
+            if feature_name not in self.features:
+                raise KeyError(f"{markers_name} has unsupported feature {feature_name}")
+            feature = self.features[feature_name]
+            for feature_val in markers.data:
+                if feature_val not in feature.values:
+                    raise KeyError(
+                        f"Unsupported value {feature_val} for feature {feature_name} "
+                        f"in marker set {markers_name}. Expected values are {feature.values}"
+                    )
+    
+    def _validate_contingent_features(self):
+        """
+        Iterate through every `ContingentMarkers` object and check its features
+        are supported by `self.feature_registry`
+        """
+        for markers_name, markers in self.contingent_markers.items():
+            for feature_name in markers.features:
+                if feature_name not in self.features:
+                    raise KeyError(f"{markers_name} has unsupported feature {feature_name}")
+            for feature_vector_string in markers.data:
+                feature_dict = markers._feature_str_to_dict(feature_vector_string)
+                for feature_name, feature_val in feature_dict.items():
+                    feature = self.features[feature_name]
+                    if feature_val not in feature.values:
+                        raise KeyError(
+                            f"Unsupported value {feature_val} for feature {feature_name} "
+                            f"in marker set {markers_name}. Expected values are {feature.values}"
+                        )
+    
     def initialize(self):
+        self._validate_feature_values()
+        self._validate_contingent_features()
         self._build_all_marker_transducers()
         self.is_initialized = True
 
     def _build_all_marker_transducers(self):
-        for marker_list in self.feature_markers.values():
-            for marker in marker_list:
-                self._build_marker_transducer(marker)
-        for marker_list in self.contingent_markers.values():
-            for marker in marker_list:
-                self._build_marker_transducer(marker)
+        for marker_set in self.feature_markers.values():
+            for marker_list in marker_set.data.values():
+                for marker in marker_list:
+                    self._build_marker_transducer(marker)
+        for marker_set in self.contingent_markers.values():
+            for marker_list in marker_set.data.values():
+                for marker in marker_list:
+                    self._build_marker_transducer(marker)
 
     def _build_marker_transducer(self, marker: Marker):
         if marker.type == 'rule':

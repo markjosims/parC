@@ -27,6 +27,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 import os
 from typing import Dict, List, Optional, Tuple, Literal, Union
+import unicodedata
 from loguru import logger
 import pynini
 from pynini.lib import rewrite
@@ -646,6 +647,23 @@ class Rule(TransducerList):
 
     def __str__(self):
         return f"Rule(_ref={self._ref}, type={self.type})"
+    
+class AnonymousRule(Rule):
+    """
+    A subclass of Rule to represent rules that are generated internally by the FstRegistry
+    and not specified directly by the user in a config file. These rules do not have a _ref
+    string since they are not referenced directly by the user, but instead are used as helper
+    rules for implementing replace or suppletion markers.
+    """
+
+    def __post_init__(self):
+        if self._ref:
+            raise ValueError("AnonymousRule should not have a _ref string since it is not directly referenced by the user.")
+        
+        # set generic ref string to avoid ValueError
+        # on Rule __post_init__
+        self._ref = f"anonymous_rule_{id(self)}"
+        super().__post_init__()
 
 class FstRegistry(Registry, ReservedSymbolMixin):
     """
@@ -962,13 +980,15 @@ class FstRegistry(Registry, ReservedSymbolMixin):
     def _parse_rule_tau(self, rule: Rule) -> pynini.Fst:
         if rule.type == 'simple_rule':
             input_pattern = rule.input_pattern
+            if not input_pattern.acceptor_built:
+                input_pattern.set_acceptor(
+                    self.parse_pattern(input_pattern.value)
+                )
             output_pattern = rule.output_pattern
-            input_pattern.set_acceptor(
-                self.parse_pattern(input_pattern.value)
-            )
-            output_pattern.set_acceptor(
-                self.parse_pattern(output_pattern.value)
-            )
+            if not output_pattern.acceptor_built:
+                output_pattern.set_acceptor(
+                    self.parse_pattern(output_pattern.value)
+                )
             tau = pynini.cross(
                 input_pattern.fsa,
                 output_pattern.fsa
@@ -1031,6 +1051,17 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             )
         return acceptor
 
+    def _preprocess_str(self, input_str: str) -> str:
+        """
+        Preprocesses an input pattern string before tokenization.
+
+        This can include operations like stripping whitespace, converting to lowercase, etc.
+        For now we just strip whitespace, but more complex logic can be added here if needed.
+        """
+        input_str = input_str.strip()
+        input_str = unicodedata.normalize("NFKD", input_str)
+        return input_str
+
     def _tokenize_str(self, input_str: str) -> List[Token]:
         """
         Tokenize an input string into a list of Tokens.
@@ -1039,6 +1070,8 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         matching token at each position in the input string, and infers token
         type from the token string itself (e.g. flags start with '[', refs start with '<', etc.)
         """
+        input_str = self._preprocess_str(input_str)
+
         tokens = []
         i = 0
         while i < len(input_str):
@@ -1099,6 +1132,9 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             current_term, current_index = self._parse_term(tokens, current_index)
             terms.append(current_term)
 
+            if current_index == len(tokens):
+                break
+
             current_type = tokens[current_index].type
             if current_type == "right_delimiter":
                 # let parent handle
@@ -1114,7 +1150,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
     ) -> Tuple[pynini.Fst, int]:
         """
         Parses a term, i.e. a sequence of factors and unary operators of
-        arbitrary length.
+        arbitrary length, OR a delimited expression in parentheses or curly braces.
         """
         current_index = initial_index
         current_type = tokens[current_index].type
@@ -1122,6 +1158,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             raise ValueError(
                 f"Got unexpected token type {current_type} at start of term, tokens {tokens} current index {current_index}"
             )
+
         factors_w_operators = []
         while (
             (current_index < len(tokens)) and
@@ -1277,7 +1314,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         """
         Returns a `Prefix` object with an initialized FST
         """
-        prefix = Prefix(prefix_str)
+        prefix = Prefix(prefix_str, stem=self.sigma_star)
         prefix_fsa = self.fsa(prefix_str)
         prefix.set_transducer(prefix_fsa)
         return prefix
@@ -1286,7 +1323,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         """
         Returns a `Suffix` object with an initialized FST
         """
-        suffix = Prefix(suffix_str)
+        suffix = Suffix(suffix_str, stem=self.sigma_star)
         suffix_fsa = self.fsa(suffix_str)
         suffix.set_transducer(suffix_fsa)
         return suffix
@@ -1295,14 +1332,14 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             self,
             input_pattern: str,
             output_pattern: str
-        ) -> Rule:
+        ) -> AnonymousRule:
         """
         Returns a context-free anonymous Rule that replaces
         the input pattern with the output.
         """
         input_acceptor = self.acceptor(input_pattern)
         output_acceptor = self.acceptor(output_pattern)
-        replace_rule = Rule(
+        replace_rule = AnonymousRule(
             input_pattern=input_acceptor,
             output_pattern=output_acceptor,
         )
@@ -1427,6 +1464,49 @@ class FstRegistry(Registry, ReservedSymbolMixin):
                 all_pass = False
 
         return {"ref": pattern_ref, "results": results, "all_pass": all_pass}
+
+    def test_rule(
+        self,
+        rule_ref: str,
+        test_mappings: List[List[str]],
+    ) -> dict:
+        """
+        Test explicit input→output mappings against the compiled FST for a
+        single rule.
+
+        Returns a dict with per-mapping results and an overall ``all_pass`` flag::
+
+            {"ref": "diphthongization", "results": [...], "all_pass": True}
+
+        Raises ``KeyError`` if *rule_ref* is not in the registry.
+        """
+        if rule_ref not in self.rules:
+            raise KeyError(
+                f"Rule ref '{rule_ref}' not found in registry."
+            )
+
+        results: List[dict] = []
+        all_pass = True
+
+        for input_str, expected_output_str in test_mappings:
+            try:
+                output_fsa = self.apply_rule(input_str, rule_ref)
+                output_fsa = pynini.project(output_fsa, project_type='output')
+                expected_output_fsa = self.fsa(expected_output_str)
+                intersection = pynini.intersect(output_fsa, expected_output_fsa)
+                passed = intersection.start() != pynini.NO_STATE_ID
+            except Exception:
+                passed = False
+            results.append({
+                "input": input_str,
+                "output": expected_output_str,
+                "type": "mapping",
+                "pass": passed,
+            })
+            if not passed:
+                all_pass = False
+
+        return {"ref": rule_ref, "results": results, "all_pass": all_pass}
 
     def test_rule_mappings(self):
         """

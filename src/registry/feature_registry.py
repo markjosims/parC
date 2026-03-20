@@ -2,9 +2,9 @@
 Registries and dataclasses for morphological features.
 
 Registry classes (inherit Registry from src.registry_utils):
-- FeatureRegistry: loads/manages FeatureDefinitions configs
+- FeatureValuesRegistry: loads/manages FeatureDefinitions configs
 - FeatureCombinationsRegistry: loads/manages FeatureCombinations configs
-- FeaturesRegistry: orchestrates both registries
+- FeatureRegistry: orchestrates both registries
 
 Dataclasses:
 - Feature: a single feature category and its possible values
@@ -66,7 +66,7 @@ class Feature:
         return self.__str__()
 
 
-class FeatureRegistry(Registry):
+class FeatureValuesRegisry(Registry):
     """
     Registry for ``kind: FeatureDefinitions`` configs.
     ``data`` maps feature names to Feature objects.
@@ -86,7 +86,7 @@ class FeatureRegistry(Registry):
         }
 
     @classmethod
-    def from_config_dir(cls, config_dir: str) -> FeatureRegistry:
+    def from_config_dir(cls, config_dir: str) -> FeatureValuesRegisry:
         registry = super().from_config_dir(config_dir=config_dir)
         registry.data = registry.load_all_configs()
         registry._populate_features_to_values()
@@ -229,12 +229,12 @@ class FeatureCombinationsRegistry(Registry):
 
     def __init__(
         self,
-        feature_registry: Optional[FeatureRegistry] = None,
+        feature_registry: Optional[FeatureValuesRegisry] = None,
         data: Optional[Dict[str, FeatureValueCombinations]] = None,
         config_lists: Optional[List[dict]] = None,
     ):
         self.feature_registry = (
-            feature_registry if feature_registry is not None else FeatureRegistry()
+            feature_registry if feature_registry is not None else FeatureValuesRegisry()
         )
         super().__init__(kind="FeatureCombinations", data=data, config_list=config_lists)
 
@@ -242,10 +242,10 @@ class FeatureCombinationsRegistry(Registry):
     def from_config_dir(
         cls,
         config_dir: str,
-        feature_registry: Optional[FeatureRegistry] = None,
+        feature_registry: Optional[FeatureValuesRegisry] = None,
     ) -> FeatureCombinationsRegistry:
         if feature_registry is None:
-            feature_registry = FeatureRegistry.from_config_dir(config_dir)
+            feature_registry = FeatureValuesRegisry.from_config_dir(config_dir)
         registry = cls(feature_registry=feature_registry)
         registry.config_dir = registry.feature_registry.config_dir
         registry.config_list = registry.load_config_files()
@@ -303,14 +303,14 @@ class FeatureCombinationsRegistry(Registry):
         return {name: feature_combinations}
 
 
-class FeaturesRegistry:
+class FeatureRegistry:
     """
-    Orchestrates FeatureRegistry and FeatureCombinationsRegistry.
+    Orchestrates FeatureValuesRegistry and FeatureCombinationsRegistry.
     """
 
     def __init__(
         self,
-        feature_registry: FeatureRegistry,
+        feature_registry: FeatureValuesRegisry,
         feature_combinations_registry: FeatureCombinationsRegistry,
     ):
         self.feature_registry = feature_registry
@@ -322,8 +322,8 @@ class FeaturesRegistry:
         )
 
     @classmethod
-    def from_config_dir(cls, config_dir: str) -> FeaturesRegistry:
-        feature_registry = FeatureRegistry.from_config_dir(config_dir)
+    def from_config_dir(cls, config_dir: str) -> FeatureRegistry:
+        feature_registry = FeatureValuesRegisry.from_config_dir(config_dir)
         feature_combinations_registry = FeatureCombinationsRegistry.from_config_dir(
             config_dir, feature_registry=feature_registry
         )

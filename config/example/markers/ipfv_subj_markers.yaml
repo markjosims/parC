@@ -1,21 +1,26 @@
 # Imperfective auxiliary subject markers
 kind: FeatureMarkers
-global_attributes:
-  order: argument_marker
+global_order: argument_marker
 feature: subject
 markers:
   # singular subjects are associated with g-class
   # and plural with l-class
   # class contingencies are handled in ipfv_subj_obj_features.yaml (TODO)
   1sg:
-    prefix: íŋ-<CL>-
+    type: prefix
+    value: íŋ-[CL]-
   2sg:
-    prefix: á-<CL>-
-  1du.incl:
-    prefix: á-<CL>-
+    type: prefix
+    value: á-[CL]-
+  1dual.incl:
+    type: prefix
+    value: á-[CL]-
   1pl.incl:
-    prefix: á-<CL>-
+    type: prefix
+    value: á-[CL]-
   1pl.excl:
-    prefix: ɲà-<CL>-
+    type: prefix
+    value: ɲà-[CL]-
   2pl:
-    prefix: ɲá-<CL>-
+    type: prefix
+    value: ɲá-[CL]-

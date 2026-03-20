@@ -4,6 +4,7 @@
   "description": "Schema for morphological realizations contingent on multiple features.",
   "type": "object",
   "required": ["kind", "features", "markers"],
+  "additionalProperties": false,
   "properties": {
     "source_path": {
       "type": "string",
@@ -19,12 +20,14 @@
       "minItems": 1,
       "description": "List of features involved in this contingent paradigm."
     },
-    "global_attributes": {
-      "type": "object",
-      "properties": {
-        "order": { "type": "string" }
-      },
-      "additionalProperties": true
+    "global_order": {
+      "type": "string",
+      "description": "Allows specifying a default value for the 'order' attribute."
+    },
+    "global_marker": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/marker" },
+      "description": "A marker or list of markers applied to all forms in this paradigm."
     },
     "markers": {
       "type": "object",
@@ -36,17 +39,17 @@
     "marker": {
       "type": "object",
       "properties": {
-        "suffix": { "type": "string" },
-        "prefix": { "type": "string" },
-        "replace": {
-          "type": "array",
-          "items": { "type": "string" },
-          "minItems": 2,
-          "maxItems": 2
+        "type": { 
+          "type": "string" ,
+          "enum": ["prefix", "suffix", "infix", "replace", "suppletion", "rule"]
         },
-        "rule": { "type": "string", "pattern": "^\\$.*" },
-        "suppletion": { "type": "string" },
-        "order": { "type": "string" }
+        "value": { "oneOf": [
+          { "type": "string" },
+          { "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 2 }
+          ]
+        },
+        "order": { "type": "string" },
+        "comment": { "type": "string" }
       },
       "additionalProperties": false
     },

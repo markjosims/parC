@@ -1,29 +1,38 @@
 # Tira class prefixes
 kind: FeatureMarkers
-global_attributes:
-  order: class_prefix
-feature: class
+global_order: class_prefix
+feature: class_marker
 markers:
   # class prefixes in Tira include: l, g, r, ð, n, ŋ, ɲ, j, s, t̪
   # assume that the slot for the class prefix, marked with "[CL]",
   # is assigned at a previous stage (e.g. argument_marking)
   l:
-    replace: ["[CL]", l]
+    type: replace
+    value: ["[CL]", l]
   g:
-    replace: ["[CL]", g]
+    type: replace
+    value: ["[CL]", g]
   r:
-    replace: ["[CL]", r]
+    type: replace
+    value: ["[CL]", r]
   ð:
-    replace: ["[CL]", ð]
+    type: replace
+    value: ["[CL]", ð]
   n:
-    replace: ["[CL]", n]
+    type: replace
+    value: ["[CL]", n]
   ŋ:
-    replace: ["[CL]", ŋ]
+    type: replace
+    value: ["[CL]", ŋ]
   ɲ:
-    replace: ["[CL]", ɲ]
+    type: replace
+    value: ["[CL]", ɲ]
   j:
-    replace: ["[CL]", j]
+    type: replace
+    value: ["[CL]", j]
   s:
-    replace: ["[CL]", s]
+    type: replace
+    value: ["[CL]", s]
   t̪:
-    replace: ["[CL]", t̪]
+    type: replace
+    value: ["[CL]", t̪]

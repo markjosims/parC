@@ -1,20 +1,26 @@
 # Imperfective auxiliary object suffixes
 kind: FeatureMarkers
-global_attributes:
-  order: argument_marker
+global_order: argument_marker
 feature: object
 markers:
   1sg:
-    suffix: -ŋɛ̂
+    type: suffix
+    value: -ŋɛ̂
   2sg:
-    suffix: -ŋâ
-  1du.incl:
-    suffix: -tɛ́
+    type: suffix
+    value: -ŋâ
+  1dual.incl:
+    type: suffix
+    value: -tɛ́
   1pl.incl:
-    suffix: -tɛ́
+    type: suffix
+    value: -tɛ́
   1pl.excl:
-    suffix: -éɲár
+    type: suffix
+    value: -éɲár
   2pl:
-    suffix: -tɛ́
+    type: suffix
+    value: -tɛ́
   3pl:
-    suffix: '(-ĺ)|(-ló)'
+    type: suffix
+    value: '(-ĺ)|(-ló)'
