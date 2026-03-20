@@ -18,6 +18,7 @@ from src.web.configs import (
 )
 from src.registry.fst_registry import FstRegistry
 from src.registry.grammar_registry import GrammarRegistry
+from src.web.feature_combinations import FeatureCombinationsEditor
 from src.web.features import FeatureDefinitionsEditor
 from src.web.inventory import InventoryEditor
 from src.web.patterns import PatternsEditor
@@ -33,6 +34,7 @@ EDITORS = {
     "Patterns": PatternsEditor(),
     "Rules": RulesEditor(),
     "FeatureDefinitions": FeatureDefinitionsEditor(),
+    "FeatureCombinations": FeatureCombinationsEditor(),
 }
 
 
@@ -173,6 +175,16 @@ def features_add_entry():
 @bp.post("/features/remove-entry/<feature_id>")
 def features_remove_entry(feature_id: str):
     return _remove_item_handler("FeatureDefinitions", feature_id)
+
+
+@bp.post("/feature-combinations/add-entry")
+def feature_combinations_add_entry():
+    return _add_item_handler("FeatureCombinations")
+
+
+@bp.post("/feature-combinations/remove-entry/<combo_id>")
+def feature_combinations_remove_entry(combo_id: str):
+    return _remove_item_handler("FeatureCombinations", combo_id)
 
 
 @bp.post("/rules/add-entry")

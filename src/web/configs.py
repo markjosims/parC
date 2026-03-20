@@ -14,6 +14,7 @@ KIND_DIRECTORY_NAMES = {
     "Rule": "rules",
     "Feature": "features",
     "FeatureDefinitions": "features",
+    "FeatureCombinations": "features",
     "Marker": "markers",
     "Paradigm": "paradigms",
     "PartOfSpeech": "parts_of_speech",
