@@ -3,7 +3,7 @@
   "title": "ContingentFeatureMarkers",
   "description": "Schema for morphological realizations contingent on multiple features.",
   "type": "object",
-  "required": ["kind", "features", "markers"],
+  "required": ["kind", "inner_feature", "outer_feature", "markers"],
   "additionalProperties": false,
   "properties": {
     "source_path": {
@@ -14,11 +14,13 @@
       "type": "string",
       "enum": ["ContingentFeatureMarkers"]
     },
-    "features": {
-      "type": "array",
-      "items": { "type": "string" },
-      "minItems": 1,
-      "description": "List of features involved in this contingent paradigm."
+    "inner_feature": {
+      "type": "string",
+      "description": "The name of the feature whose values define the inner branches of the hierarchy."
+    },
+    "outer_feature": {
+      "type": "string",
+      "description": "The name of the feature whose values define the outer branches of the hierarchy."
     },
     "global_order": {
       "type": "string",
@@ -30,32 +32,31 @@
       "description": "A marker or list of markers applied to all forms in this paradigm."
     },
     "markers": {
-      "type": "object",
-      "description": "The root of the contingent hierarchy.",
-      "$ref": "#/definitions/nestedNode"
-    }
-  },
-  "definitions": {
-    "nestedNode": {
-      "type": "object",
-      "additionalProperties": {
-        "oneOf": [
-          { "type": "null" },
-          { "$ref": "./FeatureMarkers.json#/definitions/marker" },
-          {
-            "type": "array",
-            "items": { "$ref": "./FeatureMarkers.json#/definitions/marker" }
+      "type": "array",
+      "description": "An array over outer feature values.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "outer_feature_value": {
+            "type": "string",
+            "description": "The feature value specified for the outer feature for all child nodes."
           },
-          {
+          "inner_feature_values": {
             "type": "object",
-            "properties": {
-              "inherits": { "type": "string", "pattern": "^\\$.*" }
-            },
-            "additionalProperties": { "$ref": "#/definitions/nestedNode" }
-          },
-          { "$ref": "#/definitions/nestedNode" }
-        ]
-      }
+            "additionalProperties": { 
+              "oneOf": [
+                { "$ref": "./FeatureMarkers.json#/definitions/marker" },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "./FeatureMarkers.json#/definitions/marker"
+                  }
+                }
+              ]
+          }
+          }
+        }
+      } 
     }
   }
 }

@@ -23,35 +23,37 @@ markers:
 ```
 
 ## ContingentFeatureMarkers
-This file gives a paradigm of formatives for multiple features at once.
+This file gives a subparadigm of formatives for two feature sets at once.
 This is helpful for cases where the morphological realization of one feature depends on the value of another feature.
-The 'features' attribute is a list of all relevant features, and the 'markers' attribute is a nested list of dictionaries...
+The given features are specified using the 'outer_feature' and 'inner_feature' attrs, and the markers are specified using nested objects.
 ```yaml
 # person_tense_markers_a_stem.yaml
 kind: ContingentFeatureMarkers
-features: [person, tense]
+outer_feature: tense
+inner_feature: person
 markers:
-    tense:
-        present:
-            1sg:
-                type: suffix
-                value: -o
-            2sg:
-                type: suffix
-                value: -as
-            3sg:
-                type: suffix
-                value: -a
-        past:
-            1sg:
-                type: suffix
-                value: -é
-            2sg:
-                type: suffix
-                value: -aste
-            3sg:
-                type: suffix
-                value: -ó
+- outer_feature_value: present
+    inner_feature_values:
+      1sg:
+        type: suffix
+        value: -o
+      2sg:
+        type: suffix
+        value: -as
+      3sg:
+        type: suffix
+        value: -a
+- outer_feature_value: past
+  inner_feature_values:
+    1sg:
+      type: suffix
+      value: -é
+    2sg:
+      type: suffix
+      value: -aste
+    3sg:
+      type: suffix
+      value: -ó
 ```
 
 ## Marker keys

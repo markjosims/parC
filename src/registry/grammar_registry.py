@@ -20,7 +20,7 @@ from loguru import logger
 
 from src.registry.registry_utils import Registry
 from src.registry.marker_registry import (
-    MarkerRegistry, FeatureMarkers, ContingentMarkers
+    Marker, MarkerRegistry, FeatureMarkers, ContingentMarkers
 )
 from src.registry.fst_registry import FstRegistry
 from src.registry.feature_registry import FeatureRegistry, FeatureValueCombinations
@@ -238,6 +238,34 @@ class Paradigm:
     #         records.append(record)
     #     return pd.DataFrame(records)
 
+    def _build_all_marker_transducers(self):
+        for marker_set in self.feature_markers.values():
+            for marker_list in marker_set.data.values():
+                for marker in marker_list:
+                    self._build_marker_transducer(marker)
+        for marker_set in self.contingent_markers.values():
+            for marker_list in marker_set.data.values():
+                for marker in marker_list:
+                    self._build_marker_transducer(marker)
+
+    def _build_marker_transducer(self, marker: Marker):
+        if marker.type == 'rule':
+            marker_rule = self.fst_registry.rules[marker.value]
+        elif marker.type == 'prefix':
+            marker_rule = self.fst_registry.prefix(marker.value)
+        elif marker.type == 'suffix':
+            marker_rule = self.fst_registry.suffix(marker.value)
+        elif marker.type == 'replace':
+            marker_rule = self.fst_registry.replace_transducer(
+                marker.value[0], marker.value[1]
+            )
+        elif marker.type == 'suppletion':
+            sigma_star = '<Sigma>*'
+            marker_rule = self.fst_registry.replace_transducer(
+                sigma_star, marker.value
+            )
+        marker.set_transducer(marker_rule.fst)
+
 class GrammarRegistry(Registry):
     """
     Orchestrates all registries for a given language.
@@ -265,3 +293,35 @@ class GrammarRegistry(Registry):
             marker_registry=MarkerRegistry.from_config_dir(config_dir),
             lexicon_registry=LexiconRegistry.from_config_dir(config_dir),
         )
+    
+# class FeatureQueryMixin:
+#     """
+#     Mixin providing methods for querying markers based on feature dictionaries.
+#     Converts between 'feature=value feature=value' strings and dicts, with
+#     consistent alphabetical ordering of features.
+#     """
+
+#     def _feature_str_to_dict(self, feature_str: str) -> Dict[str, str]:
+#         """Convert 'feature=value feature=value' string to a dict."""
+#         feature_dict = {}
+#         for feature_value in feature_str.split(' '):
+#             feature, value = feature_value.split('=')
+#             feature_dict[feature] = value
+#         return feature_dict
+
+#     def _stringify_feature_dict(self, feature_dict: Dict[str, str]) -> str:
+#         """Convert a feature dict to a sorted 'feature=value feature=value' string."""
+#         return ' '.join(
+#             f"{feature}={value}"
+#             for feature, value in sorted(feature_dict.items())
+#         )
+
+#     def get_marker(self, **feature_dict: str) -> MarkerList:
+#         """Retrieve markers for a given set of feature values."""
+#         key = self._stringify_feature_dict(feature_dict)
+#         data = getattr(self, 'data', None)
+#         if data is None:
+#             raise ValueError("No data attribute found.")
+#         if key not in data:
+#             raise KeyError(f"No marker found for feature combination: {key}")
+#         return data[key]

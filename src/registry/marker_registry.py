@@ -20,7 +20,6 @@ Dataclasses:
 - ContingentMarkers: maps combinations of multiple feature values to Markers
 
 Utilities:
-- FeatureQueryMixin: feature string <-> dict conversion and lookup
 - FeatureValueCombinations: tracks licit feature-value combinations
 """
 
@@ -39,6 +38,7 @@ from src.registry.fst_registry import FstRegistry
 from src.registry.registry_utils import Registry
 
 from src.constants import EXAMPLE_CONFIG_DIR
+from graphlib import TopologicalSorter
 
 # ---------------------------------------------------------------------------
 # Marker dataclass
@@ -153,7 +153,7 @@ class MarkerList(UserList):
         cls,
         config,
         global_order: Optional[str] = None,
-        global_markers: Optional[List[Marker]] = None,
+        global_markers: Union[MarkerList, List[dict], None] = None,
     ) -> MarkerList:
         """
         Build a list of Markers from a YAML value that may be:
@@ -189,18 +189,20 @@ class MarkerList(UserList):
             else:
                 markers.append(marker)
 
-        if global_markers:
-            # global marker may specify a principal_part marker
-            # but it will be overriden by any principal_part marker
-            # specified at the value level
-            for item in global_markers:
-                marker = Marker.from_config(item, global_order=global_order)
-                if marker is None:
-                    raise ValueError("Global markers cannot be null.")
-
+        # merge in global markers, ensuring no more than one 'principal_part' marker total
+        if global_markers is not None:
+            if not isinstance(global_markers, MarkerList):
+                global_markers = MarkerList.from_config(global_markers, global_order=global_order)
+            for marker in global_markers:
                 if marker.type == 'principal_part':
                     if principal_part_marker is None:
                         principal_part_marker = marker
+                    else:
+                        logger.info(
+                            "Child config already has a 'principal_part' marker, "
+                            "and global_markers contains another. The global 'principal_part' "
+                            "marker will be ignored since child configs take precedence."
+                        )
                 else:
                     markers.append(marker)
         
@@ -213,13 +215,31 @@ class MarkerList(UserList):
         if marker.type != 'principal_part':
             raise ValueError(f"Can only set principal part marker, but got marker of type {marker.type}")
         if self.has_principal_part and not override:
-            raise ValueError("MarkerList already has a 'principal_part' marker, and override is set to False")
+            logger.info("MarkerList already has a 'principal_part' marker, and override is set to False")
+            return
         if self.has_principal_part and override:
             # remove existing principal part marker
             self.data = [m for m in self.data if m.type != 'principal_part']
         self.data.insert(0, marker)
         self.has_principal_part = True
-    
+
+    def merge_list(self, other: MarkerList, global_order: Optional[str] = None):
+        """
+        Merge another MarkerList into this one, ensuring principal_part constraints are maintained.
+        If both lists have a principal_part marker, the one from `other` will override this one's.
+        """
+        if other.has_principal_part:
+            other_principal_part = [m for m in other if m.type == 'principal_part'][0]
+            self.set_principal_part(other_principal_part, override=True)
+        
+        for marker in other:
+            if marker.type != 'principal_part':
+                self.append(marker)
+
+        for marker in self:
+            if marker.order is None and global_order is not None:
+                marker.order = global_order
+
     # basic list operations with type checks and principal_part constraints
 
     def __setitem__(self, i, item):
@@ -278,13 +298,22 @@ class FeatureMarkers:
         global_markers: Optional markers applied to all feature values
         source: Filepath this config was loaded from
     """
-    feature: str = ''
+    feature: str
+    inherits: Optional[str] = None
+
     data: Dict[str, MarkerList] = field(default_factory=dict)
     global_order: Optional[str] = None
     global_markers: MarkerList = field(default_factory=MarkerList)
     source: Optional[os.PathLike] = None
 
     def __post_init__(self):
+        if not self.feature:
+            raise ValueError("FeatureMarkers must have a feature name.")
+
+        self.parent_data_loaded = False
+        self._set_data_attrs()
+
+    def _set_data_attrs(self):
         # Set dynamic attributes so ParadigmMarkers can use
         # getattr(marker_map, feature_value) for lookup
         for key, value in self.data.items():
@@ -298,8 +327,10 @@ class FeatureMarkers:
         global_order = config.get('global_order', None)
         global_markers = config.get('global_markers', [])
         markers_config = config.get('markers', {})
+        inherits = config.get('inherits', None)
 
         data = {}
+
         for value_name, marker_config in markers_config.items():
             data[value_name] = MarkerList.from_config(
                 marker_config,
@@ -310,13 +341,56 @@ class FeatureMarkers:
             global_markers, global_order=global_order
         )
 
-        return cls(
+        markers = cls(
             feature=feature,
             data=data,
             global_order=global_order,
             global_markers=global_markers,
             source=source,
+            inherits=inherits,
         )
+        return markers
+    
+    def update_from_parent(self, parent_config: FeatureMarkers):
+        # apply any inherited global order and markers from parent config
+        global_markers = self._merge_global_markers(parent_config)
+        if self.global_order is None and parent_config.global_order is not None:
+            self.global_order = parent_config.global_order
+
+        for marker_list in self.data.values():
+            marker_list.merge_list(global_markers, global_order=self.global_order)
+
+        # insert parent marker values if not present in child config
+        for value_name, parent_marker_list in parent_config.data.items():
+            if value_name not in self.data:
+                self.data[value_name] = parent_marker_list
+
+        self._set_data_attrs()
+        self.parent_data_loaded = True        
+        
+
+    def _merge_global_markers(self, parent_config: FeatureMarkers):
+        # eagerly check if child and parent config both have
+        # 'principal_part' global marker
+        parent_global_markers = parent_config.global_markers or []
+
+        parent_has_principal_part = any(
+            m.type == 'principal_part' for m in parent_global_markers
+        )
+
+        if not self.has_principal_part and parent_has_principal_part:
+            # if only parent has a principal_part marker, child inherits it
+            self.global_markers.set_principal_part(
+                next(m for m in parent_global_markers if m.type == 'principal_part'),
+                override=False,
+            )
+            self.has_principal_part = True
+
+        parent_global_markers = [
+            m for m in parent_global_markers if m.type != 'principal_part'
+        ]
+
+        self.global_markers.extend(parent_global_markers)      
 
     def __str__(self):
         return f"FeatureMarkers(feature='{self.feature}', values={list(self.data.keys())})"
@@ -325,164 +399,114 @@ class FeatureMarkers:
         return self.__str__()
 
 # ---------------------------------------------------------------------------
-## FeatureQueryMixin
-# ---------------------------------------------------------------------------
-
-class FeatureQueryMixin:
-    """
-    Mixin providing methods for querying markers based on feature dictionaries.
-    Converts between 'feature=value feature=value' strings and dicts, with
-    consistent alphabetical ordering of features.
-    """
-
-    def _feature_str_to_dict(self, feature_str: str) -> Dict[str, str]:
-        """Convert 'feature=value feature=value' string to a dict."""
-        feature_dict = {}
-        for feature_value in feature_str.split(' '):
-            feature, value = feature_value.split('=')
-            feature_dict[feature] = value
-        return feature_dict
-
-    def _stringify_feature_dict(self, feature_dict: Dict[str, str]) -> str:
-        """Convert a feature dict to a sorted 'feature=value feature=value' string."""
-        return ' '.join(
-            f"{feature}={value}"
-            for feature, value in sorted(feature_dict.items())
-        )
-
-    def get_marker(self, **feature_dict: str) -> MarkerList:
-        """Retrieve markers for a given set of feature values."""
-        key = self._stringify_feature_dict(feature_dict)
-        data = getattr(self, 'data', None)
-        if data is None:
-            raise ValueError("No data attribute found.")
-        if key not in data:
-            raise KeyError(f"No marker found for feature combination: {key}")
-        return data[key]
-
-
-# ---------------------------------------------------------------------------
 # ContingentMarkers dataclass
 # ---------------------------------------------------------------------------
 
 @dataclass
-class ContingentMarkers(FeatureQueryMixin):
+class ContingentMarkers:
     """
-    Maps combinations of multiple feature values to Marker lists.
+    Maps combinations of exactly two feature values to Marker lists.
     Corresponds to a ``kind: ContingentFeatureMarkers`` YAML config.
 
-    Keys in ``data`` are sorted 'feature=value feature=value' strings,
-    enabling O(1) lookup via :meth:`get_marker`.
+    The outer feature partitions the markers into groups, each stored as
+    a :class:`FeatureMarkers` keyed on the inner feature.  Lookup is
+    two-step: outer value → FeatureMarkers → inner value → MarkerList.
 
     Attributes:
-        features: List of feature names this config covers
-        data: Dict mapping stringified feature combos to Marker lists
+        outer_feature: Name of the feature that partitions the marker groups
+        inner_feature: Name of the feature whose values are marked within each group
+        inner_maps: Dict mapping outer feature values to FeatureMarkers objects
         global_order: Order applied to every marker
+        global_markers: Markers applied to all feature values
         source: Filepath this config was loaded from
     """
-    features: List[str] = field(default_factory=list)
-    data: Dict[str, MarkerList] = field(default_factory=dict)
+    outer_feature: str = ""
+    inner_feature: str = ""
+    inner_maps: Dict[str, FeatureMarkers] = field(default_factory=dict)
     global_order: Optional[str] = None
     global_markers: MarkerList = field(default_factory=MarkerList)
     source: Optional[os.PathLike] = None
 
     def __post_init__(self):
-        self.feature_names = list(sorted(self.features))
+        if not self.outer_feature:
+            raise ValueError("ContingentMarkers must have an outer_feature.")
+        if not self.inner_feature:
+            raise ValueError("ContingentMarkers must have an inner_feature.")
 
     @classmethod
     def from_config(cls, config: dict) -> ContingentMarkers:
         """Build a ContingentMarkers from a full YAML config dict."""
-        features = config.get('features', [])
+        outer_feature = config.get('outer_feature', '')
+        inner_feature = config.get('inner_feature', '')
         source = config.get('source_path')
         global_order = config.get('global_order', None)
-        global_markers = config.get('global_markers', [])
-        markers_config = config.get('markers', {})
+        global_markers_config = config.get('global_markers', [])
+        markers_config = config.get('markers', [])
 
-        data = _flatten_contingent_markers(
-            node=markers_config,
-            all_features=features,
-            assigned={},
-            global_markers=global_markers,
-            global_order=global_order,
+        global_markers = MarkerList.from_config(
+            global_markers_config, global_order=global_order
         )
 
+        inner_maps: Dict[str, FeatureMarkers] = {}
+        for entry in markers_config:
+            outer_value = entry['outer_feature_value']
+            inner_feature_values = entry.get('inner_feature_values', {})
+
+            # Build a FeatureMarkers config dict and delegate
+            fm_config = {
+                'feature': inner_feature,
+                'markers': inner_feature_values,
+                'global_order': global_order,
+                'global_markers': global_markers_config,
+            }
+            inner_maps[outer_value] = FeatureMarkers.from_config(fm_config)
+
         return cls(
-            features=features,
-            data=data,
+            outer_feature=outer_feature,
+            inner_feature=inner_feature,
+            inner_maps=inner_maps,
             global_order=global_order,
             global_markers=global_markers,
             source=source,
         )
 
+    def get_marker(self, **feature_dict: str) -> MarkerList:
+        """Retrieve markers for a given outer/inner feature value pair."""
+        outer_val = feature_dict.get(self.outer_feature)
+        inner_val = feature_dict.get(self.inner_feature)
+        if outer_val is None:
+            raise KeyError(
+                f"Missing outer feature '{self.outer_feature}' in query. "
+                f"Got: {feature_dict}"
+            )
+        if inner_val is None:
+            raise KeyError(
+                f"Missing inner feature '{self.inner_feature}' in query. "
+                f"Got: {feature_dict}"
+            )
+        if outer_val not in self.inner_maps:
+            raise KeyError(
+                f"No markers for outer feature value '{outer_val}' "
+                f"(outer_feature='{self.outer_feature}')"
+            )
+        fm = self.inner_maps[outer_val]
+        if inner_val not in fm.data:
+            raise KeyError(
+                f"No markers for inner feature value '{inner_val}' "
+                f"(inner_feature='{self.inner_feature}') "
+                f"under outer value '{outer_val}'"
+            )
+        return fm.data[inner_val]
+
     def __str__(self):
         return (
-            f"ContingentMarkers(features={self.features}, "
-            f"combos={len(self.data)})"
+            f"ContingentMarkers(outer='{self.outer_feature}', "
+            f"inner='{self.inner_feature}', "
+            f"outer_values={list(self.inner_maps.keys())})"
         )
 
     def __repr__(self):
         return self.__str__()
-
-
-def _flatten_contingent_markers(
-    node: dict,
-    all_features: List[str],
-    assigned: Dict[str, str],
-    global_order: Optional[str],
-    global_markers: Optional[MarkerList] = None,
-) -> Dict[str, MarkerList]:
-    """
-    Recursively flatten a nested contingent-marker YAML structure into a flat
-    dict keyed by sorted 'feature=value feature=value' strings.
-
-    Handles both explicit feature-name nesting (key matches a feature name)
-    and implicit value nesting (key is a value for the next unassigned feature).
-    """
-    result: Dict[str, MarkerList] = {}
-
-    # On first call, no features have been assigned
-    # Accumulate assigned features during recursion
-    unassigned = [f for f in all_features if f not in assigned]
-
-    if not unassigned:
-        # All features assigned — node is a marker config (base case)
-        # Build Marker objects
-        markers = MarkerList.from_config(
-            node,
-            global_order=global_order,
-            global_markers=global_markers,
-        )
-        key = ' '.join(f"{f}={v}" for f, v in sorted(assigned.items()))
-        result[key] = markers
-        return result
-
-    node_keys = set(node.keys()) - {'inherits'}
-
-    if node_keys & set(unassigned):
-        # Keys are feature names — explicit feature-name level
-        for feat_name in node_keys:
-            if feat_name not in unassigned:
-                raise ValueError(
-                    f"Unexpected key '{feat_name}' in contingent markers. "
-                    f"Expected one of {unassigned}."
-                )
-            for feat_val, sub_node in node[feat_name].items():
-                new_assigned = {**assigned, feat_name: feat_val}
-                result.update(_flatten_contingent_markers(
-                    sub_node, all_features, new_assigned, global_order,
-                ))
-    else:
-        # Keys are values for the next unassigned feature (implicit)
-        next_feat = unassigned[0]
-        for feat_val, sub_node in node.items():
-            if feat_val == 'inherits':
-                continue
-            new_assigned = {**assigned, next_feat: feat_val}
-            result.update(_flatten_contingent_markers(
-                sub_node, all_features, new_assigned, global_order,
-            ))
-
-    return result
 
 # ---------------------------------------------------------------------------
 # Registry classes
@@ -503,11 +527,21 @@ class FeatureMarkersRegistry(Registry):
         super().__init__(
             kind="FeatureMarkers", data=data, config_list=config_lists
         )
+        self.dependency_graph = None
+        self.sorted_configs = None
 
+        self.build_dependency_graph()
+
+    def initialize(self):
+        self.build_dependency_graph()
+        if self.dependency_graph is not None:
+            self.update_from_parents()
+        
     @classmethod
     def from_config_dir(cls, config_dir: str) -> FeatureMarkersRegistry:
         registry = super().from_config_dir(config_dir=config_dir)
         registry.data = registry.load_all_configs()
+        registry.build_dependency_graph()
         return registry
 
     def load_all_configs(self) -> Dict[str, FeatureMarkers]:
@@ -536,7 +570,30 @@ class FeatureMarkersRegistry(Registry):
         )
         feature_markers = FeatureMarkers.from_config(config)
         return {name: feature_markers}
+    
+    def build_dependency_graph(self):
+        graph = {}
+        for name, config in self.data.items():
+            parent = config.inherits
+            if parent:
+                if parent not in self.data:
+                    raise ValueError(f"Config '{name}' inherits from '{parent}', but no config named '{parent}' was found.")
+                graph[name] = parent
+        if not graph:
+            logger.info("No inheritance relationships found among FeatureMarkers configs.")
+            return
+        self.dependency_graph = graph
+        sorted_config_names = TopologicalSorter(graph).static_order()
+        self.sorted_configs = [self.data[name] for name in sorted_config_names]
 
+    def update_from_parents(self):
+        if self.dependency_graph is None:
+            logger.info("No dependency graph found, skipping parent updates.")
+            return
+        for config in self.sorted_configs:
+            if config.inherits:
+                parent_config = self.data[config.inherits]
+                config.update_from_parent(parent_config)
 
 class ContingentMarkersRegistry(Registry):
     """
@@ -667,54 +724,31 @@ class MarkerRegistry:
         are supported by `self.feature_registry`
         """
         for markers_name, markers in self.contingent_markers.items():
-            for feature_name in markers.features:
+            for feature_name in (markers.outer_feature, markers.inner_feature):
                 if feature_name not in self.features:
                     raise KeyError(f"{markers_name} has unsupported feature {feature_name}")
-            for feature_vector_string in markers.data:
-                feature_dict = markers._feature_str_to_dict(feature_vector_string)
-                for feature_name, feature_val in feature_dict.items():
-                    feature = self.features[feature_name]
-                    if feature_val not in feature.values:
+
+            outer_feature = self.features[markers.outer_feature]
+            for outer_val, inner_fm in markers.inner_maps.items():
+                if outer_val not in outer_feature.values:
+                    raise KeyError(
+                        f"Unsupported value {outer_val} for feature {markers.outer_feature} "
+                        f"in marker set {markers_name}. Expected values are {outer_feature.values}"
+                    )
+                inner_feature = self.features[markers.inner_feature]
+                for inner_val in inner_fm.data:
+                    if inner_val not in inner_feature.values:
                         raise KeyError(
-                            f"Unsupported value {feature_val} for feature {feature_name} "
-                            f"in marker set {markers_name}. Expected values are {feature.values}"
+                            f"Unsupported value {inner_val} for feature {markers.inner_feature} "
+                            f"in marker set {markers_name}. Expected values are {inner_feature.values}"
                         )
     
     def initialize(self):
         self._validate_feature_values()
         self._validate_contingent_features()
-        self._build_all_marker_transducers()
         self.is_initialized = True
 
-    def _build_all_marker_transducers(self):
-        for marker_set in self.feature_markers.values():
-            for marker_list in marker_set.data.values():
-                for marker in marker_list:
-                    self._build_marker_transducer(marker)
-        for marker_set in self.contingent_markers.values():
-            for marker_list in marker_set.data.values():
-                for marker in marker_list:
-                    self._build_marker_transducer(marker)
-
-    def _build_marker_transducer(self, marker: Marker):
-        if marker.type == 'rule':
-            marker_rule = self.fst_registry.rules[marker.value]
-        elif marker.type == 'prefix':
-            marker_rule = self.fst_registry.prefix(marker.value)
-        elif marker.type == 'suffix':
-            marker_rule = self.fst_registry.suffix(marker.value)
-        elif marker.type == 'replace':
-            marker_rule = self.fst_registry.replace_transducer(
-                marker.value[0], marker.value[1]
-            )
-        elif marker.type == 'suppletion':
-            sigma_star = '<Sigma>*'
-            marker_rule = self.fst_registry.replace_transducer(
-                sigma_star, marker.value
-            )
-        marker.set_transducer(marker_rule.fst)
-
-    def get(self, name: str) -> Union[FeatureMarkers, ContingentMarkers]:
+    def get_config(self, name: str) -> Union[FeatureMarkers, ContingentMarkers]:
         """Look up a marker config by filename stem."""
         if name in self.feature_markers:
             return self.feature_markers[name]

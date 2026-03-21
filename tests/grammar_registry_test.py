@@ -51,8 +51,8 @@ def _build_ipfv_feature_combinations():
 
 def _build_ipfv_marker_objects():
     marker_registry = MarkerRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
-    class_prefixes = marker_registry.get("class_prefixes")
-    object_markers = marker_registry.get("ipfv_obj_markers")
+    class_prefixes = marker_registry.get_config("class_prefixes")
+    object_markers = marker_registry.get_config("ipfv_obj_markers")
 
     return {
         "class_marker": FeatureMarkers(
@@ -76,7 +76,7 @@ def _build_ipfv_marker_objects():
 
 def test_paradigm_markers_combine_global_standard_and_contingent_markers_for_ipfv_slots():
     ipfv_it = _load_ipfv_it_config()
-    contingent = MarkerRegistry.from_config_dir(EXAMPLE_CONFIG_DIR).get("ipfv_3person_obj_markers")
+    contingent = MarkerRegistry.from_config_dir(EXAMPLE_CONFIG_DIR).get_config("ipfv_3person_obj_markers")
 
     paradigm = ParadigmMarkers(
         feature_value_combinations=_build_ipfv_feature_combinations(),
