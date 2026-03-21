@@ -1,4 +1,4 @@
 kind: PartOfSpeech
 name: verb
-features: [tam, deixis, class_marker, subject, object, wh]
-lexical_flags: [fv_class]
+features: [tense_mood, person_number, conjugation_class]
+lexical_flags: [spelling_class]
