@@ -103,7 +103,7 @@ class Paradigm:
         # load part of speech and lexicon
         part_of_speech_name = config['part_of_speech']
         lexicon = lexicon_registry[part_of_speech_name]
-        marker_order = config['marker_order']
+        marker_order = config['order']
 
         feature_value_combination_name = config.get('feature_value_combinations')
         if feature_value_combination_name:
