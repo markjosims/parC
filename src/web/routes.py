@@ -8,11 +8,13 @@ from flask import Blueprint, redirect, render_template, request, url_for
 import yaml
 
 from src.web.configs import (
+    delete_config_file,
     group_yaml_files_by_kind,
     known_config_kinds,
     list_config_yaml_files,
     load_config_entry,
     new_text_config_state,
+    rename_config_file,
     save_config_text,
     suggested_config_path,
 )
@@ -114,6 +116,29 @@ def config_editor():
         message=message,
         error=error,
     )
+
+
+@bp.post("/config/rename")
+def config_rename():
+    old_path = request.form.get("old_path", "").strip()
+    new_path = request.form.get("new_path", "").strip()
+    try:
+        config_dir = _local_config_dir()
+        rename_config_file(config_dir, old_path, new_path)
+        return redirect(url_for("web.index", path=new_path, message=f"Renamed to {new_path}"))
+    except (RuntimeError, ValueError, FileNotFoundError) as exc:
+        return redirect(url_for("web.index", path=old_path, error=str(exc)))
+
+
+@bp.post("/config/delete")
+def config_delete():
+    path = request.form.get("path", "").strip()
+    try:
+        config_dir = _local_config_dir()
+        delete_config_file(config_dir, path)
+        return redirect(url_for("web.index", message=f"Deleted {path}"))
+    except (RuntimeError, ValueError, FileNotFoundError) as exc:
+        return redirect(url_for("web.index", path=path, error=str(exc)))
 
 
 @bp.post("/inventory/add-child/<node_id>")

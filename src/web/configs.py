@@ -66,6 +66,38 @@ def load_config_entry(config_dir: str, relative_path: str) -> dict[str, Any]:
     return _load_entry_from_path(root, path)
 
 
+def rename_config_file(config_dir: str, old_relative: str, new_relative: str) -> str:
+    if not old_relative.strip() or not new_relative.strip():
+        raise ValueError("Both old and new file paths are required.")
+
+    old_path = safe_file_path(config_dir, old_relative)
+    new_path = safe_file_path(config_dir, new_relative)
+
+    if old_path is None or new_path is None:
+        raise ValueError("Paths must point to YAML files inside the config directory.")
+    if not old_path.exists():
+        raise FileNotFoundError(f"File not found: {old_relative}")
+    if new_path.exists():
+        raise ValueError(f"A file already exists at {new_relative}")
+
+    new_path.parent.mkdir(parents=True, exist_ok=True)
+    old_path.rename(new_path)
+    return new_relative
+
+
+def delete_config_file(config_dir: str, relative_path: str) -> None:
+    if not relative_path.strip():
+        raise ValueError("A file path is required.")
+
+    path = safe_file_path(config_dir, relative_path)
+    if path is None:
+        raise ValueError("Path must point to a YAML file inside the config directory.")
+    if not path.exists():
+        raise FileNotFoundError(f"File not found: {relative_path}")
+
+    path.unlink()
+
+
 def save_config_text(config_dir: str, relative_path: str, content: str) -> str:
     if not relative_path.strip():
         raise ValueError("A file path is required")
