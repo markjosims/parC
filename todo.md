@@ -3,7 +3,7 @@
 ### Pages
 - [x] Interactive I/O testing in rule editor [!CLAUDE]
 - [ ] Feature editor [!CLAUDE]
-- [ ] Replace stateful `FstRegistry` with `GrammarRegistry` [!MARK]
+- [x] Replace stateful `FstRegistry` with `GrammarRegistry` [!MARK]
 - [ ] Feature combinations editor [!CLAUDE]
     - Should check against `FeatureRegistry` that features and values are supported [!CLAUDE]
 - [ ] Marker editor [!CLAUDE]
@@ -27,3 +27,6 @@
     - `Paradigm.output_paradigm(stem) -> List[Dict[str, str]]` gives a list of **all inflected forms* for a given stem that the paradigm supports
         - include `require_features: Dict[str, List[str]]` and `exclude_features: Dict[str, List[str]]` args to constrain feature space (e.g. passing `require_features={"class": ['l', 'unmarked']}` will only output verb forms marked with 'l' class or with an unmarked class value)
 - [ ] Implement `PartOfSpeechRegistry` with child class `Lexicon` [!MARK]
+- [ ] Define logic for filtering stems belonging to a particular paradigm
+## Housekeeping
+- Error messages should trigger logs, and the code for this should be DRY.

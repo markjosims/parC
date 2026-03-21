@@ -62,7 +62,10 @@ In the Spanish examples above, the only formative type used is 'suffix,' but sev
 - Prefix: Prepend prefix string to stem
 - Replace: List of ["intab", "outtab"]. Replace "intab" with "outtab" across all contexts.
 - Rule: Name of rule to be applied to stem. Must be defined in a `Rules` YAML file.
-- Suppletion: Replace the entire stem with the given string. Note suppletion is not **not** compatible with any of the above operations, and attempting to combine them will throw an error when compiling the marker.
+- Suppletion: Replace the entire stem with the given string.
+Note suppletion is not **not** compatible with any of the above operations, and attempting to combine them will throw an error when compiling the marker.
+- Principal part: Functionally equivalent to suppletion where the value specifies a column in a given lexicon file and the output string of the process is the value for that column.
+See [Princpal Parts](#principle-parts) for more information.
 
 The type of formative is indicated with the `type` attr and the `value` attr contains string to be interpreted as a formative.
 A marker may contain a single formative or multiple formatives stored as a list.
@@ -273,3 +276,9 @@ markers:
     order: "Outer suffix"
 ```
 While in this case the added effort of specifying the suffix order here outweighs the effort of simply writing out "-uv-e", "-uv-iste", "-uv-o", we present this case as a demonstration of how 'global_markers' may be applied.
+
+## Principle parts
+A lexical class may specify multiple principle parts, e.g. a unique present and past stem.
+In order to select these stems for a given formative, a 'principal_part' Marker class may be used.
+
+[TODO] give example usage...

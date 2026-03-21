@@ -56,7 +56,7 @@
       "oneOf": [
         { "type": "string", "pattern": "^\\$.*" },
         { "type": "array", "items": { "type": "string", "pattern": "^\\$.*" } },
-        { "$ref": "./FeatureCombinations.json#/definitions/combinations" }
+        { "$ref": "FeatureCombinations.json#/definitions/combinations" }
       ],
       "description": "Imported or inline configuration(s) defining valid feature cross-products. If blank, all combinations of features are generated."
     },

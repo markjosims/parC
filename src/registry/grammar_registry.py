@@ -16,12 +16,16 @@ Since paradigm objects are themselves the the highest level of abstraction
 in the registry system, there is no intermediate `ParadigmRegistry` class.]
 """
 
+from loguru import logger
+
 from src.registry.registry_utils import Registry
-from src.registry.marker_registry import MarkerRegistry
+from src.registry.marker_registry import (
+    MarkerRegistry, FeatureMarkers, ContingentMarkers
+)
 from src.registry.fst_registry import FstRegistry
-from src.registry.feature_registry import FeatureRegistry
-from src.registry.lexicon_registry import LexiconRegistry
-from typing import List, Optional
+from src.registry.feature_registry import FeatureRegistry, FeatureValueCombinations
+from src.registry.lexicon_registry import LexiconRegistry, PartOfSpeech, Lexicon
+from typing import Any, Dict, Dict, List, Optional
 
 class Paradigm:
     """
@@ -36,16 +40,94 @@ class Paradigm:
 
     Allows for querying of marker combinations based on feature values,
     and also provides string I/O with marker transducers.
+
+    The `__init__` function expects all markers and contingent markers to be
+    passed directly, whereas the `from_config` factory method expects a
+    `MarkerRegistry` object from which it can pull the relevant marker objects,
+    and constructs any inline markers as needed.
     """
 
-    # def __init__(
-    #     self,
-    #     marker_registry: MarkerRegistry,
-    #     marker_order: List[str],
-    # ):
-    #     self.feature_value_combinations = feature_value_combinations
-    #     self.feature_names = feature_value_combinations.feature_names
-    #     self.marker_order = marker_order
+    def __init__(
+        self,
+        markers: List[FeatureMarkers],
+        contingent_markers: List[ContingentMarkers],
+        marker_order: List[str],
+        part_of_speech: PartOfSpeech,
+        lexicon: Lexicon,
+        feature_value_combinations: Optional[FeatureValueCombinations] = None,
+        fst_registry: Optional[FstRegistry] = None,
+    ):
+        self.feature_value_combinations = feature_value_combinations
+        self.features = feature_value_combinations.features
+        self.marker_order = marker_order
+        self.part_of_speech = part_of_speech
+        self.lexicon = lexicon
+        self.markers = markers
+        self.contingent_markers = contingent_markers
+        self.fst_registry = fst_registry
+
+        self.fst_registry_initialized = False
+        if self.fst_registry and self.fst_registry.is_initialized:
+            self.fst_registry_initialized = True
+        else:
+            logger.info(
+                "FST registry not provided or not initialized. "
+                "FST-based operations will not be available until the registry is initialized."
+            )
+
+    def from_config(
+        cls,
+        marker_registry: MarkerRegistry,
+        lexicon_registry: LexiconRegistry,
+        config: Dict[str, Any]
+    ) -> 'Paradigm':
+        """
+        Factory method for constructing a Paradigm object from a MarkerRegistry
+        and a FeatureValueCombinations object. This method will pull the relevant
+        marker objects from the MarkerRegistry based on the provided features,
+        and will construct any inline markers as needed.
+        """
+
+        # load part of speech and lexicon
+        part_of_speech_name = config['part_of_speech']
+        part_of_speech, lexicon = lexicon_registry[part_of_speech_name]
+        
+        # load simplex markers for each feature
+        markers = []
+        for feature, marker_map in config['markers'].items():
+            if feature not in part_of_speech.features:
+                raise ValueError(
+                    f"Feature '{feature}' in paradigm config not recognized in part of speech '{part_of_speech_name}'."
+                )
+
+            # get any set-wide attributes            
+            inherited_marker_set = marker_map.pop('inherits', None)
+            marker_order = marker_map.pop('global_order', None)
+
+            markers = FeatureMarkers(feature_name=feature)
+
+            if inherited_marker_set:
+                inherited_marker_set = inherited_marker_set.remove_prefix('$')
+                if inherited_marker_set not in marker_registry.feature_markers:
+                    raise ValueError(
+                        f"Marker set '{inherited_marker_set}' specified for feature '{feature}' in paradigm config not found in marker registry."
+                    )
+                markers = marker_registry.feature_markers[inherited_marker_set]
+            
+            # read in any inline markers, which will override inherited markers
+            # all other keys should be feature values mapping to marker lists
+            expected_feature_values = ...
+            for feature_value, marker_list in marker_map.items():
+                if feature_value in markers.markers:
+                    logger.info(
+                        f"Feature value '{feature_value}' for feature '{feature}' in paradigm config is overriding an existing marker set. "
+                        f"Existing marker set will be ignored for this feature value."
+                    )
+                # need to validate against expected feat vals here?
+                # we really should just reuse the FeatureMarkers loading logic here,
+                # no need to duplicate it
+                markers.markers[feature_value] = marker_list
+
 
     #     recognized_features = marker_objects.keys()
 

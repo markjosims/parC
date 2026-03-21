@@ -9,13 +9,14 @@ from src.registry.marker_registry import (
     FeatureMarkers,
     FeatureMarkersRegistry,
     Marker,
+    MarkerList,
     MarkerRegistry,
 )
 from src.constants import EXAMPLE_CONFIG_DIR
 
 
 def test_marker_from_config_merges_global_attributes_and_normalizes_replace():
-    marker_list = Marker.list_from_config(
+    marker_list = MarkerList.from_config(
         [
             {"type": "suffix", "value": "-te"},
             {"type": "replace", "value": ["dt", "tt"]},
@@ -24,7 +25,7 @@ def test_marker_from_config_merges_global_attributes_and_normalizes_replace():
         global_markers=[{"type": "prefix", "value": "ke-"}]
     )
 
-    assert isinstance(marker_list, list)
+    assert isinstance(marker_list, MarkerList)
     for marker in marker_list:
         assert isinstance(marker, Marker)
         if marker.type == "prefix":
@@ -37,17 +38,17 @@ def test_marker_from_config_merges_global_attributes_and_normalizes_replace():
 
 
 def test_marker_list_from_config_handles_none_single_and_multiple_markers():
-    assert Marker.list_from_config(
+    assert MarkerList.from_config(
         [None, None], global_order="x"
     ) == []
 
-    single = Marker.list_from_config([{"type": "suffix", "value": "-ap"}], global_order="outer")
+    single = MarkerList.from_config([{"type": "suffix", "value": "-ap"}], global_order="outer")
     assert len(single) == 1
     assert single[0].type == "suffix"
     assert single[0].value == "-ap"
     assert single[0].order == "outer"
 
-    multiple = Marker.list_from_config(
+    multiple = MarkerList.from_config(
         [{"type": "suffix", "value": "-te"}, {"type": "replace", "value": ["dt", "tt"]}],
         global_order="shared"
     )
@@ -107,6 +108,50 @@ def test_feature_markers_from_config_builds_dynamic_attributes_and_global_marker
     assert markers.__dict__["1sg"] == markers.data["1sg"]
     assert markers.__dict__["2sg"] == markers.data["2sg"]
 
+
+def test_principal_part_precedence():
+    config_path = os.path.join(EXAMPLE_CONFIG_DIR, "markers", "person_markers.yaml")
+    config = {
+        "feature": "person",
+        "global_markers": [{"type": "principal_part", "value": "past_stem"}],
+        "markers": {
+            "1sg": {"type": "suffix", "value": "-o"},
+            "2sg": [
+                {"type": "suffix", "value": "-te"},
+                {"type": "replace", "value": ["dt", "tt"]},
+            ],
+            "3sg": {"type": "principal_part", "value": "past_stem_3sg"},
+        },
+        "source_path": config_path,
+    }
+
+    markers = FeatureMarkers.from_config(config)
+    assert markers.feature == "person"
+    assert markers.source == config_path
+    assert len(markers.global_markers) == 1
+    assert markers.global_markers[0].type == "principal_part"
+    assert markers.global_markers[0].value == "past_stem"
+
+    assert len(markers.data["1sg"]) == 2
+    assert markers.data["1sg"][0].type == "principal_part"
+    assert markers.data["1sg"][0].value == "past_stem"
+    assert markers.data["1sg"][1].value == "-o"
+    assert markers.data["1sg"][1].type == "suffix"
+
+    assert len(markers.data["2sg"]) == 3
+    assert markers.data["2sg"][0].type == "principal_part"
+    assert markers.data["2sg"][0].value == "past_stem"
+    assert markers.data["2sg"][1].value == "-te"
+    assert markers.data["2sg"][1].type == "suffix"
+    assert markers.data["2sg"][2].value == ("dt", "tt")
+    assert markers.data["2sg"][2].type == "replace"
+
+    assert len(markers.data["3sg"]) == 1
+    assert markers.data["3sg"][0].type == "principal_part"
+    assert markers.data["3sg"][0].value == "past_stem_3sg"
+
+    assert markers.__dict__["1sg"] == markers.data["1sg"]
+    assert markers.__dict__["2sg"] == markers.data["2sg"]
 
 def test_contingent_markers_from_config_flattens_explicit_nesting_and_supports_lookup():
     config_path = os.path.join(EXAMPLE_CONFIG_DIR, "markers", "contingent_markers.yaml")

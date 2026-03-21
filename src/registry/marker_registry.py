@@ -29,6 +29,7 @@ from __future__ import annotations
 import os
 from typing import Dict, List, Optional, Tuple, Union, Literal, Any
 from dataclasses import dataclass, field
+from collections import UserList
 
 from loguru import logger
 
@@ -57,11 +58,12 @@ class Marker(TransducerList):
         - replace: (input, output) pair for substring replacement
         - suppletion: Full replacement form (incompatible with other operations)
         - rule: Name(s) of phonological rule(s) to apply ($ reference)
+        - principal_part: Selects a principal part for the feature value
         value: String to be interpreted as formative
         order: Stage name controlling application order within a paradigm
     """
     value: Union[str, Tuple[str, str]] = ""
-    type: Literal["prefix", "suffix", "replace", "suppletion", "rule"] = "suffix"
+    type: Literal["prefix", "suffix", "replace", "suppletion", "rule", "principal_part"] = "suffix"
     order: Optional[str] = None
     comment: Optional[str] = None
 
@@ -89,7 +91,7 @@ class Marker(TransducerList):
                 f"but got tuple for marker type {self.type}"
             )
         
-        elif self.type not in ("prefix", "suffix", "suppletion", "rule"):
+        elif self.type not in ("prefix", "suffix", "suppletion", "rule", "principal_part"):
             raise ValueError(f"Unrecognized marker type {self.type}")
         
 
@@ -116,13 +118,43 @@ class Marker(TransducerList):
 
         return Marker(value=value, type=marker_type, order=order)
 
+    def __str__(self):
+        return f"Marker(type={self.type}, value={self.value})"
+
+    def __repr__(self):
+        return self.__str__()
+    
+class MarkerList(UserList):
+    """
+    List of `Marker` objects. Enforces that all items are Markers,
+    and that at most one 'principal_part' marker is present (if any).
+    Allows principal_part marker to be set via a dedicated method,
+    which ensures it is always the first marker in the list.
+    """
+
+    def __post_init__(self):
+        for item in self:
+            if not isinstance(item, Marker):
+                raise ValueError(f"All items in a MarkerList must be Markers, but got {type(item)}")
+            
+        # check no more than one 'principal_part' marker, if any
+        self.has_principal_part = False
+        principal_parts = [m for m in self if m.type == 'principal_part']
+        if len(principal_parts) > 1:
+            raise ValueError(f"MarkerList may contain at most one 'principal_part' marker, but got {len(principal_parts)}")
+        elif principal_parts:
+            # If a principal_part marker is present, it must be the first marker in the list
+            if self[0].type != 'principal_part':
+                raise ValueError("If a 'principal_part' marker is present, it must be the first marker in the list")
+            self.has_principal_part = True
+
     @classmethod
-    def list_from_config(
+    def from_config(
         cls,
         config,
         global_order: Optional[str] = None,
-        global_markers: List[Marker] = list(),
-    ) -> List[Marker]:
+        global_markers: Optional[List[Marker]] = None,
+    ) -> MarkerList:
         """
         Build a list of Markers from a YAML value that may be:
         - None (zero-marking) -> empty list
@@ -140,23 +172,94 @@ class Marker(TransducerList):
             config = [config]    
 
         markers = []
+
+        # track principal part separately
+        principal_part_marker = None
+
         for item in config:
             if item is None:
                 continue
-            marker = cls.from_config(item, global_order=global_order)
-            if marker is not None:
+            marker = Marker.from_config(item, global_order=global_order)
+            if marker is None:
+                continue
+            if marker.type == 'principal_part':
+                if principal_part_marker is not None:
+                    raise ValueError("Multiple 'principal_part' markers found in config. Only one is allowed.")
+                principal_part_marker = marker
+            else:
                 markers.append(marker)
+
+        if global_markers:
+            # global marker may specify a principal_part marker
+            # but it will be overriden by any principal_part marker
+            # specified at the value level
+            for item in global_markers:
+                marker = Marker.from_config(item, global_order=global_order)
+                if marker is None:
+                    raise ValueError("Global markers cannot be null.")
+
+                if marker.type == 'principal_part':
+                    if principal_part_marker is None:
+                        principal_part_marker = marker
+                else:
+                    markers.append(marker)
         
-        # add global markers
-        markers.extend(cls.from_config(m, global_order=global_order) for m in global_markers)
-        return markers
+        # prepend principal_part marker if specified at all
+        if principal_part_marker is not None:
+            markers.insert(0, principal_part_marker)
+        return cls(markers)
+    
+    def set_principal_part(self, marker: Marker, override=True):
+        if marker.type != 'principal_part':
+            raise ValueError(f"Can only set principal part marker, but got marker of type {marker.type}")
+        if self.has_principal_part and not override:
+            raise ValueError("MarkerList already has a 'principal_part' marker, and override is set to False")
+        if self.has_principal_part and override:
+            # remove existing principal part marker
+            self.data = [m for m in self.data if m.type != 'principal_part']
+        self.data.insert(0, marker)
+        self.has_principal_part = True
+    
+    # basic list operations with type checks and principal_part constraints
 
-    def __str__(self):
-        return f"Marker(type={self.type}, value={self.value})"
+    def __setitem__(self, i, item):
+        if not isinstance(item, Marker):
+            raise ValueError(f"All items in a MarkerList must be Markers, but got {type(item)}")
+        return super().__setitem__(i, item)
+    
+    def append(self, item):
+        if not isinstance(item, Marker):
+            raise ValueError(f"All items in a MarkerList must be Markers, but got {type(item)}")
+        if item.type == 'principal_part':
+            if self.has_principal_part:
+                raise ValueError("MarkerList may contain at most one 'principal_part' marker, but already has one")
+            if len(self) > 0 and self[0].type != 'principal_part':
+                raise ValueError("If a 'principal_part' marker is present, it must be the first marker in the list")
+            self.has_principal_part = True
+        return super().append(item)
 
-    def __repr__(self):
-        return self.__str__()
-
+    def extend(self, other):
+        for item in other:
+            if not isinstance(item, Marker):
+                raise ValueError(f"All items in a MarkerList must be Markers, but got {type(item)}")
+            if item.type == 'principal_part':
+                if self.has_principal_part:
+                    raise ValueError("MarkerList may contain at most one 'principal_part' marker, but already has one")
+                if len(self) > 0 and self[0].type != 'principal_part':
+                    raise ValueError("If a 'principal_part' marker is present, it must be the first marker in the list")
+                self.has_principal_part = True
+        return super().extend(other)
+    
+    def insert(self, i, item):
+        if not isinstance(item, Marker):
+            raise ValueError(f"All items in a MarkerList must be Markers, but got {type(item)}")
+        if item.type == 'principal_part':
+            if self.has_principal_part:
+                raise ValueError("MarkerList may contain at most one 'principal_part' marker, but already has one")
+            if len(self) > 0 and self[0].type != 'principal_part' and i != 0:
+                raise ValueError("If a 'principal_part' marker is present, it must be the first marker in the list")
+            self.has_principal_part = True
+        return super().insert(i, item)
 
 # ---------------------------------------------------------------------------
 # FeatureMarkers dataclass
@@ -176,9 +279,9 @@ class FeatureMarkers:
         source: Filepath this config was loaded from
     """
     feature: str = ''
-    data: Dict[str, List[Marker]] = field(default_factory=dict)
+    data: Dict[str, MarkerList] = field(default_factory=dict)
     global_order: Optional[str] = None
-    global_markers: List[Marker] = field(default_factory=list)
+    global_markers: MarkerList = field(default_factory=MarkerList)
     source: Optional[os.PathLike] = None
 
     def __post_init__(self):
@@ -198,12 +301,12 @@ class FeatureMarkers:
 
         data = {}
         for value_name, marker_config in markers_config.items():
-            data[value_name] = Marker.list_from_config(
+            data[value_name] = MarkerList.from_config(
                 marker_config,
                 global_markers=global_markers,
                 global_order=global_order,
             )
-        global_markers = Marker.list_from_config(
+        global_markers = MarkerList.from_config(
             global_markers, global_order=global_order
         )
 
@@ -247,7 +350,7 @@ class FeatureQueryMixin:
             for feature, value in sorted(feature_dict.items())
         )
 
-    def get_marker(self, **feature_dict: str) -> List[Marker]:
+    def get_marker(self, **feature_dict: str) -> MarkerList:
         """Retrieve markers for a given set of feature values."""
         key = self._stringify_feature_dict(feature_dict)
         data = getattr(self, 'data', None)
@@ -278,8 +381,9 @@ class ContingentMarkers(FeatureQueryMixin):
         source: Filepath this config was loaded from
     """
     features: List[str] = field(default_factory=list)
-    data: Dict[str, List[Marker]] = field(default_factory=dict)
+    data: Dict[str, MarkerList] = field(default_factory=dict)
     global_order: Optional[str] = None
+    global_markers: MarkerList = field(default_factory=MarkerList)
     source: Optional[os.PathLike] = None
 
     def __post_init__(self):
@@ -291,12 +395,14 @@ class ContingentMarkers(FeatureQueryMixin):
         features = config.get('features', [])
         source = config.get('source_path')
         global_order = config.get('global_order', None)
+        global_markers = config.get('global_markers', [])
         markers_config = config.get('markers', {})
 
         data = _flatten_contingent_markers(
             node=markers_config,
             all_features=features,
             assigned={},
+            global_markers=global_markers,
             global_order=global_order,
         )
 
@@ -304,6 +410,7 @@ class ContingentMarkers(FeatureQueryMixin):
             features=features,
             data=data,
             global_order=global_order,
+            global_markers=global_markers,
             source=source,
         )
 
@@ -322,7 +429,8 @@ def _flatten_contingent_markers(
     all_features: List[str],
     assigned: Dict[str, str],
     global_order: Optional[str],
-) -> Dict[str, List[Marker]]:
+    global_markers: Optional[MarkerList] = None,
+) -> Dict[str, MarkerList]:
     """
     Recursively flatten a nested contingent-marker YAML structure into a flat
     dict keyed by sorted 'feature=value feature=value' strings.
@@ -330,16 +438,20 @@ def _flatten_contingent_markers(
     Handles both explicit feature-name nesting (key matches a feature name)
     and implicit value nesting (key is a value for the next unassigned feature).
     """
-    result: Dict[str, List[Marker]] = {}
+    result: Dict[str, MarkerList] = {}
 
     # On first call, no features have been assigned
-    # Accumulate assign features during recursion
+    # Accumulate assigned features during recursion
     unassigned = [f for f in all_features if f not in assigned]
 
     if not unassigned:
         # All features assigned — node is a marker config (base case)
         # Build Marker objects
-        markers = Marker.list_from_config(node, global_order=global_order)
+        markers = MarkerList.from_config(
+            node,
+            global_order=global_order,
+            global_markers=global_markers,
+        )
         key = ' '.join(f"{f}={v}" for f, v in sorted(assigned.items()))
         result[key] = markers
         return result
