@@ -9,7 +9,11 @@
     transition: background 1.2s ease, box-shadow 1.2s ease, border-left-color 1.2s ease;
   }
   .checkbox-row { display: flex; gap: 0.5rem; align-items: center; }
+  .stem-value-field[hidden] { display: none !important; }
+  .marker-value-field[hidden] { display: none !important; }
+  .marker-replace-fields[hidden] { display: none !important; }
   .marker-list { display: grid; gap: 0.75rem; }
+  .marker-list-boxed { padding: 1rem; border: 1px solid #cfc4b2; border-radius: 8px; background: #fbf7f0; }
   .marker-stem-block { padding: 0.75rem; background: #f8f7f3; border: 1px solid #ddd6c9; border-radius: 6px; }
   .marker-row { border-left: 4px solid #d1c7b7; padding-left: 0.75rem; }
   .entry-card { display: grid; gap: 1rem; }
@@ -48,7 +52,10 @@
         "global",
         url_for('web.feature_markers_add_global_marker'),
         'web.feature_markers_remove_marker',
-        "If a child marker list defines its own stem selector, that child definition wins."
+        "If a child marker list defines its own stem selector, that child definition wins.",
+        true,
+        "Global stem selector",
+        "Add global marker"
       ) }}
     </section>
 
@@ -94,11 +101,25 @@
     root.querySelectorAll("[data-marker-id]").forEach(function(node) {
       var select = node.querySelector("[data-marker-type]");
       var valueField = node.querySelector(".marker-value-field");
+      var valueInput = valueField ? valueField.querySelector("input") : null;
       var replaceFields = node.querySelector(".marker-replace-fields");
       if (!select || !valueField || !replaceFields) return;
       var isReplace = select.value === "replace";
       valueField.hidden = isReplace;
+      valueField.style.display = isReplace ? "none" : "";
       replaceFields.hidden = !isReplace;
+      replaceFields.style.display = isReplace ? "" : "none";
+      if (valueInput) {
+        if (select.value === "prefix") {
+          valueInput.placeholder = "ba-";
+        } else if (select.value === "rule") {
+          valueInput.placeholder = "$rule_name";
+        } else if (select.value === "suppletion") {
+          valueInput.placeholder = "suppleted form";
+        } else {
+          valueInput.placeholder = "-o";
+        }
+      }
     });
   }
 
@@ -109,6 +130,7 @@
       var field = block.querySelector(".stem-value-field");
       if (!field) return;
       field.hidden = !toggle.checked;
+      field.style.display = toggle.checked ? "" : "none";
     });
   }
 

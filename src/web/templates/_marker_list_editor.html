@@ -1,15 +1,16 @@
-{% macro render_marker_list(marker_list, scope, add_url, remove_endpoint, note="") %}
+{% macro render_marker_list(marker_list, scope, add_url, remove_endpoint, note="", boxed=false, stem_label="Stem selector", add_label="Add marker") %}
   {% set stem = marker_list.stem_selector %}
-  <div class="marker-list" data-marker-scope="{{ scope }}">
+  <div class="marker-list {% if boxed %}marker-list-boxed{% endif %}" data-marker-scope="{{ scope }}">
     <section class="marker-stem-block">
       <label class="checkbox-row">
         <input type="checkbox"
                data-stem-toggle
                name="{{ scope }}-stem-enabled"
                {% if stem.enabled %}checked{% endif %}>
-        Stem selector
+        {{ stem_label }}
       </label>
-      <label class="stem-value-field" {% if not stem.enabled %}hidden{% endif %}>
+      <label class="stem-value-field"
+             {% if not stem.enabled %}hidden style="display:none"{% endif %}>
         Principal part column
         <input type="text"
                name="{{ scope }}-stem-value"
@@ -42,12 +43,17 @@
               </label>
             </div>
 
-            <label class="marker-value-field" {% if marker.type == "replace" %}hidden{% endif %}>
+            <label class="marker-value-field"
+                   {% if marker.type == "replace" %}hidden style="display:none"{% endif %}>
               Value
-              <input type="text" name="value-{{ marker.id }}" value="{{ marker.value }}" placeholder="-o or $rule_name">
+              <input type="text"
+                     name="value-{{ marker.id }}"
+                     value="{{ marker.value }}"
+                     placeholder="{% if marker.type == 'prefix' %}ba-{% elif marker.type == 'rule' %}$rule_name{% elif marker.type == 'suppletion' %}suppleted form{% else %}-o{% endif %}">
             </label>
 
-            <div class="two-col marker-replace-fields" {% if marker.type != "replace" %}hidden{% endif %}>
+            <div class="two-col marker-replace-fields"
+                 {% if marker.type != "replace" %}hidden style="display:none"{% endif %}>
               <label>
                 Replace input
                 <input type="text" name="replace-input-{{ marker.id }}" value="{{ marker.replace_input }}" placeholder="[CL]">
@@ -74,7 +80,7 @@
     </div>
 
     <div class="actions">
-      <button type="submit" name="action" value="add-marker" formaction="{{ add_url }}">Add marker</button>
+      <button type="submit" name="action" value="add-marker" formaction="{{ add_url }}">{{ add_label }}</button>
     </div>
   </div>
 {% endmacro %}
