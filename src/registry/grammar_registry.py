@@ -365,8 +365,6 @@ class Paradigm:
         output_strings = self.lexicon.get_column_data(principal_part, fill_w_root=True)
         return self.fst_registry.string_map_transducer(input_strings, output_strings)
 
-
-
 class GrammarRegistry(Registry):
     """
     Orchestrates all registries for a given language.
@@ -390,9 +388,6 @@ class GrammarRegistry(Registry):
         self.feature_registry: FeatureRegistry = marker_registry.feature_registry
 
         self.paradigms = paradigms or []
-
-
-
     
     @classmethod
     def from_config_dir(cls, config_dir: str) -> 'GrammarRegistry':

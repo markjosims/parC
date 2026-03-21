@@ -60,7 +60,7 @@
       "pattern": "$\\$.*",
       "description": "Imported defining valid feature cross-products. If blank, all combinations of features are generated."
     },
-    "contingent_features": {
+    "contingent_markers": {
       "type": "string",
       "description": "Filepath to import ContingentMarkers from."
     }

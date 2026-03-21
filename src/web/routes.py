@@ -23,6 +23,7 @@ from src.web.feature_combinations import FeatureCombinationsEditor
 from src.web.feature_markers import FeatureMarkersEditor
 from src.web.features import FeatureDefinitionsEditor
 from src.web.inventory import InventoryEditor
+from src.web.paradigms import ParadigmEditor
 from src.web.patterns import PatternsEditor
 from src.web.rules import RulesEditor
 from flask import current_app as app
@@ -39,6 +40,7 @@ EDITORS = {
     "FeatureCombinations": FeatureCombinationsEditor(),
     "FeatureMarkers": FeatureMarkersEditor(),
     "ContingentFeatureMarkers": ContingentFeatureMarkersEditor(),
+    "Paradigm": ParadigmEditor(),
 }
 
 
@@ -271,6 +273,59 @@ def contingent_markers_remove_marker(marker_id: str):
     return _marker_editor_state_handler(
         "ContingentFeatureMarkers",
         lambda editor, state: editor.remove_marker(state, marker_id),
+    )
+
+
+@bp.post("/paradigms/add-entry")
+def paradigms_add_entry():
+    return _add_item_handler("Paradigm")
+
+
+@bp.post("/paradigms/remove-entry/<item_id>")
+def paradigms_remove_entry(item_id: str):
+    return _remove_item_handler("Paradigm", item_id)
+
+
+@bp.post("/paradigms/add-order-stage")
+def paradigms_add_order_stage():
+    return _marker_editor_state_handler(
+        "Paradigm", lambda editor, state: editor.add_order_stage(state)
+    )
+
+
+@bp.post("/paradigms/remove-order-stage/<stage_id>")
+def paradigms_remove_order_stage(stage_id: str):
+    return _marker_editor_state_handler(
+        "Paradigm", lambda editor, state: editor.remove_order_stage(state, stage_id)
+    )
+
+
+@bp.post("/paradigms/add-global-marker")
+def paradigms_add_global_marker():
+    return _marker_editor_state_handler(
+        "Paradigm", lambda editor, state: editor.add_global_marker(state)
+    )
+
+
+@bp.post("/paradigms/remove-marker/<marker_id>")
+def paradigms_remove_marker(marker_id: str):
+    return _marker_editor_state_handler(
+        "Paradigm", lambda editor, state: editor.remove_marker(state, marker_id)
+    )
+
+
+@bp.post("/paradigms/add-contingent-marker")
+def paradigms_add_contingent_marker():
+    return _marker_editor_state_handler(
+        "Paradigm", lambda editor, state: editor.add_contingent_marker(state)
+    )
+
+
+@bp.post("/paradigms/remove-contingent-marker/<marker_id>")
+def paradigms_remove_contingent_marker(marker_id: str):
+    return _marker_editor_state_handler(
+        "Paradigm",
+        lambda editor, state: editor.remove_contingent_marker(state, marker_id),
     )
 
 
