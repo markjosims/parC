@@ -6,7 +6,6 @@ from typing import Any
 
 import yaml
 
-from src.web.configs import list_config_yaml_files
 from src.web.editor_base import BaseEditor, split_csv
 
 
@@ -43,7 +42,7 @@ class FeatureCombinationsEditor(BaseEditor):
         return {
             "path": relative_path,
             "kind": "FeatureCombinations",
-            "available_features": _load_available_features(config_dir),
+            "available_features": [],
             "selected_features": list(selected_features),
             "combinations": combinations,
         }
@@ -118,13 +117,3 @@ class FeatureCombinationsEditor(BaseEditor):
         raise NotImplementedError("FeatureCombinations does not support testing")
 
 
-def _load_available_features(config_dir: str) -> list[str]:
-    yaml_files = list_config_yaml_files(config_dir)
-    features: list[str] = []
-    for item in yaml_files:
-        if item.get("kind") == "FeatureDefinitions":
-            parsed = item.get("parsed", {})
-            for name in parsed.get("features", {}):
-                if name not in features:
-                    features.append(name)
-    return features

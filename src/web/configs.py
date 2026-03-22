@@ -48,6 +48,43 @@ def safe_file_path(config_dir: str, relative_path: str) -> Path | None:
     return path
 
 
+def safe_csv_path(config_dir: str, relative_path: str) -> Path | None:
+    root = _config_root(config_dir)
+    if root is None:
+        return None
+    path = (root / relative_path).resolve()
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return None
+    if path.suffix != ".csv":
+        return None
+    return path
+
+
+def list_feature_names(config_dir: str) -> list[str]:
+    return sorted(list_features_to_values(config_dir).keys())
+
+
+def list_features_to_values(config_dir: str) -> dict[str, list[str]]:
+    root = _config_root(config_dir)
+    if root is None:
+        return {}
+    merged: dict[str, list[str]] = {}
+    for path in _yaml_paths(root):
+        entry = _load_entry_from_path(root, path)
+        if entry.get("kind") != "FeatureDefinitions":
+            continue
+        features = entry.get("parsed", {}).get("features", {})
+        if not isinstance(features, dict):
+            continue
+        for name, values in features.items():
+            if name not in merged:
+                vals = values if isinstance(values, list) else [values] if values else []
+                merged[name] = [str(v) for v in vals]
+    return dict(sorted(merged.items()))
+
+
 def list_config_yaml_files(config_dir: str) -> list[dict[str, str]]:
     root = _config_root(config_dir)
     return [_load_entry_from_path(root, path) for path in _yaml_paths(root)]

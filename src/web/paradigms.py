@@ -6,7 +6,6 @@ from typing import Any
 
 import yaml
 
-from src.web.configs import list_config_yaml_files
 from src.web.editor_base import BaseEditor, split_csv
 from src.web.markers import (
     add_marker_row,
@@ -102,7 +101,7 @@ class ParadigmEditor(BaseEditor):
             "filter_pattern": str(filter_config.get("pattern", "") or ""),
             "filter_lexical_flags_text": lexical_flags_text,
         }
-        return self._with_available_options(config_dir, state)
+        return state
 
     def new_state(self, relative_path: str = "") -> dict[str, Any]:
         state = super().new_state(relative_path)
@@ -338,23 +337,6 @@ class ParadigmEditor(BaseEditor):
             if item.get("id") != marker_id
         ]
         return updated
-
-    def _with_available_options(self, config_dir: str, state: dict[str, Any]) -> dict[str, Any]:
-        state = copy.deepcopy(state)
-        yaml_files = list_config_yaml_files(config_dir)
-        state["available_part_of_speech"] = [
-            item["label"] for item in yaml_files if item.get("kind") == "PartOfSpeech"
-        ]
-        state["available_feature_markers"] = [
-            item["label"] for item in yaml_files if item.get("kind") == "FeatureMarkers"
-        ]
-        state["available_contingent_markers"] = [
-            item["label"] for item in yaml_files if item.get("kind") == "ContingentFeatureMarkers"
-        ]
-        state["available_feature_combinations"] = [
-            item["label"] for item in yaml_files if item.get("kind") == "FeatureCombinations"
-        ]
-        return state
 
     def _run_test(self, item: dict[str, Any], registry: Any) -> dict:
         raise NotImplementedError("Paradigm does not support testing")

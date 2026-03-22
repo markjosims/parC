@@ -19,13 +19,13 @@ from src.web.configs import (
     save_config_text,
     suggested_config_path,
 )
-from src.registry.fst_registry import FstRegistry
 from src.web.contingent_markers import ContingentFeatureMarkersEditor
 from src.registry.grammar_registry import GrammarRegistry
 from src.web.feature_combinations import FeatureCombinationsEditor
 from src.web.feature_markers import FeatureMarkersEditor
 from src.web.features import FeatureDefinitionsEditor
 from src.web.inventory import InventoryEditor
+from src.web.lexicon import LexiconEditor
 from src.web.paradigms import ParadigmEditor
 from src.web.patterns import PatternsEditor
 from src.web.rules import RulesEditor
@@ -44,6 +44,7 @@ EDITORS = {
     "FeatureMarkers": FeatureMarkersEditor(),
     "ContingentFeatureMarkers": ContingentFeatureMarkersEditor(),
     "Paradigm": ParadigmEditor(),
+    "PartOfSpeech": LexiconEditor(),
 }
 
 
@@ -355,6 +356,93 @@ def paradigms_remove_contingent_marker(marker_id: str):
     )
 
 
+@bp.get("/inflect")
+def inflect():
+    tool = request.args.get("tool", "stages").strip()
+    return _render_inflect_page(inflect_tool=tool)
+
+
+@bp.post("/inflect/run")
+def inflect_run():
+    paradigm_name = request.form.get("paradigm_name", "").strip()
+    stem = request.form.get("stem", "").strip()
+
+    # Collect feature values from fv-* form fields
+    feature_values: dict[str, str] = {}
+    for key, value in request.form.items():
+        if key.startswith("fv-") and value:
+            feature_values[key[3:]] = value
+
+    if not paradigm_name:
+        return _render_inflect_page(
+            inflect_tool="stages",
+            error="Please select a paradigm.",
+            inflect_selected_paradigm=paradigm_name,
+            inflect_selected_stem=stem,
+            inflect_selected_features=feature_values,
+        )
+
+    if not stem:
+        return _render_inflect_page(
+            inflect_tool="stages",
+            error="Please enter a stem.",
+            inflect_selected_paradigm=paradigm_name,
+            inflect_selected_stem=stem,
+            inflect_selected_features=feature_values,
+        )
+
+    try:
+        config_dir = _local_config_dir()
+        registry = _get_grammar_registry(config_dir)
+    except Exception as exc:
+        return _render_inflect_page(
+            inflect_tool="stages",
+            error=f"Could not load grammar registry: {exc}",
+            inflect_selected_paradigm=paradigm_name,
+            inflect_selected_stem=stem,
+            inflect_selected_features=feature_values,
+        )
+
+    paradigm = registry.paradigms.get(paradigm_name)
+    if paradigm is None:
+        return _render_inflect_page(
+            inflect_tool="stages",
+            error=f"Paradigm '{paradigm_name}' not found in registry.",
+            inflect_selected_paradigm=paradigm_name,
+            inflect_selected_stem=stem,
+            inflect_selected_features=feature_values,
+        )
+
+    try:
+        results = paradigm.get_inflection_stages(stem, feature_values)
+    except (ValueError, Exception) as exc:
+        return _render_inflect_page(
+            inflect_tool="stages",
+            error=str(exc),
+            inflect_selected_paradigm=paradigm_name,
+            inflect_selected_stem=stem,
+            inflect_selected_features=feature_values,
+        )
+
+    return _render_inflect_page(
+        inflect_tool="stages",
+        inflect_results=results,
+        inflect_selected_paradigm=paradigm_name,
+        inflect_selected_stem=stem,
+        inflect_selected_features=feature_values,
+    )
+
+
+@bp.post("/lexicon/add-row")
+def lexicon_add_row():
+    return _add_item_handler("PartOfSpeech")
+
+
+@bp.post("/lexicon/remove-row/<row_id>")
+def lexicon_remove_row(row_id: str):
+    return _remove_item_handler("PartOfSpeech", row_id)
+
+
 @bp.post("/rules/add-entry")
 def rules_add_entry():
     return _add_item_handler("Rules")
@@ -514,6 +602,43 @@ def _render_page(
     if page_context is None:
         page_context = _config_page_context()
     yaml_files = page_context["yaml_files"]
+
+    extra: dict[str, Any] = {}
+    kind = state.get("kind")
+
+    if kind in ("PartOfSpeech", "FeatureMarkers", "ContingentFeatureMarkers",
+                "FeatureCombinations", "Paradigm"):
+        try:
+            registry = _get_grammar_registry(_local_config_dir())
+            features_to_values = registry.feature_registry.feature_registry.features_to_values
+        except Exception:
+            registry = None
+            features_to_values = {}
+
+    if kind == "PartOfSpeech":
+        editor = EDITORS["PartOfSpeech"]
+        extra["available_features"] = sorted(features_to_values.keys())
+        extra["dynamic_columns"] = editor.dynamic_columns(state)
+        extra["csv_preview"] = editor.to_csv(state)
+
+    if kind in ("FeatureMarkers", "ContingentFeatureMarkers"):
+        extra["features_to_values"] = features_to_values
+
+    if kind == "FeatureCombinations":
+        state["available_features"] = sorted(features_to_values.keys())
+
+    if kind == "Paradigm":
+        if registry is not None and registry.is_initialized:
+            state["available_part_of_speech"] = sorted(registry.lexicon_registry.data.keys())
+            state["available_feature_markers"] = sorted(registry.marker_registry.feature_markers.keys())
+            state["available_contingent_markers"] = sorted(registry.marker_registry.contingent_markers.keys())
+            state["available_feature_combinations"] = sorted(registry.feature_registry.feature_combinations.keys())
+        else:
+            state["available_part_of_speech"] = []
+            state["available_feature_markers"] = []
+            state["available_contingent_markers"] = []
+            state["available_feature_combinations"] = []
+
     return render_template(
         "index.html",
         active_tab="config",
@@ -529,6 +654,71 @@ def _render_page(
         yaml_preview=_editor_yaml_preview(state),
         message=message,
         error=error,
+        **extra,
+    )
+
+
+def _render_inflect_page(
+    inflect_tool: str = "stages",
+    message: str | None = None,
+    error: str | None = None,
+    inflect_results: list[dict[str, str]] | None = None,
+    inflect_selected_paradigm: str = "",
+    inflect_selected_stem: str = "",
+    inflect_selected_features: dict[str, str] | None = None,
+):
+    inflect_registry_error = None
+    paradigm_names: list[str] = []
+    paradigm_features: dict[str, dict[str, list[str]]] = {}
+    paradigm_fixed_features: dict[str, dict[str, str]] = {}
+
+    try:
+        config_dir = _local_config_dir()
+        yaml_files = list_config_yaml_files(config_dir)
+        paradigm_names = [
+            item["label"]
+            for item in yaml_files
+            if item.get("kind") == "Paradigm"
+        ]
+        registry = _get_grammar_registry(config_dir)
+        for name, paradigm in registry.paradigms.items():
+            fixed = paradigm.fixed_features or {}
+            if paradigm.feature_value_combinations is not None:
+                ftv = dict(paradigm.feature_value_combinations.features_to_values)
+            else:
+                ftv = {f.name: list(f.values) for f in paradigm.features}
+            paradigm_features[name] = {
+                k: v for k, v in ftv.items() if k not in fixed
+            }
+            paradigm_fixed_features[name] = fixed
+    except Exception as exc:
+        inflect_registry_error = (
+            "Could not load grammar registry. Ensure your config files "
+            "define at least one valid Paradigm before using the Inflect tab. "
+            f"({exc})"
+        )
+
+    return render_template(
+        "index.html",
+        active_tab="inflect",
+        inflect_tool=inflect_tool,
+        paradigm_names=paradigm_names,
+        paradigm_features=paradigm_features,
+        paradigm_fixed_features=paradigm_fixed_features,
+        inflect_registry_error=inflect_registry_error,
+        inflect_results=inflect_results,
+        inflect_selected_paradigm=inflect_selected_paradigm,
+        inflect_selected_stem=inflect_selected_stem,
+        inflect_selected_features=inflect_selected_features or {},
+        message=message,
+        error=error,
+        # Defaults for config-tab vars that base template may reference
+        state={},
+        selected_path="",
+        selected_kind=None,
+        editor_kind="",
+        state_json="",
+        yaml_preview="",
     )
 
 
@@ -563,11 +753,13 @@ def _get_grammar_registry(config_dir: str) -> GrammarRegistry:
     current_stamp = _yaml_tree_mtime(cache_key)
     cached = GRAMMAR_REGISTRY_CACHE.get(cache_key)
     if cached is not None and cached[0] == current_stamp:
+        logger.info(f"Using cached GrammarRegistry for config dir '{config_dir}'")
         return cached[1]
 
     logger.info(f"Loading GrammarRegistry for config dir '{config_dir}'")
     registry = GrammarRegistry.from_config_dir(cache_key)
     GRAMMAR_REGISTRY_CACHE[cache_key] = (current_stamp, registry)
+    logger.info(f"Loaded GrammarRegistry with stamp {current_stamp}")
     return registry
 
 

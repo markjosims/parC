@@ -36,7 +36,17 @@
     <div class="two-col">
       <label>
         Feature
-        <input type="text" name="feature" value="{{ state.feature }}" placeholder="person">
+        {% if features_to_values %}
+          <select name="feature" id="fm-feature-select" onchange="repopulateValueDropdowns('fm-feature-select', 'select[name^=feature-value-]')">
+            <option value="">--</option>
+            {% for f in features_to_values %}
+              <option value="{{ f }}" {% if f == state.feature %}selected{% endif %}>{{ f }}</option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <input type="text" name="feature" value="{{ state.feature }}" placeholder="person">
+          <p class="muted">No features defined yet.</p>
+        {% endif %}
       </label>
       <label>
         Global order
@@ -70,7 +80,16 @@
           <section class="node entry-card" id="feature-entry-{{ entry.id }}" data-entry-id="{{ entry.id }}">
             <label>
               Feature value
-              <input type="text" name="feature-value-{{ entry.id }}" value="{{ entry.feature_value }}" placeholder="1sg">
+              {% if features_to_values and state.feature and state.feature in features_to_values %}
+                <select name="feature-value-{{ entry.id }}">
+                  <option value="">--</option>
+                  {% for v in features_to_values[state.feature] %}
+                    <option value="{{ v }}" {% if v == entry.feature_value %}selected{% endif %}>{{ v }}</option>
+                  {% endfor %}
+                </select>
+              {% else %}
+                <input type="text" name="feature-value-{{ entry.id }}" value="{{ entry.feature_value }}" placeholder="1sg">
+              {% endif %}
             </label>
             <div class="validation-msg muted" data-entry-validation="{{ entry.id }}" style="display:none"></div>
             {{ render_marker_list(
@@ -97,6 +116,26 @@
 </section>
 
 <script>
+  const featuresToValues = {{ features_to_values | default({}) | tojson }};
+
+  function repopulateValueDropdowns(featureSelectId, valueSelector) {
+    const featureSelect = document.getElementById(featureSelectId);
+    if (!featureSelect) return;
+    const feature = featureSelect.value;
+    const values = featuresToValues[feature] || [];
+    document.querySelectorAll(valueSelector).forEach(function(sel) {
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">--</option>';
+      values.forEach(function(v) {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = v;
+        if (v === prev) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    });
+  }
+
   function updateMarkerTypeFields(root) {
     root.querySelectorAll("[data-marker-id]").forEach(function(node) {
       var select = node.querySelector("[data-marker-type]");
@@ -141,7 +180,7 @@
     var seenValues = {};
     form.querySelectorAll("[data-entry-id]").forEach(function(node) {
       var entryId = node.dataset.entryId;
-      var input = node.querySelector("input[name='feature-value-" + entryId + "']");
+      var input = node.querySelector("[name='feature-value-" + entryId + "']");
       var msg = node.querySelector("[data-entry-validation]");
       if (!input || !msg) return;
       var value = input.value.trim();

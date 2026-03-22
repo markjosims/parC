@@ -34,11 +34,30 @@
     <div class="two-col">
       <label>
         Outer feature
-        <input type="text" name="outer_feature" value="{{ state.outer_feature }}" placeholder="object">
+        {% if features_to_values %}
+          <select name="outer_feature" id="cm-outer-feature-select" onchange="repopulateValueDropdowns('cm-outer-feature-select', 'select[name^=outer-value-]')">
+            <option value="">--</option>
+            {% for f in features_to_values %}
+              <option value="{{ f }}" {% if f == state.outer_feature %}selected{% endif %}>{{ f }}</option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <input type="text" name="outer_feature" value="{{ state.outer_feature }}" placeholder="object">
+          <p class="muted">No features defined yet.</p>
+        {% endif %}
       </label>
       <label>
         Inner feature
-        <input type="text" name="inner_feature" value="{{ state.inner_feature }}" placeholder="subject">
+        {% if features_to_values %}
+          <select name="inner_feature" id="cm-inner-feature-select" onchange="repopulateValueDropdowns('cm-inner-feature-select', 'select[name^=inner-value-]')">
+            <option value="">--</option>
+            {% for f in features_to_values %}
+              <option value="{{ f }}" {% if f == state.inner_feature %}selected{% endif %}>{{ f }}</option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <input type="text" name="inner_feature" value="{{ state.inner_feature }}" placeholder="subject">
+        {% endif %}
       </label>
     </div>
 
@@ -76,7 +95,16 @@
             <div class="two-col">
               <label>
                 Outer feature value
-                <input type="text" name="outer-value-{{ outer.id }}" value="{{ outer.outer_feature_value }}" placeholder="3sg">
+                {% if features_to_values and state.outer_feature and state.outer_feature in features_to_values %}
+                  <select name="outer-value-{{ outer.id }}">
+                    <option value="">--</option>
+                    {% for v in features_to_values[state.outer_feature] %}
+                      <option value="{{ v }}" {% if v == outer.outer_feature_value %}selected{% endif %}>{{ v }}</option>
+                    {% endfor %}
+                  </select>
+                {% else %}
+                  <input type="text" name="outer-value-{{ outer.id }}" value="{{ outer.outer_feature_value }}" placeholder="3sg">
+                {% endif %}
               </label>
               <div class="actions">
                 <button type="submit" name="action" value="add-inner" formaction="{{ url_for('web.contingent_markers_add_inner_entry', outer_id=outer.id) }}">Add inner value</button>
@@ -92,7 +120,16 @@
                   <div class="two-col">
                     <label>
                       Inner feature value
-                      <input type="text" name="inner-value-{{ inner.id }}" value="{{ inner.inner_feature_value }}" placeholder="1sg">
+                      {% if features_to_values and state.inner_feature and state.inner_feature in features_to_values %}
+                        <select name="inner-value-{{ inner.id }}">
+                          <option value="">--</option>
+                          {% for v in features_to_values[state.inner_feature] %}
+                            <option value="{{ v }}" {% if v == inner.inner_feature_value %}selected{% endif %}>{{ v }}</option>
+                          {% endfor %}
+                        </select>
+                      {% else %}
+                        <input type="text" name="inner-value-{{ inner.id }}" value="{{ inner.inner_feature_value }}" placeholder="1sg">
+                      {% endif %}
                     </label>
                     <div class="actions">
                       <button type="submit" name="action" value="remove-inner" formaction="{{ url_for('web.contingent_markers_remove_inner_entry', inner_id=inner.id) }}">Remove inner value</button>
@@ -125,6 +162,26 @@
 </section>
 
 <script>
+  const featuresToValues = {{ features_to_values | default({}) | tojson }};
+
+  function repopulateValueDropdowns(featureSelectId, valueSelector) {
+    const featureSelect = document.getElementById(featureSelectId);
+    if (!featureSelect) return;
+    const feature = featureSelect.value;
+    const values = featuresToValues[feature] || [];
+    document.querySelectorAll(valueSelector).forEach(function(sel) {
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">--</option>';
+      values.forEach(function(v) {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = v;
+        if (v === prev) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    });
+  }
+
   function updateContingentMarkerTypeFields(root) {
     root.querySelectorAll("[data-marker-id]").forEach(function(node) {
       var select = node.querySelector("[data-marker-type]");
