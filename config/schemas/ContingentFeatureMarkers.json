@@ -26,7 +26,7 @@
       "type": "string",
       "description": "Allows specifying a default value for the 'order' attribute."
     },
-    "global_marker": {
+    "global_markers": {
       "type": "array",
       "items": { "$ref": "./FeatureMarkers.json#/definitions/marker" },
       "description": "A marker or list of markers applied to all forms in this paradigm."
