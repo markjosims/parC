@@ -1,4 +1,4 @@
-{% macro render_marker_list(marker_list, scope, add_url, remove_endpoint, note="", boxed=false, stem_label="Stem selector", add_label="Add marker") %}
+{% macro render_marker_list(marker_list, scope, add_url, remove_endpoint, note="", boxed=false, stem_label="Stem selector", add_label="Add marker", available_rules=[]) %}
   {% set stem = marker_list.stem_selector %}
   <div class="marker-list {% if boxed %}marker-list-boxed{% endif %}" data-marker-scope="{{ scope }}">
     <section class="marker-stem-block">
@@ -44,13 +44,27 @@
             </div>
 
             <label class="marker-value-field"
-                   {% if marker.type == "replace" %}hidden style="display:none"{% endif %}>
+                   {% if marker.type == "replace" or marker.type == "rule" %}hidden style="display:none"{% endif %}>
               Value
               <input type="text"
                      name="value-{{ marker.id }}"
                      value="{{ marker.value }}"
-                     placeholder="{% if marker.type == 'prefix' %}ba-{% elif marker.type == 'rule' %}$rule_name{% elif marker.type == 'suppletion' %}suppleted form{% else %}-o{% endif %}">
+                     {% if marker.type == "rule" %}disabled{% endif %}
+                     placeholder="{% if marker.type == 'prefix' %}ba-{% elif marker.type == 'suppletion' %}suppleted form{% else %}-o{% endif %}">
             </label>
+            {% if available_rules %}
+            <label class="marker-rule-field"
+                   {% if marker.type != "rule" %}hidden style="display:none"{% endif %}>
+              Rule
+              <select name="value-{{ marker.id }}"
+                      {% if marker.type != "rule" %}disabled{% endif %}>
+                <option value="">-- select rule --</option>
+                {% for rule_name in available_rules %}
+                  <option value="{{ rule_name }}" {% if rule_name == marker.value or rule_name == marker.value.lstrip('$') %}selected{% endif %}>{{ rule_name }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            {% endif %}
 
             <div class="two-col marker-replace-fields"
                  {% if marker.type != "replace" %}hidden style="display:none"{% endif %}>

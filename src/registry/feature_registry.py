@@ -246,8 +246,29 @@ class FeatureValueCombinations:
             feature_mask &= self.valid_combinations[feature] == value
         return bool(feature_mask.any())
 
-    def get_all_combinations(self) -> List[Dict[str, str]]:
-        return self.valid_combinations.to_dict(orient="records")  # type: ignore
+    def get_all_combinations(
+            self,
+            fixed_features: Optional[Dict[str, str]] = None,
+        ) -> List[Dict[str, str]]:
+        
+        valid_combinations = self.valid_combinations
+        if fixed_features:
+            valid_combination_mask = pd.Series(
+                [True] * len(valid_combinations)
+            )
+            for feature, value in fixed_features.items():
+                if feature not in self.feature_names:
+                    raise ValueError(
+                        f"Unexpected feature '{feature}' provided. "
+                        f"Expected features: {self.feature_names}."
+                    )
+                valid_combination_mask &= self.feature_masks.get(
+                    (feature, value),
+                    pd.Series([False] * len(valid_combinations))
+                )
+            valid_combinations = valid_combinations[valid_combination_mask]
+
+        return valid_combinations.to_dict(orient="records")
 
     def __str__(self):
         return (

@@ -1,81 +1,88 @@
 <style>
-  #inflect-results table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
-  #inflect-results th, #inflect-results td { padding: 0.45rem 0.65rem; border: 1px solid #ddd; text-align: left; }
-  #inflect-results th { background: #f7f7f7; font-weight: 600; }
-  #inflect-results tr:nth-child(even) { background: #fafafa; }
-  #inflect-feature-dropdowns { display: grid; gap: 0.75rem; }
+  #view-paradigm-results table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
+  #view-paradigm-results th, #view-paradigm-results td { padding: 0.45rem 0.65rem; border: 1px solid #ddd; text-align: left; }
+  #view-paradigm-results th { background: #f7f7f7; font-weight: 600; }
+  #view-paradigm-results tr:nth-child(even) { background: #fafafa; }
+  #view-paradigm-feature-dropdowns { display: grid; gap: 0.75rem; }
   .fixed-features { margin-top: 0.25rem; }
   .fixed-features span { display: inline-block; padding: 0.2rem 0.5rem; background: #f0ede6; border: 1px solid #d6d0c4; border-radius: 4px; font-size: 0.9rem; margin-right: 0.35rem; }
 </style>
 
-<section class="panel" id="inflect-stages-panel">
-  <h2>Inflect stages</h2>
-  <p class="muted">Select a paradigm, enter a stem, choose feature values, then run inflection to see each stage.</p>
+<section class="panel" id="view-paradigm-panel">
+  <h2>View paradigm</h2>
+  <p class="muted">Select a paradigm and enter a stem. Leave features unselected to see all values (wildcard). Pin a feature to filter the table to that value.</p>
 
   {% if inflect_registry_error %}
     <div class="notice error">{{ inflect_registry_error }}</div>
   {% elif not paradigm_names %}
     <div class="notice error">No paradigms found. Create a Paradigm config in the Grammar config tab first.</div>
   {% else %}
-    <form method="post" action="{{ url_for('web.inflect_run') }}" class="grid" id="inflect-stages-form">
+    <form method="post" action="{{ url_for('web.view_paradigm_run') }}" class="grid" id="view-paradigm-form">
       <div class="two-col">
         <label>
           Paradigm
-          <select name="paradigm_name" id="inflect-paradigm-select">
+          <select name="paradigm_name" id="view-paradigm-select">
             <option value="">-- select paradigm --</option>
             {% for name in paradigm_names %}
-              <option value="{{ name }}" {% if name == inflect_selected_paradigm %}selected{% endif %}>{{ name }}</option>
+              <option value="{{ name }}" {% if name == view_selected_paradigm %}selected{% endif %}>{{ name }}</option>
             {% endfor %}
           </select>
         </label>
         <label>
           Stem
           <span class="checkbox-row">
-            <input type="checkbox" id="inflect-use-lexicon">
+            <input type="checkbox" id="view-paradigm-use-lexicon">
             <span>Use lexicon</span>
           </span>
-          <input type="text" name="stem" id="inflect-stem-text" value="{{ inflect_selected_stem | default('', true) }}" placeholder="po">
-          <select name="stem" id="inflect-stem-select" disabled hidden style="display:none">
+          <input type="text" name="stem" id="view-paradigm-stem-text" value="{{ view_selected_stem | default('', true) }}" placeholder="pòk">
+          <select name="stem" id="view-paradigm-stem-select" disabled hidden style="display:none">
             <option value="">-- select root --</option>
           </select>
         </label>
       </div>
 
-      <div id="inflect-feature-dropdowns">
+      <div class="two-col">
+        <label>
+          Max rows
+          <input type="number" name="max_rows" id="view-paradigm-max-rows" value="{{ view_selected_max_rows | default(100, true) }}" min="1">
+        </label>
+      </div>
+
+      <div id="view-paradigm-feature-dropdowns">
         <!-- populated by JS based on paradigm selection -->
       </div>
 
-      <div id="inflect-fixed-features">
+      <div id="view-paradigm-fixed-features">
         <!-- populated by JS based on paradigm selection -->
       </div>
 
       <div class="actions">
-        <button type="submit" id="inflect-submit-btn" disabled>Inflect</button>
+        <button type="submit" id="view-paradigm-submit-btn" disabled>View</button>
       </div>
     </form>
 
-    {% if inflect_results is defined and inflect_results is not none %}
-      <section id="inflect-results">
-        <h3>Inflection stages</h3>
-        {% if inflect_results %}
+    {% if view_results is defined and view_results is not none %}
+      <section id="view-paradigm-results">
+        <h3>Inflected paradigm</h3>
+        {% if view_results | length == view_max_rows %}
+          <div class="notice error">
+            Showing {{ view_max_rows }} rows (limit reached). Increase max rows to see more results.
+          </div>
+        {% endif %}
+        {% if view_results %}
+          {% set columns = view_result_columns %}
           <table>
             <thead>
-              <tr><th>Order</th><th>Marker type</th><th>Marker value</th><th>Feature value</th><th>Form</th></tr>
+              <tr>{% for col in columns %}<th>{{ col }}</th>{% endfor %}</tr>
             </thead>
             <tbody>
-              {% for row in inflect_results %}
-                <tr>
-                  <td>{{ row.order }}</td>
-                  <td>{{ row.marker_type or "\u2014" }}</td>
-                  <td>{{ row.marker_value or "\u2014" }}</td>
-                  <td>{{ row.feature_value or "\u2014" }}</td>
-                  <td>{{ row.form }}</td>
-                </tr>
+              {% for row in view_results %}
+                <tr>{% for col in columns %}<td>{{ row[col] | default("\u2014") }}</td>{% endfor %}</tr>
               {% endfor %}
             </tbody>
           </table>
         {% else %}
-          <p class="muted">No inflection stages returned.</p>
+          <p class="muted">No results returned.</p>
         {% endif %}
       </section>
     {% endif %}
@@ -88,13 +95,13 @@
   const paradigmRoots = {{ paradigm_roots | default({}) | tojson }};
 
   // Restore previous selections after a POST round-trip
-  const previousFeatureValues = {{ inflect_selected_features | default({}) | tojson }};
-  const previousStem = {{ inflect_selected_stem | default('', true) | tojson }};
+  const previousFeatureValues = {{ view_selected_features | default({}) | tojson }};
+  const previousStem = {{ view_selected_stem | default('', true) | tojson }};
 
-  function updateInflectStemMode() {
-    const checkbox = document.getElementById("inflect-use-lexicon");
-    const textInput = document.getElementById("inflect-stem-text");
-    const selectInput = document.getElementById("inflect-stem-select");
+  function updateViewStemMode() {
+    const checkbox = document.getElementById("view-paradigm-use-lexicon");
+    const textInput = document.getElementById("view-paradigm-stem-text");
+    const selectInput = document.getElementById("view-paradigm-stem-select");
     if (!checkbox || !textInput || !selectInput) return;
     const useLexicon = checkbox.checked;
     textInput.hidden = useLexicon;
@@ -105,10 +112,10 @@
     selectInput.disabled = !useLexicon;
   }
 
-  function rebuildInflectRootDropdown() {
-    const paradigmSelect = document.getElementById("inflect-paradigm-select");
-    const selectInput = document.getElementById("inflect-stem-select");
-    const checkbox = document.getElementById("inflect-use-lexicon");
+  function rebuildViewRootDropdown() {
+    const paradigmSelect = document.getElementById("view-paradigm-select");
+    const selectInput = document.getElementById("view-paradigm-stem-select");
+    const checkbox = document.getElementById("view-paradigm-use-lexicon");
     if (!paradigmSelect || !selectInput || !checkbox) return;
     const paradigm = paradigmSelect.value;
     const roots = paradigmRoots[paradigm] || [];
@@ -123,15 +130,15 @@
     checkbox.disabled = roots.length === 0;
     if (roots.length === 0 && checkbox.checked) {
       checkbox.checked = false;
-      updateInflectStemMode();
+      updateViewStemMode();
     }
   }
 
   function rebuildFeatureDropdowns() {
-    const select = document.getElementById("inflect-paradigm-select");
-    const container = document.getElementById("inflect-feature-dropdowns");
-    const fixedContainer = document.getElementById("inflect-fixed-features");
-    const submitBtn = document.getElementById("inflect-submit-btn");
+    const select = document.getElementById("view-paradigm-select");
+    const container = document.getElementById("view-paradigm-feature-dropdowns");
+    const fixedContainer = document.getElementById("view-paradigm-fixed-features");
+    const submitBtn = document.getElementById("view-paradigm-submit-btn");
     if (!select || !container || !fixedContainer) return;
 
     const paradigm = select.value;
@@ -153,7 +160,7 @@
 
       const placeholder = document.createElement("option");
       placeholder.value = "";
-      placeholder.textContent = "-- select --";
+      placeholder.textContent = "All (wildcard)";
       sel.appendChild(placeholder);
 
       for (const v of values) {
@@ -192,11 +199,11 @@
     }
 
     if (submitBtn) submitBtn.disabled = false;
-    rebuildInflectRootDropdown();
+    rebuildViewRootDropdown();
   }
 
   document.addEventListener("DOMContentLoaded", function() {
-    const select = document.getElementById("inflect-paradigm-select");
+    const select = document.getElementById("view-paradigm-select");
     if (select) {
       select.addEventListener("change", function() {
         // Clear previous selections when paradigm changes
@@ -206,9 +213,9 @@
       // Build on load if a paradigm is already selected (POST round-trip)
       if (select.value) rebuildFeatureDropdowns();
     }
-    const lexiconCheckbox = document.getElementById("inflect-use-lexicon");
+    const lexiconCheckbox = document.getElementById("view-paradigm-use-lexicon");
     if (lexiconCheckbox) {
-      lexiconCheckbox.addEventListener("change", updateInflectStemMode);
+      lexiconCheckbox.addEventListener("change", updateViewStemMode);
     }
   });
 </script>

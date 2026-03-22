@@ -725,6 +725,11 @@ class MarkerRegistry:
         self.features = feature_registry.features
         self.feature_combinations = feature_registry.feature_combinations
 
+        self.feature_markers_registry = None
+        self.contingent_markers_registry = None
+        self.feature_markers = {}
+        self.contingent_markers = {}
+
         if feature_markers_registry is not None:
             self.feature_markers_registry = feature_markers_registry
 

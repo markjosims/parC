@@ -2,6 +2,7 @@ import pynini
 from typing import Optional, Union, List
 from dataclasses import dataclass, field
 from src.registry.registry_utils import ReservedSymbolMixin
+from loguru import logger
 
 def is_acceptor(fsa: pynini.Fst) -> bool:
     return fsa.properties(pynini.ACCEPTOR, True)
@@ -26,7 +27,8 @@ class Acceptor:
 
     def set_acceptor(self, fsa: pynini.Fst):
         if self.acceptor_built:
-            raise ValueError("Acceptor cannot be overridden.")
+            logger.info("Acceptor already built, skipping set_acceptor.")
+            return
         if not is_acceptor(fsa):
             raise ValueError("Must be an acceptor FST")
         self.fsa = fsa

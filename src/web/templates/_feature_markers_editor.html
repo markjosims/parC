@@ -65,7 +65,8 @@
         "If a child marker list defines its own stem selector, that child definition wins.",
         true,
         "Global stem selector",
-        "Add global marker"
+        "Add global marker",
+        available_rules=available_rules
       ) }}
     </section>
 
@@ -96,7 +97,8 @@
               entry.marker_list,
               "entry-" ~ entry.id,
               url_for('web.feature_markers_add_entry_marker', entry_id=entry.id),
-              'web.feature_markers_remove_marker'
+              'web.feature_markers_remove_marker',
+              available_rules=available_rules
             ) }}
             <div class="actions">
               <button type="submit" name="action" value="remove-entry" formaction="{{ url_for('web.feature_markers_remove_entry', entry_id=entry.id) }}">Remove value entry</button>
@@ -142,17 +144,24 @@
       var valueField = node.querySelector(".marker-value-field");
       var valueInput = valueField ? valueField.querySelector("input") : null;
       var replaceFields = node.querySelector(".marker-replace-fields");
+      var ruleField = node.querySelector(".marker-rule-field");
       if (!select || !valueField || !replaceFields) return;
       var isReplace = select.value === "replace";
-      valueField.hidden = isReplace;
-      valueField.style.display = isReplace ? "none" : "";
+      var isRule = select.value === "rule";
+      valueField.hidden = isReplace || isRule;
+      valueField.style.display = (isReplace || isRule) ? "none" : "";
+      if (valueInput) valueInput.disabled = isReplace || isRule;
       replaceFields.hidden = !isReplace;
       replaceFields.style.display = isReplace ? "" : "none";
+      if (ruleField) {
+        var ruleSel = ruleField.querySelector("select");
+        ruleField.hidden = !isRule;
+        ruleField.style.display = isRule ? "" : "none";
+        if (ruleSel) ruleSel.disabled = !isRule;
+      }
       if (valueInput) {
         if (select.value === "prefix") {
           valueInput.placeholder = "ba-";
-        } else if (select.value === "rule") {
-          valueInput.placeholder = "$rule_name";
         } else if (select.value === "suppletion") {
           valueInput.placeholder = "suppleted form";
         } else {

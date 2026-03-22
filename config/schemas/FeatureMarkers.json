@@ -53,7 +53,7 @@
       "properties": {
         "type": { 
           "type": "string" ,
-          "enum": ["prefix", "suffix", "infix", "replace", "suppletion", "rule"]
+          "enum": ["prefix", "suffix", "infix", "replace", "suppletion", "rule", "principal_part"]
         },
         "value": { "oneOf": [
           { "type": "string" },

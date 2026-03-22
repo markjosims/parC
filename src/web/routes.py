@@ -433,6 +433,90 @@ def inflect_run():
     )
 
 
+@bp.post("/inflect/view")
+def view_paradigm_run():
+    paradigm_name = request.form.get("paradigm_name", "").strip()
+    stem = request.form.get("stem", "").strip()
+    max_rows_str = request.form.get("max_rows", "100").strip()
+
+    try:
+        max_rows = max(1, int(max_rows_str))
+    except ValueError:
+        max_rows = 100
+
+    # Collect pinned feature values from fv-* form fields
+    fixed_features: dict[str, str] = {}
+    for key, value in request.form.items():
+        if key.startswith("fv-") and value:
+            fixed_features[key[3:]] = value
+
+    view_state = dict(
+        view_selected_paradigm=paradigm_name,
+        view_selected_stem=stem,
+        view_selected_features=fixed_features,
+        view_selected_max_rows=max_rows,
+    )
+
+    if not paradigm_name:
+        return _render_inflect_page(
+            inflect_tool="view",
+            error="Please select a paradigm.",
+            **view_state,
+        )
+
+    if not stem:
+        return _render_inflect_page(
+            inflect_tool="view",
+            error="Please enter a stem.",
+            **view_state,
+        )
+
+    try:
+        config_dir = _local_config_dir()
+        registry = _get_grammar_registry(config_dir)
+    except Exception as exc:
+        return _render_inflect_page(
+            inflect_tool="view",
+            error=f"Could not load grammar registry: {exc}",
+            **view_state,
+        )
+
+    paradigm = registry.paradigms.get(paradigm_name)
+    if paradigm is None:
+        return _render_inflect_page(
+            inflect_tool="view",
+            error=f"Paradigm '{paradigm_name}' not found in registry.",
+            **view_state,
+        )
+
+    try:
+        results = paradigm.inflect_subparadigm(
+            stem,
+            fixed_features=fixed_features or None,
+            only_free_feature_columns=True,
+            max_rows=max_rows,
+        )
+    except (ValueError, Exception) as exc:
+        return _render_inflect_page(
+            inflect_tool="view",
+            error=str(exc),
+            **view_state,
+        )
+
+    if results:
+        columns = sorted(k for k in results[0] if k != "form") + ["form"]
+    else:
+        columns = ["form"]
+
+    return _render_inflect_page(
+        inflect_tool="view",
+        view_results=results,
+        view_result_columns=columns,
+        view_max_rows=max_rows,
+        **view_state,
+    )
+
+
 @bp.post("/lexicon/add-row")
 def lexicon_add_row():
     return _add_item_handler("PartOfSpeech")
@@ -606,14 +690,26 @@ def _render_page(
     extra: dict[str, Any] = {}
     kind = state.get("kind")
 
+    registry = None
+    features_to_values = {}
+
     if kind in ("PartOfSpeech", "FeatureMarkers", "ContingentFeatureMarkers",
-                "FeatureCombinations", "Paradigm"):
+                "FeatureCombinations", "Paradigm", "Rules"):
         try:
             registry = _get_grammar_registry(_local_config_dir())
             features_to_values = registry.feature_registry.feature_registry.features_to_values
         except Exception:
             registry = None
             features_to_values = {}
+
+    if kind in ("FeatureMarkers", "ContingentFeatureMarkers", "Paradigm", "Rules"):
+        try:
+            if registry is not None and registry.fst_registry is not None:
+                extra["available_rules"] = sorted(registry.fst_registry.rules.keys())
+            else:
+                extra["available_rules"] = []
+        except Exception:
+            extra["available_rules"] = []
 
     if kind == "PartOfSpeech":
         editor = EDITORS["PartOfSpeech"]
@@ -662,15 +758,25 @@ def _render_inflect_page(
     inflect_tool: str = "stages",
     message: str | None = None,
     error: str | None = None,
+    # Inflect stages state
     inflect_results: list[dict[str, str]] | None = None,
     inflect_selected_paradigm: str = "",
     inflect_selected_stem: str = "",
     inflect_selected_features: dict[str, str] | None = None,
+    # View paradigm state
+    view_results: list[dict[str, str]] | None = None,
+    view_result_columns: list[str] | None = None,
+    view_max_rows: int = 100,
+    view_selected_paradigm: str = "",
+    view_selected_stem: str = "",
+    view_selected_features: dict[str, str] | None = None,
+    view_selected_max_rows: int = 100,
 ):
     inflect_registry_error = None
     paradigm_names: list[str] = []
     paradigm_features: dict[str, dict[str, list[str]]] = {}
     paradigm_fixed_features: dict[str, dict[str, str]] = {}
+    paradigm_roots: dict[str, list[str]] = {}
 
     try:
         config_dir = _local_config_dir()
@@ -691,6 +797,10 @@ def _render_inflect_page(
                 k: v for k, v in ftv.items() if k not in fixed
             }
             paradigm_fixed_features[name] = fixed
+            try:
+                paradigm_roots[name] = paradigm.lexicon.get_roots()
+            except Exception:
+                paradigm_roots[name] = []
     except Exception as exc:
         inflect_registry_error = (
             "Could not load grammar registry. Ensure your config files "
@@ -705,11 +815,20 @@ def _render_inflect_page(
         paradigm_names=paradigm_names,
         paradigm_features=paradigm_features,
         paradigm_fixed_features=paradigm_fixed_features,
+        paradigm_roots=paradigm_roots,
         inflect_registry_error=inflect_registry_error,
         inflect_results=inflect_results,
         inflect_selected_paradigm=inflect_selected_paradigm,
         inflect_selected_stem=inflect_selected_stem,
         inflect_selected_features=inflect_selected_features or {},
+        # View paradigm state
+        view_results=view_results,
+        view_result_columns=view_result_columns or ["form"],
+        view_max_rows=view_max_rows,
+        view_selected_paradigm=view_selected_paradigm,
+        view_selected_stem=view_selected_stem,
+        view_selected_features=view_selected_features or {},
+        view_selected_max_rows=view_selected_max_rows,
         message=message,
         error=error,
         # Defaults for config-tab vars that base template may reference

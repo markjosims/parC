@@ -14,6 +14,8 @@
   .marker-value-field[hidden] { display: none !important; }
   .marker-replace-fields[hidden] { display: none !important; }
   .mode-value-field[hidden] { display: none !important; }
+  .mode-ref-select[hidden] { display: none !important; }
+  .mode-fixed-input[hidden] { display: none !important; }
   .validation-msg.warn { color: #b8860b; font-style: italic; }
 </style>
 
@@ -78,7 +80,8 @@
         "A global stem selector applies to every form unless some later stage overrides that stem in downstream processing.",
         true,
         "Global stem selector",
-        "Add global marker"
+        "Add global marker",
+        available_rules=available_rules
       ) }}
     </section>
 
@@ -88,11 +91,6 @@
       <div class="actions">
         <button type="submit" name="action" value="add-feature-mapping" formaction="{{ url_for('web.paradigms_add_entry') }}">Add feature mapping</button>
       </div>
-      <datalist id="paradigm-feature-marker-list">
-        {% for item in state.available_feature_markers %}
-          <option value="${{ item }}">
-        {% endfor %}
-      </datalist>
       <div id="paradigm-feature-mapping-list">
         {% if state.feature_mappings %}
           {% for item in state.feature_mappings %}
@@ -113,11 +111,20 @@
               </div>
               <label class="mode-value-field" {% if item.mode == "null" %}hidden style="display:none"{% endif %}>
                 Value
+                <select name="feature-value-{{ item.id }}"
+                        class="mode-ref-select"
+                        {% if item.mode != "ref" %}disabled hidden style="display:none"{% endif %}>
+                  <option value="">-- select feature markers --</option>
+                  {% for fm_name in state.available_feature_markers %}
+                    <option value="${{ fm_name }}" {% if "$" ~ fm_name == item.value %}selected{% endif %}>{{ fm_name }}</option>
+                  {% endfor %}
+                </select>
                 <input type="text"
                        name="feature-value-{{ item.id }}"
+                       class="mode-fixed-input"
                        value="{{ item.value }}"
-                       list="{% if item.mode == 'ref' %}paradigm-feature-marker-list{% endif %}"
-                       placeholder="{% if item.mode == 'ref' %}$class_prefixes{% else %}imperfective{% endif %}">
+                       {% if item.mode == "ref" %}disabled hidden style="display:none"{% endif %}
+                       placeholder="imperfective">
               </label>
               <div class="validation-msg muted" data-feature-mapping-validation="{{ item.id }}" style="display:none"></div>
               <div class="actions">
@@ -149,18 +156,18 @@
       <div class="actions">
         <button type="submit" name="action" value="add-contingent-marker" formaction="{{ url_for('web.paradigms_add_contingent_marker') }}">Add contingent marker ref</button>
       </div>
-      <datalist id="paradigm-contingent-marker-list">
-        {% for item in state.available_contingent_markers %}
-          <option value="${{ item }}">
-        {% endfor %}
-      </datalist>
       <div id="paradigm-contingent-list">
         {% if state.contingent_markers %}
           {% for item in state.contingent_markers %}
             <section class="node" id="contingent-marker-{{ item.id }}" data-contingent-id="{{ item.id }}">
               <label>
                 Contingent marker ref
-                <input type="text" name="contingent-ref-{{ item.id }}" value="{{ item.ref }}" placeholder="$ipfv_3object_markers" list="paradigm-contingent-marker-list">
+                <select name="contingent-ref-{{ item.id }}">
+                  <option value="">-- select contingent markers --</option>
+                  {% for cm_name in state.available_contingent_markers %}
+                    <option value="${{ cm_name }}" {% if "$" ~ cm_name == item.ref %}selected{% endif %}>{{ cm_name }}</option>
+                  {% endfor %}
+                </select>
               </label>
               <div class="validation-msg muted" data-contingent-validation="{{ item.id }}" style="display:none"></div>
               <div class="actions">
@@ -206,17 +213,24 @@
       var valueField = node.querySelector(".marker-value-field");
       var valueInput = valueField ? valueField.querySelector("input") : null;
       var replaceFields = node.querySelector(".marker-replace-fields");
+      var ruleField = node.querySelector(".marker-rule-field");
       if (!select || !valueField || !replaceFields) return;
       var isReplace = select.value === "replace";
-      valueField.hidden = isReplace;
-      valueField.style.display = isReplace ? "none" : "";
+      var isRule = select.value === "rule";
+      valueField.hidden = isReplace || isRule;
+      valueField.style.display = (isReplace || isRule) ? "none" : "";
+      if (valueInput) valueInput.disabled = isReplace || isRule;
       replaceFields.hidden = !isReplace;
       replaceFields.style.display = isReplace ? "" : "none";
+      if (ruleField) {
+        var ruleSel = ruleField.querySelector("select");
+        ruleField.hidden = !isRule;
+        ruleField.style.display = isRule ? "" : "none";
+        if (ruleSel) ruleSel.disabled = !isRule;
+      }
       if (valueInput) {
         if (select.value === "prefix") {
           valueInput.placeholder = "ba-";
-        } else if (select.value === "rule") {
-          valueInput.placeholder = "$rule_name";
         } else {
           valueInput.placeholder = "-o";
         }
@@ -239,17 +253,20 @@
     root.querySelectorAll("[data-feature-mapping-id]").forEach(function(node) {
       var select = node.querySelector("[data-feature-mode]");
       var valueField = node.querySelector(".mode-value-field");
-      var input = valueField ? valueField.querySelector("input") : null;
-      if (!select || !valueField || !input) return;
-      var isNull = select.value === "null";
+      var refSelect = valueField ? valueField.querySelector(".mode-ref-select") : null;
+      var fixedInput = valueField ? valueField.querySelector(".mode-fixed-input") : null;
+      if (!select || !valueField || !refSelect || !fixedInput) return;
+      var mode = select.value;
+      var isNull = mode === "null";
+      var isRef = mode === "ref";
       valueField.hidden = isNull;
       valueField.style.display = isNull ? "none" : "";
-      input.placeholder = select.value === "ref" ? "$class_prefixes" : "imperfective";
-      if (select.value === "ref") {
-        input.setAttribute("list", "paradigm-feature-marker-list");
-      } else {
-        input.removeAttribute("list");
-      }
+      refSelect.hidden = !isRef;
+      refSelect.style.display = isRef ? "" : "none";
+      refSelect.disabled = !isRef;
+      fixedInput.hidden = isRef || isNull;
+      fixedInput.style.display = (isRef || isNull) ? "none" : "";
+      fixedInput.disabled = isRef;
     });
   }
 
@@ -274,11 +291,12 @@
         seenFeatures[featureName] = true;
       }
       if (modeInput && modeInput.value !== "null") {
-        var value = valueInput ? valueInput.value.trim() : "";
+        var activeInput = modeInput.value === "ref"
+          ? node.querySelector(".mode-ref-select")
+          : node.querySelector(".mode-fixed-input");
+        var value = activeInput ? activeInput.value.trim() : "";
         if (!value) {
           warnings.push("Value is required unless this feature is contingent-only");
-        } else if (modeInput.value === "ref" && !value.startsWith("$")) {
-          warnings.push("Feature marker refs should start with $");
         }
       }
       if (warnings.length) {
@@ -294,22 +312,10 @@
 
     form.querySelectorAll("[data-contingent-id]").forEach(function(node) {
       var id = node.dataset.contingentId;
-      var input = node.querySelector("[name='contingent-ref-" + id + "']");
       var msg = node.querySelector("[data-contingent-validation]");
-      var warnings = [];
-      var value = input ? input.value.trim() : "";
-      if (value && !value.startsWith("$")) {
-        warnings.push("Contingent marker refs should start with $");
-      }
-      if (warnings.length) {
-        msg.textContent = warnings.join(" · ");
-        msg.className = "validation-msg warn";
-        msg.style.display = "";
-      } else {
-        msg.textContent = "";
-        msg.className = "validation-msg muted";
-        msg.style.display = "none";
-      }
+      msg.textContent = "";
+      msg.className = "validation-msg muted";
+      msg.style.display = "none";
     });
 
     form.querySelectorAll("[data-marker-id]").forEach(function(node) {

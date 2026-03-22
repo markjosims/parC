@@ -1079,15 +1079,13 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         # interpret as [EOS] (otherwise _parse_pattern will 
         # default to [BOS] since it's at the beginning of the string)
         if rule.right_context.value == self.word_edge:
-            rule.right_context.set_acceptor(
-                self._token_acceptor(self.eow_flag)
-            )
-            right_context_fsa = rule.right_context.fsa
+            right_context_fsa = self.eow_fsa
         else:
             right_context_fsa = self.parse_pattern(rule.right_context)
-        if isinstance(rule.left_context, Acceptor):
+
+        if isinstance(rule.left_context, Acceptor) and not rule.left_context.acceptor_built:
             rule.left_context.set_acceptor(left_context_fsa)
-        if isinstance(rule.right_context, Acceptor):
+        if isinstance(rule.right_context, Acceptor) and not rule.right_context.acceptor_built:
             rule.right_context.set_acceptor(right_context_fsa)
         return left_context_fsa, right_context_fsa
         
@@ -1184,6 +1182,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         - Factor -> (Expression) | Ref | Atom
         - Atom -> Phone | Flag | Class | Pattern
         """
+        logger.debug(f"Parsing tokens {tokens}")
         acceptor, current_index = self._parse_expression(tokens, initial_index=0)
         if current_index != len(tokens):
             raise ValueError(f"Tokens remaining after parsing expression for token array {tokens}")
@@ -1198,6 +1197,8 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         Parses an expression in the token array starting at `current_index`, where
         an expression is a single term or any sequence of term | term | term ...
         """
+        logger.debug(f"Parsing expression starting at index {initial_index}, tokens {tokens}")
+
         current_index = initial_index
         term, current_index = self._parse_term(tokens, current_index)
         terms = [term]
@@ -1205,6 +1206,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             (current_index < len(tokens))
             and tokens[current_index].type == 'pipe_operator'
         ):
+            logger.debug(f"Found pipe operator at index {current_index}, tokens {tokens}, parsing next term in expression...")
             current_index+=1
             current_term, current_index = self._parse_term(tokens, current_index)
             terms.append(current_term)
@@ -1229,6 +1231,8 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         Parses a term, i.e. a sequence of factors and unary operators of
         arbitrary length, OR a delimited expression in parentheses or curly braces.
         """
+        logger.debug(f"Parsing term starting at index {initial_index}, tokens {tokens}")
+
         current_index = initial_index
         current_type = tokens[current_index].type
         if current_type in ("right_delimiter", "pipe_operator"):
@@ -1241,12 +1245,14 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             (current_index < len(tokens)) and
             (current_type not in ("right_delimiter", "pipe_operator"))
         ):
+            logger.debug(f"Parsing factor sequence starting at index {current_index}, tokens {tokens}")
             factor_list, current_index = self._parse_factor_sequence(tokens, current_index)
             # check if `_parse_factor_sequence` stopped before a unary operator
             # and if so apply the operator to the last factor
             if current_index < len(tokens):
                 current_type = tokens[current_index].type
                 if current_type == 'unary_operator':
+                    logger.debug(f"Found unary operator at index {current_index}, tokens {tokens}, applying to last factor in factor sequence...")
                     operator = tokens[current_index].value
                     last_factor = factor_list[-1]
                     last_factor = self._interpret_unary_operator(last_factor, operator)
@@ -1274,9 +1280,12 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         token,alongside the index of the first token after the current
         factor sequence.
         """
+        logger.debug(f"Parsing factor sequence starting at index {initial_index}, tokens {tokens}")
+
         acceptors = []
         current_index = initial_index
         while current_index < len(tokens):
+            logger.debug(f"Parsing factor starting at index {current_index}, tokens {tokens}")
             token_acceptor = tokens[current_index].acceptor
             token_type = tokens[current_index].type
             if token_acceptor is not None and token_acceptor.acceptor_built:
@@ -1296,6 +1305,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
                     f"item ref {token_val} tokens {tokens} current index {current_index}. "
                 )
             elif token_type == 'left_delimiter':
+                logger.debug(f"While parsing factor sequence found left delimiter at index {current_index}, tokens {tokens}, parsing delimited factor...")
                 acceptor, current_index = self._parse_delimited_factor(
                     tokens, current_index
                 )
@@ -1308,8 +1318,6 @@ class FstRegistry(Registry, ReservedSymbolMixin):
                     f"Cannot parse token of type {token_type} at index {current_index} tokens {tokens}"
                 )
 
-        if not acceptors:
-            raise ValueError(f"Empty factor detected in token sequence {tokens} current index {current_index}")
         return acceptors, current_index
             
     def _parse_delimited_factor(
@@ -1317,6 +1325,8 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             tokens: List[Token],
             initial_index: int,
     ) -> Tuple[pynini.Fst, int]:
+        logger.debug(f"Parsing delimited factor starting at index {initial_index}, tokens {tokens}")
+
         current_index = initial_index
         left_delimiter = tokens[current_index].value
         current_index+=1
@@ -1451,6 +1461,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             output_acceptor = self.acceptor(output_pattern)
             string_map_acceptors.append((input_acceptor, output_acceptor))
         string_map_rule = AnonymousRule(
+            type="string_map",
             string_map=string_map_acceptors,
         )
         rule_fst = self._parse_rule(string_map_rule)

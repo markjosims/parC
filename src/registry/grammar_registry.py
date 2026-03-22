@@ -376,7 +376,8 @@ class Paradigm:
         
         input_strings = self.lexicon.get_roots()
         output_strings = self.lexicon.get_column_data(principal_part, fill_w_root=True)
-        return self.fst_registry.string_map_transducer(input_strings, output_strings)
+        string_map = list(zip(input_strings, output_strings))
+        return self.fst_registry.string_map_transducer(string_map)
     
     def inflect(self, stem: str, feature_values: Dict[str, str]) -> pynini.Fst:
         """
@@ -388,6 +389,74 @@ class Paradigm:
         markers = self.get_markers_for_feature_values(feature_values)
         inflected_form_fst = self._apply_markers(stem, markers)
         return inflected_form_fst
+    
+    def inflect_subparadigm(
+            self,
+            stem: str,
+            fixed_features: Optional[Dict[str, str]]=None,
+            only_free_feature_columns: bool=True,
+            max_rows: Optional[int]=100,
+    ) -> List[Dict[str, str]]:
+        """
+        Inflect a given stem according to the markers specified for the
+        provided fixed feature values.
+        """
+        if fixed_features is None:
+            fixed_features = self.fixed_features
+        else:
+            fixed_features = {**self.fixed_features, **fixed_features}
+        free_features = [
+            feature for feature in self.features
+            if feature.name not in fixed_features
+        ]
+        results = []
+
+        if self.feature_value_combinations:
+            valid_combinations = self.feature_value_combinations.get_all_combinations(fixed_features)
+            if max_rows is not None:
+                valid_combinations = valid_combinations[:max_rows]
+            for combination in valid_combinations:
+                inflected_fst = self.inflect(stem, combination)
+                inflected_strings = self.fst_registry.fsm_strings(inflected_fst)
+                inflected_strings = "; ".join(inflected_strings)
+                if only_free_feature_columns:
+                    combination = {
+                        feature: value for feature, value in combination.items()
+                        if feature not in fixed_features
+                    }
+                results.append({
+                    'form': inflected_strings,
+                    **combination,
+                })
+        else:
+            # for each feature get a list of dicts
+            # [{"feature_name": "feature_value"}, ...]
+            # then get the cartesian product across those lists
+            # to get all combinations
+            feature_value_lists = []
+            for feature in free_features:
+                feature_value_lists.append([
+                    {feature.name: value} for value in feature.values
+                ])
+            combinations = itertools.product(*feature_value_lists)
+            if max_rows is not None:
+                combinations = itertools.islice(combinations, max_rows)
+            for combination in combinations:
+                if only_free_feature_columns:
+                    combination_dict = {}
+                else:
+                    combination_dict = {**fixed_features}
+                for feature_value_pair in combination:
+                    combination_dict.update(feature_value_pair)
+                inflected_fst = self.inflect(stem, combination_dict)
+                inflected_strings = self.fst_registry.fsm_strings(inflected_fst)
+                inflected_strings = "; ".join(inflected_strings)
+                results.append({
+                    'form': inflected_strings,
+                    **combination_dict,
+                })
+
+        return results
     
     def get_inflection_stages(
             self,
@@ -569,4 +638,5 @@ class GrammarRegistry(Registry):
 if __name__ == "__main__":
     reg = GrammarRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
     stages = reg.paradigms['verbs_present'].get_inflection_stages('pòk', {'tense':'present', 'mood':'subjunctive', 'person_number':'1sg'})
+    inflected_paradigm = reg.paradigms['verbs_present'].inflect_subparadigm('pòk')
     breakpoint()

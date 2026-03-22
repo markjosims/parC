@@ -6,3 +6,9 @@ markers:
   subjunctive:
   - type: suffix
     value: -ᴐ̀k
+  imperative:
+  - type: rule
+    value: delete_stemfinal_consonant
+  infinitive:
+  - type: prefix
+    value: rʊ-
