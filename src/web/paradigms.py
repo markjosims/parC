@@ -83,11 +83,11 @@ class ParadigmEditor(BaseEditor):
             order_stages.append(row)
 
         filter_config = document.get("filter") or {}
-        lexical_flags = filter_config.get("lexical_flags", [])
-        if isinstance(lexical_flags, str):
-            lexical_flags_text = lexical_flags
+        lexical_features = filter_config.get("lexical_features", [])
+        if isinstance(lexical_features, str):
+            lexical_features_text = lexical_features
         else:
-            lexical_flags_text = ", ".join(str(item) for item in lexical_flags if str(item))
+            lexical_features_text = ", ".join(str(item) for item in lexical_features if str(item))
 
         state = {
             "path": relative_path,
@@ -99,7 +99,7 @@ class ParadigmEditor(BaseEditor):
             "feature_combinations": str(document.get("feature_combinations", "") or ""),
             "contingent_markers": contingent_markers,
             "filter_pattern": str(filter_config.get("pattern", "") or ""),
-            "filter_lexical_flags_text": lexical_flags_text,
+            "filter_lexical_features_text": lexical_features_text,
         }
         return state
 
@@ -112,7 +112,7 @@ class ParadigmEditor(BaseEditor):
         state["feature_combinations"] = ""
         state["contingent_markers"] = []
         state["filter_pattern"] = ""
-        state["filter_lexical_flags_text"] = ""
+        state["filter_lexical_features_text"] = ""
         state["available_part_of_speech"] = []
         state["available_feature_markers"] = []
         state["available_contingent_markers"] = []
@@ -126,7 +126,7 @@ class ParadigmEditor(BaseEditor):
         state.setdefault("feature_combinations", "")
         state.setdefault("contingent_markers", [])
         state.setdefault("filter_pattern", "")
-        state.setdefault("filter_lexical_flags_text", "")
+        state.setdefault("filter_lexical_features_text", "")
         state.setdefault("available_part_of_speech", [])
         state.setdefault("available_feature_markers", [])
         state.setdefault("available_contingent_markers", [])
@@ -151,9 +151,9 @@ class ParadigmEditor(BaseEditor):
             "filter_pattern",
             updated.get("filter_pattern", ""),
         ).strip()
-        updated["filter_lexical_flags_text"] = form.get(
-            "filter_lexical_flags_text",
-            updated.get("filter_lexical_flags_text", ""),
+        updated["filter_lexical_features_text"] = form.get(
+            "filter_lexical_features_text",
+            updated.get("filter_lexical_features_text", ""),
         ).strip()
         updated["global_markers"] = update_marker_list_from_form(
             updated.get("global_markers", blank_marker_list()),
@@ -212,9 +212,9 @@ class ParadigmEditor(BaseEditor):
             document["contingent_markers"] = contingent_markers
 
         filter_data: dict[str, Any] = {}
-        lexical_flags = split_csv(state.get("filter_lexical_flags_text", ""))
-        if lexical_flags:
-            filter_data["lexical_flags"] = lexical_flags[0] if len(lexical_flags) == 1 else lexical_flags
+        lexical_features = split_csv(state.get("filter_lexical_features_text", ""))
+        if lexical_features:
+            filter_data["lexical_features"] = lexical_features[0] if len(lexical_features) == 1 else lexical_features
         pattern = state.get("filter_pattern", "").strip()
         if pattern:
             filter_data["pattern"] = pattern

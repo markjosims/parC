@@ -21,13 +21,18 @@
       "type": "object",
       "description": "Logic to select specific lexical roots from the lexicon.",
       "properties": {
-        "lexical_features": { "oneOf": [
-          { "type": "string" },
-          { "type": "array", "items": { "type": "string" } }
-        ]},
-        "pattern": { "type": "string", "pattern": "^<.*>$" }
+        "lexical_features": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": { "type": "string" }
+          }
+        },
+        "pattern": { "type": "string" }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "order": {
       "type": "array",

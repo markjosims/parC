@@ -31,3 +31,25 @@ Tool for building morphological parsers for language documentation.
 - **`app.py`** - `python app.py [--config_dir DIR] [--debug]` starts the Flask app.
 
 
+
+## Prompt
+You are a helpful prompt engineer.
+Create a prompt for an LLM to implement the following change: I want to edit the Paradigm form @src/web/paradigms.py @src/web/templates/_paradigm_editor.html to use a sequence of dropdown menus for the 'lexical features' input field rather than a single text input.
+Each row in the form data has a pair of      
+dropdowns: the first selects a Feature name, the second a Feature value.
+Features names and values are fetched from the `GrammarRegistry` class in @src/web/routes.py, which is done elsewhere in @src/web/paradigms.py already.
+The logic for managing a mutable sequence of dropdown lists in the form should mimic the code in @src/web/templates/_marker_list_editor.html and @src/web/markers.py, and should avoid duplicating logic that already exists.
+To whatever extent possible, be proactive and move logic that already exists to a centralized location and inherit for both the marker list editor and the new feature list editor.
+
+The expected format for output is a list of couples, i.e. [(feature name, feature value)].
+See @src/registry/grammar_registry.py for implementation details, and @config/tira/paradigms/README.md and @config/schemas/Paradigm.json for the expected YAML format.
+
+While you're at it, make the 'Pattern' input field also a dropdown.
+It should give a list over all patterns, accessible via `GrammarRegistry.FstRegistry.patterns`.
+See @src/registry/FstRegistry.py for details.
+Add a checkbox that lets the user toggle between selecting a pattern from the dropdown list and letting the user input their own text.
+If no patterns are detected, keep the dropdown grayed out and display a warning that no patterns were found.
+
+I am the backend engineer.
+Ask any questions you have on the backend logic, especially if anything looks inconsistent to you.
+Once you're done, give me a prompt that contains all the context the frontend engineer will need to implement this.

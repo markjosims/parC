@@ -16,8 +16,7 @@ from src.web.editor_base import BaseEditor, split_csv
 
 def _dynamic_columns(state: dict[str, Any]) -> list[str]:
     return (
-        state.get("lexical_flags", [])
-        + state.get("principal_parts", [])
+        state.get("principal_parts", [])
         + state.get("lexical_features", [])
     )
 
@@ -37,7 +36,6 @@ class LexiconEditor(BaseEditor):
             "name": stem,
             "features": [],
             "lexical_features": [],
-            "lexical_flags": [],
             "principal_parts": [],
             "rows": [],
             "columns_warning": "",
@@ -48,7 +46,6 @@ class LexiconEditor(BaseEditor):
         state.setdefault("name", "")
         state.setdefault("features", [])
         state.setdefault("lexical_features", [])
-        state.setdefault("lexical_flags", [])
         state.setdefault("principal_parts", [])
         state.setdefault("columns_warning", "")
         return state
@@ -67,7 +64,6 @@ class LexiconEditor(BaseEditor):
         name = document.get("name", path.stem)
         features = document.get("features", [])
         lexical_features = document.get("lexical_features", [])
-        lexical_flags = document.get("lexical_flags", [])
         principal_parts = document.get("principal_parts", [])
 
         state: dict[str, Any] = {
@@ -77,9 +73,6 @@ class LexiconEditor(BaseEditor):
             "features": features if isinstance(features, list) else [],
             "lexical_features": (
                 lexical_features if isinstance(lexical_features, list) else []
-            ),
-            "lexical_flags": (
-                lexical_flags if isinstance(lexical_flags, list) else []
             ),
             "principal_parts": (
                 principal_parts if isinstance(principal_parts, list) else []
@@ -111,9 +104,6 @@ class LexiconEditor(BaseEditor):
         updated["features"] = _json_list(form.get("features_json", "[]"))
         updated["lexical_features"] = _json_list(
             form.get("lexical_features_json", "[]")
-        )
-        updated["lexical_flags"] = split_csv(
-            form.get("lexical_flags_text", "")
         )
         updated["principal_parts"] = split_csv(
             form.get("principal_parts_text", "")
@@ -189,8 +179,6 @@ class LexiconEditor(BaseEditor):
             document["features"] = state["features"]
         if state.get("lexical_features"):
             document["lexical_features"] = state["lexical_features"]
-        if state.get("lexical_flags"):
-            document["lexical_flags"] = state["lexical_flags"]
         if state.get("principal_parts"):
             document["principal_parts"] = state["principal_parts"]
         return yaml.safe_dump(document, sort_keys=False, allow_unicode=True)
