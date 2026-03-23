@@ -1,4 +1,8 @@
 kind: PartOfSpeech
 name: verb
-features: [tam, deixis, class_marker, subject, object, wh]
-lexical_features: [fv_class]
+features:
+- class_marker
+- deixis
+- object
+- subject
+- tam

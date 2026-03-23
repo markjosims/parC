@@ -12,3 +12,7 @@ feature_markers:
   person_number: $present_tense_person_markers
   mood: $present_tense_mood_markers
   tense: $verb_tense
+filter:
+  lexical_features:
+  - - conjugation_class
+    - class_A

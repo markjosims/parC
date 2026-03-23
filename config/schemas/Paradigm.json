@@ -66,8 +66,11 @@
       "description": "Imported defining valid feature cross-products. If blank, all combinations of features are generated."
     },
     "contingent_markers": {
-      "type": "string",
-      "description": "Filepath to import ContingentMarkers from."
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "Filepath to import ContingentMarkers from."
+      }
     }
   }
 }

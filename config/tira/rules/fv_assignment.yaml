@@ -1,0 +1,45 @@
+kind: Rules
+rules:
+  ipfv_it_fv:
+    string_map:
+    - - '{[aᴐ][ao][ai]}'
+      - -à
+    - - '{[ᴐᴐ][ᴐi][ᴐu]}'
+      - -ᴐ̀
+    test_mappings:
+    - - vəlɛð[aᴐ]
+      - vəlɛð-à
+    - - kɜc[ᴐi]
+      - kɜc-ᴐ̀
+    - - ilɛð[ᴐᴐ]
+      - ilɛð-ᴐ̀
+  ipfv_pfv_vent_fv:
+    string_map:
+    - - '{[aᴐ][ᴐᴐ]}'
+      - -ᴐ́
+    - - '[ao]'
+      - -ó
+    - - '[ᴐu]'
+      - -ú
+    - - '{[ai][ᴐi]}'
+      - -í
+    test_mappings:
+    - - vəlɛð[aᴐ]
+      - vəlɛð-ᴐ́
+    - - kɜc[ᴐi]
+      - kɜc-í
+    - - ilɛð[ᴐᴐ]
+      - ilɛð-ᴐ́
+  pfv_it_fv:
+    string_map:
+    - - '{[aᴐ][ᴐᴐ]}'
+      - -ɛ̀
+    - - '{[ao][ᴐu][ai][ᴐi]}'
+      - -ì
+    test_mappings:
+    - - vəlɛð[aᴐ]
+      - vəlɛð-ɛ̀
+    - - kɜc[ᴐi]
+      - kɜc-ì
+    - - ilɛð[ᴐᴐ]
+      - ilɛð-ɛ̀

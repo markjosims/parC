@@ -1,5 +1,15 @@
 kind: Inventory
 data:
   slot_flags:
-    _ref: "<Slot>"
-    _flags: ["[CL]"]
+    _ref: <Slot>
+    _flags:
+    - '[CL]'
+  fv_classes:
+    _ref: <FV>
+    _flags:
+    - '[aᴐ]'
+    - '[ao]'
+    - '[ai]'
+    - '[ᴐᴐ]'
+    - '[ᴐu]'
+    - '[ᴐi]'
