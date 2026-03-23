@@ -844,16 +844,12 @@ class FstRegistry(Registry, ReservedSymbolMixin):
     def update_flags(self, flags: List[InventoryItem]):
         logger.info(f"Adding {len(flags)} flags to inventory...")
         self._inventory_acceptors_built = False
+        self._sigmas_built = False
         for flag in flags:
             self._add_flag(flag)
 
-        flag_fsa = pynini.union(*[
-            flag.fsa for flag in self.flags.values()
-        ])
-        self.flag_fsa = flag_fsa
-
-        # update token map so new flags are recognized
-        # when tokenizing pattern strings
+        # update special acceptors + token map so new flags are recognized
+        self._build_special_acceptors()
         self._build_token_map()
         self._inventory_acceptors_built = True
         logger.info("Flags added successfully.")
