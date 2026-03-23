@@ -472,12 +472,15 @@ class ContingentMarkers:
 
             # Build a FeatureMarkers config dict and delegate
             fm_config = {
-                'feature': inner_feature,
+                'feature': inner_feature.name,
                 'markers': inner_feature_values,
                 'global_order': global_order,
                 'global_markers': global_markers_config,
             }
-            inner_maps[outer_value] = FeatureMarkers.from_config(fm_config)
+            inner_maps[outer_value] = FeatureMarkers.from_config(
+                fm_config,
+                feature_registry=feature_registry,
+            )
 
         return cls(
             outer_feature=outer_feature,
@@ -818,14 +821,14 @@ class MarkerRegistry:
                         f"expected one of {list(self.features.keys())}"
                     )
 
-            outer_feature = self.features[markers.outer_feature]
+            outer_feature = self.features[markers.outer_feature.name]
             for outer_val, inner_fm in markers.inner_maps.items():
                 if outer_val not in outer_feature.values:
                     raise KeyError(
                         f"Unsupported value {outer_val} for feature {markers.outer_feature} "
                         f"in marker set {markers_name}. Expected values are {outer_feature.values}"
                     )
-                inner_feature = self.features[markers.inner_feature]
+                inner_feature = self.features[markers.inner_feature.name]
                 for inner_val in inner_fm.data:
                     if inner_val not in inner_feature.values:
                         raise KeyError(

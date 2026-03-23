@@ -97,6 +97,11 @@ class Paradigm:
         self.lexical_feature_filter = lexical_feature_filter or []
         self.markers = markers
         self.contingent_markers = contingent_markers
+        if contingent_markers is not None:
+            self.contingent_feature_pairs = set(
+                (contingent_set.outer_feature, contingent_set.inner_feature)
+                for contingent_set in contingent_markers
+            )
         self.fst_registry = fst_registry
 
         if self.fst_registry and self.fst_registry.is_initialized:
@@ -202,6 +207,7 @@ class Paradigm:
         contingent marker matches the provided feature values, any standard feature markers that
         also match those feature values will be ignored.
         """
+
         if  (
                 (self.feature_value_combinations is not None) and
                 (not self.feature_value_combinations.combination_is_valid(feature_values))
@@ -209,21 +215,46 @@ class Paradigm:
             raise ValueError(
                 f"Feature value combination {feature_values} is not valid according to the paradigm's feature_value_combinations."
             )
+        
+        # filter out fixed features
+        for fixed_feature, fixed_value in self.fixed_features.items():
+            if fixed_feature not in feature_values:
+                continue
+            requested_value = feature_values[fixed_feature]
+            if requested_value not in (fixed_value, 'unmarked'):
+                raise KeyError(
+                    f"Cannot inflect for feature {fixed_feature}={requested_value} "
+                    f"when paradigm has fixed value {fixed_feature}={fixed_value}"
+                )
+            else:
+                feature_values.pop(fixed_feature)
 
         applicable_markers = []
         remaining_features = set(feature_values.keys())
 
-        for feature_couple in itertools.combinations(feature_values.keys(), 2):
-            feature_value_couple = tuple((feature, feature_values[feature]) for feature in feature_couple)
-            if feature_value_couple in self.contingent_marker_map:
-                marker_list = self.contingent_marker_map[feature_value_couple]
-                applicable_markers.extend(marker_list)
-                remaining_features -= set(feature_couple)
+        for outer_feature, inner_feature in self.contingent_feature_pairs:
+            requested_outer_feature_value = feature_values.get(
+                outer_feature.name, "unmarked"
+            )
+            outer_tuple = (outer_feature.name, requested_outer_feature_value)
+            if outer_tuple in self.contingent_marker_map:
+                inner_map = self.contingent_marker_map[outer_tuple]
+                requested_inner_feature_value = feature_values.get(
+                    inner_feature.name, "unmarked"
+                )
+                inner_tuple = (inner_feature.name, requested_inner_feature_value)
+                if inner_tuple in inner_map:
+                    marker_list = inner_map[inner_tuple]
+                    applicable_markers.extend(marker_list)
+                    remaining_features -= {inner_feature.name, outer_feature.name}
+
         for feature in remaining_features:
             feature_value_pair = (feature, feature_values[feature])
             if feature_value_pair in self.feature_marker_map:
                 marker_list = self.feature_marker_map[feature_value_pair]
                 applicable_markers.extend(marker_list)
+            else:
+                raise KeyError(f"Unsupported feature-value pair: {feature_value_pair}")
 
         applicable_markers.sort(
             key=lambda marker: self.marker_order.index(marker.order)
@@ -291,10 +322,10 @@ class Paradigm:
             supported_features.add(contingent_marker_set.inner_feature.name)
             supported_features.add(contingent_marker_set.outer_feature.name)
 
-            for marker_set in contingent_marker_set.inner_feature_map.values():
+            for marker_set in contingent_marker_set.inner_maps.values():
                 for marker_list in marker_set.data.values():
                     for marker in marker_list:
-                        order = marker.get('order')
+                        order = marker.order
                         if order and order not in self.marker_order:
                             raise ValueError(
                                 f"Marker order '{order}' not recognized. "
@@ -357,9 +388,9 @@ class Paradigm:
             Tuple[str, str], Dict[Tuple[str, str], MarkerList]
         ] = defaultdict(dict)
         for contingent_marker_set in self.contingent_markers:
-            for outer_value, inner_map in contingent_marker_set.outer_feature_map.items():
+            for outer_value, inner_map in contingent_marker_set.inner_maps.items():
                 outer_pair = (contingent_marker_set.outer_feature.name, outer_value)
-                for inner_value, marker_set in inner_map.items():
+                for inner_value, marker_set in inner_map.data.items():
                     innner_pair = (contingent_marker_set.inner_feature.name, inner_value)
                     self.contingent_marker_map[outer_pair][innner_pair] = marker_set.data
                     self.contingent_marker_map[innner_pair][outer_pair] = marker_set.data
@@ -369,10 +400,11 @@ class Paradigm:
             for marker_list in marker_set.data.values():
                 for marker in marker_list:
                     self._build_marker_transducer(marker)
-        for marker_set in self.contingent_markers:
-            for marker_list in marker_set.data.values():
-                for marker in marker_list:
-                    self._build_marker_transducer(marker)
+        for contingent_set in self.contingent_markers:
+            for marker_set in contingent_set.inner_maps.values():
+                for marker_list in marker_set.data.values():
+                    for marker in marker_list:
+                        self._build_marker_transducer(marker)
 
     def _build_marker_transducer(self, marker: Marker):
         if marker.type == 'rule':
