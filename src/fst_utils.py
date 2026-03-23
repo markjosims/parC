@@ -169,3 +169,5 @@ class Suffix(Transducer):
             sigma_star=stem,
         )
         return super().set_transducer(fst)
+    
+FsaLike = Union[str, pynini.Fst, Acceptor]

@@ -23,14 +23,15 @@ from src.registry.registry_utils import Registry
 from src.registry.marker_registry import (
     Marker, MarkerList, MarkerRegistry, FeatureMarkers, ContingentMarkers
 )
-from src.registry.fst_registry import FstRegistry
-from src.registry.feature_registry import FeatureRegistry, FeatureValueCombinations
-from src.registry.lexicon_registry import LexiconRegistry, PartOfSpeech, Lexicon
+from src.registry.fst_registry import FstRegistry, InventoryItem
+from src.registry.feature_registry import FeatureRegistry, FeatureValueCombinations, Feature
+from src.registry.lexicon_registry import LexiconRegistry, Lexicon
 from src.constants import EXAMPLE_CONFIG_DIR
 from typing import Any, Dict, Dict, List, Optional, Tuple, Union
 from collections import defaultdict
 import itertools
 import os
+import pandas as pd
 
 class Paradigm:
     """
@@ -58,7 +59,7 @@ class Paradigm:
         contingent_markers: List[ContingentMarkers],
         lexicon: Lexicon,
         pattern_filter: Optional[str] = None,
-        lexical_feature_filter: Optional[List[str]] = None,
+        lexical_feature_filter: Optional[List[Tuple[Feature, str]]] = None,
         fixed_features: Optional[Dict[str, str]] = None,
         marker_order: Optional[List[str]] = None,
         feature_value_combinations: Optional[FeatureValueCombinations] = None,
@@ -113,6 +114,15 @@ class Paradigm:
         if feature_value_combination_name:
             feature_value_combinations = marker_registry.feature_combinations[feature_value_combination_name]
 
+        # load filters
+        filter_config = config.get('filter', {})
+        pattern_filter = filter_config.get('pattern', None)
+        lexical_feature_strs: List[List[str]] = filter_config.get('lexical_features', [])
+        lexical_features = []
+        for feature_name, feature_value in lexical_feature_strs:
+            feature = marker_registry.feature_registry.features[feature_name]
+            lexical_features.append((feature, feature_value))
+
         fixed_features = {}
         markers = []
         for feature_name, marker_str in config['feature_markers'].items():
@@ -146,6 +156,8 @@ class Paradigm:
 
         return cls(
             markers=markers,
+            pattern_filter=pattern_filter,
+            lexical_features=lexical_features,
             contingent_markers=contingent_markers,
             fixed_features=fixed_features,
             marker_order=marker_order,
@@ -379,8 +391,26 @@ class Paradigm:
         string_map = list(zip(input_strings, output_strings))
         return self.fst_registry.string_map_transducer(string_map)
 
-    def get_roots(self):
-        unfiltered_roots = self.lexicon.get_roots()
+    def get_filtered_roots(self):
+        """
+        Apply pattern and lexical features to lexicon (if applicable)
+        and return all remaining roots.
+        """
+        entries = self.lexicon.entries
+        feature_mask = pd.Series([True]*len(entries))
+
+        for feature, feature_value in self.lexical_feature_filter:
+            feature_col = entries[feature.name]
+            feature_mask &= feature_col == feature_value
+        
+        roots = entries[feature_mask]['root'].to_list()
+
+        if self.pattern_filter:
+            roots = self.fst_registry.filter_strings_by_pattern(
+                roots, self.pattern_filter
+            )
+        
+        return roots
 
     
     def inflect(self, stem: str, feature_values: Dict[str, str]) -> pynini.Fst:
@@ -539,8 +569,11 @@ class Paradigm:
         forms.
 
         The graph is built by first computing a union over all roots in the
-        paradigm, 
+        paradigm, then for each feature combination we append a string of the 
+        feature values to the root acceptor and compose it with the marker
+        transducers for that feature value.
         """
+        # TODO
         
 
 class GrammarRegistry(Registry):
@@ -571,23 +604,6 @@ class GrammarRegistry(Registry):
 
         if do_initialize:
             self.initialize()
-
-    def initialize(self):
-        if all(
-            reg is not None for reg in
-            [self.marker_registry, self.lexicon_registry, self.fst_registry, self.feature_registry]
-        ):
-            self.is_initialized = True
-            logger.info("All child registries detected, GrammarRegistry loaded successfully.")
-        else:
-            if self.marker_registry is None:
-                logger.warning("Grammar registry received None instead of MarkerRegistry")
-            if self.fst_registry is None:
-                logger.warning("Grammar registry received None instead of FstRegistry")
-            if self.lexicon_registry is None:
-                logger.warning("Grammar registry received None instead of LexiconRegistry")
-            if self.feature_registry is None:
-                logger.warning("Grammar registry received None instead of FeatureRegistry")
     
     @classmethod
     def from_config_dir(cls, config_dir: str) -> 'GrammarRegistry':
@@ -671,6 +687,38 @@ class GrammarRegistry(Registry):
             config, self.marker_registry, self.lexicon_registry, self.fst_registry
         )
         return {name: paradigm}
+    
+    def initialize(self):
+        if all(
+            reg is not None for reg in
+            [self.marker_registry, self.lexicon_registry, self.fst_registry, self.feature_registry]
+        ):
+            self._add_features_to_symbol_table()
+            self.is_initialized = True
+            logger.info("All child registries detected, GrammarRegistry loaded successfully.")
+        else:
+            if self.marker_registry is None:
+                logger.warning("Grammar registry received None instead of MarkerRegistry")
+            if self.fst_registry is None:
+                logger.warning("Grammar registry received None instead of FstRegistry")
+            if self.lexicon_registry is None:
+                logger.warning("Grammar registry received None instead of LexiconRegistry")
+            if self.feature_registry is None:
+                logger.warning("Grammar registry received None instead of FeatureRegistry")
+
+    def _add_features_to_symbol_table(self):
+        feature_flags = []
+        for feature_name, feature in self.feature_registry.features.items():
+            for feature_value in feature.values:
+                feature_str = f"[{feature_name}={feature_value}]"
+                feature_flag = InventoryItem(
+                    feature_str,
+                    type="flag",
+                    source=feature.source
+                )
+                feature_flags.append(feature_flag)
+        self.fst_registry.update_flags(feature_flags)
+                
     
 if __name__ == "__main__":
     reg = GrammarRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)

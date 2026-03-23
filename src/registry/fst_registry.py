@@ -26,7 +26,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 import os
-from typing import Dict, List, Optional, Tuple, Literal, Union
+from typing import Dict, List, Optional, Tuple, Literal, Union, Callable
 import unicodedata
 from loguru import logger
 import pynini
@@ -35,7 +35,7 @@ from pynini import FstProperties
 from graphlib import TopologicalSorter
 from src.constants import EXAMPLE_CONFIG_DIR
 
-from src.fst_utils import Acceptor, TransducerList, Prefix, Suffix
+from src.fst_utils import Acceptor, TransducerList, Prefix, Suffix, FsaLike
 from src.registry.registry_utils import Registry, ReservedSymbolMixin
 
 class InventoryRegistry(Registry):
@@ -841,6 +841,31 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             item.set_acceptor(acceptor)
         self._inventory_acceptors_built = True
 
+    def update_flags(self, flags: List[InventoryItem]):
+        logger.info(f"Adding {len(flags)} flags to inventory...")
+        self._inventory_acceptors_built = False
+        for flag in flags:
+            self._add_flag(flag)
+
+        flag_fsa = pynini.union(*[
+            flag.fsa for flag in self.flags.values()
+        ])
+        self.flag_fsa = flag_fsa
+        self._inventory_acceptors_built = True
+        logger.info("Flags added successfully.")
+
+    def _add_flag(self, flag: InventoryItem) -> int:
+        if flag.value in self.flags:
+            error = f"{flag.value} already found in self.flags"
+            raise KeyError(error)
+        self.flags[flag.value] = flag
+
+        symbol_index: int = self.symbols.add_symbol(flag.value)
+        fsa = pynini.accep(flag.value, token_type=self.symbols)
+        fsa.optimize()
+        flag.set_acceptor(fsa)
+        return symbol_index
+
     def _build_special_acceptors(self):
         if not self._inventory_acceptors_built:
             raise ValueError(
@@ -1376,6 +1401,28 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             return term.star
         raise ValueError(f"Unrecognized unary operator {operator}")
     
+    def _cast_fsalike_to_fsa(self, fsa_input: FsaLike, is_word: bool=True) -> pynini.Fst:
+        if isinstance(fsa_input, Acceptor):
+            fsa = fsa_input.fsa
+        elif isinstance(fsa_input, str):
+            fsa_constructor: Callable[[str], pynini.Fst]
+            if is_word:
+                fsa_constructor = self.word_fsa
+            else:
+                fsa_constructor = self.fsa
+            fsa = pynini.union(*[
+                fsa_constructor(word) for word in fsa_input
+            ])
+        elif isinstance(fsa_input, pynini.Fst):
+            fsa = fsa_input
+        else:
+            error = f"Unknown type for input strs {type(fsa_input)} "+\
+            "Expected one of str, pynini.Fst, or Acceptor"
+            logger.error(error)
+            raise TypeError(error)
+        fsa.optimize()
+        return fsa
+    
     def fsa(self, fsa_input: str) -> pynini.Fst:
         """
         Constructs FSA for input string.
@@ -1470,7 +1517,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
     
     def apply_rule(
             self,
-            rule_input: Union[str, pynini.Fst],
+            rule_input: FsaLike,
             rule_ref: str
         ) -> pynini.Fst:
         """
@@ -1484,12 +1531,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         if not rule.transducer_built:
             raise ValueError(f"Rule '{rule_ref}' has uninitialized transducer, check logs for details.")
         
-        if isinstance(rule_input, str):
-            input_fsa = self.word_fsa(rule_input)
-        elif isinstance(rule_input, pynini.Fst):
-            input_fsa = rule_input
-        else:
-            raise ValueError(f"rule_input must be a string or FST, got {type(rule_input)}")
+        input_fsa = self._cast_fsalike_to_fsa(rule_input, is_word=True)
 
         if isinstance(rule.fst, list):
             output_fst = input_fsa
@@ -1508,6 +1550,23 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         )
         output_fst.optimize()
         return output_fst
+
+    def filter_strings_by_pattern(
+            self,
+            input_strs: FsaLike,
+            pattern: FsaLike,
+        ) -> List[str]:
+
+        input_fsa = self._cast_fsalike_to_fsa(input_strs)
+        pattern = self._cast_fsalike_to_fsa(pattern, is_word=False)
+        
+        # compute intersection of input and pattern, then get stringlist
+        intersection = pynini.intersect(input_fsa, pattern)
+        intersection.optimize()
+        output_strs = self.fsm_strings(intersection)
+
+        return output_strs
+
     
     def test_pattern_includes(self):
         """
