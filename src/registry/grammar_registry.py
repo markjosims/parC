@@ -19,12 +19,16 @@ in the registry system, there is no intermediate `ParadigmRegistry` class.]
 from loguru import logger
 import pynini
 
+from src.fst_utils import FsaLike
 from src.registry.registry_utils import Registry
 from src.registry.marker_registry import (
     Marker, MarkerList, MarkerRegistry, FeatureMarkers, ContingentMarkers
 )
 from src.registry.fst_registry import FstRegistry, InventoryItem
-from src.registry.feature_registry import FeatureRegistry, FeatureValueCombinations, Feature
+from src.registry.feature_registry import (
+    FeatureRegistry, FeatureValueCombinations, Feature,
+    stringify_features, serialize_feature_str
+)
 from src.registry.lexicon_registry import LexiconRegistry, Lexicon
 from src.constants import EXAMPLE_CONFIG_DIR
 from typing import Any, Dict, Dict, List, Optional, Tuple, Union
@@ -32,6 +36,10 @@ from collections import defaultdict
 import itertools
 import os
 import pandas as pd
+from pathlib import Path
+import functools
+from tqdm import tqdm
+
 
 class Paradigm:
     """
@@ -58,6 +66,7 @@ class Paradigm:
         markers: List[FeatureMarkers],
         contingent_markers: List[ContingentMarkers],
         lexicon: Lexicon,
+        name: Optional[str]=None,
         pattern_filter: Optional[str] = None,
         lexical_feature_filter: Optional[List[Tuple[Feature, str]]] = None,
         fixed_features: Optional[Dict[str, str]] = None,
@@ -65,6 +74,11 @@ class Paradigm:
         feature_value_combinations: Optional[FeatureValueCombinations] = None,
         fst_registry: Optional[FstRegistry] = None,
     ):
+        self.is_initialized = False
+        self.fst_registry_initialized = False
+        self.main_graphs_built = False
+
+        self.name = name
         self.feature_value_combinations = feature_value_combinations
         self.fixed_features = fixed_features or {}
         self.marker_order = marker_order or []
@@ -78,8 +92,6 @@ class Paradigm:
         self.contingent_markers = contingent_markers
         self.fst_registry = fst_registry
 
-        self.is_initialized = False
-        self.fst_registry_initialized = False
         if self.fst_registry and self.fst_registry.is_initialized:
             self.fst_registry_initialized = True
         else:
@@ -105,6 +117,11 @@ class Paradigm:
         """
 
         # load part of speech and lexicon
+        paradigm_name = None
+        paradigm_source = config.get("source_path", None)
+        if paradigm_source is not None:
+            paradigm_name = Path(paradigm_source).stem
+
         part_of_speech_name = config['part_of_speech']
         lexicon = lexicon_registry.data[part_of_speech_name]
         marker_order = config['order']
@@ -118,10 +135,10 @@ class Paradigm:
         filter_config = config.get('filter', {})
         pattern_filter = filter_config.get('pattern', None)
         lexical_feature_strs: List[List[str]] = filter_config.get('lexical_features', [])
-        lexical_features = []
+        lexical_feature_filter = []
         for feature_name, feature_value in lexical_feature_strs:
             feature = marker_registry.feature_registry.features[feature_name]
-            lexical_features.append((feature, feature_value))
+            lexical_feature_filter.append((feature, feature_value))
 
         fixed_features = {}
         markers = []
@@ -155,9 +172,10 @@ class Paradigm:
             contingent_markers.append(contingent_marker_set)
 
         return cls(
+            name=paradigm_name,
             markers=markers,
             pattern_filter=pattern_filter,
-            lexical_features=lexical_features,
+            lexical_feature_filter=lexical_feature_filter,
             contingent_markers=contingent_markers,
             fixed_features=fixed_features,
             marker_order=marker_order,
@@ -291,8 +309,10 @@ class Paradigm:
                     raise ValueError(
                         f"Principal part marker '{marker_list.principal_part}' in feature marker set for feature '{marker_set.feature}' does not have a corresponding stem in the lexicon."
                     )
-        for feature in self.lexical_feature_filter:
-            if feature not in self.lexicon.lexical_features:
+                
+        expected_lexical_feature_names = [feature.name for feature in self.lexicon.lexical_features]
+        for feature, _ in self.lexical_feature_filter:
+            if feature.name not in expected_lexical_feature_names:
                 raise ValueError(
                     f"Lexical feature '{feature}' in paradigm config not recognized in lexicon. "
                     f"Expected one of {self.lexicon.lexical_features}."
@@ -413,7 +433,7 @@ class Paradigm:
         return roots
 
     
-    def inflect(self, stem: str, feature_values: Dict[str, str]) -> pynini.Fst:
+    def inflect(self, stem: FsaLike, feature_values: Dict[str, str]) -> pynini.Fst:
         """
         Inflect a given stem according to the markers specified for the provided feature values.
         """
@@ -424,7 +444,69 @@ class Paradigm:
         inflected_form_fst = self._apply_markers(stem, markers)
         return inflected_form_fst
     
+    def get_valid_combinations(
+            self,
+            fixed_features: Optional[Dict[str, str]]=None
+        ) -> List[Dict[str, str]]:
+        """
+        Return a list of dictionaries of shape {"feature_name": "feature_value"}
+        describing all possible feature vectors allowed within a paradigm,
+        optionally constrained by fixed feature values passed as a dictionary.
+        """
+        if fixed_features is None:
+            fixed_features = self.fixed_features
+        else:
+            fixed_features = {**self.fixed_features, **fixed_features}
+
+        if self.feature_value_combinations:
+            return self.feature_value_combinations.get_all_combinations(fixed_features)
+        # for each feature get a list of dicts
+        # [{"feature_name": "feature_value"}, ...]
+        # then get the cartesian product across those lists
+        # to get all combinations
+        free_features = [
+            feature for feature in self.features
+            if feature.name not in fixed_features
+        ]
+        feature_value_lists = []
+        for feature in free_features:
+            feature_value_lists.append([
+                {feature.name: value} for value in feature.values
+            ])
+        combination_tuples = itertools.product(*feature_value_lists)
+        # itertools.product returns an iterator over tuples of shape
+        # ({feature: value}, {feature: value}, ...)
+        # collapse list of tuples to a list of dicts
+        combinations = [
+            functools.reduce(lambda a,b: a|b, combo)
+            for combo in combination_tuples
+        ]
+
+        return combinations
+
+    
     def inflect_subparadigm(
+            self,
+            stem: FsaLike,
+            fixed_features: Optional[Dict[str, str]] = None,
+            max_rows: int=None,
+    ) -> List[Tuple[pynini.Fst, Dict[str, str]]]:
+        """
+        Inflect a given stem according to the markers specified for the
+        provided fixed feature values.
+        """
+        valid_combinations = self.get_valid_combinations(fixed_features)
+        if max_rows is not None:
+            valid_combinations = valid_combinations[:max_rows]
+
+        results = [
+            (self.inflect(stem, combo), combo)
+            for combo in valid_combinations
+        ]
+        
+        return results
+
+    def get_subparadigm_table(
             self,
             stem: str,
             fixed_features: Optional[Dict[str, str]]=None,
@@ -432,65 +514,44 @@ class Paradigm:
             max_rows: Optional[int]=100,
     ) -> List[Dict[str, str]]:
         """
-        Inflect a given stem according to the markers specified for the
-        provided fixed feature values.
+        Wraps `self.inflect_subparadigm` and formats the output
+        in a list of dicts for displaying as a table.
         """
-        if fixed_features is None:
-            fixed_features = self.fixed_features
-        else:
-            fixed_features = {**self.fixed_features, **fixed_features}
-        free_features = [
-            feature for feature in self.features
-            if feature.name not in fixed_features
-        ]
-        results = []
+        inflected_results = self.inflect_subparadigm(
+            stem=stem,
+            fixed_features=fixed_features,
+            max_rows=max_rows
+        )
 
-        if self.feature_value_combinations:
-            valid_combinations = self.feature_value_combinations.get_all_combinations(fixed_features)
-            if max_rows is not None:
-                valid_combinations = valid_combinations[:max_rows]
-            for combination in valid_combinations:
-                inflected_fst = self.inflect(stem, combination)
-                inflected_strings = self.fst_registry.fsm_strings(inflected_fst)
-                inflected_strings = "; ".join(inflected_strings)
-                if only_free_feature_columns:
-                    combination = {
-                        feature: value for feature, value in combination.items()
-                        if feature not in fixed_features
-                    }
-                results.append({
-                    'form': inflected_strings,
-                    **combination,
-                })
-        else:
-            # for each feature get a list of dicts
-            # [{"feature_name": "feature_value"}, ...]
-            # then get the cartesian product across those lists
-            # to get all combinations
-            feature_value_lists = []
-            for feature in free_features:
-                feature_value_lists.append([
-                    {feature.name: value} for value in feature.values
-                ])
-            combinations = itertools.product(*feature_value_lists)
-            if max_rows is not None:
-                combinations = itertools.islice(combinations, max_rows)
-            for combination in combinations:
-                if only_free_feature_columns:
-                    combination_dict = {}
-                else:
-                    combination_dict = {**fixed_features}
-                for feature_value_pair in combination:
-                    combination_dict.update(feature_value_pair)
-                inflected_fst = self.inflect(stem, combination_dict)
-                inflected_strings = self.fst_registry.fsm_strings(inflected_fst)
-                inflected_strings = "; ".join(inflected_strings)
-                results.append({
-                    'form': inflected_strings,
-                    **combination_dict,
-                })
+        if only_free_feature_columns:        
+            if fixed_features is None:
+                fixed_features = self.fixed_features
+            else:
+                fixed_features = {**self.fixed_features, **fixed_features}
 
-        return results
+            free_features = [
+                feature for feature in self.features
+                if feature.name not in fixed_features
+            ]
+
+            inflected_results = [
+                (fst, {
+                    k: v for k, v in combination.items()
+                    if k not in free_features
+                })
+                for fst, combination in inflected_results
+            ]
+
+        table_rows = []
+        for fst, combination in inflected_results:
+            form_strings = self.fst_registry.fsm_strings(fst)
+            concatenated_forms = "; ".join(form_strings)
+            row_data = {
+                "form": concatenated_forms,
+                **combination
+            }
+            table_rows.append(row_data)
+        return table_rows
     
     def get_inflection_stages(
             self,
@@ -530,7 +591,7 @@ class Paradigm:
         return table_data
 
     def _apply_markers(
-            self, stem: str,
+            self, stem: FsaLike,
             markers: List[MarkerList],
             store_intermediate: bool=False,
         ) -> Union[pynini.Fst, List[Tuple[pynini.Fst, Marker]]]:
@@ -542,7 +603,7 @@ class Paradigm:
             raise ValueError("Paradigm must be fully initialized to apply markers.")
         
         result = None
-        current_fst = self.fst_registry.word_fsa(stem)
+        current_fst = self.fst_registry._cast_fsalike_to_fsa(stem, is_word=True)
 
         if store_intermediate:
             result = [(current_fst, None)]
@@ -568,12 +629,72 @@ class Paradigm:
         contingent markers, allowing for efficient inflection and parsing of
         forms.
 
-        The graph is built by first computing a union over all roots in the
-        paradigm, then for each feature combination we append a string of the 
-        feature values to the root acceptor and compose it with the marker
-        transducers for that feature value.
+        The graph is built by iterating through all stems and combinations
+        and accumulating a list of root[features...] -> form transducers, then
+        computing a union over each transducer as the main Inflector graph, and
+        the Parser graph by inverting the Inflector graph.
         """
-        # TODO
+        logger.info(f"Building main (inflector and parser) graphs for paradigm {self.name or '[UNNAMED]'}...")
+
+        roots = self.get_filtered_roots()
+        inflect_fst_list = []
+        for root in tqdm(roots, desc=f"Inflecting roots for paradigm {self.name or '[UNNAMED]'}"):
+            root_fsa = self.fst_registry.word_fsa(root)
+
+            # iter thru all feature combos and build transducers
+            inflected_transducers = self.inflect_subparadigm(
+                stem=root_fsa,
+                fixed_features=None,
+                max_rows=None,
+            )
+
+            for fst, combination in inflected_transducers:
+                feature_str = stringify_features(combination)
+
+                inflect_input = root_fsa + self.fst_registry.fsa(feature_str)
+                inflect_output = pynini.project(fst, 'output')
+                inflect_fst = pynini.cross(inflect_input, inflect_output)
+
+                inflect_fst.optimize()
+                inflect_fst_list.append(inflect_fst)
+
+        inflect_graph = pynini.union(*inflect_fst_list)
+        inflect_graph.optimize()
+
+        parse_graph = pynini.invert(inflect_graph)
+        parse_graph.optimize()
+
+        self.inflect_graph = inflect_graph
+        self.parse_graph = parse_graph
+        self.main_graphs_built=True
+
+        logger.info("Main graphs built.")
+
+    def get_parses(self, form: FsaLike, serialize: bool=False) -> List[Union[str, Dict[str, str]]]:
+        """
+        Computes a parse lattice by composing the input string with the main parse graph
+        then returns a list of strings of all candidate parses, where feature values
+        are specified in the format "ROOT[feat=val][feat=val][feat=val]..."
+
+        If `serialize=True`, casts the feature string to a dict using `serialize_feature_str`
+        """
+        form_fsa = self.fst_registry._cast_fsalike_to_fsa(form, is_word=True)
+        parse_lattice = form_fsa @ self.parse_graph
+        parse_strings = self.fst_registry.fsm_strings(parse_lattice)
+
+        if serialize:
+            serialized_parses = []
+            for parse in parse_strings:
+                feature_index = parse.index('[')
+                root = parse[:feature_index]
+                feature_str = parse[feature_index:]
+                feature_dict = serialize_feature_str(feature_str)
+                feature_dict['root']=root
+                serialized_parses.append(feature_dict)
+            return serialized_parses
+            
+        return parse_strings
+
         
 
 class GrammarRegistry(Registry):
@@ -721,7 +842,15 @@ class GrammarRegistry(Registry):
                 
     
 if __name__ == "__main__":
+    import random 
+
     reg = GrammarRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
-    stages = reg.paradigms['verbs_present'].get_inflection_stages('pòk', {'tense':'present', 'mood':'subjunctive', 'person_number':'1sg'})
-    inflected_paradigm = reg.paradigms['verbs_present'].inflect_subparadigm('pòk')
+    para = reg.paradigms['verbs']
+    root = random.choice(para.get_filtered_roots())
+    stages = para.get_inflection_stages(root, {'tense':'present', 'mood':'subjunctive', 'person_number':'1sg'})
+    inflected_paradigm = para.get_subparadigm_table(root)
+    para._build_main_graph()
+    random_form = random.choice(inflected_paradigm)['form'].split(';')[0]
+    parse = para.get_parses(random_form)
+    
     breakpoint()

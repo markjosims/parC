@@ -18,6 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 from typing import Dict, List, Optional, Union
+import re
 
 import pandas as pd
 from loguru import logger
@@ -368,6 +369,7 @@ class FeatureRegistry:
     """
     Orchestrates FeatureValuesRegistry and FeatureCombinationsRegistry.
     """
+    feature_regex = re.compile(r"\[([^=]+)=([^=]+)\]")
 
     def __init__(
         self,
@@ -400,3 +402,18 @@ class FeatureRegistry:
             raise KeyError(f"No feature-combinations config found with name '{name}'.")
         return self.feature_combinations[name]
 
+def stringify_features(features: Dict[str, str]) -> str:
+    feature_strings = [
+        f"[{feature_name}={feature_value}]"
+        for feature_name, feature_value in features.items()
+    ]
+    feature_strings.sort()
+    result_str = "".join(feature_strings)
+    return result_str
+
+def serialize_feature_str(feature_str: str) -> Dict[str, str]:
+    feature_tuples =  FeatureRegistry.feature_regex.findall(feature_str)
+    feature_dict = {}
+    for feature_name, feature_value in feature_tuples:
+        feature_dict[feature_name] = feature_value
+    return feature_dict

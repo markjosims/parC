@@ -851,6 +851,10 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             flag.fsa for flag in self.flags.values()
         ])
         self.flag_fsa = flag_fsa
+
+        # update token map so new flags are recognized
+        # when tokenizing pattern strings
+        self._build_token_map()
         self._inventory_acceptors_built = True
         logger.info("Flags added successfully.")
 
@@ -1410,11 +1414,15 @@ class FstRegistry(Registry, ReservedSymbolMixin):
                 fsa_constructor = self.word_fsa
             else:
                 fsa_constructor = self.fsa
-            fsa = pynini.union(*[
-                fsa_constructor(word) for word in fsa_input
-            ])
+            fsa = fsa_constructor(fsa_input)
         elif isinstance(fsa_input, pynini.Fst):
             fsa = fsa_input
+        elif hasattr(fsa_input, iter):
+            fsa_list = [
+                self._cast_fsalike_to_fsa(input_item, is_word)
+                for input_item in fsa_input
+            ]
+            fsa = pynini.union(*fsa_list)
         else:
             error = f"Unknown type for input strs {type(fsa_input)} "+\
             "Expected one of str, pynini.Fst, or Acceptor"
@@ -1442,6 +1450,17 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             raise ValueError(f"Input to `word_fsa` must be a string, got {type(word_str)}")
         word_str = self.bow + word_str + self.eow
         return self.parse_pattern(word_str)
+    
+    def wordlist_fsa(self, words: List[str]) -> pynini.Fst:
+        """
+        Wraps FSA constructor for list of words.
+        """
+        if not isinstance(words, list):
+            raise ValueError("wordlist_fsa expects a list of strs.")
+        word_fsas = [self.word_fsa(word) for word in words]
+        wordlist_fsa = pynini.union(*word_fsas)
+        wordlist_fsa.optimize()
+        return wordlist_fsa
     
     def acceptor(
             self,
@@ -1737,7 +1756,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             fst: pynini.Fst,
             project: Literal['input', 'output'] = 'output',
             nshortest: int = None,
-    ) -> List[Tuple[str, float]]:
+    ) -> List[str]:
         """
         Return all (or nshortest) strings for an input FSM.
         Wraps `self.fsm_strings_and_weights` but only passes string.
@@ -1766,7 +1785,12 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             )
         return string_list[0]
         
-    def _decode_labels(self, label_iter, strip_word_edge_symbols=True) -> str:
+    def _decode_labels(
+            self,
+            label_iter,
+            strip_word_edge_symbols: bool=True,
+            strip_all_flags: bool=False,
+        ) -> str:
         """
         Arguments:
             label_iter:     An iterator over FST labels
@@ -1781,9 +1805,11 @@ class FstRegistry(Registry, ReservedSymbolMixin):
                     # epsilon, skip
                 continue
             symbol = self.symbols.find(label)
+            if strip_all_flags and symbol[0]=='[':
+                continue
+            elif strip_word_edge_symbols and symbol in self.bow_eow_flags:
+                continue
             word += symbol
-        if strip_word_edge_symbols:
-            word = word.strip(''.join(self.bow_eow_flags))
 
         return word
 
