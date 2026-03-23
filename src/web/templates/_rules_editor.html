@@ -107,10 +107,17 @@
       {% if rule.test_results %}
         <div class="test-results">
           {% for r in rule.test_results.results %}
-            <span class="test-result {% if r['pass'] %}pass{% else %}fail{% endif %}">
-              {% if r['pass'] %}&#10003;{% else %}&#10007;{% endif %}
-              {{ r.type }}: "{{ r.input }}" &rarr; "{{ r.output }}"
+            {% if r['pass'] %}
+            <span class="test-result pass">
+              &#10003;
+              {{ r['type'] }}: "{{ r['input'] }}" &rarr; "{{ r['expected_output'] }}"
             </span>
+            {% else %}
+            <span class="test-result fail">
+              &#10007;
+              {{ r['type'] }}: "{{ r['input'] }}" &rarr; "{{ ';'.join(r['output']) }}" (expected "{{ r['expected_output'] }}")
+            </span>
+            {% endif %}
           {% endfor %}
           <strong class="{% if rule.test_results.all_pass %}pass{% else %}fail{% endif %}">
             {% if rule.test_results.all_pass %}All pass &#10003;{% else %}Some failed &#10007;{% endif %}

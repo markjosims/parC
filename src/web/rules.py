@@ -61,7 +61,8 @@ class RulesEditor(BaseEditor):
         fst_reg = registry.fst_registry
         name = item.get("name", "").strip()
         mappings = _split_pairs(item.get("test_mappings_text", ""))
-        return fst_reg.test_rule(name, mappings)
+        test_results =  fst_reg.test_rule(name, mappings)
+        return test_results
 
     def _update_items_from_form(
         self, rules: list[dict[str, Any]], form: Any

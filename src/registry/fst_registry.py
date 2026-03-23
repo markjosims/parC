@@ -1719,17 +1719,21 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         all_pass = True
 
         for input_str, expected_output_str in test_mappings:
+            output_strs = None
             try:
                 output_fsa = self.apply_rule(input_str, rule_ref)
                 output_fsa = pynini.project(output_fsa, project_type='output')
                 expected_output_fsa = self.word_fsa(expected_output_str)
                 intersection = pynini.intersect(output_fsa, expected_output_fsa)
                 passed = intersection.start() != pynini.NO_STATE_ID
+
+                output_strs = self.fsm_strings(output_fsa)
             except Exception:
                 passed = False
             results.append({
                 "input": input_str,
-                "output": expected_output_str,
+                "output": output_strs,
+                "expected_output": expected_output_str,
                 "type": "mapping",
                 "pass": passed,
             })
