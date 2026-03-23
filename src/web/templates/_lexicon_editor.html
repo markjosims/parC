@@ -60,7 +60,7 @@
           <select id="features-dropdown">
             <option value="">--</option>
             {% for f in available_features %}
-              {% if f not in state.features and f not in state.invariant_features %}
+              {% if f not in state.features and f not in state.lexical_features %}
                 <option value="{{ f }}">{{ f }}</option>
               {% endif %}
             {% endfor %}
@@ -71,32 +71,32 @@
       </div>
 
       <div class="feature-picker">
-        <h4>Selected invariant features</h4>
+        <h4>Selected lexical features</h4>
         <div class="feature-tags" id="inv-features-tags">
-          {% for f in state.invariant_features %}
+          {% for f in state.lexical_features %}
             <span class="feature-tag" data-value="{{ f }}">{{ f }}<button type="button" onclick="removeFeature('inv-features', '{{ f }}')" title="Remove">&#10005;</button></span>
           {% endfor %}
-          {% if not state.invariant_features %}<span class="feature-tags-empty">None selected</span>{% endif %}
+          {% if not state.lexical_features %}<span class="feature-tags-empty">None selected</span>{% endif %}
         </div>
         <div class="feature-add">
-          <h4>Add an invariant feature</h4>
+          <h4>Add a lexical feature</h4>
           <select id="inv-features-dropdown">
             <option value="">--</option>
             {% for f in available_features %}
-              {% if f not in state.features and f not in state.invariant_features %}
+              {% if f not in state.features and f not in state.lexical_features %}
                 <option value="{{ f }}">{{ f }}</option>
               {% endif %}
             {% endfor %}
           </select>
           <button type="button" onclick="addFeature('inv-features')">Add</button>
         </div>
-        <input type="hidden" name="invariant_features_json" id="inv-features-json" value='{{ state.invariant_features | tojson }}'>
+        <input type="hidden" name="lexical_features_json" id="inv-features-json" value='{{ state.lexical_features | tojson }}'>
       </div>
     </div>
 
     <div class="two-col">
       <label>
-        Lexical flags <span class="muted">(comma-separated)</span>
+        Lexical features <span class="muted">(comma-separated)</span>
         <input type="text" name="lexical_flags_text" id="lexical-flags-input" value="{{ state.lexical_flags | join(', ') }}" placeholder="fv_class, stem_type" oninput="checkColumnChanges()">
       </label>
       <label>

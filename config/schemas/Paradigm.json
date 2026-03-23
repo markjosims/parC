@@ -21,7 +21,7 @@
       "type": "object",
       "description": "Logic to select specific lexical roots from the lexicon.",
       "properties": {
-        "lexical_flag": { "oneOf": [
+        "lexical_features": { "oneOf": [
           { "type": "string" },
           { "type": "array", "items": { "type": "string" } }
         ]},

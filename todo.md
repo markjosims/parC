@@ -1,32 +1,41 @@
 # todo
 ## Web app
 ### Pages
-- [x] Interactive I/O testing in rule editor [!CLAUDE]
-- [ ] Feature editor [!CLAUDE]
-- [x] Replace stateful `FstRegistry` with `GrammarRegistry` [!MARK]
-- [ ] Feature combinations editor [!CLAUDE]
-    - Should check against `FeatureRegistry` that features and values are supported [!CLAUDE]
-- [ ] Marker editor [!CLAUDE]
-    - Should also validate against `FeatureRegistry` (contained in `GrammarRegistry`) [!CLAUDE]
-- [ ] Paradigm editor [!CLAUDE]
+- [x] Interactive I/O testing in rule editor
+- [ ] Feature editor
+- [x] Replace stateful `FstRegistry` with `GrammarRegistry`
+- [x] Feature combinations editor
+- [x] Marker editor
+- [x] Paradigm editor
+- [ ] Validate editor values against registry
+    - [ ] Feature combinations
+    - [ ] Markers
+    - [ ] Paradigm
 ### UI/UX
-- [ ] Save YAML button sticks at top of page [!CLAUDE]
-- [ ] Option to rename or delete YAML files [!CLAUDE]
+- [ ] 'Save YAML button' sticks to top of page
+- [X] Option to rename or delete YAML files
+- [X] Add easy interface for combining diacritics
+    - Checkbox "Combining diacritics" opens a menu of buttons with common diacritics
+    - String stored as "DIAC:á"
+    - Simple dictionary lookup maps user-friendly version to unicode point for combining diacritics
 ## Parser backend
-- [x] Rename `FeatureRegistry` to `FeatureValuesRegistry` [!MARK]
+- [x] Rename `FeatureRegistry` to `FeatureValuesRegistry`
 - [x] `FeatureRegistry` orchestrates `FeatureValuesRegistry` and `FeatureCombinationsRegistry`
 - [x] Marker registries pass tests
-- [ ] Implement `GrammarRegistry` [!MARK]
+- [-] Implement `GrammarRegistry`
     - Orchestrates **all** registries for an entire language project
     - [x] Start by just encapsulating `FstRegistry`, `FeatureRegistry` and `MarkerRegistry`
-    - [ ] Exposes core functionality from each registry, e.g. `FstRegistry.fsa()`, `MarkerRegistry.feature_markers`, `MarkerRegistry.contingent_markers`, `Lexicon...`
-- [ ] Implement `Paradigm` class [!MARK]
-    - Orchestrates `FeatureRegistry`, `FstRegistry`, `MarkerRegistry`
-    - Query features set -> `List[Marker]`
-    - Easy I/O verification of `$stem` -> `List[Marker]` -> `$inflected_form` using `Paradigm.inflect_stem(stem, features) -> pynini.Fst` method
-    - `Paradigm.output_paradigm(stem) -> List[Dict[str, str]]` gives a list of **all inflected forms* for a given stem that the paradigm supports
+- [-] Implement `Paradigm` class
+    - [-] Orchestrates `FeatureRegistry`, `FstRegistry`, `MarkerRegistry`
+    - [-] Query features set -> `List[Marker]`
+    - [-] Easy I/O verification of `$stem` -> `List[Marker]` -> `$inflected_form` using `Paradigm.inflect_stem(stem, features) -> pynini.Fst` method
+    - [-] `Paradigm.output_paradigm(stem) -> List[Dict[str, str]]` gives a list of **all inflected forms* for a given stem that the paradigm supports
         - include `require_features: Dict[str, List[str]]` and `exclude_features: Dict[str, List[str]]` args to constrain feature space (e.g. passing `require_features={"class": ['l', 'unmarked']}` will only output verb forms marked with 'l' class or with an unmarked class value)
-- [ ] Implement `PartOfSpeechRegistry` with child class `Lexicon` [!MARK]
-- [ ] Define logic for filtering stems belonging to a particular paradigm
-## Housekeeping
-- Error messages should trigger logs, and the code for this should be DRY.
+- [-] Implement `PartOfSpeechRegistry` with child class `Lexicon`
+- [-] Define logic for filtering stems belonging to a particular paradigm
+    - [x] Migrate 'lexical flag' to existing 'invariant_feature' attribute
+- [x] All `from_config` factory functions should expect other registry kinds to be passed, they should **not** be built eagerly
+- [ ] Main graphs for form <==> gloss transduction
+## Backburner
+- [ ] Error messages should trigger logs, and the code for this should be DRY.
+- [ ] Audit & document auto-generated web code

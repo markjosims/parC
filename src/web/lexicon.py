@@ -18,7 +18,7 @@ def _dynamic_columns(state: dict[str, Any]) -> list[str]:
     return (
         state.get("lexical_flags", [])
         + state.get("principal_parts", [])
-        + state.get("invariant_features", [])
+        + state.get("lexical_features", [])
     )
 
 
@@ -36,7 +36,7 @@ class LexiconEditor(BaseEditor):
             "kind": "PartOfSpeech",
             "name": stem,
             "features": [],
-            "invariant_features": [],
+            "lexical_features": [],
             "lexical_flags": [],
             "principal_parts": [],
             "rows": [],
@@ -47,7 +47,7 @@ class LexiconEditor(BaseEditor):
         state = super().state_from_json(payload)
         state.setdefault("name", "")
         state.setdefault("features", [])
-        state.setdefault("invariant_features", [])
+        state.setdefault("lexical_features", [])
         state.setdefault("lexical_flags", [])
         state.setdefault("principal_parts", [])
         state.setdefault("columns_warning", "")
@@ -66,7 +66,7 @@ class LexiconEditor(BaseEditor):
 
         name = document.get("name", path.stem)
         features = document.get("features", [])
-        invariant_features = document.get("invariant_features", [])
+        lexical_features = document.get("lexical_features", [])
         lexical_flags = document.get("lexical_flags", [])
         principal_parts = document.get("principal_parts", [])
 
@@ -75,8 +75,8 @@ class LexiconEditor(BaseEditor):
             "kind": "PartOfSpeech",
             "name": name,
             "features": features if isinstance(features, list) else [],
-            "invariant_features": (
-                invariant_features if isinstance(invariant_features, list) else []
+            "lexical_features": (
+                lexical_features if isinstance(lexical_features, list) else []
             ),
             "lexical_flags": (
                 lexical_flags if isinstance(lexical_flags, list) else []
@@ -109,8 +109,8 @@ class LexiconEditor(BaseEditor):
             updated["path"] = f"parts_of_speech/{name}.yaml"
 
         updated["features"] = _json_list(form.get("features_json", "[]"))
-        updated["invariant_features"] = _json_list(
-            form.get("invariant_features_json", "[]")
+        updated["lexical_features"] = _json_list(
+            form.get("lexical_features_json", "[]")
         )
         updated["lexical_flags"] = split_csv(
             form.get("lexical_flags_text", "")
@@ -187,8 +187,8 @@ class LexiconEditor(BaseEditor):
         }
         if state.get("features"):
             document["features"] = state["features"]
-        if state.get("invariant_features"):
-            document["invariant_features"] = state["invariant_features"]
+        if state.get("lexical_features"):
+            document["lexical_features"] = state["lexical_features"]
         if state.get("lexical_flags"):
             document["lexical_flags"] = state["lexical_flags"]
         if state.get("principal_parts"):

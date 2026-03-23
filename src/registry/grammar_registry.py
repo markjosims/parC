@@ -5,7 +5,7 @@ are the highest-level objects in the registry system.
 The `Paradigm` class describes a paradigm or sub-paradigm in the
 linguistic sense, represented here as a set of `Marker` lists over
 a feature space. It also provides logic for defining the order of
-application for markers, and for selecting stems and principle parts
+application for markers, and for selecting stems and principal parts
 from the lexicon.
 
 The `GrammarRegistry` class orchestrates all registries for a given language.
@@ -58,7 +58,7 @@ class Paradigm:
         contingent_markers: List[ContingentMarkers],
         lexicon: Lexicon,
         pattern_filter: Optional[str] = None,
-        lexical_flag_filter: Optional[List[str]] = None,
+        lexical_feature_filter: Optional[List[str]] = None,
         fixed_features: Optional[Dict[str, str]] = None,
         marker_order: Optional[List[str]] = None,
         feature_value_combinations: Optional[FeatureValueCombinations] = None,
@@ -72,7 +72,7 @@ class Paradigm:
         self.part_of_speech = lexicon.part_of_speech
         self.lexicon = lexicon
         self.pattern_filter = pattern_filter
-        self.lexical_flag_filter = lexical_flag_filter or []
+        self.lexical_feature_filter = lexical_feature_filter or []
         self.markers = markers
         self.contingent_markers = contingent_markers
         self.fst_registry = fst_registry
@@ -201,7 +201,7 @@ class Paradigm:
         This is separate from __init__ to allow for lazy initialization.
         """
         self._validate_features_and_order_values()
-        self._validate_principle_parts_and_filters()
+        self._validate_principal_parts_and_filters()
         self._build_marker_mappings()
         if self.fst_registry and not self.fst_registry.is_initialized:
             logger.info("Initializing FST registry as part of paradigm initialization.")
@@ -264,7 +264,7 @@ class Paradigm:
                                 f"Expected one of {self.marker_order}."
                             )
     
-    def _validate_principle_parts_and_filters(self):
+    def _validate_principal_parts_and_filters(self):
         """
         Validate that all markers with 'principal_part' order have a corresponding
         stem in the lexicon, and that all markers with 'lexical' order have a
@@ -279,11 +279,11 @@ class Paradigm:
                     raise ValueError(
                         f"Principal part marker '{marker_list.principal_part}' in feature marker set for feature '{marker_set.feature}' does not have a corresponding stem in the lexicon."
                     )
-        for flag in self.lexical_flag_filter:
-            if flag not in self.lexicon.lexical_flags:
+        for feature in self.lexical_feature_filter:
+            if feature not in self.lexicon.lexical_features:
                 raise ValueError(
-                    f"Lexical flag '{flag}' in paradigm config not recognized in lexicon. "
-                    f"Expected one of {self.lexicon.lexical_flags}."
+                    f"Lexical feature '{feature}' in paradigm config not recognized in lexicon. "
+                    f"Expected one of {self.lexicon.lexical_features}."
                 )
         
         if self.pattern_filter:
@@ -378,6 +378,10 @@ class Paradigm:
         output_strings = self.lexicon.get_column_data(principal_part, fill_w_root=True)
         string_map = list(zip(input_strings, output_strings))
         return self.fst_registry.string_map_transducer(string_map)
+
+    def get_roots(self):
+        unfiltered_roots = self.lexicon.get_roots()
+
     
     def inflect(self, stem: str, feature_values: Dict[str, str]) -> pynini.Fst:
         """
@@ -527,6 +531,18 @@ class Paradigm:
         
         return current_fst
 
+    def _build_main_graph(self):
+        """
+        Build a main graph for the paradigm by computing the union of all
+        possible paths through the paradigm based on the feature markers and
+        contingent markers, allowing for efficient inflection and parsing of
+        forms.
+
+        The graph is built by first computing a union over all roots in the
+        paradigm, 
+        """
+        
+
 class GrammarRegistry(Registry):
     """
     Orchestrates all registries for a given language.
@@ -539,6 +555,7 @@ class GrammarRegistry(Registry):
         feature_registry: Optional[FeatureRegistry]=None,
         config_list: Optional[List[str]]=None,
         paradigms: Optional[Dict[str, Paradigm]]=None,
+        do_initialize: bool=False,
     ):
         self.is_initialized = False
         super().__init__(
@@ -550,16 +567,35 @@ class GrammarRegistry(Registry):
         self.fst_registry = fst_registry
         self.feature_registry = feature_registry
 
-        if all(reg is not None for reg in [marker_registry, lexicon_registry, fst_registry, feature_registry]):
-            self.is_initialized = True
-
         self.paradigms = paradigms or []
+
+        if do_initialize:
+            self.initialize()
+
+    def initialize(self):
+        if all(
+            reg is not None for reg in
+            [self.marker_registry, self.lexicon_registry, self.fst_registry, self.feature_registry]
+        ):
+            self.is_initialized = True
+            logger.info("All child registries detected, GrammarRegistry loaded successfully.")
+        else:
+            if self.marker_registry is None:
+                logger.warning("Grammar registry received None instead of MarkerRegistry")
+            if self.fst_registry is None:
+                logger.warning("Grammar registry received None instead of FstRegistry")
+            if self.lexicon_registry is None:
+                logger.warning("Grammar registry received None instead of LexiconRegistry")
+            if self.feature_registry is None:
+                logger.warning("Grammar registry received None instead of FeatureRegistry")
     
     @classmethod
     def from_config_dir(cls, config_dir: str) -> 'GrammarRegistry':
         """
         Factory method for constructing a GrammarRegistry object from a config directory.
         """
+        
+        logger.info("Initializing GrammarRegistry from config directory.")
         grammar_reg = super().from_config_dir(config_dir)
 
         # load dependent registries from lowest level of abstraction to highest
@@ -606,6 +642,7 @@ class GrammarRegistry(Registry):
             except Exception as e:
                 logger.exception(f"Error occurred while loading paradigms: {e}")
         grammar_reg.paradigms = paradigms
+        grammar_reg.initialize()
         return grammar_reg
 
     def load_all_configs(self) -> Dict[str, Paradigm]:

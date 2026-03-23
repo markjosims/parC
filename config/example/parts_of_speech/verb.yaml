@@ -4,7 +4,7 @@ features:
 - tense
 - mood
 - person_number
-lexical_flags:
+lexical_features:
 - conjugation_class
 principal_parts:
 - past_stem

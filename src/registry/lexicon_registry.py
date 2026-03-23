@@ -22,8 +22,7 @@ class PartOfSpeech:
     """
     name: str
     features: List[Feature] = field(default_factory=list)
-    invariant_features: List[Feature] = field(default_factory=list)
-    lexical_flags: List[str] = field(default_factory=list)
+    lexical_features: List[Feature] = field(default_factory=list)
     principal_parts: List[str] = field(default_factory=list)
     source: Optional[str] = None
 
@@ -31,11 +30,11 @@ class PartOfSpeech:
         if self.name is None:
             raise ValueError("PartOfSpeech must have a name.")
         
-        for feature in self.features + self.invariant_features:
+        for feature in self.features + self.lexical_features:
             if not isinstance(feature, Feature):
                 raise ValueError(f"Feature '{feature}' is not an instance of the Feature class.")
             
-        for feature in self.invariant_features:
+        for feature in self.lexical_features:
             if feature in self.features:
                 raise ValueError(f"Invariant feature '{feature}' also listed as a inflected feature.")
 
@@ -50,22 +49,20 @@ class PartOfSpeech:
                 raise ValueError(f"Feature '{feature_name}' not found in feature registry.")
             features.append(feature)
 
-        invariant_feature_names = config.get('invariant_features', [])
-        invariant_features = []
-        for feature_name in invariant_feature_names:
+        lexical_feature_names = config.get('lexical_features', [])
+        lexical_features = []
+        for feature_name in lexical_feature_names:
             feature = feature_registry.get_feature(feature_name)
             if feature is None:
-                raise ValueError(f"Invariant feature '{feature_name}' not found in feature registry.")
-            invariant_features.append(feature)
+                raise ValueError(f"Lexical feature '{feature_name}' not found in feature registry.")
+            lexical_features.append(feature)
         
-        lexical_flags = config.get('lexical_flags', [])
         principal_parts = config.get('principal_parts', [])
         source = config.get('source_path', None)
         return cls(
             name=name,
             features=features,
-            invariant_features=invariant_features,
-            lexical_flags=lexical_flags,
+            lexical_features=lexical_features,
             principal_parts=principal_parts,
             source=source
         ) 
@@ -82,10 +79,9 @@ class Lexicon:
     part_of_speech: PartOfSpeech
     entries: pd.DataFrame
     source: Optional[str] = None
-    lexical_flags: List[str] = field(init=False)
     principal_parts: List[str] = field(init=False)
+    lexical_features: List[Feature] = field(init=False)
     features: List[Feature] = field(init=False)
-    invariant_features: List[Feature] = field(init=False)
 
     def __post_init__(self):
         if 'root' not in self.entries.columns:
@@ -94,19 +90,17 @@ class Lexicon:
             raise ValueError("Entries dataframe must contain a 'gloss' column")
 
         # Validate that the columns of the entries dataframe match the expected features
-        expected_columns = self.part_of_speech.lexical_flags\
-            + self.part_of_speech.principal_parts\
-            + [feature.name for feature in self.part_of_speech.invariant_features]
+        expected_feature_names = [feature.name for feature in self.part_of_speech.lexical_features]
+        expected_columns = expected_feature_names + self.part_of_speech.principal_parts
         expected_columns = set(expected_columns)
         actual_columns = set(self.entries.columns)
         if not expected_columns.issubset(actual_columns):
             missing_columns = expected_columns - actual_columns
             raise ValueError(f"Missing columns in entries dataframe: {missing_columns}")
 
-        self.lexical_flags = self.part_of_speech.lexical_flags
+        self.lexical_features = self.part_of_speech.lexical_features
         self.principal_parts = self.part_of_speech.principal_parts
         self.features = self.part_of_speech.features
-        self.invariant_features = self.part_of_speech.invariant_features
         
     @classmethod
     def from_config(cls, config, feature_registry: FeatureRegistry) -> 'Lexicon':

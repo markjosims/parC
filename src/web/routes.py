@@ -871,9 +871,15 @@ def _get_grammar_registry(config_dir: str) -> GrammarRegistry:
     cache_key = str(Path(config_dir))
     current_stamp = _yaml_tree_mtime(cache_key)
     cached = GRAMMAR_REGISTRY_CACHE.get(cache_key)
-    if cached is not None and cached[0] == current_stamp:
-        logger.info(f"Using cached GrammarRegistry for config dir '{config_dir}'")
-        return cached[1]
+    if (
+        (cached is not None) and
+        (cached[0] == current_stamp)
+    ):
+        if not cached[1].is_initialized:
+            logger.info(f"Found uninitialized GrammarRegistry, attempting to rebuilt from config dir '{config_dir}'")
+        else:
+            logger.info(f"Using cached GrammarRegistry for config dir '{config_dir}'")
+            return cached[1]
 
     logger.info(f"Loading GrammarRegistry for config dir '{config_dir}'")
     registry = GrammarRegistry.from_config_dir(cache_key)

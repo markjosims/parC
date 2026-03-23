@@ -16,3 +16,6 @@ features:
   - 1pl
   - 2pl
   - 3pl
+  conjugation_class:
+  - class_A
+  - class_B
