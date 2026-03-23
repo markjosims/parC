@@ -745,8 +745,8 @@ class MarkerRegistry:
 
         if self.feature_markers or self.contingent_markers:
             self.initialize()
-        if not self.is_initialized:
-            raise ValueError("Error occurred while initializing MarkerRegistry, check logs.")
+            if not self.is_initialized:
+                raise ValueError("Error occurred while initializing MarkerRegistry, check logs.")
 
     @classmethod
     def from_config_dir(
