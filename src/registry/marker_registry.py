@@ -251,6 +251,12 @@ class MarkerList(UserList):
             if marker.order is None and global_order is not None:
                 marker.order = global_order
 
+    def __str__(self):
+        return str(self.data)
+
+    def __repr__(self):
+        return self.data.__repr__()
+
     # basic list operations with type checks and principal_part constraints
 
     def __setitem__(self, i, item):
