@@ -520,6 +520,7 @@ class Paradigm:
             fixed_features = {**self.fixed_features, **fixed_features}
 
         if self.feature_value_combinations:
+            # TODO: see why self.feature_value_combinations is not getting set
             return self.feature_value_combinations.get_all_combinations(fixed_features)
         # for each feature get a list of dicts
         # [{"feature_name": "feature_value"}, ...]
@@ -529,6 +530,11 @@ class Paradigm:
             feature for feature in self.features
             if feature.name not in fixed_features
         ]
+
+        # all features already specified, return as list
+        if not free_features:
+            return [fixed_features]
+
         feature_value_lists = []
         for feature in free_features:
             feature_value_lists.append([
@@ -537,11 +543,14 @@ class Paradigm:
         combination_tuples = itertools.product(*feature_value_lists)
         # itertools.product returns an iterator over tuples of shape
         # ({feature: value}, {feature: value}, ...)
-        # collapse list of tuples to a list of dicts
+        # collapse list of tuples to a list of dicts'
         combinations = [
             functools.reduce(lambda a,b: a|b, combo)
             for combo in combination_tuples
         ]
+
+        # re-introduce fixed features to combinations
+        combinations = [combo|fixed_features for combo in combinations]
 
         return combinations
 
