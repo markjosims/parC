@@ -16,7 +16,6 @@
     },
     "features": {
       "type": "array",
-      "minItems": 1,
       "items": {
         "type": "string"
       }
@@ -26,10 +25,8 @@
   "definitions": {
     "combinations": {
       "type": "array",
-      "minItems": 1,
       "items": {
         "type": "object",
-        "minProperties": 1,
         "additionalProperties": {
           "oneOf": [
             {
@@ -37,7 +34,6 @@
             },
             {
               "type": "array",
-              "minItems": 1,
               "items": {
                 "type": "string"
               }

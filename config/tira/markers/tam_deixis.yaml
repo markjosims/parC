@@ -12,7 +12,7 @@ markers:
       value: ipfv_it_fv
       order: fv_assignment
     - type: prefix
-      value: '[CL]á-'
+      value: '[CL]-á_'
       order: argument_marking
     ventive:
     - type: rule
@@ -22,7 +22,7 @@ markers:
       value: ipfv_pfv_vent_fv
       order: fv_assignment
     - type: prefix
-      value: '[CL]á-'
+      value: '[CL]-á_'
       order: argument_marking
 - outer_feature_value: perfective
   inner_feature_values:
@@ -34,7 +34,7 @@ markers:
       value: pfv_it_fv
       order: fv_assignment
     - type: prefix
-      value: '[CL]à-'
+      value: '[CL]-à_'
       order: argument_marking
     ventive:
     - type: rule

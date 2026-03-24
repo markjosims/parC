@@ -11,11 +11,12 @@ global_markers:
   value: resolve_hiatus
   order: hiatus_resolution
 feature_markers:
-  class_marker: $class_markers
   tam: null
   deixis: null
+  class_marker: $class_markers
   subject: unmarked
-  object: unmarked
-feature_combinations: $verb_no_pronoun
+  object: null
+feature_combinations: $verb_obj_pro
 contingent_markers:
+- $object_markers
 - $tam_deixis

@@ -1,26 +1,31 @@
 kind: Rules
 rules:
   coalesce_before_i:
-    input_pattern: '{<V_Mid><V_Low>}{[TBU]<T>}?<Boundary>?i'
-    output_pattern: ɛ
+    string_map:
+    - - '{<V_Mid><V_Low>}{[TBU]<T>}?i'
+      - ɛ
+    - - <Boundary>?{<V_Mid><V_Low>}{[TBU]<T>}?-i
+      - -ɛ
+    - - <Boundary>?{<V_Mid><V_Low>}{[TBU]<T>}?=i
+      - =ɛ
     test_mappings:
     - - ka-i
-      - kɛ
+      - k-ɛ
     - - pᴐ́-ì
-      - pɛ̀
+      - p-ɛ̀
     - - kɜ̀-í
-      - kɛ́
+      - k-ɛ́
     - - pu-ì
       - pu-ì
   delete_vowel_before_vowel:
-    input_pattern: <V>{[TBU]<T>}?<Boundary>?
+    input_pattern: <Boundary>?<V>{[TBU]<T>}?
     output_pattern: <Empty>
-    right_context: <V>
+    right_context: <Boundary>?<V>
     test_mappings:
     - - áɛ̀
       - ɛ̀
     - - î=ǔ
-      - ǔ
+      - =ǔ
     - - ᴐ̀í
       - í
   resolve_hiatus:
@@ -31,14 +36,14 @@ rules:
     - - áɛ̀
       - ɛ̀
     - - î=ǔ
-      - ǔ
+      - =ǔ
     - - ᴐ̀í
       - ɛ́
     - - ka-i
-      - kɛ
+      - k-ɛ
     - - pᴐ́-ì
-      - pɛ̀
+      - p-ɛ̀
     - - kɜ̀-í
-      - kɛ́
-    - - pu-ì
-      - pì
+      - k-ɛ́
+    - - p-ì
+      - p-ì
