@@ -6,7 +6,7 @@
           {{ feat }}
           <input type="text"
                  name="val-{{ combo.id }}-{{ feat }}"
-                 value="{{ combo.feature_values.get(feat, '') }}"
+                 value="{{ combo.get('feature_values', {}).get(feat, '') }}"
                  placeholder="value, comma-list, or *  (empty = unmarked)">
         </label>
       {% endfor %}
