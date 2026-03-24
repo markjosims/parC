@@ -40,6 +40,7 @@ import pandas as pd
 from pathlib import Path
 import functools
 from tqdm import tqdm
+from copy import deepcopy
 
 EDIT_BOUND = 5
 EDIT_COST = 1
@@ -77,6 +78,7 @@ class Paradigm:
         marker_order: Optional[List[str]] = None,
         feature_value_combinations: Optional[FeatureValueCombinations] = None,
         fst_registry: Optional[FstRegistry] = None,
+        global_markers: Optional[MarkerList] = None,
     ):
         self.is_initialized = False
         self.fst_registry_initialized = False
@@ -95,8 +97,9 @@ class Paradigm:
         self.lexicon = lexicon
         self.pattern_filter = pattern_filter
         self.lexical_feature_filter = lexical_feature_filter or []
-        self.markers = markers
-        self.contingent_markers = contingent_markers
+        self.markers = deepcopy(markers)
+        self.contingent_markers = deepcopy(contingent_markers)
+        self.global_markers = global_markers
         if contingent_markers is not None:
             self.contingent_feature_pairs = set(
                 (contingent_set.outer_feature, contingent_set.inner_feature)
@@ -183,6 +186,9 @@ class Paradigm:
             contingent_marker_set = marker_registry.contingent_markers[contingent_marker_set_name]
             contingent_markers.append(contingent_marker_set)
 
+        global_marker_config = config.get('global_markers', None)
+        global_markers = MarkerList.from_config(global_marker_config)
+
         return cls(
             name=paradigm_name,
             markers=markers,
@@ -194,6 +200,7 @@ class Paradigm:
             lexicon=lexicon,
             feature_value_combinations=feature_value_combinations,
             fst_registry=fst_registry,
+            global_markers=global_markers,
         )
     
     def get_markers_for_feature_values(self, feature_values: Dict[str, str]) -> MarkerList:
@@ -275,6 +282,8 @@ class Paradigm:
             logger.info("Initializing FST registry as part of paradigm initialization.")
             self.fst_registry.initialize()
             self.fst_registry_initialized = True
+        if self.global_markers:
+            self._add_global_markers()
         self._build_all_marker_transducers()
         self.is_initialized = True
     
@@ -394,6 +403,15 @@ class Paradigm:
                     innner_pair = (contingent_marker_set.inner_feature.name, inner_value)
                     self.contingent_marker_map[outer_pair][innner_pair] = marker_set.data
                     self.contingent_marker_map[innner_pair][outer_pair] = marker_set.data
+
+    def _add_global_markers(self):
+        for marker_set in self.markers:
+            for marker_list in marker_set.data.values():
+                marker_list.merge_list(self.global_markers)
+        for contingent_set in self.contingent_markers:
+            for marker_set in contingent_set.inner_maps.values():
+                for marker_list in marker_set.data.values():
+                    marker_list.merge_list(self.global_markers)
 
     def _build_all_marker_transducers(self):
         for marker_set in self.markers:
