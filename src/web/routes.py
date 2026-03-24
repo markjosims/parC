@@ -8,6 +8,7 @@ from loguru import logger
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 import threading
 import yaml
+import os
 
 from src.web.configs import (
     delete_config_file,
@@ -817,7 +818,7 @@ def _config_page_context() -> dict[str, Any]:
         }
 
     return {
-        "selected_source_label": config_dir,
+        "selected_source_label": os.path.basename(config_dir),
         "yaml_files": list_config_yaml_files(config_dir),
     }
 
