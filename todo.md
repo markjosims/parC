@@ -2,15 +2,15 @@
 ## Web app
 ### Pages
 - [x] Interactive I/O testing in rule editor
-- [ ] Feature editor
+- [x] Feature editor
 - [x] Replace stateful `FstRegistry` with `GrammarRegistry`
 - [x] Feature combinations editor
 - [x] Marker editor
 - [x] Paradigm editor
 - [ ] Validate editor values against registry
     - [ ] Feature combinations
-    - [ ] Markers
-    - [ ] Paradigm
+    - [x] Markers
+    - [x] Paradigm
 ### UI/UX
 - [ ] 'Save YAML button' sticks to top of page
 - [X] Option to rename or delete YAML files
@@ -35,7 +35,8 @@
 - [-] Define logic for filtering stems belonging to a particular paradigm
     - [x] Migrate 'lexical flag' to existing 'invariant_feature' attribute
 - [x] All `from_config` factory functions should expect other registry kinds to be passed, they should **not** be built eagerly
-- [ ] Main graphs for form <==> gloss transduction
+- [x] Main graphs for form <==> gloss transduction
+- [ ] Sample paradigms with nouns
 ## Backburner
 - [ ] Error messages should trigger logs, and the code for this should be DRY.
 - [ ] Audit & document auto-generated web code
