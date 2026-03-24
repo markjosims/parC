@@ -1,0 +1,14 @@
+kind: Rules
+rules:
+  apply_acc_suffix:
+    string_map:
+    - - '[à]'
+      - -à
+    - - '[ᴐ̀]'
+      - -ᴐ̀
+    - - '[ɛ̀]'
+      - -ɛ̀
+    - - '[ŋù]'
+      - -ŋù
+    - - '[ɲá]'
+      - -ɲá
