@@ -9,6 +9,7 @@ PROJECT_ROOT = os.path.dirname(
 
 CONFIG_ROOT = os.path.join(PROJECT_ROOT, "config")
 EXAMPLE_CONFIG_DIR = os.path.join(CONFIG_ROOT, "example")
+TIRA_CONFIG_DIR = os.path.join(CONFIG_ROOT, "tira")
 SCHEMA_DIR = os.path.join(CONFIG_ROOT, 'schemas')
 
 # pynini constants
