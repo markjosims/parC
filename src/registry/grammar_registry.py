@@ -31,7 +31,7 @@ from src.registry.feature_registry import (
     stringify_features, serialize_feature_str
 )
 from src.registry.lexicon_registry import LexiconRegistry, Lexicon
-from src.constants import EXAMPLE_CONFIG_DIR
+from src.constants import TIRA_CONFIG_DIR
 from typing import Any, Dict, Dict, List, Optional, Tuple, Union
 from collections import defaultdict
 import itertools
@@ -73,7 +73,7 @@ class Paradigm:
         lexicon: Lexicon,
         name: Optional[str]=None,
         pattern_filter: Optional[str] = None,
-        lexical_feature_filter: Optional[List[Tuple[Feature, str]]] = None,
+        fixed_lexical_features: Optional[List[Tuple[Feature, str]]] = None,
         fixed_features: Optional[Dict[str, str]] = None,
         marker_order: Optional[List[str]] = None,
         feature_value_combinations: Optional[FeatureValueCombinations] = None,
@@ -96,7 +96,8 @@ class Paradigm:
         self.part_of_speech = lexicon.part_of_speech
         self.lexicon = lexicon
         self.pattern_filter = pattern_filter
-        self.lexical_feature_filter = lexical_feature_filter or []
+        self.fixed_lexical_features = fixed_lexical_features or []
+        self.lexical_filter = None # to be initialized later
         self.markers = deepcopy(markers)
         self.contingent_markers = deepcopy(contingent_markers)
         self.global_markers = global_markers
@@ -150,10 +151,10 @@ class Paradigm:
         filter_config = config.get('filter', {})
         pattern_filter = filter_config.get('pattern', None)
         lexical_feature_strs: List[List[str]] = filter_config.get('lexical_features', [])
-        lexical_feature_filter = []
+        fixed_lexical_features = []
         for feature_name, feature_value in lexical_feature_strs:
             feature = marker_registry.feature_registry.features[feature_name]
-            lexical_feature_filter.append((feature, feature_value))
+            fixed_lexical_features.append((feature, feature_value))
 
         fixed_features = {}
         markers = []
@@ -193,7 +194,7 @@ class Paradigm:
             name=paradigm_name,
             markers=markers,
             pattern_filter=pattern_filter,
-            lexical_feature_filter=lexical_feature_filter,
+            fixed_lexical_features=fixed_lexical_features,
             contingent_markers=contingent_markers,
             fixed_features=fixed_features,
             marker_order=marker_order,
@@ -222,6 +223,7 @@ class Paradigm:
             raise ValueError(
                 f"Feature value combination {feature_values} is not valid according to the paradigm's feature_value_combinations."
             )
+        # TODO: add helper function for checking valid combination when feature_value_combinations is not built
         
         # filter out fixed features
         for fixed_feature, fixed_value in self.fixed_features.items():
@@ -238,6 +240,7 @@ class Paradigm:
 
         applicable_markers = []
         remaining_features = set(feature_values.keys())
+        assigned_features = remaining_features.copy()
 
         for outer_feature, inner_feature in self.contingent_feature_pairs:
             requested_outer_feature_value = feature_values.get(
@@ -254,6 +257,7 @@ class Paradigm:
                     marker_list = inner_map[inner_tuple]
                     applicable_markers.extend(marker_list)
                     remaining_features -= {inner_feature.name, outer_feature.name}
+                    assigned_features.update({inner_feature.name, outer_feature.name})
 
         for feature in remaining_features:
             feature_value_pair = (feature, feature_values[feature])
@@ -261,7 +265,10 @@ class Paradigm:
                 marker_list = self.feature_marker_map[feature_value_pair]
                 applicable_markers.extend(marker_list)
             else:
-                raise KeyError(f"Unsupported feature-value pair: {feature_value_pair}")
+                raise KeyError(
+                    f"Cannot find FeatureMarker for  {feature_value_pair} for feature set {feature_values} "
+                    f"where features {assigned_features} are assigned by ContingentMarkers"
+                )
 
         applicable_markers.sort(
             key=lambda marker: self.marker_order.index(marker.order)
@@ -284,6 +291,7 @@ class Paradigm:
             self.fst_registry_initialized = True
         if self.global_markers:
             self._add_global_markers()
+        self._build_lexical_filter()
         self._build_all_marker_transducers()
         self.is_initialized = True
     
@@ -358,7 +366,7 @@ class Paradigm:
                     )
                 
         expected_lexical_feature_names = [feature.name for feature in self.lexicon.lexical_features]
-        for feature, _ in self.lexical_feature_filter:
+        for feature, _ in self.fixed_lexical_features:
             if feature.name not in expected_lexical_feature_names:
                 raise ValueError(
                     f"Lexical feature '{feature}' in paradigm config not recognized in lexicon. "
@@ -472,7 +480,33 @@ class Paradigm:
         string_map = list(zip(input_strings, output_strings))
         return self.fst_registry.string_map_transducer(string_map)
 
-    def get_filtered_roots(self):
+    def _get_lexical_feature_transducer(self):
+        """
+        Creates a graph mapping bare roots to roots marked with lexical feature tags,
+        e.g. [BOW]àpɾí[EOW] -> [sg_class=j][BOW]àpɾí[EOW].
+        """
+
+        entries = self.lexicon.entries
+
+        # get a list of dicts [{feature: value}, {feature: value}, ...]
+        # then stringify
+        feature_cols = [feature.name for feature in self.lexicon.lexical_features]
+        feature_values = entries.loc[self.lexical_filter, feature_cols]
+        feature_strs = feature_values.apply(stringify_features, axis=1).tolist()
+
+        # get transducer graph
+        roots = self.get_filtered_roots()
+        root_fsas = [self.fst_registry.word_fsa(root) for root in roots]
+        roots_w_feature = [
+            self.fst_registry.word_fsa(root, prefix=feature_str)
+            for root, feature_str in zip(roots, feature_strs)
+        ]
+        string_map = list(zip(root_fsas, roots_w_feature))
+        lexical_feature_fst = self.fst_registry.string_map_transducer(string_map)
+        
+        return lexical_feature_fst
+
+    def _get_lexical_feature_mask(self) -> pd.Series:
         """
         Apply pattern and lexical features to lexicon (if applicable)
         and return all remaining roots.
@@ -480,19 +514,45 @@ class Paradigm:
         entries = self.lexicon.entries
         feature_mask = pd.Series([True]*len(entries))
 
-        for feature, feature_value in self.lexical_feature_filter:
+        for feature, feature_value in self.fixed_lexical_features:
             feature_col = entries[feature.name]
-            feature_mask &= feature_col == feature_value
-        
-        roots = entries[feature_mask]['root'].to_list()
+            feature_mask &= feature_col == feature_value        
 
-        if self.pattern_filter:
-            roots = self.fst_registry.filter_strings_by_pattern(
-                roots, self.pattern_filter
-            )
+        return feature_mask
+    
+    def _build_lexical_filter(self):
+        """
+        Get boolean filter after applying both lexical feature and
+        pattern filters (if applicable). Equivalent to
+        `self._get_fixed_lexical_features()` if no pattern filter is
+        specified.
+        """
+        entries = self.lexicon.entries
+        feature_mask = self._get_lexical_feature_mask()
+
+        if not self.pattern_filter:
+            self.lexical_filter = feature_mask
+            return
+
+        # pattern filter is present
+        # test if `filter_strings_by_pattern` returns non-empty output
+        pattern_mask = entries['root'].apply(
+            self.fst_registry.filter_strings_by_pattern
+        ).apply(
+            bool
+        )
+
+        lexical_filter = pattern_mask & feature_mask
+        self.lexical_filter = lexical_filter
+
+    def get_filtered_roots(self):
+        """
+        Return list of all roots that pass both lexical feature filters
+        and pattern filters, if applicable.
+        """
         
+        roots = self.lexicon.entries.loc[self.lexical_filter, 'root'].tolist()
         return roots
-
     
     def inflect(self, stem: FsaLike, feature_values: Dict[str, str]) -> pynini.Fst:
         """
@@ -1017,11 +1077,11 @@ class GrammarRegistry(Registry):
 if __name__ == "__main__":
     import random 
 
-    reg = GrammarRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
+    reg = GrammarRegistry.from_config_dir(TIRA_CONFIG_DIR)
 
-    para = reg.paradigms['verbs']
+    para = reg.paradigms['verb_no_pronoun']
     root = random.choice(para.get_filtered_roots())
-    stages = para.get_inflection_stages(root, {'tense':'present', 'mood':'subjunctive', 'person_number':'1sg'})
+    stages = para.get_inflection_stages(root, {'tam':'imperfective', 'class_marker':'l', 'deixis': 'itive'})
     inflected_paradigm = para.get_subparadigm_table(root)
 
     para._build_main_graphs()
