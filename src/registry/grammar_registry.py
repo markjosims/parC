@@ -325,6 +325,24 @@ class Paradigm:
                             f"Marker order '{order}' not recognized. "
                             f"Expected one of {self.marker_order}."
                         )
+                    lexical_features = marker.lexical_features
+                    for feature_name, feature_value in lexical_features.items():
+                        feature = [
+                            feature for feature in self.lexicon.lexical_features
+                            if feature.name == feature_name
+                        ]
+                        if not feature:
+                            raise ValueError(
+                                f"Marker {marker} has unrecognized lexical feature {feature_name}"
+                            )
+                        assert len(feature) == 1
+                        feature = feature[0]
+                        if feature_value not in feature.values:
+                            raise ValueError(
+                                f"Marker {marker} has unrecognized value {feature_value} for lexical feature {feature_name}"
+                            )
+
+
         for contingent_marker_set in self.contingent_markers:
             if contingent_marker_set.inner_feature not in self.features:
                 raise ValueError(
@@ -437,29 +455,41 @@ class Paradigm:
                         self._build_marker_transducer(marker)
 
     def _build_marker_transducer(self, marker: Marker):
-        if marker.type == 'rule':
-            rule_name = marker.value.removeprefix('$')
-            marker_rule = self.fst_registry.rules[rule_name]
-        elif marker.type == 'prefix':
-            marker_rule = self.fst_registry.prefix(marker.value)
-        elif marker.type == 'suffix':
-            marker_rule = self.fst_registry.suffix(marker.value)
-        elif marker.type == 'replace':
-            marker_rule = self.fst_registry.replace_transducer(
-                marker.value[0], marker.value[1]
-            )
-        elif marker.type == 'suppletion':
-            sigma_star = '<Sigma>*'
-            marker_rule = self.fst_registry.replace_transducer(
-                sigma_star, marker.value
-            )
-        elif marker.type == 'principal_part':
-            marker_rule = self._get_principal_part_transducer(marker.value)
         if marker.transducer_built:
             logger.info(
                 f"Transducer for marker '{marker}' already built. Skipping."
             )
             return
+        if self.fst_registry is None:
+            raise ValueError("Cannot build marker without FstRegistry but `self.FstRegistry` is None")
+
+        elif marker.type == 'rule':
+            assert isinstance(marker.value, str)
+            rule_name = marker.value.removeprefix('$')
+            marker_rule = self.fst_registry.rules[rule_name]
+        elif marker.type == 'prefix':
+            assert isinstance(marker.value, str)
+            marker_rule = self.fst_registry.prefix(marker.value)
+        elif marker.type == 'suffix':
+            assert isinstance(marker.value, str)
+            marker_rule = self.fst_registry.suffix(marker.value)
+        elif marker.type == 'replace':
+            assert isinstance(marker.value, tuple)
+            marker_rule = self.fst_registry.replace_transducer(
+                marker.value[0], marker.value[1]
+            )
+        elif marker.type == 'suppletion':
+            sigma_star = '<Sigma>*'
+            assert isinstance(marker.value, str)
+            marker_rule = self.fst_registry.replace_transducer(
+                sigma_star, marker.value
+            )
+        elif marker.type == 'principal_part':
+            assert isinstance(marker.value, str)
+            marker_rule = self._get_principal_part_transducer(marker.value)
+        else:
+            raise ValueError(f"Unrecognized marker type {marker.type}")
+        
         marker.set_transducer(marker_rule.fst)
 
     def _get_principal_part_transducer(self, principal_part: str):

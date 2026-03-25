@@ -26,6 +26,8 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 import os
+import re
+from copy import deepcopy
 from typing import Dict, List, Optional, Tuple, Literal, Union, Callable
 import unicodedata
 from loguru import logger
@@ -37,6 +39,7 @@ from src.constants import EXAMPLE_CONFIG_DIR
 
 from src.fst_utils import Acceptor, TransducerList, Prefix, Suffix, FsaLike
 from src.registry.registry_utils import Registry, ReservedSymbolMixin
+from src.registry.feature_registry import stringify_features
 
 class InventoryRegistry(Registry):
     """
@@ -1059,21 +1062,44 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             rule.set_transducer(rule_transducer)
         self._rule_transducers_built = True
 
-    def _parse_rule(self, rule: Rule) -> Union[pynini.Fst, List[pynini.Fst]]:
+    def _parse_rule(self, rule: Rule, lexical_features: Optional[Dict[str, str]]=None) -> Union[pynini.Fst, List[pynini.Fst]]:
         """
         Constructs all acceptors and transducers needed for a context-sensitive
         rule and returns the rule transducer or list of transducers (for a rule
         sequence)
         """
+        left_context=None
+        if lexical_features:
+            left_context = self.lexical_feature_left_context(lexical_features)
         if rule.type == "rule_sequence":
             # return list of FSTs
             # sub-rules may themselves be rule sequences, so need to flatten
-            rule_fsts_flat = []
+            rules_flat = []
             for subrule in rule.rule_sequence:
-                if isinstance(subrule.fst, pynini.Fst):
-                    rule_fsts_flat.append(subrule.fst)
+                if not subrule.rule_sequence:
+                    rules_flat.append(subrule)
                 else:
-                    rule_fsts_flat.extend(subrule.fst)
+                    rules_flat.extend(subrule.rule_sequence)
+
+            if left_context:
+                # need to re-parse each rule using the new left context
+                rule_fsts_flat = []
+                for subrule in rules_flat:
+                    subrule = deepcopy(subrule)
+                    if subrule.left_context:
+                        subrule_left_context = self.concatenate_acceptors(
+                            left_context, subrule.left_context
+                        )
+                    else:
+                        subrule_left_context = left_context
+                    subrule.left_context = left_context
+                    new_rule = self._parse_rule(subrule)
+                    if not isinstance(new_rule, pynini.Fst):
+                        raise ValueError(f"Expected subrule to return a single FST on compilation, got {type(subrule)}")
+                    rule_fsts_flat.append(new_rule)
+            else:
+                rule_fsts_flat = [subrule.fst for subrule in rules_flat]
+
             return rule_fsts_flat
         # tau = main transducer, the rational relation effected by the rule
         tau = self._parse_rule_tau(rule)
@@ -1510,32 +1536,86 @@ class FstRegistry(Registry, ReservedSymbolMixin):
     def acceptor(
             self,
             fsa_input: str,
-            acceptor_class: Acceptor = Acceptor
         ) -> Acceptor:
         """
         Given a pattern string and an uninitialized `Acceptor` class,
         return an initialized the `Acceptor` with a built FSA
         """
         fsa = self.fsa(fsa_input)
-        acceptor: Acceptor = acceptor_class(fsa_input)
+        acceptor = Acceptor(fsa_input)
         acceptor.set_acceptor(fsa)
         return acceptor
-    
-    def prefix(self, prefix_str: str) -> Prefix:
+
+    def concatenate_acceptors(
+            self,
+            *acceptor_list: Acceptor
+        ) -> Acceptor:
+        concat_value = ''
+        concat_fsa = pynini.accep('')
+        for acceptor in acceptor_list:
+            if not acceptor.acceptor_built:
+                raise ValueError("Cannot concatenate uninitialized Acceptor objects")
+            concat_value+=acceptor.value or ''
+            concat_fsa+=self.fsa(acceptor.fsa or '')
+        
+        concat_acceptor = Acceptor(value=concat_value)
+        concat_acceptor.set_acceptor(concat_fsa)
+
+        return concat_acceptor
+
+
+    def lexical_feature_left_context(self, lexical_features: Dict[str, str]) -> Acceptor:
+        """
+        Creates an FSA accepting any left context where the features specified by `lexical_features`
+        are present preceding the [BOW] flag.
+        """
+        lexical_feature_str = stringify_features(lexical_features)
+
+        feature_sequence_acceptor_str = ''
+        for feature_str in re.findall(r"(\[[^\]]\])", lexical_feature_str):
+            feature_sequence_acceptor_str += feature_str
+
+        left_context_str = f"{self.bow}{self.sigma_ref}{self.star}{feature_sequence_acceptor_str}"
+        try:
+            left_context = self.acceptor(left_context_str)
+        except Exception as e:
+            raise Exception(
+                    f"Error when parsing acceptor for {left_context_str}, check if paradigm successfully added lexical features to symbol table. "
+                    f"Original exception: {e}"
+            )
+
+        return left_context
+
+    def prefix(self, prefix_str: str, lexical_features: Optional[Dict[str, str]]=None) -> Prefix:
         """
         Returns a `Prefix` object with an initialized FST
+
+        If lexical_features passed, pass to `left_context` kwarg
+        for `Prefix.set_transducer`.
         """
         prefix = Prefix(prefix_str, stem=self.sigma_star)
         prefix_fsa = self.fsa(prefix_str)
-        prefix.set_transducer(prefix_fsa, self.bow_fsa)
+
+        kwargs = {}
+        if lexical_features:
+            left_context = self.lexical_feature_left_context(lexical_features)
+            kwargs['left_context'] = left_context
+        prefix.set_transducer(prefix_fsa, self.bow_fsa, **kwargs)
         return prefix
     
-    def suffix(self, suffix_str: str) -> Suffix:
+    def suffix(self, suffix_str: str, lexical_features: Optional[Dict[str, str]]=None) -> Suffix:
         """
         Returns a `Suffix` object with an initialized FST
+
+        If lexical_features passed, pass to `left_context` kwarg
+        for `Suffix.set_transducer`.
         """
         suffix = Suffix(suffix_str, stem=self.sigma_star)
         suffix_fsa = self.fsa(suffix_str)
+        kwargs = {}
+        if lexical_features:
+            left_context = self.lexical_feature_left_context(lexical_features)
+            kwargs['left_context'] = left_context
         suffix.set_transducer(suffix_fsa, self.eow_fsa)
         return suffix
     

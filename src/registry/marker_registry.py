@@ -50,6 +50,12 @@ class Marker(TransducerList):
     Inherits `value` and `fst` from TransducerList; the FST is built later by a
     compilation step (not at config-load time).
 
+    The 'order' and `lexical_features` are flags for the `Paradigm` object
+    to control the application of the marker, where `order` is a named stage
+    the rule applies in, and `lexical_features` is a mapping of feature names
+    to values, where the rule only applies if the specified configuration of
+    features is found.
+
     Attributes:
         type: Type of formative represented, including:
         - prefix: String to prepend to stem
@@ -60,12 +66,14 @@ class Marker(TransducerList):
         - principal_part: Selects a principal part for the feature value
         value: String to be interpreted as formative
         order: Stage name controlling application order within a paradigm
+        lexical_features: Dict indicating feature:value pairs this marker relies on
     """
     value: Union[str, Tuple[str, str]] = ""
     feature_value: Optional[str] = None
     type: Literal["prefix", "suffix", "replace", "suppletion", "rule", "principal_part"] = "suffix"
     order: Optional[str] = None
     comment: Optional[str] = None
+    lexical_features: Dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self):
         super().__post_init__()

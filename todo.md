@@ -36,6 +36,7 @@
     - [x] Migrate 'lexical flag' to existing 'invariant_feature' attribute
 - [x] All `from_config` factory functions should expect other registry kinds to be passed, they should **not** be built eagerly
 - [x] Main graphs for form <==> gloss transduction
+- [ ] Rules/markers may reference lexical features
 - [ ] Sample paradigms with nouns
 ## Backburner
 - [ ] Error messages should trigger logs, and the code for this should be DRY.

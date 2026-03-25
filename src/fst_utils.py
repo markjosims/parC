@@ -112,7 +112,8 @@ class Prefix(Transducer):
             self,
             prefix_fsa: pynini.Fst,
             bow_fsa: pynini.Fst,
-            stem: Optional[pynini.Fst]=None
+            stem: Optional[pynini.Fst]=None,
+            left_context: Optional[Acceptor]=None,
         ):
         if stem is None:
             stem = self.stem
@@ -120,9 +121,11 @@ class Prefix(Transducer):
         # need to write a context-dependent rewrite function rather
         # than using paradigms.prefix because we use a special [BOW]
         # symbol to mark the beginning of the word
+        
+
         fst = pynini.cdrewrite(
             tau=pynini.cross(bow_fsa, bow_fsa+prefix_fsa),
-            l='',
+            l=left_context or '',
             r='',
             sigma_star=stem,
         )
@@ -156,7 +159,8 @@ class Suffix(Transducer):
             self,
             suffix_fsa: pynini.Fst,
             eow_fsa: pynini.Fst,
-            stem: Optional[pynini.Fst]=None
+            stem: Optional[pynini.Fst]=None,
+            left_context: Optional[Acceptor]=None,
         ):
         if stem is None:
             stem = self.stem
@@ -166,7 +170,7 @@ class Suffix(Transducer):
         # symbol to mark the end of the word
         fst = pynini.cdrewrite(
             tau=pynini.cross(eow_fsa, suffix_fsa+eow_fsa),
-            l='',
+            l=left_context or '',
             r='',
             sigma_star=stem,
         )
