@@ -14,9 +14,10 @@ data:
     - '[ᴐu]'
     - '[ᴐi]'
   accusative_markers:
+    _ref: <ACC>
     _flags:
     - '[-a]'
     - '[-ɛ]'
     - '[-ᴐ]'
     - '[-ŋù]'
-    - '[-ɲá]'
+    - '[-ɲa]'
