@@ -28,7 +28,7 @@
           </label>
           <label>
             Items
-            <textarea name="items_text-{{ node.id }}" id="items-{{ node.id }}" placeholder="p, t, k">{{ node.items_text }}</textarea>
+            <input name="items_text-{{ node.id }}" id="items-{{ node.id }}" placeholder="p, t, k" value={{ node.items_text }} >
           </label>
           <label class="diac-toggle">
             <input type="checkbox" onchange="this.closest('.node-header').querySelector('.diac-bar').classList.toggle('hidden', !this.checked)"> Show diacritics

@@ -4,7 +4,7 @@ from src.web.configs import normalize_config_dir
 
 
 def create_app(config_dir: str | None = None) -> Flask:
-    app = Flask(__name__, template_folder="templates")
+    app = Flask(__name__, template_folder="templates", static_folder="../../static", static_url_path="/static")
     app.config["SECRET_KEY"] = "dev"
     validated = _validated_config_dir(config_dir)
     app.config["CONFIG_DIR"] = validated

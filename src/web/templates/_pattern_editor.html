@@ -14,20 +14,20 @@
       <div >
         <label>
           Pattern
-          <textarea name="pattern_text-{{ pattern.id }}" data-initial="{{ pattern.pattern_text }}" data-def-field placeholder="(e|i|é|í)">{{ pattern.pattern_text }}</textarea>
+          <input name="pattern_text-{{ pattern.id }}" data-initial="{{ pattern.pattern_text }}" data-def-field placeholder="<C><V><C>?" value={{ pattern.pattern_text }} >
         </label>
       </div>
       <div class="two-col">
         <label>
           Test includes
-          <textarea name="test_includes-{{ pattern.id }}" placeholder="e, i, é, í">{{ pattern.test_includes }}</textarea>
+          <textarea name="test_includes-{{ pattern.id }}" placeholder="e, i, é, í" style="min-height: 20px" >{{ pattern.test_includes }}</textarea>
         </label>
         <label>
           Test excludes
-          <textarea name="test_excludes-{{ pattern.id }}" placeholder="a, o, u">{{ pattern.test_excludes }}</textarea>
+          <textarea name="test_excludes-{{ pattern.id }}" placeholder="a, o, u" style="min-height: 20px" >{{ pattern.test_excludes }}</textarea>
         </label>
       </div>
-      <div class="actions">
+      <div class=>
         <button type="submit" name="action" value="run-tests" data-action="run-tests" formaction="{{ url_for('web.patterns_run_tests', pattern_id=pattern.id) }}">Test</button>
         <span class="dirty-warning muted" style="display:none">Save first to test</span>
         <button type="submit" name="action" value="remove-pattern" formaction="{{ url_for('web.patterns_remove_entry', pattern_id=pattern.id) }}">Remove</button>

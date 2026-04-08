@@ -98,9 +98,6 @@ def config():
     )
 
 
-
-
-
 @bp.post("/config")
 def config_editor():
     form = _normalize_form_data(request.form)
@@ -152,7 +149,9 @@ def config_rename():
     try:
         config_dir = _local_config_dir()
         rename_config_file(config_dir, old_path, new_path)
-        return redirect(url_for("web.config", path=new_path, message=f"Renamed to {new_path}"))
+        return redirect(
+            url_for("web.config", path=new_path, message=f"Renamed to {new_path}")
+        )
     except (RuntimeError, ValueError, FileNotFoundError) as exc:
         return redirect(url_for("web.config", path=old_path, error=str(exc)))
 
@@ -445,7 +444,9 @@ def parse_build_status():
     paradigms = registry.paradigms or {}
     for name, paradigm in paradigms.items():
         cache_key = (str(Path(config_dir)), name)
-        build_info = GRAPH_BUILD_STATUS.get(cache_key, {"status": "idle", "error": None})
+        build_info = GRAPH_BUILD_STATUS.get(
+            cache_key, {"status": "idle", "error": None}
+        )
         result[name] = {
             "main_graphs_built": bool(paradigm.main_graphs_built),
             "edit_graphs_built": bool(paradigm.edit_graphs_built),
@@ -514,12 +515,14 @@ def parse_word():
                 else:
                     root = parse_str
                     feature_str = ""
-                parse_results.append({
-                    "form": item.get("form", query),
-                    "root": root,
-                    "parse": feature_str,
-                    "num_edits": item.get("weight", 0),
-                })
+                parse_results.append(
+                    {
+                        "form": item.get("form", query),
+                        "root": root,
+                        "parse": feature_str,
+                        "num_edits": item.get("weight", 0),
+                    }
+                )
         else:
             raw_results = paradigm.get_parses(query)
             parse_results = []
@@ -531,10 +534,12 @@ def parse_word():
                 else:
                     root = parse_str
                     feature_str = ""
-                parse_results.append({
-                    "root": root,
-                    "parse": feature_str,
-                })
+                parse_results.append(
+                    {
+                        "root": root,
+                        "parse": feature_str,
+                    }
+                )
     except (ValueError, Exception) as exc:
         return _render_parse_page(
             parse_tool="word",
@@ -613,6 +618,7 @@ def inflect_run():
     try:
         results = paradigm.get_inflection_stages(stem, feature_values)
     except (ValueError, Exception) as exc:
+        logger.exception(exc)
         return _render_inflect_page(
             inflect_tool="stages",
             error=str(exc),
@@ -906,11 +912,19 @@ def _render_page(
     registry = None
     features_to_values = {}
 
-    if kind in ("PartOfSpeech", "FeatureMarkers", "ContingentFeatureMarkers",
-                "FeatureCombinations", "Paradigm", "Rules"):
+    if kind in (
+        "PartOfSpeech",
+        "FeatureMarkers",
+        "ContingentFeatureMarkers",
+        "FeatureCombinations",
+        "Paradigm",
+        "Rules",
+    ):
         try:
             registry = _get_grammar_registry(_local_config_dir())
-            features_to_values = registry.feature_registry.feature_registry.features_to_values
+            features_to_values = (
+                registry.feature_registry.feature_registry.features_to_values
+            )
         except Exception:
             registry = None
             features_to_values = {}
@@ -939,12 +953,24 @@ def _render_page(
 
     if kind == "Paradigm":
         if registry is not None and registry.is_initialized:
-            state["available_part_of_speech"] = sorted(registry.lexicon_registry.data.keys())
-            state["available_feature_markers"] = sorted(registry.marker_registry.feature_markers.keys())
-            state["available_contingent_markers"] = sorted(registry.marker_registry.contingent_markers.keys())
-            state["available_feature_combinations"] = sorted(registry.feature_registry.feature_combinations.keys())
+            state["available_part_of_speech"] = sorted(
+                registry.lexicon_registry.data.keys()
+            )
+            state["available_feature_markers"] = sorted(
+                registry.marker_registry.feature_markers.keys()
+            )
+            state["available_contingent_markers"] = sorted(
+                registry.marker_registry.contingent_markers.keys()
+            )
+            state["available_feature_combinations"] = sorted(
+                registry.feature_registry.feature_combinations.keys()
+            )
             state["available_features_to_values"] = features_to_values
-            state["available_patterns"] = sorted(registry.fst_registry.patterns.keys()) if registry.fst_registry else []
+            state["available_patterns"] = (
+                sorted(registry.fst_registry.patterns.keys())
+                if registry.fst_registry
+                else []
+            )
         else:
             state["available_part_of_speech"] = []
             state["available_feature_markers"] = []
@@ -968,7 +994,10 @@ def _render_page(
             _serialize_inventory_tree(i) for i in root_items if _has_flag(i)
         ]
         extra["sidebar_patterns"] = [
-            {"ref": p._ref, "value": p.value if isinstance(p.value, str) else " | ".join(p.value)}
+            {
+                "ref": p._ref,
+                "value": p.value if isinstance(p.value, str) else " | ".join(p.value),
+            }
             for p in fst_reg.patterns.values()
         ]
     except Exception:
@@ -1011,9 +1040,7 @@ def _render_parse_page(
         config_dir = _local_config_dir()
         yaml_files = list_config_yaml_files(config_dir)
         paradigm_names = [
-            item["label"]
-            for item in yaml_files
-            if item.get("kind") == "Paradigm"
+            item["label"] for item in yaml_files if item.get("kind") == "Paradigm"
         ]
     except Exception as exc:
         parse_registry_error = (
@@ -1075,9 +1102,7 @@ def _render_inflect_page(
         config_dir = _local_config_dir()
         yaml_files = list_config_yaml_files(config_dir)
         paradigm_names = [
-            item["label"]
-            for item in yaml_files
-            if item.get("kind") == "Paradigm"
+            item["label"] for item in yaml_files if item.get("kind") == "Paradigm"
         ]
         registry = _get_grammar_registry(config_dir)
         for name, paradigm in registry.paradigms.items():
@@ -1086,9 +1111,7 @@ def _render_inflect_page(
                 ftv = dict(paradigm.feature_value_combinations.features_to_values)
             else:
                 ftv = {f.name: list(f.values) for f in paradigm.features}
-            paradigm_features[name] = {
-                k: v for k, v in ftv.items() if k not in fixed
-            }
+            paradigm_features[name] = {k: v for k, v in ftv.items() if k not in fixed}
             paradigm_fixed_features[name] = fixed
             try:
                 paradigm_roots[name] = paradigm.lexicon.get_roots()
@@ -1168,12 +1191,11 @@ def _get_grammar_registry(config_dir: str) -> GrammarRegistry:
     cache_key = str(Path(config_dir))
     current_stamp = _yaml_tree_mtime(cache_key)
     cached = GRAMMAR_REGISTRY_CACHE.get(cache_key)
-    if (
-        (cached is not None) and
-        (cached[0] == current_stamp)
-    ):
+    if (cached is not None) and (cached[0] == current_stamp):
         if not cached[1].is_initialized:
-            logger.info(f"Found uninitialized GrammarRegistry, attempting to rebuilt from config dir '{config_dir}'")
+            logger.info(
+                f"Found uninitialized GrammarRegistry, attempting to rebuilt from config dir '{config_dir}'"
+            )
         else:
             logger.info(f"Using cached GrammarRegistry for config dir '{config_dir}'")
             return cached[1]
