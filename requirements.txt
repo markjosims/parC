@@ -16,3 +16,5 @@ loguru
 jsonschema
 dotenv
 watchdog
+streamlit
+levenshtein

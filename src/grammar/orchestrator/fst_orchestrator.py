@@ -1,710 +1,79 @@
 """
-Implements following Registry classes:
-- `InventoryRegistry`: stores inventory items including phones, flags
-    and classes
-- `PatternRegistry`: stores patterns and tracks dependencies across them
-- `RuleRegistry`: stores rules and tracks dependencies across them
-- `FstRegistry`: orchestrates the above three registries and provides
-    logic for building pattern acceptors and rule transducers
-
-Registries are supported by the following classes, each representing
-a single item from the relevant config.
-- `InventoryItem` (inventory config)
-- `Pattern` (pattern config)
-- `Rule` (rule config)
-
-In addition, the `Acceptor` class defines a general FSA, allowing
-for association between the human-specified config string and the
-FST object, and the `Token` is used by `FstRegistry` to represent
-a single token, which may be a phone, flag, class or special symbol,
-and (with the exception of delimiters and operators) maps to an FSA.
-
+Implements the `FstOrchestrator`, which orchestrates
+the `InventoryRegistry`, `PatternRegistry` and `RuleRegistry`
+classes. The FstOrchestrator's primary role is to compile FSAs
+and FSTs based on user-defined inventory, patterns and rules,
+and provides functions for other classes like `FeatureMarkers`
+or `Paradigm` to compile FSTs as well.
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import os
 import re
 from copy import deepcopy
-from typing import Dict, List, Optional, Tuple, Literal, Union, Callable
+from typing import Literal
 import unicodedata
 from loguru import logger
 import pynini
 from pynini.lib import rewrite
-from pynini import FstProperties
-from graphlib import TopologicalSorter
 from src.constants import EXAMPLE_CONFIG_DIR
 
-from src.fst_utils import Acceptor, TransducerList, Prefix, Suffix, FsaLike
-from src.registry.registry_utils import Registry, ReservedSymbolMixin
-from src.registry.feature_registry import stringify_features
-
-
-class InventoryRegistry(Registry):
-    """
-    Registry for storing inventory items (phones, flags, classes).
-    Default is to instantiate from InventoryRegistry.from_config_dir()
-    which loads all YAML configs in the specified directory.
-    Can also be instantiated directly with a pre-built data dict
-    or list of configs.
-    """
-
-    def __init__(
-        self,
-        data: Optional[Dict[str, InventoryItem]] = None,
-        config_lists: Optional[List[dict]] = None,
-    ):
-        super().__init__(kind="Inventory", data=data, config_list=config_lists)
-        self._populate_subdicts()
-
-    def _populate_subdicts(self):
-        phones = {}
-        flags = {}
-        classes = {}
-        for item in self.data.values():
-            if item.type == "phone":
-                phones[item.value] = item
-            elif item.type == "flag":
-                flags[item.value] = item
-            elif item.type == "class":
-                classes[item.value] = item
-        self.phones = phones
-        self.flags = flags
-        self.classes = classes
-
-    @classmethod
-    def from_config_dir(cls, config_dir: str) -> InventoryRegistry:
-        registry = super().from_config_dir(config_dir=config_dir)
-        registry.data = registry.load_all_configs()
-        registry._populate_subdicts()
-
-        return registry
-
-    def load_all_configs(self) -> Dict[str, InventoryItem]:
-        config_items = {}
-        for config in self.config_list:
-            config_data = self.load_data_from_config(config)
-            # check for collisions
-            for key in config_data:
-                if key in config_items:
-                    error = f"Duplicate inventory item '{key}' found in multiple config files."
-                    logger.error(error)
-                    raise ValueError(error)
-            config_items.update(config_data)
-        return config_items
-
-    def load_data_from_config(
-        self,
-        config: dict,
-    ) -> Dict[str, InventoryItem]:
-        top_classes = config.get("data", [])
-        if not top_classes:
-            logger.error("No top-level inventory classes found in config")
-            return {}
-
-        # get flat list of items
-        inventory_items = []
-        for item_config in top_classes.values():
-            item = InventoryItem.from_config(item_config)
-            flat_item = item.flatten()
-            inventory_items.extend(flat_item)
-
-        # check for item collisions
-        item_values = [item.value for item in inventory_items]
-        if len(item_values) != len(set(item_values)):
-            duplicate_items = set([x for x in item_values if item_values.count(x) > 1])
-            error = (
-                f"Collision found among item values: {item_values} "
-                + f"Duplicate items: {duplicate_items}"
-            )
-            logger.error(error)
-            raise ValueError(error)
-
-        # make dict mapping ref to item
-        config_items = {item.value: item for item in inventory_items}
-
-        return config_items
-
-    def _get_tokens_from_class(self, item: InventoryItem) -> List[str]:
-        """Recursively collect all phone/flag tokens from an InventoryItem subtree."""
-        tokens = []
-        if item.type in ("phone", "flag"):
-            tokens.append(item.value)
-        for child in item.children:
-            tokens.extend(self._get_tokens_from_class(child))
-        return tokens
-
-
-@dataclass
-class InventoryItem(Acceptor):
-    """
-    Represents an item in the inventory, which may be a phone,
-    flag or class.
-    Attributes:
-        value: The string value of the item (e.g. "a", "[TBU]", "<V>").
-        type: The type of the item, one of "phone", "flag", or "class".
-        children: List of child InventoryItems (for nested structures).
-        parent: Optional reference to parent InventoryItem (for upward traversal).
-        source: Optional string indicating filepath item originates from.
-        acceptor: pynini.Fst accepting the item (or, for classes, any member of the item).
-            Note this should NOT be passed as an argument but instead be assigned by an
-            InventoryRegistry class.
-    """
-
-    value: str = ""
-    type: Literal["phone", "flag", "class"] = "phone"
-    children: List[InventoryItem] = field(default_factory=list)
-    parent: Optional[InventoryItem] = None
-    source: Optional[os.PathLike] = None
-
-    def __post_init__(self):
-        super().__post_init__()
-
-        if self.value in ReservedSymbolMixin.reserved_symbols:
-            error = f"Inventory item value '{self.value}' is a reserved symbol and cannot be used."
-            logger.error(error)
-            raise ValueError(error)
-
-        if self.type == "class" and self.children is None:
-            raise ValueError("Class items must have children")
-        if self.type in ("phone", "flag") and self.children:
-            raise ValueError("Phone and flag items cannot have children")
-
-        if (self.type == "class") and (
-            not self.value.startswith("<") or not self.value.endswith(">")
-        ):
-            raise ValueError(
-                "Class items must have values that start with '<' and end with '>'"
-            )
-        if (self.type == "flag") and (
-            not self.value.startswith("[") or not self.value.endswith("]")
-        ):
-            raise ValueError(
-                "Flag items must have values that start with '[' and end with ']'"
-            )
-        if (self.type == "phone") and (
-            self.value.startswith("<") or self.value.startswith("[")
-        ):
-            raise ValueError(
-                "Phone items cannot have values that start with '<' or '['"
-            )
-
-    @classmethod
-    def from_config(
-        cls,
-        item_dict: dict,
-        parent: Optional[InventoryItem] = None,
-    ) -> InventoryItem:
-        """
-        Builds an InventoryItem from a config dict
-        If config has children (nested dicts), recursively
-        build child InventoryItems and attach to parent
-        """
-
-        # get source filepath if specified
-        source_path = item_dict.get("source", None)
-
-        inventory_item = cls(
-            value=item_dict["_ref"],
-            type="class",
-            children=[],
-            parent=parent,
-            source=source_path,
-        )
-
-        children = []
-        for key, value in item_dict.items():
-            if key == "_phones":
-                for phone in value:
-                    child = cls(value=phone, type="phone", parent=inventory_item)
-                    children.append(child)
-            elif key == "_flags":
-                for flag in value:
-                    child = cls(value=flag, type="flag", parent=inventory_item)
-                    children.append(child)
-            elif isinstance(value, dict):
-                child = cls.from_config(value, parent=inventory_item)
-                children.append(child)
-
-        inventory_item.children = children
-        return inventory_item
-
-    def flatten(self) -> List[InventoryItem]:
-        """Recursively InventoryItem into a list including itself and all children."""
-        items = [self]
-        for child in self.children:
-            items.extend(child.flatten())
-        return items
-
-    def __str__(self):
-        return f"InventoryItem(value='{self.value}')"
-
-    def __repr__(self):
-        return self.__str__()
-
-
-class PatternRegistry(Registry):
-    """
-    Registry for storing pattern definitions, also computes dependency graph
-    to track import logic.
-
-    Default is to instantiate from PatternRegistry.from_config_dir() which loads
-    all YAML configs in the specified directory. Can also be instantiated directly
-    with a pre-built data dict or list of configs.
-    """
-
-    def __init__(
-        self,
-        data: Optional[Dict[str, Pattern]] = None,
-        config_lists: Optional[List[dict]] = None,
-    ):
-        super().__init__(kind="Patterns", data=data, config_list=config_lists)
-        self.build_dependency_graph()
-
-    @classmethod
-    def from_config_dir(cls, config_dir: str) -> PatternRegistry:
-        pattern_registry = super().from_config_dir(config_dir=config_dir)
-        pattern_registry.data = pattern_registry.load_all_configs()
-        pattern_registry.build_dependency_graph()
-        return pattern_registry
-
-    def load_all_configs(self):
-        config_items = {}
-        for config in self.config_list:
-            config_data = self.load_data_from_config(config)
-            # check for collisions
-            for key in config_data:
-                if key in config_items:
-                    error = f"Duplicate pattern '{key}' found in multiple config files."
-                    logger.error(error)
-                    raise ValueError(error)
-            config_items.update(config_data)
-        return config_items
-
-    def load_data_from_config(
-        self,
-        config: dict,
-    ) -> Dict[str, Pattern]:
-        patterns = config.get("patterns", [])
-        if not patterns:
-            logger.error(f"No patterns found in config: {config}")
-            return
-        # each pattern is stored as a dict {'Pattern_name': {**data}}
-        # since the _ref key in the pattern data is used as a unique
-        # identifier internally, we ignore the user-specified pattern name
-        patterns = [p.popitem()[1] for p in patterns]
-
-        patterns_list = [Pattern.from_config(p) for p in patterns]
-
-        # make dict mapping ref to item
-        config_items = {item._ref: item for item in patterns_list}
-        return config_items
-
-    def build_dependency_graph(self):
-        """
-        Populates `uses` and `used_by` fields for all pattern objects
-        based on which patterns reference which other patterns in their
-        pattern strings. Stores dependency chains in `self.dependency_graph`,
-        and a topologically sorted list of patterns in `self.patterns_sorted`.
-        """
-        dependency_graph = {}
-
-        for pattern in self.data.values():
-            # get list of patterns this pattern uses
-            used_by = []
-            uses = []
-            dependency_graph[pattern._ref] = set()
-            for other_pattern in self.data.values():
-                if pattern._ref in other_pattern.value:
-                    used_by.append(other_pattern)
-
-                if other_pattern._ref in pattern.value:
-                    uses.append(other_pattern)
-                    dependency_graph[pattern._ref].add(other_pattern._ref)
-
-            pattern.set_dependencies(used_by=used_by, uses=uses)
-
-        self.dependency_graph = dependency_graph
-        pattern_refs_sorted = list(TopologicalSorter(dependency_graph).static_order())
-        patterns_sorted = [self.data[ref] for ref in pattern_refs_sorted]
-        self.patterns_sorted = patterns_sorted
-
-
-@dataclass
-class Pattern(Acceptor):
-    """
-    Represents a pattern which is a shorthand FSA to be used for defining rules.
-
-    Attributes:
-        value: The string value of the pattern (e.g. `(<V>|<R>|<N>)`).
-        _ref: The registry reference string for this pattern (e.g. `<VowelClass>`).
-        source: Optional string indicating filepath pattern originates from.
-        fsa: pynini.Fst accepting the pattern language.
-    """
-
-    value: Union[str, List[str]] = ""
-    _ref: str = ""
-    used_by: List[Pattern] = field(default_factory=list)
-    uses: List[Pattern] = field(default_factory=list)
-    source: Optional[os.PathLike] = None
-    test_includes: List[str] = field(default_factory=list)
-    test_excludes: List[str] = field(default_factory=list)
-
-    def __post_init__(self):
-        super().__post_init__()
-
-        if (self.value in ReservedSymbolMixin.reserved_symbols) or (
-            self._ref in ReservedSymbolMixin.reserved_symbols
-        ):
-            error = f"Pattern value and ref cannot be reserved symbols. Got value '{self.value}' and ref '{self._ref}'."
-            logger.error(error)
-            raise ValueError(error)
-
-        # set attributes to track state
-        self.dependencies_built = False
-
-        if self.used_by:
-            raise ValueError(
-                "Used_by should not be passed on init but constructed by an FstRegistry object."
-            )
-        if self.uses:
-            raise ValueError(
-                "Uses should not be passed on init but constructed by an FstRegistry object."
-            )
-
-    def set_dependencies(self, used_by: List[Pattern], uses: List[Pattern]):
-        self.used_by = used_by
-        self.uses = uses
-        self.dependencies_built = True
-
-    @classmethod
-    def from_config(
-        cls,
-        item_dict: dict,
-    ) -> Pattern:
-        """
-        Builds a Pattern from a config dict.
-        """
-
-        # get source filepath if specified
-        source_path = item_dict.get("source", None)
-
-        pattern = cls(
-            value=item_dict["pattern"],
-            _ref=item_dict["_ref"],
-            source=source_path,
-        )
-        return pattern
-
-    def __str__(self):
-        return f"Pattern(_ref={self._ref}, value={self.value})"
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __hash__(self):
-        return hash(self._ref)
-
-    def __eq__(self, other):
-        if not isinstance(other, Pattern):
-            return self.value == str(other)
-        return self.value == other.value
-
-
-class RuleRegistry(Registry, ReservedSymbolMixin):
-    def __init__(
-        self,
-        data: Optional[Dict[str, Pattern]] = None,
-        config_lists: Optional[List[dict]] = None,
-    ):
-        super().__init__(kind="Rules", data=data, config_list=config_lists)
-        self.build_dependency_graph()
-
-    @classmethod
-    def from_config_dir(cls, config_dir: str) -> PatternRegistry:
-        rule_registry = super().from_config_dir(config_dir=config_dir)
-        rule_registry.data = rule_registry.load_all_configs()
-        rule_registry.build_dependency_graph()
-        return rule_registry
-
-    def load_all_configs(self):
-        config_items = {}
-        for config in self.config_list:
-            config_data = self.load_data_from_config(config)
-            # check for collisions
-            for key in config_data:
-                if key in config_items:
-                    error = f"Duplicate rule '{key}' found in multiple config files."
-                    logger.error(error)
-                    raise ValueError(error)
-            config_items.update(config_data)
-        return config_items
-
-    def load_data_from_config(
-        self,
-        config: dict,
-    ) -> Dict[str, Pattern]:
-        rules = config.get("rules", [])
-        if not rules:
-            logger.error("No rules found in config")
-            return
-
-        rule_list = [
-            Rule.from_config(rule_name, rule_data)
-            for rule_name, rule_data in rules.items()
-        ]
-
-        # make dict mapping ref to item
-        config_items = {item._ref: item for item in rule_list}
-        return config_items
-
-    def build_dependency_graph(self):
-        """
-        Populates `rule_sequence` and `used_by` fields for all rule objects
-        based on which rules reference which other rules in their
-        rule strings. Stores dependency chains in `self.dependency_graph`,
-        and a topologically sorted list of rules in `self.rules_sorted`.
-        """
-        dependency_graph = {}
-
-        for rule in self.data.values():
-            dependency_graph[rule._ref] = set()
-            # get list of rules using this rule in their rule_sequence
-            used_by = []
-            for other_rule in self.data.values():
-                if (other_rule.rule_sequence) and (
-                    rule._ref in other_rule.rule_sequence
-                ):
-                    used_by.append(other_rule)
-
-            if rule.type == "rule_sequence":
-                sub_rules = []
-                sub_rule_refs = [ref.removeprefix("$") for ref in rule.rule_sequence]
-                for sub_rule in sub_rule_refs:
-                    if sub_rule in self.data:
-                        sub_rules.append(self.data[sub_rule])
-                    else:
-                        raise KeyError(
-                            f"Rule '{sub_rule}' referenced in rule sequence for "
-                            f"'{rule._ref}' not found in registry."
-                        )
-                rule.set_dependencies(
-                    used_by=used_by,
-                    rule_sequence=sub_rules,
-                )
-                dependency_graph[rule._ref] = set(sub_rule_refs)
-            else:
-                rule.set_dependencies(used_by=used_by)
-
-        self.dependency_graph = dependency_graph
-        rule_refs_sorted = list(TopologicalSorter(dependency_graph).static_order())
-        rules_sorted = [self.data[ref] for ref in rule_refs_sorted]
-        self.rules_sorted = rules_sorted
-
-
-@dataclass
-class Rule(TransducerList):
-    """
-    Dataclass for phonological rules. Rules can be of three types:
-    - Simple rules: defined by input and output patterns
-    - String map rules: defined by a list of input-output string pairs
-    - Rule sequence: defined by a sequence of other rules to apply in order
-
-    Any rule can also have left and right context patterns that must be satisfied
-    for the rule to apply.
-
-    Since we expect a RuleRegistry to be built upon a PatternRegistry, we load
-    pattern objects directly into the Rule dataclass and track references to patterns via
-    the `uses` and `used_by` fields.
-
-    Note that the actual FST construction logic for rules is not implemented here, but
-    is handled by the `FstRegistry` class which compiles patterns and rules into FSTs.
-    """
-
-    type: Literal["simple_rule", "string_map", "rule_sequence"] = "simple_rule"
-    _ref: str = ""
-
-    # attributes for simple rules
-    input_pattern: Acceptor = field(default_factory=Acceptor)
-    output_pattern: Acceptor = field(default_factory=Acceptor)
-
-    # attributes for string map rules
-    string_map: List[Tuple[Acceptor, Acceptor]] = field(default_factory=list)
-
-    # attributes for chain of rules
-    rule_sequence: List[Rule] = field(default_factory=list)
-
-    # attributes for simple and string map rules with contexts
-    left_context: Acceptor = field(default_factory=Acceptor)
-    right_context: Acceptor = field(default_factory=Acceptor)
-
-    # attributes for all rules
-    direction: Literal["ltr", "rtl", "sim"] = "ltr"
-
-    # references to other objects
-    used_by: List[Rule] = field(default_factory=list)
-
-    # metadata
-    source: Optional[os.PathLike] = None
-    description: Optional[str] = None
-    test_mappings: List[Tuple[str, str]] = field(default_factory=list)
-
-    def __post_init__(self):
-        super().__post_init__()
-
-        # duplicate `self._ref` to value so parent functions can access
-        # name when logging errors
-        self.value = self._ref
-
-        self.dependencies_built = False
-
-        if not self._ref:
-            raise ValueError("_ref key must have a non-empty string.")
-
-        if self._ref in ReservedSymbolMixin.reserved_symbols:
-            error = f"Rule ref '{self._ref}' cannot be a reserved symbol."
-            logger.error(error)
-            raise ValueError(error)
-
-        if self.used_by:
-            raise ValueError(
-                "used_by should not be passed on init but constructed by a RuleRegistry object."
-            )
-
-        if self.type == "simple_rule":
-            if (not self.input_pattern) or (not self.output_pattern):
-                raise ValueError("Simple rules must have input and output patterns")
-            if self.string_map:
-                raise ValueError("Simple rules cannot have a string map")
-            if self.rule_sequence:
-                raise ValueError("Simple rules cannot have a rule sequence")
-
-        if self.type == "rule_sequence":
-            if self.rule_sequence is None:
-                raise ValueError("Rule sequence must have a rule sequence")
-            elif not self.rule_sequence:
-                logger.warning(f"Found empty rule sequence: {self._ref}")
-
-            if self.input_pattern.value or self.output_pattern.value:
-                raise ValueError("Rule sequence cannot have input or output patterns")
-            if self.string_map:
-                raise ValueError("Rule sequence cannot have a string map")
-            if self.left_context.value or self.right_context.value:
-                raise ValueError("Rule sequence cannot have left or right context")
-
-        if self.type == "string_map":
-            if not self.string_map:
-                raise ValueError("String map rules must have a string map")
-            if self.input_pattern.value or self.output_pattern.value:
-                raise ValueError(
-                    "String map rules cannot have input or output patterns"
-                )
-            if self.rule_sequence:
-                raise ValueError("String map rules cannot have a rule sequence")
-
-    def set_dependencies(
-        self, used_by: List[Rule], rule_sequence: Optional[List[Rule]] = None
-    ):
-        self.used_by = used_by
-        if rule_sequence is not None and self.type != "rule_sequence":
-            raise ValueError(
-                f"if `rule_sequence` is passed expect type='rule_sequence' but got type={self.type}"
-            )
-        self.rule_sequence = rule_sequence
-        self.dependencies_built = True
-
-    def __str__(self):
-        return f"Rule(_ref='{self._ref}', type='{self.type}')"
-
-    def __repr__(self):
-        return self.__str__()
-
-    @classmethod
-    def from_config(
-        cls,
-        rule_name: str,
-        config: dict,
-    ) -> Rule:
-        """
-        Builds an Rule from a config dict, inferring the type
-        from the attributes contained
-        """
-        config["_ref"] = rule_name
-
-        # infer rule type from attrs
-        # and set pattern strings to Acceptors
-        if ("input_pattern" in config) and ("output_pattern" in config):
-            rule_type = "simple_rule"
-            config["input_pattern"] = Acceptor(config["input_pattern"])
-            config["output_pattern"] = Acceptor(config["output_pattern"])
-        elif "string_map" in config:
-            rule_type = "string_map"
-            string_map = []
-            for input_str, output_str in config["string_map"]:
-                string_map.append((Acceptor(input_str), Acceptor(output_str)))
-            config["string_map"] = string_map
-        elif "rule_sequence" in config:
-            rule_type = "rule_sequence"
-            # no transformation done here: handled by RuleRegistry instead
-        else:
-            raise ValueError(f"Unrecognized rule type for rule {config}, check format")
-
-        config["type"] = rule_type
-
-        # set secondary attrs to Acceptor (if applicable)
-        for attr_name in ("left_context", "right_context"):
-            if attr_name in config:
-                config[attr_name] = Acceptor(config[attr_name])
-
-        # cast test input, output string arrays to tuples
-        if "test_mappings" in config:
-            config["test_mappings"] = [
-                tuple(mapping) for mapping in config["test_mappings"]
-            ]
-
-        rule = cls(**config)
-        return rule
-
-    def __str__(self):
-        return f"Rule(_ref={self._ref}, type={self.type})"
-
-
-class AnonymousRule(Rule):
-    """
-    A subclass of Rule to represent rules that are generated internally by the FstRegistry
-    and not specified directly by the user in a config file. These rules do not have a _ref
-    string since they are not referenced directly by the user, but instead are used as helper
-    rules for implementing replace or suppletion markers.
-    """
-
-    def __post_init__(self):
-        if self._ref:
-            raise ValueError(
-                "AnonymousRule should not have a _ref string since it is not directly referenced by the user."
-            )
-
-        # set generic ref string to avoid ValueError
-        # on Rule __post_init__
-        self._ref = f"anonymous_rule_{id(self)}"
-        super().__post_init__()
-
-
-class FstRegistry(Registry, ReservedSymbolMixin):
+from src.fst_utils import Acceptor, Prefix, Suffix, FsaLike
+from src.grammar.classes import Orchestrator, ReservedSymbolMixin
+from src.grammar.registry.inventory_registry import InventoryItem, InventoryRegistry
+from src.grammar.registry.pattern_registry import Pattern, PatternRegistry
+from src.grammar.registry.rule_registry import Rule, RuleRegistry, AnonymousRule
+from src.grammar.registry.feature_registry import FeatureRegistry
+from src.grammar.orchestrator.feature_orchestrator import stringify_features
+
+
+class FstRegistry(Orchestrator, ReservedSymbolMixin):
     """
     Orchestrates the compilation of inventory items, patterns and rules into FSTs.
+    Constructs the `InventoryRegistry`, `PatternRegistry` and `RuleRegistry` objects
+    from YAML data.
+
+    Takes an optional (pre-initialized) `FeatureRegistry` class as well. If passed,
+    adds symbols for every feature and value to the inventory (see below).
+
+    The FST registry is initialized in the following stages:
+    1. `self._init`: Construct all three registry classes
+        from YAML data.
+    2. `self._add_feature_flags` (Optional): If a `FeatureRegistry` is provided,
+        add flags for all feature values to `InventoryRegistry.flags` before
+        compiling any FSMs.
+    3. `self._build_symbol_table()`: Build a `pynini.symbol_table` object with
+        every phone and flag in the inventory, also including all reserved symbols.
+    4. `self._build_boundary_acceptors()`: Build FSAs for boundary symbols
+        (viz. `-` for affix boundaries, `=` for clitic boundaries and `_` for periphrasis)
+        as well as the BOW/EOW tokens
+    5. `self._build_inventory_acceptors()`: Build FSAs for all inventory items, including
+        classes, such that classes map to a union over all child nodes.
+    6. `self._build_special_acceptors()`: Build the FSAs self.phone (accepting any phone),
+        self.flag (accepting any flag) and self.sigma (accepting any symbol), as well as
+        closures for each of these (accepting 0-inf repetitions)
+    7. `self._build_token_map()`: Build a nested dictionary of tokens used internally to
+        parse pattern strings.
+    8. `self._build_pattern_acceptors()`: Parse every pattern string in the `PatternRegistry`
+        using the Recursive Descent Parser implemented in `self._parse_pattern()`
+    9. `self._build_rule_transducers()`: Parse every rule in the `RuleRegistry` using
+        `self._parse_rule()`
     """
 
     def __init__(
         self,
-        inventory_registry: InventoryRegistry,
-        pattern_registry: PatternRegistry,
-        rule_registry: RuleRegistry,
+        inventory_configs: dict[str, dict],
+        pattern_configs: dict[str, dict],
+        rule_configs: dict[str, dict],
+        feature_registry: FeatureRegistry | None = None,
     ):
-        self.inventory_registry = inventory_registry
-        self.pattern_registry = pattern_registry
-        self.rule_registry = rule_registry
+        self.inventory_registry = InventoryRegistry(config_objects=inventory_configs)
+        self.pattern_registry = PatternRegistry(config_objects=pattern_configs)
+        self.rule_registry = RuleRegistry(config_objects=rule_configs)
+        self.feature_registry = feature_registry
 
         self._symbol_table_built = False
         self._inventory_acceptors_built = False
@@ -713,70 +82,28 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         self._rule_transducers_built = False
         self.is_initialized = False
 
-        if not inventory_registry:
+        if not self.inventory_registry.data:
+            logger.warning("Cannot compile any acceptors without an inventory, returning...")
             return
 
-        self.inventory: Dict[str, InventoryItem] = inventory_registry.data
-        self.phones: Dict[str, InventoryItem] = (
-            inventory_registry.phones
-        )  # TODO change this from list to dict!
-        self.flags: Dict[str, InventoryItem] = inventory_registry.flags
-        self.classes: Dict[str, InventoryItem] = inventory_registry.classes
-        self.patterns: Dict[str, Pattern] = pattern_registry.data
-        self.patterns_sorted: Tuple[Pattern, ...] = pattern_registry.patterns_sorted
+        self.inventory: dict[str, InventoryItem] = self.inventory_registry.data
+        self.phones: dict[str, InventoryItem] = self.inventory_registry.phones 
+        self.flags: dict[str, InventoryItem] = self.inventory_registry.flags
+        self.classes: dict[str, InventoryItem] = self.inventory_registry.classes
+        self.patterns: dict[str, Pattern] = self.pattern_registry.data
+        self.patterns_sorted: tuple[Pattern, ...] = self.pattern_registry.patterns_sorted
 
-        if not rule_registry:
+        if not self.rule_registry:
             return
 
-        self.rules: Dict[str, Rule] = rule_registry.data
-        self.rules_sorted: Tuple[Rule, ...] = rule_registry.rules_sorted
-
-        if not self.inventory:
-            # don't try to initialize if inventory is empty
-            # instead leave the registry in an uninitialized state
-            return
+        self.rules: dict[str, Rule] = self.rule_registry.data
+        self.rules_sorted: tuple[Rule, ...] = self.rule_registry.rules_sorted
 
         self.initialize()
         if not self.is_initialized:
             raise ValueError(
                 "Error occurred while initializing FstRegistry, check logs."
             )
-
-    @classmethod
-    def from_config_dir(
-        cls,
-        config_dir: str,
-    ) -> FstRegistry:
-        logger.info("Loading child registries for FstRegistry...")
-
-        inventory_registry = None
-        pattern_registry = None
-        rule_registry = None
-
-        try:
-            inventory_registry = InventoryRegistry.from_config_dir(config_dir)
-        except Exception as e:
-            logger.exception(f"Error occurred while loading inventory registry: {e}")
-
-        try:
-            pattern_registry = PatternRegistry.from_config_dir(config_dir)
-        except Exception as e:
-            logger.exception(f"Error occurred while loading pattern registry: {e}")
-
-        try:
-            rule_registry = RuleRegistry.from_config_dir(config_dir)
-        except Exception as e:
-            logger.exception(f"Error occurred while loading rule registry: {e}")
-
-        if (inventory_registry is None) or (not inventory_registry.data):
-            logger.warning(
-                "InventoryRegistry was found empty after construction. "
-                "FstRegistry will not be initialized until inventory_registry "
-                "is provided and `initialize()` is called."
-            )
-            return cls(inventory_registry, pattern_registry, rule_registry)
-
-        return cls(inventory_registry, pattern_registry, rule_registry)
 
     def initialize(self):
         """
@@ -793,6 +120,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         if self.is_initialized:
             logger.warning("FstRegistry already initialized, returning...")
             return
+        self._add_feature_flags()
         self._build_symbol_table()
         self._build_boundary_acceptors()
         self._build_inventory_acceptors()
@@ -801,6 +129,25 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         self._build_pattern_acceptors()
         self._build_rule_transducers()
         self.is_initialized = True
+
+    def _add_feature_flags(self):
+        """
+        Checks if `self.feature_registry` is present and, if so, adds
+        feature flags to flag inventory.
+        """
+        if self.feature_registry is None:
+            return
+
+        if self._inventory_acceptors_built:
+            raise ValueError(
+                "Cannot add feature flags if inventory acceptors have already been built."
+            )
+
+        for feature in self.feature_registry.features.values():
+            for feature_value in feature.values:
+                feature_str = f"[{feature.name}={feature_value}]"
+                flag = InventoryItem(feature_str, type="flag", source=feature.source)
+                self.flags[feature_str] = flag
 
     def _build_symbol_table(self):
         """
@@ -874,17 +221,15 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             item.set_acceptor(acceptor)
         self._inventory_acceptors_built = True
 
-    def update_flags(self, flags: List[InventoryItem]):
+    def update_flags(self, flags: list[InventoryItem]):
         logger.info(f"Adding {len(flags)} flags to inventory...")
         self._inventory_acceptors_built = False
         self._sigmas_built = False
+
         for flag in flags:
             self._add_flag(flag)
         self._inventory_acceptors_built = True
 
-        # update special acceptors + token map so new flags are recognized
-        self._build_special_acceptors()
-        self._build_token_map()
         logger.info("Flags added successfully.")
 
     def _add_flag(self, flag: InventoryItem) -> int:
@@ -942,7 +287,9 @@ class FstRegistry(Registry, ReservedSymbolMixin):
                 "('sigmas') are built using `self._build_sigmas()`"
             )
 
-        if token_str == self.phone_ref:
+        if token_str == self.dot:
+            fsa = self.sigma
+        elif token_str == self.phone_ref:
             fsa = self.phone_fsa
         elif token_str == self.flag_ref:
             fsa = self.flag_fsa
@@ -973,6 +320,10 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         # acting as an incomplete Aho-Corasick trie for tokenization of pattern strings
         tokens = defaultdict(list)
 
+        dot_acceptor = self._token_acceptor(self.dot)
+        tokens["dot"].append(
+            Token(value=self.dot, type="special_ref", acceptor=dot_acceptor)
+        )
         for l_delimiter in self.left_delimiters:
             tokens["left_delimiter"].append(
                 Token(value=l_delimiter, type="left_delimiter")
@@ -1023,9 +374,9 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         for token_type, token_list in tokens.items():
             token_list = sorted(token_list, key=lambda t: len(t), reverse=True)
             tokens[token_type] = token_list
-        self.tokens: Dict[str, List[Token]] = tokens
+        self.tokens: dict[str, list[Token]] = tokens
 
-    def _infer_token_type(self, input_str: str) -> Optional[str]:
+    def _infer_token_type(self, input_str: str) -> str | None:
         """
         Token type can be inferred from the first character of the token string:
         - '[' -> flag
@@ -1057,6 +408,8 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             return "right_delimiter"
         elif starting_char in self.boundary_symbols:
             return "boundary"
+        elif starting_char == self.dot:
+            return "dot"
         # defaulting to "phone" will not cause any false positives
         # as the string will be checked against the phone registry later
         # since this function just tells `_tokenize_str` which token dictionary
@@ -1068,7 +421,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         Parse patterns using recursive descent.
         """
         for pattern in self.patterns_sorted:
-            acceptor = self.parse_pattern(pattern.value)
+            acceptor = self._parse_pattern(pattern.value)
             pattern.set_acceptor(acceptor)
         self._pattern_acceptors_built = True
 
@@ -1082,8 +435,8 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         self._rule_transducers_built = True
 
     def _parse_rule(
-        self, rule: Rule, lexical_features: Optional[Dict[str, str]] = None
-    ) -> Union[pynini.Fst, List[pynini.Fst]]:
+        self, rule: Rule, lexical_features: dict[str, str] = None
+    ) -> pynini.Fst | list[pynini.Fst]:
         """
         Constructs all acceptors and transducers needed for a context-sensitive
         rule and returns the rule transducer or list of transducers (for a rule
@@ -1142,16 +495,16 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         if rule.type == "simple_rule":
             input_pattern = rule.input_pattern
             if not input_pattern.acceptor_built:
-                input_pattern.set_acceptor(self.parse_pattern(input_pattern.value))
+                input_pattern.set_acceptor(self._parse_pattern(input_pattern.value))
             output_pattern = rule.output_pattern
             if not output_pattern.acceptor_built:
-                output_pattern.set_acceptor(self.parse_pattern(output_pattern.value))
+                output_pattern.set_acceptor(self._parse_pattern(output_pattern.value))
             tau = pynini.cross(input_pattern.fsa, output_pattern.fsa)
         elif rule.type == "string_map":
             transducers = []
             for input_acceptor, output_acceptor in rule.string_map:
-                input_acceptor.set_acceptor(self.parse_pattern(input_acceptor.value))
-                output_acceptor.set_acceptor(self.parse_pattern(output_acceptor.value))
+                input_acceptor.set_acceptor(self._parse_pattern(input_acceptor.value))
+                output_acceptor.set_acceptor(self._parse_pattern(output_acceptor.value))
                 transducer = pynini.cross(
                     input_acceptor.fsa,
                     output_acceptor.fsa,
@@ -1165,8 +518,8 @@ class FstRegistry(Registry, ReservedSymbolMixin):
 
         return tau
 
-    def _parse_rule_context(self, rule: Rule) -> Tuple[pynini.Fst, pynini.Fst]:
-        left_context_fsa = self.parse_pattern(rule.left_context)
+    def _parse_rule_context(self, rule: Rule) -> tuple[pynini.Fst, pynini.Fst]:
+        left_context_fsa = self._parse_pattern(rule.left_context)
 
         # special case: if right context is just '#' (word edge)
         # interpret as [EOS] (otherwise _parse_pattern will
@@ -1174,7 +527,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         if rule.right_context.value == self.word_edge:
             right_context_fsa = self.eow_fsa
         else:
-            right_context_fsa = self.parse_pattern(rule.right_context)
+            right_context_fsa = self._parse_pattern(rule.right_context)
 
         if (
             isinstance(rule.left_context, Acceptor)
@@ -1188,8 +541,8 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             rule.right_context.set_acceptor(right_context_fsa)
         return left_context_fsa, right_context_fsa
 
-    def parse_pattern(
-        self, pattern_input: Union[str, Acceptor, List[str], None]
+    def _parse_pattern(
+        self, pattern_input: str | Acceptor | list[str] | None
     ) -> pynini.Fst:
         """
         Interprets a pattern string as an FSA.
@@ -1206,7 +559,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         elif isinstance(pattern_input, list):
             acceptors = []
             for sub_pattern in pattern_input:
-                sub_acceptor = self.parse_pattern(sub_pattern)
+                sub_acceptor = self._parse_pattern(sub_pattern)
                 acceptors.append(sub_acceptor)
             return pynini.union(*acceptors)
         try:
@@ -1234,7 +587,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             input_str = input_str[:-1] + self.eow
         return input_str
 
-    def _tokenize_str(self, input_str: str) -> List[Token]:
+    def _tokenize_str(self, input_str: str) -> list[Token]:
         """
         Tokenize an input string into a list of Tokens.
 
@@ -1256,7 +609,6 @@ class FstRegistry(Registry, ReservedSymbolMixin):
                     break
             if not match:
                 error = f"Unrecognized token '{input_str[i:]}' starting at position {i} in string '{input_str}'"
-                breakpoint()
                 logger.error(error)
                 raise ValueError(error)
             tokens.append(match)
@@ -1264,7 +616,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
 
         return tokens
 
-    def _parse_tokens(self, tokens: List[Token]) -> pynini.Fst:
+    def _parse_tokens(self, tokens: list[Token]) -> pynini.Fst:
         """
         Parse a list of tokens into an FST.
 
@@ -1290,9 +642,9 @@ class FstRegistry(Registry, ReservedSymbolMixin):
 
     def _parse_expression(
         self,
-        tokens: List[Token],
+        tokens: list[Token],
         initial_index: int,
-    ) -> Tuple[pynini.Fst, int]:
+    ) -> tuple[pynini.Fst, int]:
         """
         Parses an expression in the token array starting at `current_index`, where
         an expression is a single term or any sequence of term | term | term ...
@@ -1327,9 +679,9 @@ class FstRegistry(Registry, ReservedSymbolMixin):
 
     def _parse_term(
         self,
-        tokens: List[Token],
+        tokens: list[Token],
         initial_index: int,
-    ) -> Tuple[pynini.Fst, int]:
+    ) -> tuple[pynini.Fst, int]:
         """
         Parses a term, i.e. a sequence of factors and unary operators of
         arbitrary length, OR a delimited expression in parentheses or curly braces.
@@ -1381,9 +733,9 @@ class FstRegistry(Registry, ReservedSymbolMixin):
 
     def _parse_factor_sequence(
         self,
-        tokens: List[Token],
+        tokens: list[Token],
         initial_index: int,
-    ) -> Tuple[List[pynini.Fst], int]:
+    ) -> tuple[list[pynini.Fst], int]:
         """
         Consume tokens starting at `current_index` and until the end of the
         current factor is reached. Then return a list of acceptors for each
@@ -1444,9 +796,9 @@ class FstRegistry(Registry, ReservedSymbolMixin):
 
     def _parse_delimited_factor(
         self,
-        tokens: List[Token],
+        tokens: list[Token],
         initial_index: int,
-    ) -> Tuple[pynini.Fst, int]:
+    ) -> tuple[pynini.Fst, int]:
         logger.debug(
             f"Parsing delimited factor starting at index {initial_index}, tokens {tokens}"
         )
@@ -1507,7 +859,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         if isinstance(fsa_input, Acceptor):
             fsa = fsa_input.fsa
         elif isinstance(fsa_input, str):
-            fsa_constructor: Callable[[str], pynini.Fst]
+            fsa_constructor: callable[[str], pynini.Fst]
             if is_word:
                 fsa_constructor = self.word_fsa
             else:
@@ -1515,7 +867,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             fsa = fsa_constructor(fsa_input)
         elif isinstance(fsa_input, pynini.Fst):
             fsa = fsa_input
-        elif hasattr(fsa_input, iter):
+        elif hasattr(fsa_input, "iter"):
             fsa_list = [
                 self._cast_fsalike_to_fsa(input_item, is_word)
                 for input_item in fsa_input
@@ -1540,7 +892,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         if not isinstance(fsa_input, str):
             raise ValueError(f"Input to `fsa` must be a string, got {type(fsa_input)}")
 
-        return self.parse_pattern(fsa_input)
+        return self._parse_pattern(fsa_input)
 
     def wfsa(self, fsa_input: str, weight: float) -> pynini.Fst:
         """
@@ -1551,7 +903,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         wfsa.optimize()
         return wfsa
 
-    def word_fsa(self, word_str: str, prefix: Optional[str] = None) -> pynini.Fst:
+    def word_fsa(self, word_str: str, prefix: str | None = None) -> pynini.Fst:
         """
         Constructs an FSA for a word, i.e. a string with [BOW] and [EOW]
         markers at the beginning and end. If a `prefix` is specified, it
@@ -1570,9 +922,9 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         elif prefix:
             word_str = prefix + word_str
 
-        return self.parse_pattern(word_str)
+        return self._parse_pattern(word_str)
 
-    def wordlist_fsa(self, words: List[str]) -> pynini.Fst:
+    def wordlist_fsa(self, words: list[str]) -> pynini.Fst:
         """
         Wraps FSA constructor for list of words.
         """
@@ -1611,7 +963,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         return concat_acceptor
 
     def lexical_feature_left_context(
-        self, lexical_features: Dict[str, str]
+        self, lexical_features: dict[str, str]
     ) -> Acceptor:
         """
         Creates an FSA accepting any left context where the features specified by `lexical_features`
@@ -1637,7 +989,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         return left_context
 
     def prefix(
-        self, prefix_str: str, lexical_features: Optional[Dict[str, str]] = None
+        self, prefix_str: str, lexical_features: dict[str, str] | None = None
     ) -> Prefix:
         """
         Returns a `Prefix` object with an initialized FST
@@ -1656,7 +1008,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         return prefix
 
     def suffix(
-        self, suffix_str: str, lexical_features: Optional[Dict[str, str]] = None
+        self, suffix_str: str, lexical_features: dict[str, str] | None = None
     ) -> Suffix:
         """
         Returns a `Suffix` object with an initialized FST
@@ -1692,7 +1044,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
 
     def string_map_transducer(
         self,
-        string_map: List[List[str]],
+        string_map: list[list[str]],
     ) -> AnonymousRule:
         """
         Returns a context-free anonymous Rule that maps each input pattern in the string map
@@ -1749,7 +1101,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         self,
         input_strs: FsaLike,
         pattern: FsaLike,
-    ) -> List[str]:
+    ) -> list[str]:
 
         input_fsa = self._cast_fsalike_to_fsa(input_strs)
         pattern = self._cast_fsalike_to_fsa(pattern, is_word=False)
@@ -1794,8 +1146,8 @@ class FstRegistry(Registry, ReservedSymbolMixin):
     def test_pattern(
         self,
         pattern_ref: str,
-        test_includes: List[str],
-        test_excludes: List[str],
+        test_includes: list[str],
+        test_excludes: list[str],
     ) -> dict:
         """
         Test explicit include/exclude strings against the compiled FSA for a
@@ -1811,12 +1163,12 @@ class FstRegistry(Registry, ReservedSymbolMixin):
             raise KeyError(f"Pattern ref '{pattern_ref}' not found in registry.")
         pattern = self.patterns[pattern_ref]
 
-        results: List[dict] = []
+        results: list[dict] = []
         all_pass = True
 
         for test_str in test_includes:
             try:
-                input_fsa = self.word_fsa(test_str)
+                input_fsa = self.fsa(test_str)
                 intersection = pynini.intersect(pattern.fsa, input_fsa)
                 passed = intersection.start() != pynini.NO_STATE_ID
             except Exception:
@@ -1841,7 +1193,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
     def test_rule(
         self,
         rule_ref: str,
-        test_mappings: List[List[str]],
+        test_mappings: list[list[str]],
     ) -> dict:
         """
         Test explicit input→output mappings against the compiled FST for a
@@ -1856,7 +1208,7 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         if rule_ref not in self.rules:
             raise KeyError(f"Rule ref '{rule_ref}' not found in registry.")
 
-        results: List[dict] = []
+        results: list[dict] = []
         all_pass = True
 
         for input_str, expected_output_str in test_mappings:
@@ -1907,7 +1259,9 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         fst: pynini.Fst,
         project: Literal["input", "output"] = "output",
         nshortest: int = None,
-    ) -> List[Tuple[str, float]]:
+        strip_word_edge_symbols: bool = True,
+        strip_all_flags: bool = False,
+    ) -> list[tuple[str, float]]:
 
         decoded_outputs = []
         fsa = pynini.project(fst, project_type=project)
@@ -1917,7 +1271,11 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         path_iter = fsa.paths()
         while not path_iter.done():
             label_iter = path_iter.olabels()
-            word = self._decode_labels(label_iter)
+            word = self._decode_labels(
+                label_iter,
+                strip_word_edge_symbols=strip_word_edge_symbols,
+                strip_all_flags=strip_all_flags,
+            )
             weight = float(path_iter.weight())
             if word not in decoded_outputs:
                 decoded_outputs.append((word, weight))
@@ -1931,13 +1289,19 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         fst: pynini.Fst,
         project: Literal["input", "output"] = "output",
         nshortest: int = None,
-    ) -> List[str]:
+        strip_word_edge_symbols: bool = True,
+        strip_all_flags: bool = False,
+    ) -> list[str]:
         """
         Return all (or nshortest) strings for an input FSM.
         Wraps `self.fsm_strings_and_weights` but only passes string.
         """
         strs_and_weights = self.fsm_strings_and_weights(
-            fst=fst, project=project, nshortest=nshortest
+            fst=fst,
+            project=project,
+            nshortest=nshortest,
+            strip_word_edge_symbols=strip_word_edge_symbols,
+            strip_all_flags=strip_all_flags,
         )
         string_list = [string for string, _ in strs_and_weights]
         return string_list
@@ -1946,12 +1310,20 @@ class FstRegistry(Registry, ReservedSymbolMixin):
         self,
         fst: pynini.Fst,
         project: Literal["input", "output"] = "output",
+        strip_word_edge_symbols: bool = True,
+        strip_all_flags: bool = False,
     ) -> str:
         """
         Wraps `self.fsm_strings` with `nshortest=1` and returns
         single string instead of list of strings.
         """
-        string_list = self.fsm_strings(fst, project, nshortest=1)
+        string_list = self.fsm_strings(
+            fst,
+            project,
+            nshortest=1,
+            strip_word_edge_symbols=strip_word_edge_symbols,
+            strip_all_flags=strip_all_flags,
+        )
         if len(string_list) != 1:
             raise ValueError(f"Expected single string, got {string_list}")
         return string_list[0]
@@ -2003,7 +1375,7 @@ class Token:
         "left_delimiter",
         "right_delimiter",
     ]
-    acceptor: Optional[Acceptor] = None
+    acceptor: Acceptor | None = None
 
     def __post_init__(self):
         """

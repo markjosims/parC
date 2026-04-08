@@ -14,12 +14,15 @@ from typing import Dict, Optional, Tuple, List
 from src.registry.registry_utils import Registry
 from src.registry.feature_registry import Feature, FeatureRegistry
 import pandas as pd
+import numpy as np
+
 
 @dataclass
 class PartOfSpeech:
     """
     Object for representing a part of speech in the lexicon.
     """
+
     name: str
     features: List[Feature] = field(default_factory=list)
     lexical_features: List[Feature] = field(default_factory=list)
@@ -29,43 +32,54 @@ class PartOfSpeech:
     def __post_init__(self):
         if self.name is None:
             raise ValueError("PartOfSpeech must have a name.")
-        
+
         for feature in self.features + self.lexical_features:
             if not isinstance(feature, Feature):
-                raise ValueError(f"Feature '{feature}' is not an instance of the Feature class.")
-            
+                raise ValueError(
+                    f"Feature '{feature}' is not an instance of the Feature class."
+                )
+
         for feature in self.lexical_features:
             if feature in self.features:
-                raise ValueError(f"Invariant feature '{feature}' also listed as a inflected feature.")
+                raise ValueError(
+                    f"Invariant feature '{feature}' also listed as a inflected feature."
+                )
 
     @classmethod
-    def from_config(cls, config: dict, feature_registry: FeatureRegistry) -> 'PartOfSpeech':
-        name = config.get('name', None)
-        feature_names = config.get('features', [])
+    def from_config(
+        cls, config: dict, feature_registry: FeatureRegistry
+    ) -> "PartOfSpeech":
+        name = config.get("name", None)
+        feature_names = config.get("features", [])
         features = []
         for feature_name in feature_names:
             feature = feature_registry.get_feature(feature_name)
             if feature is None:
-                raise ValueError(f"Feature '{feature_name}' not found in feature registry.")
+                raise ValueError(
+                    f"Feature '{feature_name}' not found in feature registry."
+                )
             features.append(feature)
 
-        lexical_feature_names = config.get('lexical_features', [])
+        lexical_feature_names = config.get("lexical_features", [])
         lexical_features = []
         for feature_name in lexical_feature_names:
             feature = feature_registry.get_feature(feature_name)
             if feature is None:
-                raise ValueError(f"Lexical feature '{feature_name}' not found in feature registry.")
+                raise ValueError(
+                    f"Lexical feature '{feature_name}' not found in feature registry."
+                )
             lexical_features.append(feature)
-        
-        principal_parts = config.get('principal_parts', [])
-        source = config.get('source_path', None)
+
+        principal_parts = config.get("principal_parts", [])
+        source = config.get("source_path", None)
         return cls(
             name=name,
             features=features,
             lexical_features=lexical_features,
             principal_parts=principal_parts,
-            source=source
-        ) 
+            source=source,
+        )
+
 
 @dataclass
 class Lexicon:
@@ -76,6 +90,7 @@ class Lexicon:
     part of speech, performing validation between the columns of
     the dataframe and those expected by the `PartOfSpeech` object.
     """
+
     part_of_speech: PartOfSpeech
     entries: pd.DataFrame
     source: Optional[str] = None
@@ -84,13 +99,15 @@ class Lexicon:
     features: List[Feature] = field(init=False)
 
     def __post_init__(self):
-        if 'root' not in self.entries.columns:
+        if "root" not in self.entries.columns:
             raise ValueError("Entries dataframe must contain a 'root' column")
-        if 'gloss' not in self.entries.columns:
+        if "gloss" not in self.entries.columns:
             raise ValueError("Entries dataframe must contain a 'gloss' column")
 
         # Validate that the columns of the entries dataframe match the expected features
-        expected_feature_names = [feature.name for feature in self.part_of_speech.lexical_features]
+        expected_feature_names = [
+            feature.name for feature in self.part_of_speech.lexical_features
+        ]
         expected_columns = expected_feature_names + self.part_of_speech.principal_parts
         expected_columns = set(expected_columns)
         actual_columns = set(self.entries.columns)
@@ -101,40 +118,52 @@ class Lexicon:
         self.lexical_features = self.part_of_speech.lexical_features
         self.principal_parts = self.part_of_speech.principal_parts
         self.features = self.part_of_speech.features
-        
+
     @classmethod
-    def from_config(cls, config, feature_registry: FeatureRegistry) -> 'Lexicon':
+    def from_config(cls, config, feature_registry: FeatureRegistry) -> "Lexicon":
         """
         Get the lexicon entries dataframe for a given part of speech name.
         """
         part_of_speech = PartOfSpeech.from_config(config, feature_registry)
         config_source = part_of_speech.source
         if config_source is None:
-            raise ValueError(f"Part of speech '{part_of_speech}' does not have a source config file.")
-        
+            raise ValueError(
+                f"Part of speech '{part_of_speech}' does not have a source config file."
+            )
+
         part_of_speech_dir = os.path.dirname(config_source)
         config_dir = os.path.dirname(part_of_speech_dir)
-        lexicon_dir = os.path.join(config_dir, 'lexicon')
-        lexicon_stem = part_of_speech.name + '.csv'
+        lexicon_dir = os.path.join(config_dir, "lexicon")
+        lexicon_stem = part_of_speech.name + ".csv"
         lexicon_path = os.path.join(lexicon_dir, lexicon_stem)
         if not os.path.exists(lexicon_path):
-            raise ValueError(f"Lexicon file '{lexicon_path}' not found for part of speech '{part_of_speech.name}'.")
-        entries_df = pd.read_csv(lexicon_path)
+            raise ValueError(
+                f"Lexicon file '{lexicon_path}' not found for part of speech '{part_of_speech.name}'."
+            )
+        entries_df = pd.read_csv(lexicon_path, keep_default_na=False)
         return cls(
             part_of_speech=part_of_speech,
             entries=entries_df,
             source=lexicon_path,
         )
-    
+
     def get_roots(self) -> List[str]:
-        return self.entries['root'].tolist()
-    
-    def get_column_data(self, column: str, fill_w_root: bool=False) -> List[str]:
+        return self.entries["root"].tolist()
+
+    def get_column_data(self, column: str, fill_w_root: bool = False) -> List[str]:
         if column not in self.entries.columns:
-            raise KeyError(f"Column '{column}' not found in entries dataframe, expected columns are: {self.entries.columns.tolist()}")
+            raise KeyError(
+                f"Column '{column}' not found in entries dataframe, expected columns are: {self.entries.columns.tolist()}"
+            )
         if fill_w_root:
-            return self.entries[column].fillna(self.entries['root']).tolist()
+            return (
+                self.entries[column]
+                .replace("", np.nan)
+                .fillna(self.entries["root"])
+                .tolist()
+            )
         return self.entries[column].tolist()
+
 
 @dataclass
 class LexiconRegistry(Registry):
@@ -142,22 +171,19 @@ class LexiconRegistry(Registry):
     Object for storing and managing `Lexicon` and `PartOfSpeech` objects
     for a given language.
     """
+
     def __init__(
         self,
         data: Optional[List[pd.DataFrame]] = None,
-        config_lists: Optional[List[dict]] = None,
-        feature_registry: Optional[FeatureRegistry] = None
+        config_objects: Optional[List[dict]] = None,
+        feature_registry: Optional[FeatureRegistry] = None,
     ):
-        super().__init__(
-            kind="PartOfSpeech", data=data, config_list=config_lists
-        )
+        super().__init__(kind="PartOfSpeech", data=data, config_objects=config_objects)
         self.feature_registry = feature_registry
 
     @classmethod
     def from_config_dir(
-        cls,
-        config_dir: str,
-        feature_registry: Optional[FeatureRegistry] = None
+        cls, config_dir: str, feature_registry: Optional[FeatureRegistry] = None
     ) -> "LexiconRegistry":
         """
         Factory method for creating a `LexiconRegistry` from a configuration directory.
@@ -178,33 +204,28 @@ class LexiconRegistry(Registry):
         except Exception as e:
             logger.exception(f"Error loading LexiconRegistry: {e}")
             return cls(feature_registry=None)
-        
-        return lexicon_reg
 
+        return lexicon_reg
 
     def load_all_configs(self) -> Dict[str, Lexicon]:
         config_items: Dict[str, Lexicon] = {}
-        for config in self.config_list:
+        for config in self.config_objects.values():
             config_data = self.load_data_from_config(config)
             for key in config_data:
                 if key in config_items:
-                    error = (
-                        f"Duplicate Lexicon '{key}' found in "
-                        f"multiple config files."
-                    )
+                    error = f"Duplicate Lexicon '{key}' found in multiple config files."
                     logger.error(error)
                     raise ValueError(error)
             config_items.update(config_data)
         return config_items
-        
-    def load_data_from_config(
-        self, config: dict
-    ) -> Dict[str, Lexicon]:
-        source_path = config.get('source_path', '')
+
+    def load_data_from_config(self, config: dict) -> Dict[str, Lexicon]:
+        source_path = config.get("source_path", "")
         name = (
             os.path.splitext(os.path.basename(source_path))[0]
             if source_path
-            else config.get('name', '')
+            else config.get("name", "")
         )
         lexicon = Lexicon.from_config(config, self.feature_registry)
         return {name: lexicon}
+

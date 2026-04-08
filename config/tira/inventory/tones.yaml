@@ -1,19 +1,25 @@
 kind: Inventory
 data:
-  tone_flags:
-    _ref: "<TONE_SLOT>"
-    _flags: ["[TBU]", "[FLOAT]"]
-  tones:
-    _ref: "<T>"
-    F:
-      _ref: "<HL>"
-      _phones: ["\u0302"]
-    H:
-      _ref: "<H>"
-      _phones: ["\u0301"]
-    L:
-      _ref: "<L>"
-      _phones: ["\u0300"]
-    R:
-      _ref: "<LH>"
-      _phones: ["\u030C"]
+  Tone flags:
+    _ref: <TONE_SLOT>
+    _flags:
+    - '[TBU]'
+    - '[FLOAT]'
+  Tones:
+    _ref: <T>
+    Falling:
+      _ref: <HL>
+      _phones:
+      - ̂
+    High:
+      _ref: <H>
+      _phones:
+      - ́
+    Low:
+      _ref: <L>
+      _phones:
+      - ̀
+    Rising:
+      _ref: <LH>
+      _phones:
+      - ̌

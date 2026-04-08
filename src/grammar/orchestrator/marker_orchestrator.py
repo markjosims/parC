@@ -557,11 +557,11 @@ class FeatureMarkersRegistry(Registry):
     def __init__(
         self,
         data: Optional[Dict[str, FeatureMarkers]] = None,
-        config_lists: Optional[List[dict]] = None,
+        config_objects: Optional[Dict[str, dict]] = None,
         feature_registry: Optional[FeatureRegistry] = None,
     ):
         super().__init__(
-            kind="FeatureMarkers", data=data, config_list=config_lists
+            kind="FeatureMarkers", data=data, config_objects=config_objects
         )
         self.feature_registry = feature_registry
         self.dependency_graph = None
@@ -597,7 +597,7 @@ class FeatureMarkersRegistry(Registry):
 
     def load_all_configs(self) -> Dict[str, FeatureMarkers]:
         config_items: Dict[str, FeatureMarkers] = {}
-        for config in self.config_list:
+        for config in self.config_objects.values():
             config_data = self.load_data_from_config(config)
             for key in config_data:
                 if key in config_items:
@@ -657,13 +657,13 @@ class ContingentMarkersRegistry(Registry):
     def __init__(
         self,
         data: Optional[Dict[str, ContingentMarkers]] = None,
-        config_lists: Optional[List[dict]] = None,
+        config_objects: Optional[Dict[str, dict]] = None,
         feature_regsistry: Optional[FeatureRegistry] = None,
     ):
         super().__init__(
             kind="ContingentFeatureMarkers",
             data=data,
-            config_list=config_lists,
+            config_objects=config_objects,
         )
         self.feature_registry = feature_regsistry
 
@@ -689,7 +689,7 @@ class ContingentMarkersRegistry(Registry):
 
     def load_all_configs(self) -> Dict[str, ContingentMarkers]:
         config_items: Dict[str, ContingentMarkers] = {}
-        for config in self.config_list:
+        for config in self.config_objects.values():
             config_data = self.load_data_from_config(config)
             for key in config_data:
                 if key in config_items:
