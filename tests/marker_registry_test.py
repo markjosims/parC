@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from src.registry.feature_registry import FeatureValueCombinations
+from src.registry.feature_values_registry import FeatureValueCombinations
 from src.registry.marker_registry import (
     ContingentMarkers,
     ContingentMarkersRegistry,
@@ -270,11 +270,11 @@ def test_feature_value_combinations_rejects_inconsistent_feature_sets():
 
 
 def test_marker_registries_load_real_project_configs():
-    feature_registry = FeatureMarkersRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
+    feature_values_registry = FeatureMarkersRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
     contingent_registry = ContingentMarkersRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
     marker_registry = MarkerRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
 
-    assert set(feature_registry.data) >= {
+    assert set(feature_values_registry.data) >= {
         "class_prefixes",
         "ipfv_obj_markers",
         "ipfv_subj_markers",

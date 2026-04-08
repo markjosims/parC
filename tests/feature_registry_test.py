@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from src.registry.feature_registry import (
+from src.registry.feature_values_registry import (
     Feature,
     FeatureCombinationsRegistry,
     FeatureValuesRegisry,
@@ -37,7 +37,7 @@ def test_feature_rejects_empty_name_or_values_or_duplicate_values():
         Feature(name="tam", values=["imperative", "imperative"])
 
 
-def test_feature_registry_load_data_from_config_builds_feature_objects():
+def test_feature_values_registry_load_data_from_config_builds_feature_objects():
     registry = FeatureValuesRegisry()
     config = {
         "features": {
@@ -55,7 +55,7 @@ def test_feature_registry_load_data_from_config_builds_feature_objects():
     assert data["person"].source == "config/features/sample.yaml"
 
 
-def test_feature_registry_rejects_duplicate_features_across_configs():
+def test_feature_values_registry_rejects_duplicate_features_across_configs():
     with pytest.raises(ValueError, match="Duplicate feature 'person'"):
         registry = FeatureValuesRegisry(
             config_lists=[
@@ -104,7 +104,7 @@ def test_feature_value_combinations_rejects_unknown_feature_in_query():
 
 
 def test_feature_combinations_registry_load_data_from_config_normalizes_unmarked_values():
-    feature_registry = FeatureValuesRegisry(
+    feature_values_registry = FeatureValuesRegisry(
         data={
             "tam": Feature(name="tam", values=["imperative", "infinitive"]),
             "deixis": Feature(name="deixis", values=["itive", "ventive"]),
@@ -113,7 +113,7 @@ def test_feature_combinations_registry_load_data_from_config_normalizes_unmarked
             "object": Feature(name="object", values=["3sg"]),
         }
     )
-    registry = FeatureCombinationsRegistry(feature_registry=feature_registry)
+    registry = FeatureCombinationsRegistry(feature_values_registry=feature_values_registry)
 
     config_path = os.path.join(EXAMPLE_CONFIG_DIR, "features", "verb_feature_combinations.yaml")
     data = registry.load_data_from_config(
@@ -155,10 +155,10 @@ def test_feature_combinations_registry_load_data_from_config_normalizes_unmarked
 
 
 def test_feature_combinations_registry_rejects_undefined_features():
-    feature_registry = FeatureValuesRegisry(
+    feature_values_registry = FeatureValuesRegisry(
         data={"tam": Feature(name="tam", values=["imperative"])}
     )
-    registry = FeatureCombinationsRegistry(feature_registry=feature_registry)
+    registry = FeatureCombinationsRegistry(feature_values_registry=feature_values_registry)
 
     with pytest.raises(KeyError, match="Feature 'deixis' referenced in FeatureCombinations"):
         registry.load_data_from_config(
@@ -171,13 +171,13 @@ def test_feature_combinations_registry_rejects_undefined_features():
 
 
 def test_feature_and_combination_registries_load_real_project_configs():
-    feature_registry = FeatureValuesRegisry.from_config_dir(EXAMPLE_CONFIG_DIR)
+    feature_values_registry = FeatureValuesRegisry.from_config_dir(EXAMPLE_CONFIG_DIR)
     combinations_registry = FeatureCombinationsRegistry.from_config_dir(
         EXAMPLE_CONFIG_DIR,
-        feature_registry=feature_registry,
+        feature_values_registry=feature_values_registry,
     )
 
-    assert set(feature_registry.data) >= {
+    assert set(feature_values_registry.data) >= {
         "class_marker",
         "deixis",
         "object",
@@ -186,7 +186,7 @@ def test_feature_and_combination_registries_load_real_project_configs():
     }
     assert set(combinations_registry.data) >= {"verb_feature_combinations"}
 
-    tam = feature_registry.data["tam"]
+    tam = feature_values_registry.data["tam"]
     assert isinstance(tam, Feature)
     assert tam.values == [
         "imperfective",

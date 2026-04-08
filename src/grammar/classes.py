@@ -17,101 +17,17 @@ e.g. the phones from an inventory config are built into FSTs.
 differ greatly based on the area of grammar concerned.
 """
 
-import os
-import yaml
-from pathlib import Path
-import unicodedata
-from jsonschema import validate, ValidationError
-from src.config_utils import load_schema
-from loguru import logger
-
-class ConfigWalkerMixin:
-    """
-    Provides logic for reading and validating YAML files.
-    """
-
-    def read_config_files(self, kind: str) -> dict[str, str]:
-        """
-        Load all `config` files for the specified kind within `config_dir`
-        into a dict mapping filename to data.
-        """
-        config_objects = {}
-        for filename in self.glob_config_files():
-            with open(filename, "r") as f:
-                content = f.read()
-                content_norm = unicodedata.normalize("NFKD", content)
-                config_data = yaml.safe_load(content_norm)
-
-                # store filepath for config
-                config_data["source_path"] = str(filename)
-                if config_data.get("kind") == self.kind:
-                    try:
-                        validate(instance=config_data, schema=self.schema)
-                        config_objects[str(filename)] = config_data
-                    except ValidationError as e:
-                        logger.exception(f"Invalid config file {filename}: {e}")
-                        raise ValidationError(f"Invalid config file {filename}: {e}")
-        return config_data
-
-    def glob_config_files(self):
-        return self.config_dir.glob(f"**/*.yaml")
-
-    def find_config_file(self, name: str) -> Path:
-        """Search all config subdirectories for <name>.yaml."""
-        for filename in self.glob_config_files(name):
-            if Path(filename).stem == name:
-                return Path(filename)
-        raise FileNotFoundError(
-            f"Config file '{name}.yaml' not found in any config subdirectory."
-        )
-
-    def resolve_ref(self, name: str) -> dict:
-        """
-        Resolve a $name cross-file reference.
-
-        Strips the leading '$', searches all config subdirectories for
-        <name>.yaml, and returns the raw (un-resolved) YAML dict.
-        """
-        if name.startswith("$"):
-            name = name[1:]
-        path = self.find_config_file(name)
-        with path.open(encoding="utf-8") as f:
-            return yaml.safe_load(f)
-
-    def _resolve_values(self, obj) -> dict:
-        """
-        Recursively walk a deserialized YAML structure.
-        Any string value starting with '$' is replaced by the fully-resolved
-        content of the referenced config file.
-        """
-        if isinstance(obj, str):
-            if obj.startswith("$"):
-                ref_dict = self.resolve_ref(obj)
-                return self._resolve_values(ref_dict)
-            return obj
-        elif isinstance(obj, list):
-            return [self._resolve_values(item) for item in obj]
-        elif isinstance(obj, dict):
-            return {key: self._resolve_values(value) for key, value in obj.items()}
-        else:
-            return obj
-
-    def load_config(self, path: Path | str) -> dict:
-        """
-        Load a YAML config file and recursively resolve all $name references.
-
-        Arguments:
-            path: Path to the YAML config file.
-        Returns:
-            Fully-resolved config dict.
-        """
-        path = Path(path)
-        with path.open(encoding="utf-8") as f:
-            raw = yaml.safe_load(f)
-        return self._resolve_values(raw)
+from src.config_utils.schema_validation import load_schema
 
 class Orchestrator:
-    ...
+    """
+    `Orchestrator` class resides over a group of `Registry` classes.
+    At present there is no shard logic among orchestrators, but we
+    still implement a dummy parent class for organizational purposes.
+    """
+    def __init__():
+        pass
+
 
 class Registry:
     def __init__(

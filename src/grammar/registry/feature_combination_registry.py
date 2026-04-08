@@ -2,7 +2,8 @@ import os
 import pandas as pd
 from loguru import logger
 from src.grammar.classes import Registry
-from src.grammar.registry.feature_registry import FeatureValuesRegistry
+from src.grammar.registry.feature_values_registry import FeatureValuesRegistry
+
 
 class FeatureValueCombinations:
     """
@@ -159,11 +160,11 @@ class FeatureCombinationsRegistry(Registry):
 
     def __init__(
         self,
-        feature_registry: FeatureValuesRegistry | None = None,
+        feature_values_registry: FeatureValuesRegistry | None = None,
         data: dict[str, FeatureValueCombinations] | None = None,
         config_objects: list[dict] | None = None,
     ):
-        self.feature_registry = feature_registry
+        self.feature_values_registry = feature_values_registry
         super().__init__(
             kind="FeatureCombinations", data=data, config_objects=config_objects
         )
@@ -192,15 +193,15 @@ class FeatureCombinationsRegistry(Registry):
         config_features = config.get("features", [])
         features_to_values = {}
         for feature_name in config_features:
-            if feature_name not in self.feature_registry.features_to_values:
+            if feature_name not in self.feature_values_registry.features_to_values:
                 raise KeyError(
                     f"Feature '{feature_name}' referenced in FeatureCombinations "
                     "but not defined in FeatureRegistry."
                 )
             features_to_values[feature_name] = (
-                # self.feature_registry.features_to_values[feature_name] + ["unmarked"]
+                # self.feature_values_registry.features_to_values[feature_name] + ["unmarked"]
                 # "unmarked" now added directly within `Feature` class
-                self.feature_registry.features_to_values[feature_name]
+                self.feature_values_registry.features_to_values[feature_name]
             )
 
         combinations = config.get("combinations", [])
@@ -217,4 +218,3 @@ class FeatureCombinationsRegistry(Registry):
             source=source_path,
         )
         return {name: feature_combinations}
-

@@ -1,3 +1,40 @@
+"""
+The `Paradigm` class describes a paradigm or sub-paradigm in the
+linguistic sense, represented here as a set of `Marker` lists over
+a feature space. It also provides logic for defining the order of
+application for markers, and for selecting stems and principal parts
+from the lexicon.
+"""
+
+from loguru import logger
+from src.grammar.registry.lexicon_registry import LexiconRegistry, Lexicon
+from src.grammar.registry.feature_values_registry import Feature
+from src.grammar.registry.feature_combination_registry import FeatureValueCombinations
+from src.grammar.registry.feature_marker_registry import (
+    FeatureMarkers,
+    MarkerList,
+    Marker,
+)
+from src.grammar.registry.contingent_marker_registry import ContingentMarkers
+from src.grammar.orchestrator.marker_orchestrator import MarkerOrchestrator
+from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
+from src.grammar.orchestrator.feature_orchestrator import (
+    stringify_features,
+    serialize_feature_str,
+)
+from src.fst_utils import FsaLike
+from copy import deepcopy
+from pathlib import Path
+import itertools
+import pynini
+from pynini.lib import pynutil
+from collections import defaultdict
+import pandas as pd
+from tqdm import tqdm
+
+EDIT_BOUND = 5
+EDIT_COST = 1
+
 class Paradigm:
     """
     Object for combining marker objects based on multiple feature values.
@@ -14,26 +51,26 @@ class Paradigm:
 
     The `__init__` function expects all markers and contingent markers to be
     passed directly, whereas the `from_config` factory method expects a
-    `MarkerRegistry` object from which it can pull the relevant marker objects,
+    `MarkerOrchestrator` object from which it can pull the relevant marker objects,
     and constructs any inline markers as needed.
     """
 
     def __init__(
         self,
-        markers: List[FeatureMarkers],
-        contingent_markers: List[ContingentMarkers],
+        markers: list[FeatureMarkers],
+        contingent_markers: list[ContingentMarkers],
         lexicon: Lexicon,
-        name: Optional[str] = None,
-        pattern_filter: Optional[str] = None,
-        fixed_lexical_features: Optional[List[Tuple[Feature, str]]] = None,
-        fixed_features: Optional[Dict[str, str]] = None,
-        marker_order: Optional[List[str]] = None,
-        feature_value_combinations: Optional[FeatureValueCombinations] = None,
-        fst_registry: Optional[FstRegistry] = None,
-        global_markers: Optional[MarkerList] = None,
+        name: str | None = None,
+        pattern_filter: str | None = None,
+        fixed_lexical_features: list[tuple[Feature, str]] | None = None,
+        fixed_features: dict[str, str] | None = None,
+        marker_order: list[str] | None = None,
+        feature_value_combinations: FeatureValueCombinations | None = None,
+        fst_orchestrator: FstOrchestrator | None = None,
+        global_markers: MarkerList | None = None,
     ):
         self.is_initialized = False
-        self.fst_registry_initialized = False
+        self.fst_orchestrator_initialized = False
         self.main_graphs_built = False
         self.edit_graphs_built = False
 
@@ -58,10 +95,10 @@ class Paradigm:
                 (contingent_set.outer_feature, contingent_set.inner_feature)
                 for contingent_set in contingent_markers
             )
-        self.fst_registry = fst_registry
+        self.fst_orchestrator = fst_orchestrator
 
-        if self.fst_registry and self.fst_registry.is_initialized:
-            self.fst_registry_initialized = True
+        if self.fst_orchestrator and self.fst_orchestrator.is_initialized:
+            self.fst_orchestrator_initialized = True
         else:
             logger.info(
                 "FST registry not provided or not initialized. "
@@ -72,15 +109,15 @@ class Paradigm:
     @classmethod
     def from_config(
         cls,
-        config: Dict[str, Any],
-        marker_registry: MarkerRegistry,
+        config: dict,
+        marker_orchestrator: MarkerOrchestrator,
         lexicon_registry: LexiconRegistry,
-        fst_registry: FstRegistry,
+        fst_registry: FstOrchestrator,
     ) -> "Paradigm":
         """
-        Factory method for constructing a Paradigm object from a MarkerRegistry
+        Factory method for constructing a Paradigm object from a MarkerOrchestrator
         and a FeatureValueCombinations object. This method will pull the relevant
-        marker objects from the MarkerRegistry based on the provided features,
+        marker objects from the MarkerOrchestrator based on the provided features,
         and will construct any inline markers as needed.
         """
 
@@ -97,19 +134,19 @@ class Paradigm:
         feature_value_combinations = None
         feature_value_combination_name = config.get("feature_value_combinations")
         if feature_value_combination_name:
-            feature_value_combinations = marker_registry.feature_combinations[
+            feature_value_combinations = marker_orchestrator.feature_combinations[
                 feature_value_combination_name
             ]
 
         # load filters
         filter_config = config.get("filter", {})
         pattern_filter = filter_config.get("pattern", None)
-        lexical_feature_strs: List[List[str]] = filter_config.get(
+        lexical_feature_strs: list[list[str]] = filter_config.get(
             "lexical_features", []
         )
         fixed_lexical_features = []
         for feature_name, feature_value in lexical_feature_strs:
-            feature = marker_registry.feature_registry.features[feature_name]
+            feature = marker_orchestrator.feature_values_registry.features[feature_name]
             fixed_lexical_features.append((feature, feature_value))
 
         fixed_features = {}
@@ -126,7 +163,7 @@ class Paradigm:
                 fixed_features[feature_name] = marker_str
             else:
                 marker_set_name = marker_str.removeprefix("$")
-                marker_set = marker_registry.feature_markers[marker_set_name]
+                marker_set = marker_orchestrator.feature_markers[marker_set_name]
                 if marker_set.feature.name != feature_name:
                     raise ValueError(
                         f"Feature '{feature_name}' in paradigm config does not match feature '{marker_set.feature}' in marker config '{marker_set_name}'."
@@ -140,7 +177,7 @@ class Paradigm:
                     f"Contingent marker '{contingent_marker_str}' in paradigm config must start with '$' to indicate a marker set."
                 )
             contingent_marker_set_name = contingent_marker_str.removeprefix("$")
-            contingent_marker_set = marker_registry.contingent_markers[
+            contingent_marker_set = marker_orchestrator.contingent_markers[
                 contingent_marker_set_name
             ]
             contingent_markers.append(contingent_marker_set)
@@ -163,7 +200,7 @@ class Paradigm:
         )
 
     def get_markers_for_feature_values(
-        self, feature_values: Dict[str, str]
+        self, feature_values: dict[str, str]
     ) -> MarkerList:
         """
         Get the list of markers that should be applied for a given combination of feature values.
@@ -247,10 +284,10 @@ class Paradigm:
         self._validate_features_and_order_values()
         self._validate_principal_parts_and_filters()
         self._build_marker_mappings()
-        if self.fst_registry and not self.fst_registry.is_initialized:
+        if self.fst_orchestrator and not self.fst_orchestrator.is_initialized:
             logger.info("Initializing FST registry as part of paradigm initialization.")
-            self.fst_registry.initialize()
-            self.fst_registry_initialized = True
+            self.fst_orchestrator.initialize()
+            self.fst_orchestrator_initialized = True
         if self.global_markers:
             self._add_global_markers()
         self._build_lexical_filter()
@@ -355,7 +392,7 @@ class Paradigm:
                 )
 
         if self.pattern_filter:
-            if self.pattern_filter not in self.fst_registry.patterns:
+            if self.pattern_filter not in self.fst_orchestrator.patterns:
                 raise ValueError(
                     f"Pattern filter '{self.pattern_filter}' not recognized in FstRegistry. "
                     "Check pattern configs."
@@ -376,7 +413,7 @@ class Paradigm:
         """
 
         # build flat mapping for feature markers
-        self.feature_marker_map: Dict[Tuple[str, str], MarkerList] = {}
+        self.feature_marker_map: dict[tuple[str, str], MarkerList] = {}
         for marker_set in self.markers:
             for feature_value, marker_list in marker_set.data.items():
                 self.feature_marker_map[(marker_set.feature.name, feature_value)] = (
@@ -384,8 +421,8 @@ class Paradigm:
                 )
 
         # build nested mapping for contingent markers
-        self.contingent_marker_map: Dict[
-            Tuple[str, str], Dict[Tuple[str, str], MarkerList]
+        self.contingent_marker_map: dict[
+            tuple[str, str], dict[tuple[str, str], MarkerList]
         ] = defaultdict(dict)
         for contingent_marker_set in self.contingent_markers:
             for outer_value, inner_map in contingent_marker_set.inner_maps.items():
@@ -395,12 +432,12 @@ class Paradigm:
                         contingent_marker_set.inner_feature.name,
                         inner_value,
                     )
-                    self.contingent_marker_map[outer_pair][innner_pair] = (
-                        marker_set.data
-                    )
-                    self.contingent_marker_map[innner_pair][outer_pair] = (
-                        marker_set.data
-                    )
+                    self.contingent_marker_map[outer_pair][
+                        innner_pair
+                    ] = marker_set.data
+                    self.contingent_marker_map[innner_pair][
+                        outer_pair
+                    ] = marker_set.data
 
     def _add_global_markers(self):
         for marker_set in self.markers:
@@ -430,7 +467,7 @@ class Paradigm:
         if marker.transducer_built:
             logger.info(f"Transducer for marker '{marker}' already built. Skipping.")
             return
-        if self.fst_registry is None:
+        if self.fst_orchestrator is None:
             raise ValueError(
                 "Cannot build marker without FstRegistry but `self.FstRegistry` is None"
             )
@@ -438,22 +475,24 @@ class Paradigm:
         elif marker.type == "rule":
             assert isinstance(marker.value, str)
             rule_name = marker.value.removeprefix("$")
-            marker_rule = self.fst_registry.rules[rule_name]
+            marker_rule = self.fst_orchestrator.rules[rule_name]
         elif marker.type == "prefix":
             assert isinstance(marker.value, str)
-            marker_rule = self.fst_registry.prefix(marker.value)
+            marker_rule = self.fst_orchestrator.prefix(marker.value)
         elif marker.type == "suffix":
             assert isinstance(marker.value, str)
-            marker_rule = self.fst_registry.suffix(marker.value)
+            marker_rule = self.fst_orchestrator.suffix(marker.value)
         elif marker.type == "replace":
             assert isinstance(marker.value, tuple)
-            marker_rule = self.fst_registry.replace_transducer(
+            marker_rule = self.fst_orchestrator.replace_transducer(
                 marker.value[0], marker.value[1]
             )
         elif marker.type == "suppletion":
             sigma_star = "<Sigma>*"
             assert isinstance(marker.value, str)
-            marker_rule = self.fst_registry.replace_transducer(sigma_star, marker.value)
+            marker_rule = self.fst_orchestrator.replace_transducer(
+                sigma_star, marker.value
+            )
         elif marker.type == "principal_part":
             assert isinstance(marker.value, str)
             marker_rule = self._get_principal_part_transducer(marker.value)
@@ -470,7 +509,7 @@ class Paradigm:
         the principal part will be transduced to themselves.
         """
 
-        if not self.fst_registry_initialized:
+        if not self.fst_orchestrator_initialized:
             raise ValueError(
                 "FST registry must be initialized to get principal part transducer."
             )
@@ -480,7 +519,7 @@ class Paradigm:
         input_strings = self.lexicon.get_roots()
         output_strings = self.lexicon.get_column_data(principal_part, fill_w_root=True)
         string_map = list(zip(input_strings, output_strings))
-        return self.fst_registry.string_map_transducer(string_map)
+        return self.fst_orchestrator.string_map_transducer(string_map)
 
     def _get_lexical_feature_transducer(self):
         """
@@ -498,9 +537,9 @@ class Paradigm:
 
         # get transducer graph
         roots = self.get_filtered_roots()
-        root_fsas = [self.fst_registry.word_fsa(root) for root in roots]
+        root_fsas = [self.fst_orchestrator.word_fsa(root) for root in roots]
         roots_w_feature = [
-            self.fst_registry.word_fsa(root, prefix=feature_str)
+            self.fst_orchestrator.word_fsa(root, prefix=feature_str)
             for root, feature_str in zip(roots, feature_strs)
         ]
         lexical_feature_fst = pynini.union(
@@ -544,7 +583,7 @@ class Paradigm:
         # test if `filter_strings_by_pattern` returns non-empty output
         pattern_mask = (
             entries["root"]
-            .apply(self.fst_registry.filter_strings_by_pattern)
+            .apply(self.fst_orchestrator.filter_strings_by_pattern)
             .apply(bool)
         )
 
@@ -560,7 +599,7 @@ class Paradigm:
         roots = self.lexicon.entries.loc[self.lexical_filter, "root"].tolist()
         return roots
 
-    def inflect(self, stem: FsaLike, feature_values: Dict[str, str]) -> pynini.Fst:
+    def inflect(self, stem: FsaLike, feature_values: dict[str, str]) -> pynini.Fst:
         """
         Inflect a given stem according to the markers specified for the provided feature values.
         """
@@ -571,7 +610,7 @@ class Paradigm:
         # attempt to transducer input stem to form with lexical features
         # assuming stem is recognized by lexicon
         try:
-            stem = self.fst_registry._cast_fsalike_to_fsa(stem)
+            stem = self.fst_orchestrator._cast_fsalike_to_fsa(stem)
             new_stem = stem @ self._get_lexical_feature_transducer()
             stem = new_stem
         # if unseccessful, just use input stem as-is
@@ -585,8 +624,8 @@ class Paradigm:
         return inflected_form_fst
 
     def get_valid_combinations(
-        self, fixed_features: Optional[Dict[str, str]] = None
-    ) -> List[Dict[str, str]]:
+        self, fixed_features: dict[str, str] | None = None
+    ) -> list[dict[str, str]]:
         """
         Return a list of dictionaries of shape {"feature_name": "feature_value"}
         describing all possible feature vectors allowed within a paradigm,
@@ -633,10 +672,10 @@ class Paradigm:
     def inflect_subparadigm(
         self,
         stem: FsaLike,
-        fixed_features: Optional[Dict[str, str]] = None,
+        fixed_features: dict[str, str] | None = None,
         max_rows: int = None,
         skip_errors: bool = True,
-    ) -> List[Tuple[pynini.Fst, Dict[str, str]]]:
+    ) -> list[tuple[pynini.Fst, dict[str, str]]]:
         """
         Inflect a given stem according to the markers specified for the
         provided fixed feature values.
@@ -669,10 +708,10 @@ class Paradigm:
     def get_subparadigm_table(
         self,
         stem: str,
-        fixed_features: Optional[Dict[str, str]] = None,
+        fixed_features: dict[str, str] | None = None,
         only_free_feature_columns: bool = True,
-        max_rows: Optional[int] = 100,
-    ) -> List[Dict[str, str]]:
+        max_rows: int | None = 100,
+    ) -> list[dict[str, str]]:
         """
         Wraps `self.inflect_subparadigm` and formats the output
         in a list of dicts for displaying as a table.
@@ -700,15 +739,15 @@ class Paradigm:
 
         table_rows = []
         for fst, combination in inflected_results:
-            form_strings = self.fst_registry.fsm_strings(fst)
+            form_strings = self.fst_orchestrator.fsm_strings(fst)
             concatenated_forms = "; ".join(form_strings)
             row_data = {"form": concatenated_forms, **combination}
             table_rows.append(row_data)
         return table_rows
 
     def get_inflection_stages(
-        self, stem: str, feature_values: Dict[str, str]
-    ) -> List[Dict[str, str]]:
+        self, stem: str, feature_values: dict[str, str]
+    ) -> list[dict[str, str]]:
         """
         Get the intermediate stages of inflection for a given stem and feature values.
         """
@@ -720,7 +759,7 @@ class Paradigm:
         # attempt to transducer input stem to form with lexical features
         # assuming stem is recognized by lexicon
         try:
-            stem = self.fst_registry._cast_fsalike_to_fsa(stem)
+            stem = self.fst_orchestrator._cast_fsalike_to_fsa(stem)
             new_stem = stem @ self._get_lexical_feature_transducer()
             stem = new_stem
         # if unseccessful, just use input stem as-is
@@ -746,7 +785,7 @@ class Paradigm:
                 stage_data["marker_value"] = marker.value
                 stage_data["feature_value"] = marker.feature_value
 
-            stage_strings = self.fst_registry.fsm_strings(
+            stage_strings = self.fst_orchestrator.fsm_strings(
                 stage_fst,
                 strip_all_flags=False,
                 strip_word_edge_symbols=True,
@@ -759,7 +798,9 @@ class Paradigm:
                     }
                 )
 
-        final_form = self.fst_registry.fsm_strings(stages[-1][0], strip_all_flags=True)
+        final_form = self.fst_orchestrator.fsm_strings(
+            stages[-1][0], strip_all_flags=True
+        )
         for string in final_form:
             table_data.append(
                 {
@@ -776,9 +817,9 @@ class Paradigm:
     def _apply_markers(
         self,
         stem: FsaLike,
-        markers: List[MarkerList],
+        markers: list[MarkerList],
         store_intermediate: bool = False,
-    ) -> Union[pynini.Fst, List[Tuple[pynini.Fst, Marker]]]:
+    ) -> pynini.Fst | list[tuple[pynini.Fst, Marker]]:
         """
         Apply a list of markers to a given stem by composing the stem with
         the transducer for each marker in the list, in order.
@@ -787,7 +828,7 @@ class Paradigm:
             raise ValueError("Paradigm must be fully initialized to apply markers.")
 
         result = None
-        current_fst = self.fst_registry._cast_fsalike_to_fsa(stem, is_word=True)
+        current_fst = self.fst_orchestrator._cast_fsalike_to_fsa(stem, is_word=True)
 
         if store_intermediate:
             result = [(current_fst, None)]
@@ -829,7 +870,7 @@ class Paradigm:
         roots = self.get_filtered_roots()
         inflect_fst_list = []
         for root in tqdm(roots, desc=f"Inflecting roots for paradigm {self.name}"):
-            root_fsa = self.fst_registry.word_fsa(root)
+            root_fsa = self.fst_orchestrator.word_fsa(root)
 
             # iter thru all feature combos and build transducers
             inflected_transducers = self.inflect_subparadigm(
@@ -842,7 +883,7 @@ class Paradigm:
             for fst, combination in inflected_transducers:
                 feature_str = stringify_features(combination)
 
-                inflect_input = root_fsa + self.fst_registry.fsa(feature_str)
+                inflect_input = root_fsa + self.fst_orchestrator.fsa(feature_str)
                 inflect_output = pynini.project(fst, "output")
                 inflect_fst = pynini.cross(inflect_input, inflect_output)
 
@@ -863,7 +904,7 @@ class Paradigm:
 
     def get_parses(
         self, form: FsaLike, serialize: bool = False
-    ) -> List[Union[str, Dict[str, str]]]:
+    ) -> list[str | dict[str, str]]:
         """
         Computes a parse lattice by composing the input string with the main parse graph
         then returns a list of strings of all candidate parses, where feature values
@@ -875,9 +916,9 @@ class Paradigm:
             logger.info("`get_parses` called without main graphs built, building...")
             self.build_all_graphs()
 
-        form_fsa = self.fst_registry._cast_fsalike_to_fsa(form, is_word=True)
+        form_fsa = self.fst_orchestrator._cast_fsalike_to_fsa(form, is_word=True)
         parse_lattice = form_fsa @ self.parse_graph
-        parse_strings = self.fst_registry.fsm_strings(parse_lattice)
+        parse_strings = self.fst_orchestrator.fsm_strings(parse_lattice)
 
         if serialize:
             serialized_parses = []
@@ -904,13 +945,13 @@ class Paradigm:
             raise ValueError("Cannot build edit graph without main graph")
 
         # shorthands for ease of life
-        insert = self.fst_registry.insert
-        delete = self.fst_registry.delete
-        substitute = self.fst_registry.substitute
-        sigma = self.fst_registry.sigma
-        sigma_star = self.fst_registry.sigma_star
+        insert = self.fst_orchestrator.insert
+        delete = self.fst_orchestrator.delete
+        substitute = self.fst_orchestrator.substitute
+        sigma = self.fst_orchestrator.sigma
+        sigma_star = self.fst_orchestrator.sigma_star
 
-        wfsa = self.fst_registry.wfsa
+        wfsa = self.fst_orchestrator.wfsa
 
         # build single edit transducers
         insert_fst = pynutil.insert(wfsa(insert, weight=EDIT_COST / 2))
@@ -926,8 +967,8 @@ class Paradigm:
 
         # build right factor from left
         right_factor = pynini.invert(left_factor)
-        insert_label = self.fst_registry.symbols.find(insert)
-        delete_label = self.fst_registry.symbols.find(delete)
+        insert_label = self.fst_orchestrator.symbols.find(insert)
+        delete_label = self.fst_orchestrator.symbols.find(delete)
         label_pairs = [(insert_label, delete_label), (delete_label, insert_label)]
         right_factor = right_factor.relabel_pairs(ipairs=label_pairs)
 
@@ -946,7 +987,7 @@ class Paradigm:
 
     def search_form(
         self, query: FsaLike, nshortest: int = 5
-    ) -> List[Tuple[str, float]]:
+    ) -> list[tuple[str, float]]:
         """
         Searches the lexicon for fuzzy matches of an input string and returns
         the nshortest hits along with their edit costs.
@@ -955,16 +996,16 @@ class Paradigm:
             logger.info("`search_form` called without edit graphs built, building...")
             self.build_all_graphs()
 
-        query_fsa = self.fst_registry._cast_fsalike_to_fsa(query)
+        query_fsa = self.fst_orchestrator._cast_fsalike_to_fsa(query)
         search_lattice = (query_fsa @ self.left_factor) @ self.searchable_lexicon
-        form_hits = self.fst_registry.fsm_strings_and_weights(
+        form_hits = self.fst_orchestrator.fsm_strings_and_weights(
             search_lattice, nshortest=nshortest
         )
         return form_hits
 
     def search_parses(
         self, query: FsaLike, nshortest: int = 5, serialize: bool = False
-    ) -> List[Dict[str, str]]:
+    ) -> list[dict[str, str]]:
         """
         Wraps `Paradigm.search_form` and also parses each hit and returns as a list
         of dicts.

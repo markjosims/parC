@@ -26,11 +26,11 @@ from src.grammar.classes import Orchestrator, ReservedSymbolMixin
 from src.grammar.registry.inventory_registry import InventoryItem, InventoryRegistry
 from src.grammar.registry.pattern_registry import Pattern, PatternRegistry
 from src.grammar.registry.rule_registry import Rule, RuleRegistry, AnonymousRule
-from src.grammar.registry.feature_registry import FeatureRegistry
+from src.grammar.registry.feature_values_registry import FeatureRegistry
 from src.grammar.orchestrator.feature_orchestrator import stringify_features
 
 
-class FstRegistry(Orchestrator, ReservedSymbolMixin):
+class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
     """
     Orchestrates the compilation of inventory items, patterns and rules into FSTs.
     Constructs the `InventoryRegistry`, `PatternRegistry` and `RuleRegistry` objects
@@ -68,12 +68,12 @@ class FstRegistry(Orchestrator, ReservedSymbolMixin):
         inventory_configs: dict[str, dict],
         pattern_configs: dict[str, dict],
         rule_configs: dict[str, dict],
-        feature_registry: FeatureRegistry | None = None,
+        feature_values_registry: FeatureRegistry | None = None,
     ):
         self.inventory_registry = InventoryRegistry(config_objects=inventory_configs)
         self.pattern_registry = PatternRegistry(config_objects=pattern_configs)
         self.rule_registry = RuleRegistry(config_objects=rule_configs)
-        self.feature_registry = feature_registry
+        self.feature_values_registry = feature_values_registry
 
         self._symbol_table_built = False
         self._inventory_acceptors_built = False
@@ -132,10 +132,10 @@ class FstRegistry(Orchestrator, ReservedSymbolMixin):
 
     def _add_feature_flags(self):
         """
-        Checks if `self.feature_registry` is present and, if so, adds
+        Checks if `self.feature_values_registry` is present and, if so, adds
         feature flags to flag inventory.
         """
-        if self.feature_registry is None:
+        if self.feature_values_registry is None:
             return
 
         if self._inventory_acceptors_built:
@@ -143,7 +143,7 @@ class FstRegistry(Orchestrator, ReservedSymbolMixin):
                 "Cannot add feature flags if inventory acceptors have already been built."
             )
 
-        for feature in self.feature_registry.features.values():
+        for feature in self.feature_values_registry.features.values():
             for feature_value in feature.values:
                 feature_str = f"[{feature.name}={feature_value}]"
                 flag = InventoryItem(feature_str, type="flag", source=feature.source)
@@ -1416,4 +1416,4 @@ if __name__ == "__main__":
     inventory_reg = InventoryRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
     pattern_reg = PatternRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
     rule_reg = RuleRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
-    fst_reg = FstRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
+    fst_reg = FstOrchestrator.from_config_dir(EXAMPLE_CONFIG_DIR)

@@ -1,5 +1,4 @@
 """
-[Placeholder for now]
 This file implements the `PartOfSpeech` and `Lexicon` classes
 as well as the `LexiconRegistry` class, which is responsible for
 storing and managing the lexicon for a given language.
@@ -10,9 +9,9 @@ from dataclasses import dataclass, field
 import os
 
 from loguru import logger
-from typing import Dict, Optional, Tuple, List
-from src.registry.registry_utils import Registry
-from src.registry.feature_registry import Feature, FeatureRegistry
+from src.grammar.classes import Registry
+from src.grammar.registry.feature_values_registry import Feature
+from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
 import pandas as pd
 import numpy as np
 
@@ -24,10 +23,10 @@ class PartOfSpeech:
     """
 
     name: str
-    features: List[Feature] = field(default_factory=list)
-    lexical_features: List[Feature] = field(default_factory=list)
-    principal_parts: List[str] = field(default_factory=list)
-    source: Optional[str] = None
+    features: list[Feature] = field(default_factory=list)
+    lexical_features: list[Feature] = field(default_factory=list)
+    principal_parts: list[str] = field(default_factory=list)
+    source: str | None = None
 
     def __post_init__(self):
         if self.name is None:
@@ -47,13 +46,13 @@ class PartOfSpeech:
 
     @classmethod
     def from_config(
-        cls, config: dict, feature_registry: FeatureRegistry
+        cls, config: dict, feature_values_registry: FeatureOrchestrator
     ) -> "PartOfSpeech":
         name = config.get("name", None)
         feature_names = config.get("features", [])
         features = []
         for feature_name in feature_names:
-            feature = feature_registry.get_feature(feature_name)
+            feature = feature_values_registry.get_feature(feature_name)
             if feature is None:
                 raise ValueError(
                     f"Feature '{feature_name}' not found in feature registry."
@@ -63,7 +62,7 @@ class PartOfSpeech:
         lexical_feature_names = config.get("lexical_features", [])
         lexical_features = []
         for feature_name in lexical_feature_names:
-            feature = feature_registry.get_feature(feature_name)
+            feature = feature_values_registry.get_feature(feature_name)
             if feature is None:
                 raise ValueError(
                     f"Lexical feature '{feature_name}' not found in feature registry."
@@ -93,10 +92,10 @@ class Lexicon:
 
     part_of_speech: PartOfSpeech
     entries: pd.DataFrame
-    source: Optional[str] = None
-    principal_parts: List[str] = field(init=False)
-    lexical_features: List[Feature] = field(init=False)
-    features: List[Feature] = field(init=False)
+    source: str | None = None
+    principal_parts: list[str] = field(init=False)
+    lexical_features: list[Feature] = field(init=False)
+    features: list[Feature] = field(init=False)
 
     def __post_init__(self):
         if "root" not in self.entries.columns:
@@ -120,11 +119,11 @@ class Lexicon:
         self.features = self.part_of_speech.features
 
     @classmethod
-    def from_config(cls, config, feature_registry: FeatureRegistry) -> "Lexicon":
+    def from_config(cls, config, feature_values_registry: FeatureOrchestrator) -> "Lexicon":
         """
         Get the lexicon entries dataframe for a given part of speech name.
         """
-        part_of_speech = PartOfSpeech.from_config(config, feature_registry)
+        part_of_speech = PartOfSpeech.from_config(config, feature_values_registry)
         config_source = part_of_speech.source
         if config_source is None:
             raise ValueError(
@@ -140,6 +139,7 @@ class Lexicon:
             raise ValueError(
                 f"Lexicon file '{lexicon_path}' not found for part of speech '{part_of_speech.name}'."
             )
+        # TODO: implement lazy loading of CSVs, should be handled by `Grammar`
         entries_df = pd.read_csv(lexicon_path, keep_default_na=False)
         return cls(
             part_of_speech=part_of_speech,
@@ -147,10 +147,10 @@ class Lexicon:
             source=lexicon_path,
         )
 
-    def get_roots(self) -> List[str]:
+    def get_roots(self) -> list[str]:
         return self.entries["root"].tolist()
 
-    def get_column_data(self, column: str, fill_w_root: bool = False) -> List[str]:
+    def get_column_data(self, column: str, fill_w_root: bool = False) -> list[str]:
         if column not in self.entries.columns:
             raise KeyError(
                 f"Column '{column}' not found in entries dataframe, expected columns are: {self.entries.columns.tolist()}"
@@ -174,41 +174,15 @@ class LexiconRegistry(Registry):
 
     def __init__(
         self,
-        data: Optional[List[pd.DataFrame]] = None,
-        config_objects: Optional[List[dict]] = None,
-        feature_registry: Optional[FeatureRegistry] = None,
+        data: list[pd.DataFrame] | None = None,
+        config_objects: list[dict] | None = None,
+        feature_orchestrator: FeatureOrchestrator | None = None,
     ):
         super().__init__(kind="PartOfSpeech", data=data, config_objects=config_objects)
-        self.feature_registry = feature_registry
+        self.feature_orchestrator = feature_orchestrator
 
-    @classmethod
-    def from_config_dir(
-        cls, config_dir: str, feature_registry: Optional[FeatureRegistry] = None
-    ) -> "LexiconRegistry":
-        """
-        Factory method for creating a `LexiconRegistry` from a configuration directory.
-        """
-        if not feature_registry:
-            logger.warning(
-                "No feature registry provided to LexiconRegistry. "
-                "Lexicon entries will not be loaded until a feature registry is set."
-            )
-            return cls(feature_registry=None)
-
-        try:
-            lexicon_reg = super().from_config_dir(config_dir)
-            lexicon_reg.feature_registry = feature_registry
-
-            data = lexicon_reg.load_all_configs()
-            lexicon_reg.data = data
-        except Exception as e:
-            logger.exception(f"Error loading LexiconRegistry: {e}")
-            return cls(feature_registry=None)
-
-        return lexicon_reg
-
-    def load_all_configs(self) -> Dict[str, Lexicon]:
-        config_items: Dict[str, Lexicon] = {}
+    def load_all_configs(self) -> dict[str, Lexicon]:
+        config_items: dict[str, Lexicon] = {}
         for config in self.config_objects.values():
             config_data = self.load_data_from_config(config)
             for key in config_data:
@@ -219,13 +193,12 @@ class LexiconRegistry(Registry):
             config_items.update(config_data)
         return config_items
 
-    def load_data_from_config(self, config: dict) -> Dict[str, Lexicon]:
+    def load_data_from_config(self, config: dict) -> dict[str, Lexicon]:
         source_path = config.get("source_path", "")
         name = (
             os.path.splitext(os.path.basename(source_path))[0]
             if source_path
             else config.get("name", "")
         )
-        lexicon = Lexicon.from_config(config, self.feature_registry)
+        lexicon = Lexicon.from_config(config, self.feature_orchestrator)
         return {name: lexicon}
-

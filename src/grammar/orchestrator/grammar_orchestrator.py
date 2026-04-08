@@ -1,149 +1,71 @@
 """
-Implements the `Paradigm` and `GrammarRegistry` classes, which
+Implements the `Paradigm` and `Grammar` classes, which
 are the highest-level objects in the registry system.
 
-The `Paradigm` class describes a paradigm or sub-paradigm in the
-linguistic sense, represented here as a set of `Marker` lists over
-a feature space. It also provides logic for defining the order of
-application for markers, and for selecting stems and principal parts
-from the lexicon.
-
-The `GrammarRegistry` class orchestrates all registries for a given language.
-[At present, the `GrammarRegistry` is essentially a wrapper over the
-`MarkerRegistry` and `FstRegistry`, but it will eventually also include
-the `LexiconRegistry`, and will directly load in `Paradigm` objects.
-Since paradigm objects are themselves the the highest level of abstraction
-in the registry system, there is no intermediate `ParadigmRegistry` class.]
+The `Grammar` class orchestrates all registries for a given language.
 """
 
 from loguru import logger
-import pynini
-from pynini.lib import pynutil
 
-from src.fst_utils import FsaLike
-from src.registry.registry_utils import Registry
-from src.registry.marker_registry import (
-    Marker,
-    MarkerList,
-    MarkerRegistry,
-    FeatureMarkers,
-    ContingentMarkers,
-)
-from src.registry.fst_registry import FstRegistry, InventoryItem
-from src.registry.feature_registry import (
-    FeatureRegistry,
-    FeatureValueCombinations,
-    Feature,
-    stringify_features,
-    serialize_feature_str,
-)
-from src.registry.lexicon_registry import LexiconRegistry, Lexicon
-from src.constants import TIRA_CONFIG_DIR
-from typing import Any, Dict, Dict, List, Optional, Tuple, Union
-from collections import defaultdict
-import itertools
+from src.grammar.classes import Orchestrator
+from src.grammar.orchestrator.marker_orchestrator import MarkerOrchestrator
+from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
+from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
+from src.grammar.registry.feature_values_registry import FeatureValuesRegistry
+from src.grammar.registry.lexicon_registry import LexiconRegistry
+from src.grammar.paradigm import Paradigm
 import os
-import pandas as pd
-from pathlib import Path
-import functools
-from tqdm import tqdm
-from copy import deepcopy
-
-EDIT_BOUND = 5
-EDIT_COST = 1
+from camel_converter import to_snake
 
 
-class Grammar(Registry):
+class Grammar(Orchestrator):
     """
-    Orchestrates all registries for a given language.
+    Orchestrates all data for a given language.
     """
 
     def __init__(
         self,
-        marker_registry: Optional[MarkerRegistry] = None,
-        lexicon_registry: Optional[LexiconRegistry] = None,
-        fst_registry: Optional[FstRegistry] = None,
-        feature_registry: Optional[FeatureRegistry] = None,
-        config_objects: Optional[Dict[str, dict]] = None,
-        paradigms: Optional[Dict[str, Paradigm]] = None,
-        do_initialize: bool = False,
+        feature_marker_configs: list[dict],
+        contingent_marker_configs: list[dict],
+        lexicon_configs: list[dict],
+        inventory_configs: list[dict],
+        pattern_configs: list[dict],
+        rule_configs: list[dict],
+        feature_configs: list[dict],
+        feature_combo_configs: list[dict],
+        paradigms: dict[str, Paradigm],
     ):
         self.is_initialized = False
-        super().__init__(kind="Paradigm", data=paradigms, config_objects=config_objects)
+        super().__init__(kind="Paradigm", data=paradigms)
 
-        self.marker_registry = marker_registry
-        self.lexicon_registry = lexicon_registry
-        self.fst_registry = fst_registry
-        self.feature_registry = feature_registry
+        self.feature_orchestrator = FeatureOrchestrator(
+            feature_configs=feature_configs, feature_combo_configs=feature_combo_configs
+        )
+        self.lexicon_registry = LexiconRegistry(config_objects=lexicon_configs)
+        self.fst_orchestrator = FstOrchestrator(
+            inventory_configs=inventory_configs,
+            pattern_configs=pattern_configs,
+            rule_configs=rule_configs,
+            feature_values_registry=self.feature_orchestrator.feature_values_registry,
+        )
+        self.marker_orchestrator = MarkerOrchestrator(
+            contingent_marker_configs=contingent_marker_configs,
+            feature_marker_configs=feature_marker_configs,
+            feature_values_registry=self.feature_orchestrator.feature_values_registry,
+        )
 
-        self.paradigms = paradigms or []
-
-        if do_initialize:
-            self.initialize()
-
-    @classmethod
-    def from_config_dir(cls, config_dir: str) -> "Grammar":
-        """
-        Factory method for constructing a GrammarRegistry object from a config directory.
-        """
-
-        logger.info("Initializing GrammarRegistry from config directory.")
-        grammar_reg = super().from_config_dir(config_dir)
-
-        # load dependent registries from lowest level of abstraction to highest
-        # logging errors while loading as much as possible
-        feature_registry = None
-        try:
-            feature_registry = FeatureRegistry.from_config_dir(config_dir)
-        except Exception as e:
-            logger.exception(f"Error occurred while loading FeatureRegistry: {e}")
-
-        fst_registry = None
-        try:
-            fst_registry = FstRegistry.from_config_dir(config_dir)
-        except Exception as e:
-            logger.exception(f"Error occurred while loading FstRegistry: {e}")
-
-        marker_registry = None
-        lexicon_registry = None
-        if feature_registry is not None:
+        if not paradigms:
+            logger.info("Loading paradigms.")
             try:
-                marker_registry = MarkerRegistry.from_config_dir(
-                    config_dir, feature_registry=feature_registry
-                )
-            except Exception as e:
-                logger.exception(f"Error occurred while loading Marker registry: {e}")
-
-            try:
-                lexicon_registry = LexiconRegistry.from_config_dir(
-                    config_dir, feature_registry=feature_registry
-                )
-            except Exception as e:
-                logger.exception(f"Error occurred while loading Lexicon registry: {e}")
-
-        grammar_reg.marker_registry = marker_registry
-        grammar_reg.feature_registry = feature_registry
-        grammar_reg.lexicon_registry = lexicon_registry
-        grammar_reg.fst_registry = fst_registry
-
-        # only load paradigms if all child registries loaded successfully
-        # since paradigm loading depends on all of them
-        paradigms = None
-        if all(
-            reg is not None for reg in [marker_registry, lexicon_registry, fst_registry]
-        ):
-            logger.info("All child registries loaded successfully. Loading paradigms.")
-            try:
-                paradigms = grammar_reg.load_all_configs()
+                paradigms = self.load_all_configs()
                 logger.info(f"Loaded {len(paradigms)} paradigms successfully.")
             except Exception as e:
                 logger.exception(f"Error occurred while loading paradigms: {e}")
-        grammar_reg.paradigms = paradigms
-        grammar_reg.initialize()
-        return grammar_reg
+        self.paradigms = paradigms
+        self.initialize()
 
-    def load_all_configs(self) -> Dict[str, Paradigm]:
-        config_items: Dict[str, Paradigm] = {}
+    def load_all_configs(self) -> dict[str, Paradigm]:
+        config_items: dict[str, Paradigm] = {}
         for config in self.config_objects.values():
             config_data = self.load_data_from_config(config)
             for key in config_data:
@@ -156,7 +78,7 @@ class Grammar(Registry):
             config_items.update(config_data)
         return config_items
 
-    def load_data_from_config(self, config: dict) -> Dict[str, Paradigm]:
+    def load_data_from_config(self, config: dict) -> dict[str, Paradigm]:
         source_path = config.get("source_path", "")
         name = (
             os.path.splitext(os.path.basename(source_path))[0]
@@ -164,7 +86,10 @@ class Grammar(Registry):
             else config.get("part_of_speech", "")
         )
         paradigm = Paradigm.from_config(
-            config, self.marker_registry, self.lexicon_registry, self.fst_registry
+            config,
+            self.marker_orchestrator,
+            self.lexicon_registry,
+            self.fst_orchestrator,
         )
         return {name: paradigm}
 
@@ -172,35 +97,38 @@ class Grammar(Registry):
         if all(
             reg is not None
             for reg in [
-                self.marker_registry,
+                self.marker_orchestrator,
                 self.lexicon_registry,
-                self.fst_registry,
-                self.feature_registry,
+                self.fst_orchestrator,
+                self.feature_orchestrator,
             ]
         ):
             self.is_initialized = True
             logger.info(
-                "All child registries detected, GrammarRegistry loaded successfully."
+                "All child registries detected, Grammar loaded successfully."
             )
         else:
-            if self.marker_registry is None:
+            if self.marker_orchestrator is None:
                 logger.warning(
-                    "Grammar registry received None instead of MarkerRegistry"
+                    "Grammar received None instead of MarkerOrchestrator"
                 )
-            if self.fst_registry is None:
-                logger.warning("Grammar registry received None instead of FstRegistry")
+            if self.fst_orchestrator is None:
+                logger.warning(
+                    "Grammar received None instead of FstOrchestrator"
+                )
             if self.lexicon_registry is None:
                 logger.warning(
-                    "Grammar registry received None instead of LexiconRegistry"
+                    "Grammar received None instead of LexiconRegistry"
                 )
-            if self.feature_registry is None:
+            if self.feature_orchestrator is None:
                 logger.warning(
-                    "Grammar registry received None instead of FeatureRegistry"
+                    "Grammar received None instead of FeatureOrchestrator"
                 )
 
 
 if __name__ == "__main__":
     import random
+    from src.constants import TIRA_CONFIG_DIR
 
     reg = Grammar.from_config_dir(TIRA_CONFIG_DIR)
 

@@ -18,3 +18,4 @@ dotenv
 watchdog
 streamlit
 levenshtein
+camel_converter

@@ -923,7 +923,7 @@ def _render_page(
         try:
             registry = _get_grammar_registry(_local_config_dir())
             features_to_values = (
-                registry.feature_registry.feature_registry.features_to_values
+                registry.feature_values_registry.feature_values_registry.features_to_values
             )
         except Exception:
             registry = None
@@ -963,7 +963,7 @@ def _render_page(
                 registry.marker_registry.contingent_markers.keys()
             )
             state["available_feature_combinations"] = sorted(
-                registry.feature_registry.feature_combinations.keys()
+                registry.feature_values_registry.feature_combinations.keys()
             )
             state["available_features_to_values"] = features_to_values
             state["available_patterns"] = (

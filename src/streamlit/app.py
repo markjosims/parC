@@ -1,5 +1,5 @@
 import streamlit as st
-from src.streamlit.state.watcher import start_watcher
+from src.config_utils.watcher import start_watcher
 from src.streamlit.state.config_paths import get_config_dir
 from src.streamlit.state.registry_loader import load_registry
 from src.grammar import Grammar
