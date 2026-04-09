@@ -5,8 +5,8 @@ from typing import Any
 
 import yaml
 
-from src.web.editor_base import BaseEditor
-from src.web.markers import (
+from deprecated.web.editor_base import BaseEditor
+from deprecated.web.markers import (
     add_marker_row,
     blank_feature_entry,
     blank_marker_list,

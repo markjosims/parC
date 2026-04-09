@@ -10,7 +10,7 @@ import threading
 import yaml
 import os
 
-from src.web.configs import (
+from deprecated.web.configs import (
     delete_config_file,
     group_yaml_files_by_kind,
     known_config_kinds,
@@ -21,16 +21,16 @@ from src.web.configs import (
     save_config_text,
     suggested_config_path,
 )
-from src.web.contingent_markers import ContingentFeatureMarkersEditor
+from deprecated.web.contingent_markers import ContingentFeatureMarkersEditor
 from src.registry.grammar_registry import GrammarRegistry
-from src.web.feature_combinations import FeatureCombinationsEditor
-from src.web.feature_markers import FeatureMarkersEditor
-from src.web.features import FeatureDefinitionsEditor
-from src.web.inventory import InventoryEditor
-from src.web.lexicon import LexiconEditor
-from src.web.paradigms import ParadigmEditor
-from src.web.patterns import PatternsEditor
-from src.web.rules import RulesEditor
+from deprecated.web.feature_combinations import FeatureCombinationsEditor
+from deprecated.web.feature_markers import FeatureMarkersEditor
+from deprecated.web.features import FeatureDefinitionsEditor
+from deprecated.web.inventory import InventoryEditor
+from deprecated.web.lexicon import LexiconEditor
+from deprecated.web.paradigms import ParadigmEditor
+from deprecated.web.patterns import PatternsEditor
+from deprecated.web.rules import RulesEditor
 from flask import current_app as app
 
 

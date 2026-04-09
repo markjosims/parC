@@ -21,7 +21,7 @@ from pathlib import Path
 import streamlit as st
 import yaml
 
-from src.web.inventory import InventoryEditor
+from deprecated.web.inventory import InventoryEditor
 
 # ---------------------------------------------------------------------------
 # Constants

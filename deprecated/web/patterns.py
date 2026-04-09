@@ -7,7 +7,7 @@ import unicodedata
 
 import yaml
 
-from src.web.editor_base import BaseEditor, split_csv
+from deprecated.web.editor_base import BaseEditor, split_csv
 from src.registry.grammar_registry import GrammarRegistry
 
 

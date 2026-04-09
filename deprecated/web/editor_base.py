@@ -4,7 +4,7 @@ import copy
 import json
 from typing import Any
 
-from src.web.configs import safe_file_path
+from deprecated.web.configs import safe_file_path
 
 
 def split_csv(value: str) -> list[str]:

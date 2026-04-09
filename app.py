@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 
-from src.web import create_app
+from deprecated.web import create_app
 
 DEFAULT_CONFIG_DIR = os.environ.get('CONFIG_DIR', 'config/')
 

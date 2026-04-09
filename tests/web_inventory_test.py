@@ -1,11 +1,11 @@
 import yaml
 import json
 
-from src.web import create_app
-from src.web.configs import list_config_yaml_files, normalize_config_dir
-from src.web.inventory import InventoryEditor
-from src.web.patterns import PatternsEditor
-from src.web.rules import RulesEditor
+from deprecated.web import create_app
+from deprecated.web.configs import list_config_yaml_files, normalize_config_dir
+from deprecated.web.inventory import InventoryEditor
+from deprecated.web.patterns import PatternsEditor
+from deprecated.web.rules import RulesEditor
 
 
 CONFIG_DIR = "config/spanish"

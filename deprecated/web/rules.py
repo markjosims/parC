@@ -6,7 +6,7 @@ from typing import Any
 
 import yaml
 
-from src.web.editor_base import BaseEditor
+from deprecated.web.editor_base import BaseEditor
 from src.registry.grammar_registry import GrammarRegistry
 
 

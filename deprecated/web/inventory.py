@@ -7,7 +7,7 @@ from typing import Any
 import unicodedata
 import yaml
 
-from src.web.editor_base import BaseEditor, split_csv
+from deprecated.web.editor_base import BaseEditor, split_csv
 
 
 DIAC_MAP = {
