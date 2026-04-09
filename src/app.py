@@ -2,7 +2,7 @@ import streamlit as st
 from src.config_utils.watcher import start_watcher
 from src.grammar import Grammar
 
-from src.streamlit.pages.inventory import inventory_page
+from src.pages.inventory import inventory_page
 
 GRAMMAR_REGISTRY_CACHE: dict[str, tuple[float, Grammar]] = {}
 GRAMMAR_BUILD_STATUS: dict[tuple[str, str], dict] = {}
