@@ -58,13 +58,13 @@ class Paradigm:
         markers: list[FeatureMarkers],
         contingent_markers: list[ContingentMarkers],
         lexicon: Lexicon,
+        fst_orchestrator: FstOrchestrator,
         name: str | None = None,
         pattern_filter: str | None = None,
         fixed_lexical_features: list[tuple[Feature, str]] | None = None,
         fixed_features: dict[str, str] | None = None,
         marker_order: list[str] | None = None,
         feature_value_combinations: FeatureValueCombinations | None = None,
-        fst_orchestrator: FstOrchestrator | None = None,
         global_markers: MarkerList | None = None,
     ):
         self.is_initialized = False
@@ -1026,11 +1026,11 @@ class Paradigm:
 class ParadigmRegistry(Registry):
     def __init__(
         self,
-        data,
-        config_objects,
         marker_orchestrator: MarkerOrchestrator,
         lexicon_registry: LexiconRegistry,
         fst_orchestrator: FstOrchestrator,
+        data: dict[str, Paradigm] | None = None,
+        config_objects: dict[str, dict] | None = None,
     ):
         self.marker_orchestrator = marker_orchestrator
         self.lexicon_registry = lexicon_registry

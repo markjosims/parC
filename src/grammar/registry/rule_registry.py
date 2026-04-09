@@ -7,8 +7,8 @@ may be sequences of other rules) and maps rule names to `Rule`
 objects.
 """
 
-from src.grammar.classes import Registry, ReservedSymbolMixin
-from src.fst_utils import Acceptor, Transducerlist
+from src.grammar.classes import Registry
+from src.fst_utils import Acceptor, ReservedSymbolMixin, TransducerList
 from typing import Literal
 from dataclasses import dataclass, field
 import os
@@ -16,7 +16,7 @@ from loguru import logger
 from graphlib import TopologicalSorter
 
 @dataclass
-class Rule(Transducerlist):
+class Rule(TransducerList):
     """
     Dataclass for phonological rules. Rules can be of three types:
     - Simple rules: defined by input and output patterns

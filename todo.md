@@ -19,14 +19,14 @@
     - String stored as "DIAC:á"
     - Simple dictionary lookup maps user-friendly version to unicode point for combining diacritics
 ## Parser backend
-- [x] Rename `FeatureRegistry` to `FeatureValuesRegistry`
-- [x] `FeatureRegistry` orchestrates `FeatureValuesRegistry` and `FeatureCombinationsRegistry`
+- [x] Rename `FeatureValuesRegistry` to `FeatureValuesRegistry`
+- [x] `FeatureValuesRegistry` orchestrates `FeatureValuesRegistry` and `FeatureCombinationsRegistry`
 - [x] Marker registries pass tests
 - [-] Implement `GrammarRegistry`
     - Orchestrates **all** registries for an entire language project
-    - [x] Start by just encapsulating `FstRegistry`, `FeatureRegistry` and `MarkerRegistry`
+    - [x] Start by just encapsulating `FstRegistry`, `FeatureValuesRegistry` and `MarkerRegistry`
 - [-] Implement `Paradigm` class
-    - [-] Orchestrates `FeatureRegistry`, `FstRegistry`, `MarkerRegistry`
+    - [-] Orchestrates `FeatureValuesRegistry`, `FstRegistry`, `MarkerRegistry`
     - [-] Query features set -> `List[Marker]`
     - [-] Easy I/O verification of `$stem` -> `List[Marker]` -> `$inflected_form` using `Paradigm.inflect_stem(stem, features) -> pynini.Fst` method
     - [-] `Paradigm.output_paradigm(stem) -> List[Dict[str, str]]` gives a list of **all inflected forms* for a given stem that the paradigm supports

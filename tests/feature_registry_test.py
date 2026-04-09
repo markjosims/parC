@@ -7,7 +7,7 @@ from src.registry.feature_values_registry import (
     FeatureCombinationsRegistry,
     FeatureValuesRegisry,
     FeatureValueCombinations,
-    FeatureRegistry,
+    FeatureValuesRegistry,
 )
 from src.constants import EXAMPLE_CONFIG_DIR
 
@@ -237,7 +237,7 @@ def test_feature_and_combination_registries_load_real_project_configs():
 
 
 def test_features_registry_orchestrates_feature_and_combination_lookup():
-    registry = FeatureRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
+    registry = FeatureValuesRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
 
     tam = registry.get_feature("tam")
     combos = registry.get_feature_combinations("verb_feature_combinations")
@@ -254,7 +254,7 @@ def test_features_registry_orchestrates_feature_and_combination_lookup():
 
 
 def test_features_registry_getters_raise_for_unknown_names():
-    registry = FeatureRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
+    registry = FeatureValuesRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
 
     with pytest.raises(KeyError, match="No feature found"):
         registry.get_feature("does_not_exist")

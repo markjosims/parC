@@ -162,7 +162,7 @@ class FeatureCombinationsRegistry(Registry):
 
     def __init__(
         self,
-        feature_values_registry: FeatureValuesRegistry | None = None,
+        feature_values_registry: FeatureValuesRegistry,
         data: dict[str, FeatureValueCombinations] | None = None,
         config_objects: dict[str, dict] | None = None,
     ):
@@ -198,7 +198,7 @@ class FeatureCombinationsRegistry(Registry):
             if feature_name not in self.feature_values_registry.features_to_values:
                 raise KeyError(
                     f"Feature '{feature_name}' referenced in FeatureCombinations "
-                    "but not defined in FeatureRegistry."
+                    "but not defined in FeatureValuesRegistry."
                 )
             features_to_values[feature_name] = (
                 # self.feature_values_registry.features_to_values[feature_name] + ["unmarked"]

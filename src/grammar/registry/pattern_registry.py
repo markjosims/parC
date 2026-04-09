@@ -6,8 +6,8 @@ builds a dependency graph (since patterns may use other patterns)
 and maps `Pattern` objects to their string representation.
 """
 
-from src.fst_utils import Acceptor
-from src.grammar.classes import Registry, ReservedSymbolMixin
+from src.fst_utils import Acceptor, ReservedSymbolMixin
+from src.grammar.classes import Registry
 from dataclasses import dataclass, field
 from loguru import logger
 import os

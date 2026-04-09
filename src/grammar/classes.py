@@ -19,12 +19,14 @@ differ greatly based on the area of grammar concerned.
 
 from src.config_utils.schema_validation import load_schema
 
+
 class Orchestrator:
     """
     `Orchestrator` class resides over a group of `Registry` classes.
     At present there is no shard logic among orchestrators, but we
     still implement a dummy parent class for organizational purposes.
     """
+
     def __init__(self):
         pass
 
@@ -60,61 +62,3 @@ class Registry:
         raise NotImplementedError(
             "Must be implemented by subclass to load data from a single config dict."
         )
-
-
-class ReservedSymbolMixin:
-    """
-    Mixin class for registries to define reserved symbols that cannot be used as
-    inventory item values. This is to prevent collisions between user-defined
-    inventory items and special symbols used in pattern/rule contexts.
-    """
-
-    bow = "[BOW]"
-    eow = "[EOW]"
-    insert = "[INSERT]"
-    substitute = "[SUBSTITUTE]"
-    delete = "[DELETE]"
-
-    word_edge = "#"
-    phone_ref = "<Phone>"
-    flag_ref = "<Flag>"
-    sigma_ref = "<Sigma>"
-    dot = "."
-    epsilon_ref = "<Empty>"
-    boundary_ref = "<Boundary>"
-
-    affix_boundary = "-"
-    clitic_boundary = "="
-    periphrasis_break = "_"
-
-    star = "*"
-    plus = "+"
-    optional = "?"
-    union = "|"
-    caret = "^"
-    left_paren = "("
-    right_paren = ")"
-    # curly braces indicate union of tokens, e.g. {A B} matches either A or B
-    # similar to square brackets in regex
-    left_brace = "{"
-    right_brace = "}"
-
-    left_delimiters = (left_paren, left_brace)
-    right_delimiters = (right_paren, right_brace)
-    unary_operators = (star, plus, optional)
-    pipe_operator = union  # (for now) pipe operator is only binary operator
-    caret_operator = caret  # for negation in braced expressions
-    reserved_refs = (phone_ref, flag_ref, epsilon_ref, dot, sigma_ref, boundary_ref)
-    bow_eow_flags = (bow, eow)
-    edit_flags = (insert, substitute, delete)
-    boundary_symbols = (affix_boundary, clitic_boundary, periphrasis_break)
-
-    reserved_symbols = (
-        left_delimiters
-        + right_delimiters
-        + unary_operators
-        + (pipe_operator,)
-        + reserved_refs
-        + bow_eow_flags
-        + boundary_symbols
-    )

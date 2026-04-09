@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-import os
 import re
 from copy import deepcopy
 from typing import Literal
@@ -21,13 +20,15 @@ import pynini
 from pynini.lib import rewrite
 from src.constants import EXAMPLE_CONFIG_DIR
 
-from src.fst_utils import Acceptor, Prefix, Suffix, FsaLike
-from src.grammar.classes import Orchestrator, ReservedSymbolMixin
+from src.fst_utils import Acceptor, Prefix, ReservedSymbolMixin, Suffix, FsaLike
+from src.grammar.classes import Orchestrator
 from src.grammar.registry.inventory_registry import InventoryItem, InventoryRegistry
 from src.grammar.registry.pattern_registry import Pattern, PatternRegistry
 from src.grammar.registry.rule_registry import Rule, RuleRegistry, AnonymousRule
-from src.grammar.registry.feature_values_registry import FeatureRegistry
-from src.grammar.orchestrator.feature_orchestrator import stringify_features
+from src.grammar.orchestrator.feature_orchestrator import (
+    stringify_features,
+    FeatureOrchestrator,
+)
 
 
 class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
@@ -36,13 +37,13 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
     Constructs the `InventoryRegistry`, `PatternRegistry` and `RuleRegistry` objects
     from YAML data.
 
-    Takes an optional (pre-initialized) `FeatureRegistry` class as well. If passed,
+    Takes an optional (pre-initialized) `FeatureValuesRegistry` class as well. If passed,
     adds symbols for every feature and value to the inventory (see below).
 
     The FST registry is initialized in the following stages:
     1. `self._init`: Construct all three registry classes
         from YAML data.
-    2. `self._add_feature_flags` (Optional): If a `FeatureRegistry` is provided,
+    2. `self._add_feature_flags` (Optional): If a `FeatureValuesRegistry` is provided,
         add flags for all feature values to `InventoryRegistry.flags` before
         compiling any FSMs.
     3. `self._build_symbol_table()`: Build a `pynini.symbol_table` object with
@@ -68,12 +69,12 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         inventory_configs: dict[str, dict],
         pattern_configs: dict[str, dict],
         rule_configs: dict[str, dict],
-        feature_values_registry: FeatureRegistry | None = None,
+        feature_orchestrator: FeatureOrchestrator,
     ):
         self.inventory_registry = InventoryRegistry(config_objects=inventory_configs)
         self.pattern_registry = PatternRegistry(config_objects=pattern_configs)
         self.rule_registry = RuleRegistry(config_objects=rule_configs)
-        self.feature_values_registry = feature_values_registry
+        self.feature_orchestrator = feature_orchestrator
 
         self._symbol_table_built = False
         self._inventory_acceptors_built = False
@@ -83,15 +84,19 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         self.is_initialized = False
 
         if not self.inventory_registry.data:
-            logger.warning("Cannot compile any acceptors without an inventory, returning...")
+            logger.warning(
+                "Cannot compile any acceptors without an inventory, returning..."
+            )
             return
 
         self.inventory: dict[str, InventoryItem] = self.inventory_registry.data
-        self.phones: dict[str, InventoryItem] = self.inventory_registry.phones 
+        self.phones: dict[str, InventoryItem] = self.inventory_registry.phones
         self.flags: dict[str, InventoryItem] = self.inventory_registry.flags
         self.classes: dict[str, InventoryItem] = self.inventory_registry.classes
         self.patterns: dict[str, Pattern] = self.pattern_registry.data
-        self.patterns_sorted: tuple[Pattern, ...] = self.pattern_registry.patterns_sorted
+        self.patterns_sorted: tuple[Pattern, ...] = (
+            self.pattern_registry.patterns_sorted
+        )
 
         if not self.rule_registry:
             return
@@ -132,10 +137,10 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
 
     def _add_feature_flags(self):
         """
-        Checks if `self.feature_values_registry` is present and, if so, adds
+        Checks if `self.feature_orchestrator` is present and, if so, adds
         feature flags to flag inventory.
         """
-        if self.feature_values_registry is None:
+        if self.feature_orchestrator is None:
             return
 
         if self._inventory_acceptors_built:
@@ -143,7 +148,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
                 "Cannot add feature flags if inventory acceptors have already been built."
             )
 
-        for feature in self.feature_values_registry.features.values():
+        for feature in self.feature_orchestrator.features.values():
             for feature_value in feature.values:
                 feature_str = f"[{feature.name}={feature_value}]"
                 flag = InventoryItem(feature_str, type="flag", source=feature.source)

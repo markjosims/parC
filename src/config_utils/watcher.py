@@ -11,11 +11,12 @@ from pathlib import Path
 
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
 from watchdog.observers import Observer, ObserverType
+import streamlit as st
 
 
-def start_watcher(config_dir: str, cache: dict) -> ObserverType:
+def start_watcher(config_dir: str, invalidate_keys: list[str]) -> ObserverType:
     """Start a watchdog observer that clears *cache* when YAML files change."""
-    handler = _YamlChangeHandler(config_dir, cache)
+    handler = _YamlChangeHandler(config_dir, invalidate_keys=invalidate_keys)
     observer = Observer()
     observer.schedule(handler, str(config_dir), recursive=True)
     observer.daemon = True
@@ -24,15 +25,16 @@ def start_watcher(config_dir: str, cache: dict) -> ObserverType:
 
 
 class _YamlChangeHandler(FileSystemEventHandler):
-    def __init__(self, config_dir: str, cache: dict):
+    def __init__(self, config_dir: str, invalidate_keys: list[str]):
         self.config_dir = str(Path(config_dir))
-        self.cache = cache
+        self.invalidate_keys = invalidate_keys
 
     def _invalidate(self, event: FileSystemEvent) -> None:
         if event.is_directory:
             return
-        if event.src_path.endswith((".yaml", ".yml")):
-            self.cache.pop(self.config_dir, None)
+        if event.src_path.endswith((".yaml", ".yml", ".csv")):
+            for key in self.invalidate_keys:
+                st.session_state.pop(key, None)
 
     on_modified = _invalidate  # type: ignore[assignment]
     on_created = _invalidate  # type: ignore[assignment]

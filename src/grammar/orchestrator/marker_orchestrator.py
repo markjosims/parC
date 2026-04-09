@@ -31,7 +31,7 @@ class MarkerOrchestrator:
         self,
         feature_marker_configs: list[dict],
         contingent_marker_configs: list[dict],
-        feature_orchestrator: FeatureOrchestrator | None = None,
+        feature_orchestrator: FeatureOrchestrator,
     ):
         self.is_initialized = False
         self.feature_orchestrator = feature_orchestrator
@@ -46,13 +46,14 @@ class MarkerOrchestrator:
         self.feature_combinations = feature_orchestrator.feature_combinations
 
         self.feature_markers_registry = FeatureMarkersRegistry(
+            feature_orchestrator=self.feature_orchestrator,
             config_objects=feature_marker_configs,
-            feature_orchestrator=self.feature_orchestrator
         )
         self.feature_markers = self.feature_markers_registry.data
 
         self.contingent_markers_registry = ContingentMarkersRegistry(
-            config_objects=contingent_marker_configs
+            feature_orchestrator=self.feature_orchestrator,
+            config_objects=contingent_marker_configs,
         )
         self.contingent_markers: dict[str, ContingentMarkers] = (
             self.contingent_markers_registry.data

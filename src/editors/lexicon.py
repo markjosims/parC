@@ -10,8 +10,8 @@ from typing import Any
 
 import yaml
 
-from deprecated.web.configs import safe_csv_path
-from deprecated.web.editor_base import BaseEditor, split_csv
+from src.editors.configs import safe_csv_path
+from src.editors.editor_base import BaseEditor, split_csv
 
 
 def _dynamic_columns(state: dict[str, Any]) -> list[str]:

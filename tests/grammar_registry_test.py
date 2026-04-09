@@ -5,7 +5,7 @@ import pytest
 import yaml
 
 from src.constants import EXAMPLE_CONFIG_DIR
-from src.registry.feature_values_registry import FeatureValueCombinations, FeatureRegistry
+from src.registry.feature_values_registry import FeatureValueCombinations, FeatureValuesRegistry
 from src.registry.marker_registry import ContingentMarkers, FeatureMarkers, Marker, MarkerRegistry
 from src.registry.grammar_registry import ParadigmMarkers
 
@@ -20,7 +20,7 @@ def _load_ipfv_it_config():
 
 
 def _build_ipfv_feature_combinations():
-    features_registry = FeatureRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
+    features_registry = FeatureValuesRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
     feature_values = deepcopy(
         features_registry.feature_values_registry.features_to_values
     )

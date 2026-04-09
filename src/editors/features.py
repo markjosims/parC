@@ -6,7 +6,7 @@ from typing import Any
 
 import yaml
 
-from deprecated.web.editor_base import BaseEditor, split_csv
+from src.editors.editor_base import BaseEditor, split_csv
 
 
 class FeatureDefinitionsEditor(BaseEditor):

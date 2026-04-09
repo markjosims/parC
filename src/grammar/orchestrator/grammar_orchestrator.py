@@ -13,7 +13,6 @@ from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
 from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
 from src.grammar.registry.lexicon_registry import LexiconRegistry
 from src.grammar.registry.paradigm_registry import ParadigmRegistry
-import os
 
 
 class Grammar(Orchestrator):
@@ -23,30 +22,34 @@ class Grammar(Orchestrator):
 
     def __init__(
         self,
-        feature_marker_configs: list[dict],
-        contingent_marker_configs: list[dict],
-        lexicon_configs: list[dict],
-        inventory_configs: list[dict],
-        pattern_configs: list[dict],
-        rule_configs: list[dict],
-        feature_configs: list[dict],
-        feature_combination_configs: list[dict],
-        paradigm_configs: list[dict],
+        feature_marker_configs: dict[str, dict],
+        contingent_feature_marker_configs: dict[str, dict],
+        part_of_speech_configs: dict[str, dict],
+        inventory_configs: dict[str, dict],
+        pattern_configs: dict[str, dict],
+        rule_configs: dict[str, dict],
+        feature_definition_configs: dict[str, dict],
+        feature_combination_configs: dict[str, dict],
+        paradigm_configs: dict[str, dict],
     ):
         self.is_initialized = False
 
         self.feature_orchestrator = FeatureOrchestrator(
-            feature_configs=feature_configs, feature_combination_configs=feature_combination_configs
+            feature_configs=feature_definition_configs,
+            feature_combination_configs=feature_combination_configs,
         )
-        self.lexicon_registry = LexiconRegistry(config_objects=lexicon_configs)
+        self.lexicon_registry = LexiconRegistry(
+            config_objects=part_of_speech_configs,
+            feature_orchestrator=self.feature_orchestrator,
+        )
         self.fst_orchestrator = FstOrchestrator(
             inventory_configs=inventory_configs,
             pattern_configs=pattern_configs,
             rule_configs=rule_configs,
-            feature_values_registry=self.feature_orchestrator.feature_values_registry,
+            feature_orchestrator=self.feature_orchestrator,
         )
         self.marker_orchestrator = MarkerOrchestrator(
-            contingent_marker_configs=contingent_marker_configs,
+            contingent_marker_configs=contingent_feature_marker_configs,
             feature_marker_configs=feature_marker_configs,
             feature_orchestrator=self.feature_orchestrator,
         )
@@ -56,7 +59,6 @@ class Grammar(Orchestrator):
             lexicon_registry=self.lexicon_registry,
             fst_orchestrator=self.fst_orchestrator,
         )
-
 
         self.initialize()
 
@@ -71,26 +73,16 @@ class Grammar(Orchestrator):
             ]
         ):
             self.is_initialized = True
-            logger.info(
-                "All child registries detected, Grammar loaded successfully."
-            )
+            logger.info("All child registries detected, Grammar loaded successfully.")
         else:
             if self.marker_orchestrator is None:
-                logger.warning(
-                    "Grammar received None instead of MarkerOrchestrator"
-                )
+                logger.warning("Grammar received None instead of MarkerOrchestrator")
             if self.fst_orchestrator is None:
-                logger.warning(
-                    "Grammar received None instead of FstOrchestrator"
-                )
+                logger.warning("Grammar received None instead of FstOrchestrator")
             if self.lexicon_registry is None:
-                logger.warning(
-                    "Grammar received None instead of LexiconRegistry"
-                )
+                logger.warning("Grammar received None instead of LexiconRegistry")
             if self.feature_orchestrator is None:
-                logger.warning(
-                    "Grammar received None instead of FeatureOrchestrator"
-                )
+                logger.warning("Grammar received None instead of FeatureOrchestrator")
 
 
 if __name__ == "__main__":

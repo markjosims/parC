@@ -13,7 +13,8 @@ import os
 # a GUI and have that persist across sessions
 # for now, loading from environment variable
 dotenv.load_dotenv()
-CONFIG_DIR = os.environ.get('CONFIG_DIR', './config')
+CONFIG_DIR = os.environ.get("CONFIG_DIR", "./config")
+
 
 class ConfigWalker:
     """
@@ -23,21 +24,24 @@ class ConfigWalker:
     def __init__(self, config_dir: str | Path) -> "ConfigWalker":
         self.config_dir = Path(config_dir)
 
-    def get_all_config_files(
-        self, use_snake_case: bool = True
-    ) -> dict[str, list[dict]]:
+    def get_all_config_data(self) -> dict[str, list[dict]]:
         """
         Reads all YAML data in the config folder and returns
         as dict mapping config type to list of objects.
+
+        Reformat kind name from PascalCase to snake_case, strip
+        plural -s if present, and suffix + '_configs'
+        to match format expected by `Grammar` class, e.g.
+        FeatureMarkers -> feature_markers_configs
         """
         config_map = {}
         for kind in CONFIG_KINDS:
-            kind_name = kind
-            if use_snake_case:
-                kind_name = to_snake(kind)
+            kind_name = to_snake(kind).removesuffix("s") + "_configs"
             configs = self.read_config_files(kind)
             config_map[kind_name] = configs
         return config_map
+    
+    # TODO: load config files eagerly, rebuild on invalidation
 
     def read_config_files(self, kind: str) -> dict[str, str]:
         """
@@ -61,10 +65,10 @@ class ConfigWalker:
                     except ValidationError as e:
                         logger.exception(f"Invalid config file {filename}: {e}")
                         raise ValidationError(f"Invalid config file {filename}: {e}")
-        return config_data
+        return config_objects
 
     def glob_config_files(self):
-        return self.config_dir.glob(f"**/*.yaml")
+        return self.config_dir.glob("**/*.yaml")
 
     def find_config_file(self, name: str) -> Path:
         """Search all config subdirectories for <name>.yaml."""
@@ -120,9 +124,11 @@ class ConfigWalker:
             raw = yaml.safe_load(f)
         return self._resolve_values(raw)
 
+
 def get_config_dir() -> str | None:
     config_dir_path = _validated_config_dir(CONFIG_DIR)
     return config_dir_path
+
 
 def _validated_config_dir(config_dir: str | None) -> str | None:
     """
@@ -136,6 +142,7 @@ def _validated_config_dir(config_dir: str | None) -> str | None:
     if normalized is None:
         raise ValueError(f"Directory not found: {config_dir}")
     return str(normalized)
+
 
 def _normalize_config_dir(config_dir: str) -> Path | None:
     """
@@ -152,3 +159,4 @@ def _normalize_config_dir(config_dir: str) -> Path | None:
     if not resolved.exists() or not resolved.is_dir():
         return None
     return resolved
+

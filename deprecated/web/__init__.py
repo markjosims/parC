@@ -1,6 +1,6 @@
 from flask import Flask
 
-from deprecated.web.configs import normalize_config_dir
+from src.editors.configs import normalize_config_dir
 
 
 def create_app(config_dir: str | None = None) -> Flask:
@@ -9,12 +9,12 @@ def create_app(config_dir: str | None = None) -> Flask:
     validated = _validated_config_dir(config_dir)
     app.config["CONFIG_DIR"] = validated
 
-    from deprecated.web.routes import bp, GRAMMAR_REGISTRY_CACHE
+    from src.editors.routes import bp, GRAMMAR_REGISTRY_CACHE
 
     app.register_blueprint(bp)
 
     if validated:
-        from deprecated.web.watcher import start_watcher
+        from src.editors.watcher import start_watcher
 
         app.config["WATCHER"] = start_watcher(validated, GRAMMAR_REGISTRY_CACHE)
 

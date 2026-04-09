@@ -19,9 +19,8 @@ import os
 from pathlib import Path
 
 import streamlit as st
+from src.editors.inventory import InventoryEditor
 import yaml
-
-from deprecated.web.inventory import InventoryEditor
 
 # ---------------------------------------------------------------------------
 # Constants

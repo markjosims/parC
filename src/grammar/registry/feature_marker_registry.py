@@ -3,7 +3,7 @@ from src.fst_utils import TransducerList
 from src.grammar.classes import Registry
 from src.grammar.registry.feature_values_registry import Feature
 from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
-from typing import Literal
+from typing import Literal, Union
 from collections import UserList
 from loguru import logger
 from graphlib import TopologicalSorter
@@ -86,7 +86,7 @@ class Marker(TransducerList):
         config: dict | None = None,
         global_order: str | None = None,
         feature_value: str | None = None,
-    ) -> "Marker" | None:
+    ) -> Union['Marker', None]:
         """
         Build a Marker from a YAML marker dict. Returns None for null (zero-marking).
         """
@@ -151,7 +151,7 @@ class MarkerList(UserList):
         cls,
         config,
         global_order: str | None = None,
-        global_markers: "MarkerList" | list[dict] | None = None,
+        global_markers: Union["MarkerList", list[dict], None] = None,
         feature_value: str | None = None,
     ) -> "MarkerList":
         """
@@ -340,11 +340,11 @@ class FeatureMarkers:
     def from_config(
         cls,
         config: dict,
-        feature_values_registry: FeatureOrchestrator,
+        feature_orchestrator: FeatureOrchestrator,
     ) -> "FeatureMarkers":
         """Build a FeatureMarkers from a full YAML config dict."""
         feature_name = config.get("feature", "")
-        feature = feature_values_registry.get_feature(feature_name)
+        feature = feature_orchestrator.get_feature(feature_name)
 
         source = config.get("source_path")
         global_order = config.get("global_order", None)
@@ -449,11 +449,11 @@ class FeatureMarkersRegistry(Registry):
 
     def __init__(
         self,
+        feature_orchestrator: FeatureOrchestrator,
         data: dict[str, FeatureMarkers] | None = None,
         config_objects: dict[str, dict] | None = None,
-        feature_values_registry: FeatureOrchestrator | None = None,
     ):
-        self.feature_values_registry = feature_values_registry
+        self.feature_orchestrator = feature_orchestrator
         super().__init__(
             kind="FeatureMarkers", data=data, config_objects=config_objects
         )
@@ -489,7 +489,7 @@ class FeatureMarkersRegistry(Registry):
             if source_path
             else config.get("feature", "")
         )
-        feature_markers = FeatureMarkers.from_config(config, self.feature_values_registry)
+        feature_markers = FeatureMarkers.from_config(config, self.feature_orchestrator)
         return {name: feature_markers}
 
     def build_dependency_graph(self):

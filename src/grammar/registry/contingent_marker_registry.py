@@ -41,13 +41,13 @@ class ContingentMarkers:
 
     @classmethod
     def from_config(
-        cls, config: dict, feature_values_registry: FeatureOrchestrator
+        cls, config: dict, feature_orchestrator: FeatureOrchestrator
     ) -> "ContingentMarkers":
         """Build a ContingentMarkers from a full YAML config dict."""
         outer_feature_name = config.get("outer_feature", "")
         inner_feature_name = config.get("inner_feature", "")
-        outer_feature = feature_values_registry.get_feature(outer_feature_name)
-        inner_feature = feature_values_registry.get_feature(inner_feature_name)
+        outer_feature = feature_orchestrator.get_feature(outer_feature_name)
+        inner_feature = feature_orchestrator.get_feature(inner_feature_name)
         source = config.get("source_path")
         global_order = config.get("global_order", None)
         global_markers_config = config.get("global_markers", [])
@@ -71,7 +71,7 @@ class ContingentMarkers:
             }
             inner_maps[outer_value] = FeatureMarkers.from_config(
                 fm_config,
-                feature_values_registry=feature_values_registry,
+                feature_orchestrator=feature_orchestrator,
             )
 
         return cls(
@@ -130,11 +130,11 @@ class ContingentMarkersRegistry(Registry):
 
     def __init__(
         self,
+        feature_orchestrator: FeatureOrchestrator,
         data: dict[str, ContingentMarkers | None] = None,
         config_objects: dict[str, dict | None] = None,
-        feature_orchestrator: FeatureOrchestrator | None = None,
     ):
-        self.feature_values_registry = feature_orchestrator
+        self.feature_orchestrator = feature_orchestrator
         super().__init__(
             kind="ContingentFeatureMarkers",
             data=data,
@@ -160,6 +160,6 @@ class ContingentMarkersRegistry(Registry):
         source_path = config.get("source_path", "")
         name = os.path.splitext(os.path.basename(source_path))[0] if source_path else ""
         contingent_markers = ContingentMarkers.from_config(
-            config, self.feature_values_registry
+            config, self.feature_orchestrator
         )
         return {name: contingent_markers}

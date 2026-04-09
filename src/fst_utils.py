@@ -1,8 +1,64 @@
 import pynini
-from typing import Optional, Union, List
 from dataclasses import dataclass, field
-from src.registry.registry_utils import ReservedSymbolMixin
 from loguru import logger
+
+
+class ReservedSymbolMixin:
+    """
+    Mixin class for registries to define reserved symbols that cannot be used as
+    inventory item values. This is to prevent collisions between user-defined
+    inventory items and special symbols used in pattern/rule contexts.
+    """
+
+    bow = "[BOW]"
+    eow = "[EOW]"
+    insert = "[INSERT]"
+    substitute = "[SUBSTITUTE]"
+    delete = "[DELETE]"
+
+    word_edge = "#"
+    phone_ref = "<Phone>"
+    flag_ref = "<Flag>"
+    sigma_ref = "<Sigma>"
+    dot = "."
+    epsilon_ref = "<Empty>"
+    boundary_ref = "<Boundary>"
+
+    affix_boundary = "-"
+    clitic_boundary = "="
+    periphrasis_break = "_"
+
+    star = "*"
+    plus = "+"
+    optional = "?"
+    union = "|"
+    caret = "^"
+    left_paren = "("
+    right_paren = ")"
+    # curly braces indicate union of tokens, e.g. {A B} matches either A or B
+    # similar to square brackets in regex
+    left_brace = "{"
+    right_brace = "}"
+
+    left_delimiters = (left_paren, left_brace)
+    right_delimiters = (right_paren, right_brace)
+    unary_operators = (star, plus, optional)
+    pipe_operator = union  # (for now) pipe operator is only binary operator
+    caret_operator = caret  # for negation in braced expressions
+    reserved_refs = (phone_ref, flag_ref, epsilon_ref, dot, sigma_ref, boundary_ref)
+    bow_eow_flags = (bow, eow)
+    edit_flags = (insert, substitute, delete)
+    boundary_symbols = (affix_boundary, clitic_boundary, periphrasis_break)
+
+    reserved_symbols = (
+        left_delimiters
+        + right_delimiters
+        + unary_operators
+        + (pipe_operator,)
+        + reserved_refs
+        + bow_eow_flags
+        + boundary_symbols
+    )
 
 def is_acceptor(fsa: pynini.Fst) -> bool:
     if not isinstance(fsa, pynini.Fst):
@@ -14,8 +70,8 @@ class Acceptor:
     """
     Wrapper for FSAs with an optional string representation.
     """
-    value: Optional[str] = None
-    fsa: Optional[pynini.Fst] = None
+    value: str | None = None
+    fsa: pynini.Fst | None = None
 
     def __post_init__(self):
         self.acceptor_built = False
@@ -41,8 +97,8 @@ class Transducer:
     """
     Wrapper for FSTs with an optional string representation.
     """
-    value: Optional[str] = None
-    fst: Optional[pynini.Fst] = None
+    value: str | None = None
+    fst: pynini.Fst | None = None
 
     def __post_init__(self):
         self.transducer_built = False
@@ -68,9 +124,9 @@ class TransducerList(Transducer):
     be a list of FSTs, to be applied in sequence.
     """
 
-    fst: Union[pynini.Fst, List[pynini.Fst], None] = None
+    fst: pynini.Fst | list[pynini.Fst] | None = None
 
-    def set_transducer(self, fst: Union[pynini.Fst, List[pynini.Fst]]):
+    def set_transducer(self, fst: pynini.Fst | list[pynini.Fst]):
         if self.fst is not None:
             raise ValueError(f"Transducer (value={self.value}) cannot be overridden.")
         
@@ -112,8 +168,8 @@ class Prefix(Transducer):
             self,
             prefix_fsa: pynini.Fst,
             bow_fsa: pynini.Fst,
-            stem: Optional[pynini.Fst]=None,
-            left_context: Optional[Acceptor]=None,
+            stem: pynini.Fst | None=None,
+            left_context: Acceptor | None=None,
         ):
         if stem is None:
             stem = self.stem
@@ -159,8 +215,8 @@ class Suffix(Transducer):
             self,
             suffix_fsa: pynini.Fst,
             eow_fsa: pynini.Fst,
-            stem: Optional[pynini.Fst]=None,
-            left_context: Optional[Acceptor]=None,
+            stem: pynini.Fst | None=None,
+            left_context: Acceptor | None=None,
         ):
         if stem is None:
             stem = self.stem
@@ -175,5 +231,5 @@ class Suffix(Transducer):
             sigma_star=stem,
         )
         return super().set_transducer(fst)
-    
-FsaLike = Union[str, pynini.Fst, Acceptor]
+
+FsaLike = str | pynini.Fst | Acceptor

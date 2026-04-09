@@ -45,13 +45,13 @@ class PartOfSpeech:
 
     @classmethod
     def from_config(
-        cls, config: dict, feature_values_registry: FeatureOrchestrator
+        cls, config: dict, feature_orchestrator: FeatureOrchestrator
     ) -> "PartOfSpeech":
         name = config.get("name", None)
         feature_names = config.get("features", [])
         features = []
         for feature_name in feature_names:
-            feature = feature_values_registry.get_feature(feature_name)
+            feature = feature_orchestrator.get_feature(feature_name)
             if feature is None:
                 raise ValueError(
                     f"Feature '{feature_name}' not found in feature registry."
@@ -61,7 +61,7 @@ class PartOfSpeech:
         lexical_feature_names = config.get("lexical_features", [])
         lexical_features = []
         for feature_name in lexical_feature_names:
-            feature = feature_values_registry.get_feature(feature_name)
+            feature = feature_orchestrator.get_feature(feature_name)
             if feature is None:
                 raise ValueError(
                     f"Lexical feature '{feature_name}' not found in feature registry."
@@ -118,17 +118,18 @@ class Lexicon:
         self.features = self.part_of_speech.features
 
     @classmethod
-    def from_config(cls, config, feature_values_registry: FeatureOrchestrator) -> "Lexicon":
+    def from_config(
+        cls, config, feature_orchestrator: FeatureOrchestrator
+    ) -> "Lexicon":
         """
         Get the lexicon entries dataframe for a given part of speech name.
         """
-        part_of_speech = PartOfSpeech.from_config(config, feature_values_registry)
+        part_of_speech = PartOfSpeech.from_config(config, feature_orchestrator)
         config_source = part_of_speech.source
         if config_source is None:
             raise ValueError(
                 f"Part of speech '{part_of_speech}' does not have a source config file."
             )
-        
 
         # TODO: implement lazy loading of CSVs, should be handled by `ConfigWalker`
         part_of_speech_dir = os.path.dirname(config_source)
@@ -174,9 +175,9 @@ class LexiconRegistry(Registry):
 
     def __init__(
         self,
+        feature_orchestrator: FeatureOrchestrator,
         data: dict[str, Lexicon] | None = None,
         config_objects: dict[str, dict] | None = None,
-        feature_orchestrator: FeatureOrchestrator | None = None,
     ):
         self.feature_orchestrator = feature_orchestrator
         super().__init__(kind="PartOfSpeech", data=data, config_objects=config_objects)

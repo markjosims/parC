@@ -6,12 +6,13 @@ config files and allows for mapping between `InventoryItems` and their
 string representations.
 """
 
-from src.grammar.classes import Registry, ReservedSymbolMixin
-from src.fst_utils import Acceptor
-from typing import Literal
+from src.grammar.classes import Registry
+from src.fst_utils import Acceptor, ReservedSymbolMixin
+from typing import Literal, Optional
 from dataclasses import dataclass, field
 import os
 from loguru import logger
+
 
 @dataclass
 class InventoryItem(Acceptor):
@@ -31,8 +32,8 @@ class InventoryItem(Acceptor):
 
     value: str = ""
     type: Literal["phone", "flag", "class"] = "phone"
-    children: list['InventoryItem'] = field(default_factory=list)
-    parent: 'InventoryItem' | None = None
+    children: list["InventoryItem"] = field(default_factory=list)
+    parent: Optional["InventoryItem"] = None
     source: os.PathLike | None = None
 
     def __post_init__(self):
@@ -71,8 +72,8 @@ class InventoryItem(Acceptor):
     def from_config(
         cls,
         item_dict: dict,
-        parent: 'InventoryItem' | None = None,
-    ) -> 'InventoryItem':
+        parent: Optional["InventoryItem"] = None,
+    ) -> "InventoryItem":
         """
         Builds an InventoryItem from a config dict
         If config has children (nested dicts), recursively
