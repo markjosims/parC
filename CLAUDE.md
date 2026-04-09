@@ -4,28 +4,70 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Tool for building morphological parsers for language documentation.
+Tool for building morphological parsers for language documentation. Currently focused on Tira (an under-studied language). Uses finite-state transducers (FSTs) via `pynini` for morphological parsing and inflection.
 
+## Commands
 
-### Registry layer (`src/registry/`)
-- **`registry_utils.py`** - Base `Registry` class (loads YAML configs, validates against JSON schema, resolves `$name` cross-file refs) and `ReservedSymbolMixin` (defines reserved pattern-string symbols).
-- **`fst_registry.py`** - `InventoryRegistry`, `PatternRegistry`, `RuleRegistry`, and the orchestrating `FstRegistry`. `FstRegistry` compiles pattern strings into pynini acceptors via `parse_pattern()`, builds sigma/phone/flag universal acceptors, and manages the symbol table. Key method: `FstRegistry.from_config_dir(config_dir)`.
-- **`feature_values_registry.py`** - `Feature`, `FeatureRegistry` (loads `FeatureDefinitions` configs), `FeatureValueCombinations` (expands wildcards/lists into a deduplicated pandas DataFrame of licit combos), `FeatureCombinationsRegistry`, and `FeaturesRegistry` (orchestrates both).
-- **`marker_registry.py`** - `Marker` (single morphological formative), `FeatureMarkers` (value→markers map for one feature), `ContingentMarkers` (multi-feature combo→markers, flattened to sorted key strings), plus `FeatureMarkersRegistry`, `ContingentMarkersRegistry`, and `MarkerRegistry` (orchestrates both). Marker types: `prefix`, `suffix`, `replace`, `suppletion`, `rule`.
-- **`paradigm_registry.py`** - `ParadigmMarkers` combines `FeatureValueCombinations` + marker objects + contingent marker objects into a lookup table keyed by sorted `"feature=value"` strings. Contingent markers take priority. Marker lists are sorted by `order` stage.
+```bash
+# Install (editable, with dev deps)
+pip install -e ".[dev]"
 
-### Web app (`src/web/`)
-- **`__init__.py`** - `create_app(config_dir)` Flask factory. Registers `web` blueprint. `CONFIG_DIR` stored in `app.config`.
-- **`routes.py`** - Flask Blueprint `web`. Routes:
-  - `GET /` — config editor (browse by kind, dedicated UI for Inventory/Patterns/Rules, raw text for others)
-  - `POST /config` — save/new/update config actions
-  - `GET|POST /parser-test` — test FST patterns against input strings; `FstRegistry` cached per config dir by YAML mtime
-  - CRUD routes for inventory nodes, pattern entries, and rule entries
-  - Upload session support: users can upload a config dir; a `config_token` identifies the session
-- **`configs.py`** - Config file utilities: list/group YAML files by kind, load/save entries, manage upload sessions
-- **`inventory.py`** - Inventory editor state management (tree structure, JSON serialization, YAML generation)
-- **`patterns.py`** - Patterns editor state management (list structure, JSON serialization, YAML generation)
-- **`rules.py`** - Rules editor state management (list structure, JSON serialization, YAML generation)
+# Run Streamlit UI
+CONFIG_DIR=config/example streamlit run src/streamlit/app.py
 
-### Entry point
-- **`app.py`** - `python app.py [--config_dir DIR] [--debug]` starts the Flask app.
+# Run Flask UI (legacy)
+python app.py --config_dir config/example
+
+# Run tests
+pytest
+
+# Run a single test
+pytest tests/grammar_registry_test.py::test_paradigm_markers_combine_global_standard_and_contingent_markers_for_ipfv_slots
+
+# Validate YAML configs against JSON schemas
+python -m src.config_utils.schema_validation
+
+# CLI
+python -m src.cli inflect_word ap --tam imperfective --deixis itive --class r
+python -m src.cli parse_word "rá ápà"
+python -m src.cli search_word "àprìɲ"
+python -m src.cli search_corpus apri
+```
+
+## Architecture
+
+The codebase has two layers: the **grammar backend** (`src/grammar/`) and the **web frontend** (being migrated from Flask `src/web/` to Streamlit `src/streamlit/`).
+
+### Grammar backend (`src/grammar/`)
+
+Initialization is split into two phases: *reading* (YAML → dicts, handled by `Grammar.from_config_dir` via `ConfigWalker`) and *loading* (dicts → actionable objects like FSTs).
+
+The class hierarchy, from bottom to top:
+- **`Registry`** (`src/grammar/classes.py`) — base class; loads a single config kind from YAML dicts
+- **`Orchestrator`** — base class; sits over a group of Registries and manages cross-registry concerns
+- **`FstOrchestrator`** (`src/grammar/orchestrator/fst_orchestrator.py`) — orchestrates `InventoryRegistry`, `PatternRegistry`, `RuleRegistry`; compiles FSTs in 8 sequential stages; exposes FST compilation helpers for other classes
+- **`FeatureOrchestrator`** (`src/grammar/orchestrator/feature_orchestrator.py`) — orchestrates `FeatureValuesRegistry` and `FeatureCombinationRegistry`
+- **`MarkerOrchestrator`** (`src/grammar/orchestrator/marker_orchestrator.py`) — orchestrates `FeatureMarkerRegistry` and `ContingentMarkerRegistry`
+- **`Grammar`** (`src/grammar/orchestrator/grammar_orchestrator.py`) — top-level class; wires all orchestrators together; imported as `from src.grammar import Grammar`
+
+The `Paradigm` class (`src/grammar/paradigm.py`) is the primary consumer of `Grammar`; it combines `FeatureValueCombinations` + markers + FSTs to expose `get_inflection_stages()`, `get_subparadigm_table()`, `get_parses()`, and `search_form()`.
+
+### Config system (`src/config_utils/`)
+
+YAML configs live under `config/` and each has a `kind` field (one of `CONFIG_KINDS` in `schema_validation.py`). `ConfigWalker` globs all YAMLs in a directory, validates them against JSON schemas in `config/schemas/`, and resolves `$name` cross-file references. `src/constants.py` defines `EXAMPLE_CONFIG_DIR` and `TIRA_CONFIG_DIR`.
+
+### Streamlit frontend (`src/streamlit/`) — in progress
+
+- `src/streamlit/app.py` — entry point; sets up navigation and initializes state
+- `src/streamlit/state/` — session state helpers (`config_paths.py`, `registry_loader.py`)
+- `src/streamlit/pages/` — one file per page (inventory, patterns, inflector, parser, corpus)
+
+State is managed via `st.session_state`. A file watcher (`src/config_utils/watcher.py`) monitors the config directory and invalidates the cached `Grammar` on YAML changes.
+
+### Flask frontend (`src/web/`) — legacy, being replaced
+
+Each editor kind has a Python state manager (`InventoryEditor`, `PatternEditor`, etc.) that serializes state to/from YAML and JSON. `src/web/routes.py` is the Flask blueprint with 48 routes. The editor pattern: state is serialized as JSON into a hidden form field, submitted via `fetch`, and the server returns updated HTML fragments for DOM replacement.
+
+### Key note on `src/registry/` vs `src/grammar/`
+
+Tests and some Streamlit state helpers still import from `src.registry.*` (the old module path). The canonical location is `src.grammar.*`. This inconsistency is in-progress cleanup.
