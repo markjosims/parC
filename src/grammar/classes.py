@@ -23,7 +23,7 @@ from src.config_utils.schema_validation import load_schema
 class Orchestrator:
     """
     `Orchestrator` class resides over a group of `Registry` classes.
-    At present there is no shard logic among orchestrators, but we
+    At present there is no shared logic among orchestrators, but we
     still implement a dummy parent class for organizational purposes.
     """
 
