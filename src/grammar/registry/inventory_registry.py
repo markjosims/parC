@@ -67,6 +67,7 @@ class InventoryClass(Acceptor):
     (for "nested_class").
 
     Attributes:
+        name: a descriptive name for the class
         value: The string value of the item (e.g. "<V>", "<Stop>", "<Tone>").
         type: The type of the item, one of "phone_class", "flag_class", or "nested_class".
         children: List of child InventoryItems.
@@ -77,9 +78,10 @@ class InventoryClass(Acceptor):
             InventoryRegistry class.
     """
 
+    name: str = ""
     value: str = ""
     type: Literal["phone_class", "flag_class", "nested_class"] = "phone_class"
-    children: list["InventoryItem"] = field(default_factory=list)
+    children: list["InventoryMemberType"] = field(default_factory=list)
     parent: Optional["InventoryItem"] = None
     source: os.PathLike | None = None
 
@@ -105,33 +107,82 @@ class InventoryClass(Acceptor):
         item_dict: dict,
     ) -> Literal["phone_class", "flag_class", "nested_class"]:
         if "_phones" in item_dict:
-            ...
+            expected_class_type = "phone_class"
+        elif "_flags" in item_dict:
+            expected_class_type = "flag_class"
+        else:
+            expected_class_type = "nested_class"
+        cls.validate_class_type(class_type=expected_class_type, item_dict=item_dict)
+        return expected_class_type
 
     @classmethod
     def validate_class_type(
         cls,
         class_type: Literal["phone_class", "flag_class", "nested_class"],
         item_dict: dict,
-    ) ->
+    ) -> bool:
+        """
+        Returns True if the data in `item_dict` matches the format expected
+        for the given class type, else raise ValueError.
+        """
+        if class_type == "phone_class":
+            if "_phones" not in item_dict:
+                raise ValueError(
+                    f"Expected '_phones' attr in data for type phone_class, got {item_dict}"
+                )
+            if "_flags" in item_dict:
+                raise ValueError("'_flags' attr unexpected for phone_class")
+            if len(item_dict) > 1:
+                raise ValueError(
+                    f"Expected only '_phones' attr in data for type phone_class, got {item_dict}"
+                )
+            return True
+        if class_type == "flag_class":
+            if "_flags" not in item_dict:
+                raise ValueError(
+                    f"Expected '_flags' attr in data for type flag_class, got {item_dict}"
+                )
+            if "_phones" in item_dict:
+                raise ValueError("'_phones' attr unexpected for flag_class")
+            if len(item_dict) > 1:
+                raise ValueError(
+                    f"Expected only '_flags' attr in data for type flag_class, got {item_dict}"
+                )
+            return True
+        # class_type == "nested_class"
+        if "_phones" in item_dict:
+            raise ValueError(
+                f"Expected '_phones' attr in data for type phone_class, got {item_dict}"
+            )
+        if "_flags" in item_dict:
+            raise ValueError("'_flags' attr unexpected for phone_class")
+        for key, subdict in item_dict.items():
+            if not isinstance(subdict, dict):
+                raise ValueError(
+                    f"Expected all values to be dict, but got key {key} with value {subdict} of type {type(subdict)}"
+                )
+        return True
 
     @classmethod
     def from_config(
         cls,
         item_dict: dict,
-        parent: Optional["InventoryItem"] = None,
-    ) -> "InventoryItem":
+        parent: Optional["InventoryClass"] = None,
+    ) -> "InventoryClass":
         """
-        Builds an InventoryItem from a config dict
+        Builds an InventoryClass from a config dict
         If config has children (nested dicts), recursively
-        build child InventoryItems and attach to parent
+        build child InventoryClass and attach to parent
         """
 
         # get source filepath if specified
         source_path = item_dict.get("source", None)
 
-        inventory_item = cls(
+        class_type = cls.infer_class_type(item_dict=item_dict)
+
+        inventory_class = cls(
             value=item_dict["_ref"],
-            type="class",
+            type=class_type,
             children=[],
             parent=parent,
             source=source_path,
@@ -142,24 +193,33 @@ class InventoryClass(Acceptor):
             if key == "_phones":
                 for phone in value:
                     child = InventoryItem(
-                        value=phone, type="phone", parent=inventory_item
+                        value=phone, type="phone", parent=inventory_class
                     )
                     children.append(child)
             elif key == "_flags":
                 for flag in value:
                     child = InventoryItem(
-                        value=flag, type="flag", parent=inventory_item
+                        value=flag, type="flag", parent=inventory_class
                     )
                     children.append(child)
             elif isinstance(value, dict):
-                child = cls.from_config(value, parent=inventory_item)
+                child = cls.from_config(value, parent=inventory_class)
                 children.append(child)
 
-        inventory_item.children = children
-        return inventory_item
-    
-    def serialize_to_config(self) -> dict:
+        inventory_class.children = children
+        return inventory_class
 
+    def to_dict(self) -> dict:
+        json = {"_ref": self.value}
+        if self.type == "phone_class":
+            json["_phones"] = [item.value for item in self.children]
+        elif self.type == "flag_class":
+            json["_flags"] = [item.value for item in self.children]
+        else:
+            # self.type == "nested_class"
+            for child in self.children:
+                json[child.value] = child.to_dict()
+        return json
 
     def flatten(self) -> list["InventoryItem" | "InventoryClass"]:
         """Recursively InventoryItem into a list including itself and all children."""

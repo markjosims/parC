@@ -136,9 +136,9 @@ def _yaml_preview(state: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _render_node(node_id: str, node: InventoryItem, depth: int = 0) -> None:
+def _render_node(node_id: str, node: InventoryClass, depth: int = 0) -> None:
     """Render a single inventory node and recurse into children."""
-    has_children = bool(node.children)
+    is_nested = node.type == "nested_class"
 
     # Visual indentation: pair an invisible spacer column with the content column.
     if depth > 0:
@@ -148,31 +148,31 @@ def _render_node(node_id: str, node: InventoryItem, depth: int = 0) -> None:
         content_col = st
 
     node_ref = node.get("ref", "(ref not set)")
-    with content_col.popover(f"{node_name} `{node_ref}`"):
+    with content_col.popover(f"{node_id} `{node_ref}`"):
         # ── Name & Reference ──────────────────────────────────────────────
         col_name, col_ref = st.columns(2)
         with col_name:
             st.text_input(
                 "Node name",
-                key=f"name-{nid}",
+                key=f"name-{node_id}",
                 value=node["name"],
                 placeholder="consonants",
             )
         with col_ref:
             st.text_input(
                 "Reference",
-                key=f"ref-{nid}",
+                key=f"ref-{node_id}",
                 value=node["ref"],
                 placeholder="<C>",
             )
 
         # ── Items (phones / flags) — disabled when node has children ──────
-        if has_children:
+        if is_nested:
             st.text_input(
                 "Node contents",
                 value="Child nodes",
                 disabled=True,
-                key=f"_disabled-{nid}",
+                key=f"_disabled-{node_id}",
             )
             st.caption("This node has children — phones and flags are disabled.")
         else:
@@ -183,12 +183,12 @@ def _render_node(node_id: str, node: InventoryItem, depth: int = 0) -> None:
                     "Item type",
                     options=kind_options,
                     index=kind_options.index(node.get("items_kind", "phones")),
-                    key=f"items_kind-{nid}",
+                    key=f"items_kind-{node_id}",
                 )
             with col_items:
                 st.text_input(
                     "Items",
-                    key=f"items_text-{nid}",
+                    key=f"items_text-{node_id}",
                     value=node.get("items_text", ""),
                     placeholder="p, t, k",
                 )
@@ -211,15 +211,15 @@ def _render_node(node_id: str, node: InventoryItem, depth: int = 0) -> None:
         # ── Node actions ──────────────────────────────────────────────────
         btn_add, btn_remove = st.columns(2)
         with btn_add:
-            if st.button("＋ Add child", key=f"add-child-{nid}"):
+            if st.button("＋ Add child", key=f"add-child-{node_id}"):
                 updated = _sync_to_state()
-                updated = _editor.add_child_node(updated, nid)
+                updated = _editor.add_child_node(updated, node_id)
                 st.session_state.editor_state = updated
                 st.rerun()
         with btn_remove:
-            if st.button("✕ Delete item", key=f"remove-{nid}"):
+            if st.button("✕ Delete item", key=f"remove-{node_id}"):
                 updated = _sync_to_state()
-                updated = _editor.remove_item(updated, nid)
+                updated = _editor.remove_item(updated, node_id)
                 st.session_state.editor_state = updated
                 st.rerun()
 
@@ -334,7 +334,7 @@ def inventory_page() -> None:
                 "path", updated.get("path", "")
             ).strip()
             try:
-                saved_path = _editor.save(config_dir, updated)
+                saved_path = ...#_editor.save(config_dir, updated)
                 st.session_state.editor_state = updated
                 st.session_state.loaded_file = saved_path
                 st.toast(f"✅ Saved to `{saved_path}`", icon="✅")
