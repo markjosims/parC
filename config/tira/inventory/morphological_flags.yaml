@@ -1,10 +1,10 @@
 kind: Inventory
 data:
-  slot_flags:
+  - name: slot_flags
     _ref: <Slot>
     _flags:
     - '[CL]'
-  fv_classes:
+  - name: fv_classes
     _ref: <FV>
     _flags:
     - '[aɔ]'
@@ -13,7 +13,7 @@ data:
     - '[ɔɔ]'
     - '[ɔu]'
     - '[ɔi]'
-  accusative_markers:
+  - name: accusative_markers
     _ref: <ACC>
     _flags:
     - '[-a]'

@@ -1,61 +1,63 @@
 kind: Inventory
 data:
-  consonants:
+  - name: consonants
     _ref: <C>
     stops:
       _ref: <Plsv>
-      voiced:
-        _ref: <B>
+      _children:
+        - name: voiced
+          _ref: <B>
+          _phones:
+          - b
+          - d̪
+          - d
+          - ɟ
+          - g
+        - name: voiceless
+          _ref: <P>
+          _phones:
+          - p
+          - t̪
+          - t
+          - c
+          - k
+          - ʔ
+        - name: nasals
+          _ref: <N>
+          _phones:
+          - m
+          - n
+          - ɲ
+          - ŋ
+        fricatives:
+          _ref: <F>
+          _phones:
+          - f
+          - v
+          - ð
+          - s
+          - ʃ
+          - h
+      - name: resonants
+        _ref: <R>
         _phones:
-        - b
-        - d̪
-        - d
-        - ɟ
-        - g
-      voiceless:
-        _ref: <P>
-        _phones:
-        - p
-        - t̪
-        - t
-        - c
-        - k
-        - ʔ
-    nasals:
-      _ref: <N>
-      _phones:
-      - m
-      - n
-      - ɲ
-      - ŋ
-    fricatives:
-      _ref: <F>
-      _phones:
-      - f
-      - v
-      - ð
-      - s
-      - ʃ
-      - h
-    resonants:
-      _ref: <R>
-      _phones:
-      - r
-      - ɾ
-      - ɽ
-      - l
-      - w
-      - j
-  vowels:
+        - r
+        - ɾ
+        - ɽ
+        - l
+        - w
+        - j
+  - name: vowels
     _ref: <V>
-    high:
+    _children:
+    - name: high
       _ref: <V_High>
       _phones:
       - i
       - ɪ
       - u
       - ʊ
-    mid:
+    - name: mid
       _ref: <V_Mid>
       _phones:
       - e
@@ -64,7 +66,7 @@ data:
       - ɜ
       - o
       - ɔ
-    low:
+    - name: low
       _ref: <V_Low>
       _phones:
       - a

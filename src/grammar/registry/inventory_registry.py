@@ -16,9 +16,13 @@ from loguru import logger
 # TODO: update Fst registry and orchestrator family to expect
 # new InventoryItem/Class API
 
+class InventoryMember(Acceptor):
+    value: str = ""
+    parent: Optional["InventoryClass"] = None
+    source: os.PathLike | None = None
 
 @dataclass
-class InventoryItem(Acceptor):
+class InventoryItem(InventoryMember):
     """
     Represents a single phone or flag in the inventory.
     Attributes:
@@ -31,10 +35,7 @@ class InventoryItem(Acceptor):
             InventoryRegistry class.
     """
 
-    value: str = ""
     type: Literal["phone", "flag"] = "phone"
-    parent: Optional["InventoryClass"] = None
-    source: os.PathLike | None = None
 
     def __post_init__(self):
         super().__post_init__()
@@ -60,7 +61,7 @@ class InventoryItem(Acceptor):
 
 
 @dataclass
-class InventoryClass(Acceptor):
+class InventoryClass(InventoryMember):
     """
     Represents an inventory class, which is a node in the inventory tree whose
     children are phones, flags (i.e. InventoryItem objects) or other InventoryClasses
@@ -79,11 +80,8 @@ class InventoryClass(Acceptor):
     """
 
     name: str = ""
-    value: str = ""
     type: Literal["phone_class", "flag_class", "nested_class"] = "phone_class"
-    children: list["InventoryMemberType"] = field(default_factory=list)
-    parent: Optional["InventoryItem"] = None
-    source: os.PathLike | None = None
+    children: list["InventoryMember"] = field(default_factory=list)
 
     def __post_init__(self):
         super().__post_init__()
@@ -120,48 +118,34 @@ class InventoryClass(Acceptor):
         cls,
         class_type: Literal["phone_class", "flag_class", "nested_class"],
         item_dict: dict,
-    ) -> bool:
+    ) -> list[str | dict]:
         """
-        Returns True if the data in `item_dict` matches the format expected
+        Returns a list of validated items if the data in `item_dict` matches the format expected
         for the given class type, else raise ValueError.
         """
-        if class_type == "phone_class":
-            if "_phones" not in item_dict:
-                raise ValueError(
-                    f"Expected '_phones' attr in data for type phone_class, got {item_dict}"
+        data_by_class_type = {
+            "phone_class": ("_phones", str),
+            "flag_class": ("_flags", str),
+            "nested_class": ("_children", dict),
+        }
+        field, expected_type = data_by_class_type[class_type]
+        if field not in item_dict:
+            error = f"Expected field '{field}' not found for class type '{class_type}'"
+            logger.error(error)
+            raise ValueError(error)
+        if not isinstance(item_dict[field], list):
+            error = f"Expected field '{field}' to be a list for class type '{class_type}'"
+            logger.error(error)
+            raise ValueError(error)
+        for item in item_dict[field]:
+            if not isinstance(item, expected_type):
+                error = (
+                    f"Expected items in field '{field}' to be of type "
+                    + f"'{expected_type.__name__}' for class type '{class_type}'"
                 )
-            if "_flags" in item_dict:
-                raise ValueError("'_flags' attr unexpected for phone_class")
-            if len(item_dict) > 1:
-                raise ValueError(
-                    f"Expected only '_phones' attr in data for type phone_class, got {item_dict}"
-                )
-            return True
-        if class_type == "flag_class":
-            if "_flags" not in item_dict:
-                raise ValueError(
-                    f"Expected '_flags' attr in data for type flag_class, got {item_dict}"
-                )
-            if "_phones" in item_dict:
-                raise ValueError("'_phones' attr unexpected for flag_class")
-            if len(item_dict) > 1:
-                raise ValueError(
-                    f"Expected only '_flags' attr in data for type flag_class, got {item_dict}"
-                )
-            return True
-        # class_type == "nested_class"
-        if "_phones" in item_dict:
-            raise ValueError(
-                f"Expected '_phones' attr in data for type phone_class, got {item_dict}"
-            )
-        if "_flags" in item_dict:
-            raise ValueError("'_flags' attr unexpected for phone_class")
-        for key, subdict in item_dict.items():
-            if not isinstance(subdict, dict):
-                raise ValueError(
-                    f"Expected all values to be dict, but got key {key} with value {subdict} of type {type(subdict)}"
-                )
-        return True
+                logger.error(error)
+                raise ValueError(error)
+        return item_dict[field]
 
     @classmethod
     def from_config(
@@ -179,8 +163,12 @@ class InventoryClass(Acceptor):
         source_path = item_dict.get("source", None)
 
         class_type = cls.infer_class_type(item_dict=item_dict)
+        children = cls.validate_class_type(class_type=class_type, item_dict=item_dict)
 
+        # initialize InventoryClass with empty children
+        # will populate after recursively building children
         inventory_class = cls(
+            name=item_dict.get("name", ""),
             value=item_dict["_ref"],
             type=class_type,
             children=[],
@@ -217,11 +205,10 @@ class InventoryClass(Acceptor):
             json["_flags"] = [item.value for item in self.children]
         else:
             # self.type == "nested_class"
-            for child in self.children:
-                json[child.value] = child.to_dict()
+            json["_children"] = {child.value: child.to_dict() for child in self.children}
         return json
 
-    def flatten(self) -> list["InventoryItem" | "InventoryClass"]:
+    def flatten(self) -> list[Union["InventoryItem", "InventoryClass"]]:
         """Recursively InventoryItem into a list including itself and all children."""
         items = [self]
         for child in self.children:
@@ -235,20 +222,17 @@ class InventoryClass(Acceptor):
         return self.__str__()
 
 
-InventoryMemberType = Union[InventoryItem, InventoryClass]
-
-
 class InventoryRegistry(Registry):
     """
     Registry for storing inventory items (phones, flags, classes).
     Instantiated directly with a pre-built `data` dict mapping inventory
-    item names to `InventoryMemberType` objects, or a `config_objects` dict mapping
+    item names to `InventoryMember` objects, or a `config_objects` dict mapping
     filenames to YAML config objects.
     """
 
     def __init__(
         self,
-        data: dict[str, InventoryMemberType] | None = None,
+        data: dict[str, InventoryMember] | None = None,
         config_objects: dict[str, dict] | None = None,
     ):
         super().__init__(kind="Inventory", data=data, config_objects=config_objects)
@@ -283,7 +267,7 @@ class InventoryRegistry(Registry):
 
     def load_all_configs(
         self,
-    ) -> tuple[list[InventoryClass], dict[str, InventoryMemberType]]:
+    ) -> tuple[list[InventoryClass], dict[str, InventoryMember]]:
         inventory_item_map = {}
         top_inventory_items = []
         for config in self.config_objects.values():
@@ -301,7 +285,7 @@ class InventoryRegistry(Registry):
     def load_data_from_config(
         self,
         config: dict,
-    ) -> dict[str, InventoryMemberType]:
+    ) -> dict[str, InventoryMember]:
         top_data = config.get("data", [])
         if not top_data:
             logger.error("No top-level inventory classes found in config")
@@ -335,7 +319,7 @@ class InventoryRegistry(Registry):
 
         return item_dict
 
-    def _get_tokens_from_class(self, item: InventoryMemberType) -> list[str]:
+    def _get_tokens_from_class(self, item: InventoryMember) -> list[str]:
         """Recursively collect all phone/flag tokens from an InventoryItem subtree."""
         tokens = []
         if isinstance(item, InventoryItem):

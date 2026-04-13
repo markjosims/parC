@@ -22,7 +22,7 @@ import streamlit as st
 from src.grammar.registry.inventory_registry import (
     InventoryItem,
     InventoryClass,
-    InventoryMemberType,
+    InventoryMember,
     InventoryRegistry,
 )
 from src.grammar import Grammar
@@ -103,7 +103,7 @@ def _new_file() -> None:
     st.session_state.pop("path", None)
 
 
-def _clear_node_widget_keys(nodes: list[InventoryMemberType]) -> None:
+def _clear_node_widget_keys(nodes: list[InventoryMember]) -> None:
     """Remove all widget keys for a node subtree from session state."""
     for node in nodes:
         nid = node["id"]
