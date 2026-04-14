@@ -16,10 +16,13 @@ from loguru import logger
 # TODO: update Fst registry and orchestrator family to expect
 # new InventoryItem/Class API
 
+
+@dataclass
 class InventoryMember(Acceptor):
     value: str = ""
     parent: Optional["InventoryClass"] = None
     source: os.PathLike | None = None
+
 
 @dataclass
 class InventoryItem(InventoryMember):
@@ -134,7 +137,9 @@ class InventoryClass(InventoryMember):
             logger.error(error)
             raise ValueError(error)
         if not isinstance(item_dict[field], list):
-            error = f"Expected field '{field}' to be a list for class type '{class_type}'"
+            error = (
+                f"Expected field '{field}' to be a list for class type '{class_type}'"
+            )
             logger.error(error)
             raise ValueError(error)
         for item in item_dict[field]:
@@ -163,7 +168,7 @@ class InventoryClass(InventoryMember):
         source_path = item_dict.get("source", None)
 
         class_type = cls.infer_class_type(item_dict=item_dict)
-        children = cls.validate_class_type(class_type=class_type, item_dict=item_dict)
+        child_data = cls.validate_class_type(class_type=class_type, item_dict=item_dict)
 
         # initialize InventoryClass with empty children
         # will populate after recursively building children
@@ -176,44 +181,60 @@ class InventoryClass(InventoryMember):
             source=source_path,
         )
 
-        children = []
-        for key, value in item_dict.items():
-            if key == "_phones":
-                for phone in value:
-                    child = InventoryItem(
-                        value=phone, type="phone", parent=inventory_class
-                    )
-                    children.append(child)
-            elif key == "_flags":
-                for flag in value:
-                    child = InventoryItem(
-                        value=flag, type="flag", parent=inventory_class
-                    )
-                    children.append(child)
-            elif isinstance(value, dict):
-                child = cls.from_config(value, parent=inventory_class)
-                children.append(child)
-
+        if class_type == "nested_class":
+            children = [
+                cls.from_config(child_config, parent=inventory_class)
+                for child_config in child_data
+            ]
+        elif class_type == "phone_class":
+            children = [
+                InventoryItem(
+                    value=child,
+                    parent=inventory_class,
+                    source=source_path,
+                    type="phone",
+                )
+                for child in child_data
+            ]
+        else:  # class_type=="flag_class"
+            children = [
+                InventoryItem(
+                    value=child,
+                    parent=inventory_class,
+                    source=source_path,
+                    type="flag",
+                )
+                for child in child_data
+            ]
         inventory_class.children = children
+
         return inventory_class
 
     def to_dict(self) -> dict:
-        json = {"_ref": self.value}
+        json = {"_ref": self.value, "name": self.name}
         if self.type == "phone_class":
             json["_phones"] = [item.value for item in self.children]
         elif self.type == "flag_class":
             json["_flags"] = [item.value for item in self.children]
         else:
             # self.type == "nested_class"
-            json["_children"] = {child.value: child.to_dict() for child in self.children}
+            json["_children"] = {
+                child.value: child.to_dict() for child in self.children
+            }
         return json
 
     def flatten(self) -> list[Union["InventoryItem", "InventoryClass"]]:
         """Recursively InventoryItem into a list including itself and all children."""
         items = [self]
-        for child in self.children:
-            items.extend(child.flatten())
+        if self.type == "nested_class":
+            for child in self.children:
+                items.extend(child.flatten())
+        else:
+            items.extend(self.children)
         return items
+    
+    def item_strs(self):
+        return [child.value for child in self.children]
 
     def __str__(self):
         return f"InventoryClass(value='{self.value}')"
@@ -255,12 +276,16 @@ class InventoryRegistry(Registry):
         flags = {}
         classes = {}
         for item in self.data.values():
-            if item.type == "phone":
+            if isinstance(item, InventoryItem) and item.type == "phone":
                 phones[item.value] = item
-            elif item.type == "flag":
+            elif isinstance(item, InventoryItem) and item.type == "flag":
                 flags[item.value] = item
-            elif item.type == "class":
+            elif isinstance(item, InventoryClass):
                 classes[item.value] = item
+            else:
+                raise ValueError(
+                    f"Unrecognized inventory object {type(item)} of type {item.type}"
+                )
         self.phones = phones
         self.flags = flags
         self.classes = classes
@@ -292,16 +317,16 @@ class InventoryRegistry(Registry):
             return {}
 
         # get flat list of items
-        items_flat = []
-        items_top = []
-        for item_config in top_data.values():
+        flat_items = []
+        top_items = []
+        for item_config in top_data:
             item = InventoryClass.from_config(item_config)
             flat_item = item.flatten()
-            items_flat.extend(flat_item)
-            items_top.append(item)
+            flat_items.extend(flat_item)
+            top_items.append(item)
 
         # check for item collisions
-        item_values = [item.value for item in items_flat]
+        item_values = [item.value for item in flat_items]
         if len(item_values) != len(set(item_values)):
             duplicate_items = set([x for x in item_values if item_values.count(x) > 1])
             error = (
@@ -312,12 +337,9 @@ class InventoryRegistry(Registry):
             raise ValueError(error)
 
         # make dict mapping ref to item
-        item_dict = {item.value: item for item in items_flat}
+        item_dict = {item.value: item for item in flat_items}
 
-        # set top items attr
-        self.top_items = self.top_items
-
-        return item_dict
+        return top_items, item_dict
 
     def _get_tokens_from_class(self, item: InventoryMember) -> list[str]:
         """Recursively collect all phone/flag tokens from an InventoryItem subtree."""

@@ -13,12 +13,15 @@ Usage:
 """
 
 from __future__ import annotations
+import re
 
+from loguru import logger
 import glob
 import os
 from pathlib import Path
 
 import streamlit as st
+from unidecode.x002 import data
 from src.grammar.registry.inventory_registry import (
     InventoryItem,
     InventoryClass,
@@ -65,24 +68,40 @@ DIAC_TOKENS: list[str] = [
 _config_kind = "Inventory"
 _config_key = "inventory_configs"
 
-# ---------------------------------------------------------------------------
-# State helpers
-# ---------------------------------------------------------------------------
+"""
+File loading and state initialization logic.
+Statefulness lifecycle:
+- Fetch YAML data from ConfigWalker
+- Load Inventory tree using InventoryRegistry
+- Map Inventory classes to unique ids reflecting position in tree
+- Store in session state:
+    - top_items: list of top-level InventoryClass nodes (for rendering and YAML output)
+    - item_map: node_id -> InventoryClass
+    - node_id_map: parent_node_id -> list of child node_ids
+"""
 
 
 def _load_file(filepath: str) -> None:
     """Load an inventory file into session state, clearing stale widget keys."""
-    _clear_node_widget_keys(st.session_state.get("editor_state", {}).get("nodes", []))
+    editor_state: EditorState | None = st.session_state.get("editor_state", None)
+    if editor_state is not None:
+        node_keys = editor_state.data["item_map"].keys()
+        node_keys = list(node_keys)
+        _clear_node_state_keys(node_ids=node_keys)
     config_walker: ConfigWalker = st.session_state["config_walker"]
     try:
         config_object = config_walker.config_data[_config_key][filepath]
         inventory_reg = InventoryRegistry(config_objects={filepath: config_object})
-        item_map = inventory_reg.data
         top_items = inventory_reg.top_items
+        item_map, node_id_map = _populate_node_map(top_items)
         state = EditorState(
             path=filepath,
             kind=_config_kind,
-            data={"item_map": item_map, "top_items": top_items},
+            data={
+                "item_map": item_map,
+                "top_items": top_items,
+                "node_id_map": node_id_map,
+            },
         )
     except KeyError:
         st.error(f"File not found: `{filepath}`")
@@ -96,39 +115,241 @@ def _load_file(filepath: str) -> None:
 
 def _new_file() -> None:
     """Reset editor to a blank state."""
-    _clear_node_widget_keys(st.session_state.get("editor_state", {}).get("nodes", []))
+    editor_state = st.session_state.get("editor_state", None)
+    if editor_state is not None:
+        _clear_node_state_keys(editor_state.data["top_nodes"])
     st.session_state.editor_state = EditorState(path="", kind=_config_kind)
     st.session_state.loaded_file = None
     # also reset the path widget
     st.session_state.pop("path", None)
 
 
-def _clear_node_widget_keys(nodes: list[InventoryMember]) -> None:
-    """Remove all widget keys for a node subtree from session state."""
-    for node in nodes:
-        nid = node["id"]
-        for prefix in ("name-", "ref-", "items_kind-", "items_text-"):
-            st.session_state.pop(f"{prefix}{nid}", None)
-        for i in range(len(DIAC_TOKENS)):
-            st.session_state.pop(f"diac-{nid}-{i}", None)
-        _clear_node_widget_keys(node.get("children", []))
-
-
-def _sync_to_state() -> dict:
+def _populate_node_map(
+    top_items: list[InventoryClass],
+    parent_id: str = "item",
+) -> tuple[dict[str, InventoryClass], dict[str, list[str]]]:
     """
-    Pull current widget values (from st.session_state) into a fresh copy of
-    the editor state. st.session_state.get() satisfies the form interface
-    expected by InventoryEditor.update_from_form().
+    Helper function to populate item_map and node_id_map from list of top nodes
+    using depth-first downward traversal.
     """
-    return _editor.update_from_form(st.session_state.editor_state, st.session_state)
+    item_map = {}
+    node_id_map = {}
+
+    def _traverse_nodes(
+        nodes: list[InventoryClass], sub_parent_id: str = parent_id
+    ) -> None:
+        node_id_map[sub_parent_id] = []
+        for i, node in enumerate(nodes):
+            node_id = f"{sub_parent_id}-{i}"
+
+            item_map[node_id] = node
+            node_id_map[sub_parent_id].append(node_id)
+
+            if node.type == "nested_class":
+                _traverse_nodes(node.children, sub_parent_id=node_id)
+
+    _traverse_nodes(top_items, sub_parent_id=parent_id)
+    return item_map, node_id_map
 
 
-def _yaml_preview(state: dict) -> str:
+def _inventory_tree_to_dict(top_items: list[InventoryClass]) -> list[dict]:
+    """
+    Convert inventory tree to a serializable format for YAML output.
+    This is the inverse of loading the tree from YAML.
+    """
+
+    return [node.to_dict() for node in top_items]
+
+
+"""
+State mutation logic: insert/remove nodes, update widget keys, sync form to state.
+State mutation lifecycle:
+- Insert/remove node from tree (e.g. _insert_child, _pop_node)
+- Update item_map with new node ids and node objects (_put_node_to_state)
+- Clear widget keys for removed nodes and their subtree (_clear_node_widget_keys)
+"""
+
+
+def _pop_node(node_id: str) -> None:
+    """
+    Remove a node from the tree, clear its widget keys
+    and reindex siblings if necessary.
+    """
+    indices = _validate_node_id(node_id)
+    data: dict = st.session_state.editor_state.data
+    item_map = data["item_map"]
+    top_items = data["top_items"]
+    node_id_map = data["node_id_map"]
+    if len(indices) == 1 and indices[0] < len(top_items) - 1:
+        # top level node
+        # recompute node ids and keys for top-level after pop, since all indices shift
+        popped = top_items.pop(indices[0])
+        _clear_node_state_keys(top_items)
+        updated_item_map, updated_node_id_map = _populate_node_map(top_items)
+        data["item_map"] = updated_item_map
+        data["node_id_map"] = updated_node_id_map
+
+        return popped
+
+    if len(indices) == 1:
+        # last top-level node, just pop without reindexing since no siblings after it
+        popped = top_items.pop(indices[0])
+        _clear_node_state_keys([node_id])
+        return popped
+
+    # nested node
+    parent_id = _get_parent_id(node_id)
+    sibling_ids = node_id_map.get(parent_id)
+    parent_node = item_map.get(parent_id)
+
+    # check if current node is last sibling
+    # if so, clear current node's state keys and pop without reindexing
+    # since no siblings after it
+    if sibling_ids and sibling_ids[-1] == node_id:
+        popped = parent_node.children.pop(indices[-1])
+        _clear_node_state_keys([node_id])
+        return popped
+
+    # pop node from parent's children
+    popped = parent_node.children.pop(indices[-1])
+    _clear_node_state_keys([node_id])
+
+    # clear widget keys for all siblings after the popped node
+    # since their indices shift
+    following_sibling_ids = sibling_ids[indices[-1] + 1 :]
+    _clear_node_state_keys(following_sibling_ids)
+
+    # then reindex siblings after popped node and update item_map and node_id_map
+    updated_item_map, updated_node_id_map = _populate_node_map(
+        parent_node.children, parent_id
+    )
+    data = st.session_state.editor_state.data
+    item_map = data["item_map"]
+    node_id_map = data["node_id_map"]
+    item_map.update(updated_item_map)
+    node_id_map.update(updated_node_id_map)
+
+    return popped
+
+
+def _insert_top_node() -> str:
+    """
+    Insert a new top-level node. Returns the ID of the newly inserted node.
+    """
+    new_node = InventoryClass(
+        name="new_node",
+        value="<new_node_ref>",
+        type="phone_class",
+        children=[],
+    )
+    data: dict = st.session_state.editor_state.data
+    top_items = data["top_items"]
+    item_map = data["item_map"]
+    top_items.append(new_node)
+    new_node_id = f"item-{len(top_items) - 1}"
+    item_map[new_node_id] = new_node
+    return new_node_id
+
+
+def _insert_child(parent_id: str) -> str:
+    """
+    Insert a new child node under the specified parent node.
+    Returns the ID of the newly inserted child node.
+    """
+    parent_node = _get_node(parent_id)
+    if parent_node.type != "nested_class":
+        raise ValueError(
+            f"Cannot add child to node {parent_id} because it is not a nested class."
+        )
+    new_child = InventoryClass(
+        name="new_node",
+        value=f"<new_node_ref>",
+        type="phone_class",
+        children=[],
+    )
+    parent_node.children.append(new_child)
+    new_child_id = f"{parent_id}-{len(parent_node.children) - 1}"
+    _put_node_to_state(new_child_id, new_child)
+    return new_child_id
+
+
+def _clear_node_state_keys(node_ids: list[str]) -> None:
+    """
+    Remove all widget keys for a node subtree from session state.
+    """
+    data = st.session_state.editor_state.data
+    item_map = data["item_map"]
+    for node_id in node_ids[:]:
+        try:
+            node = item_map.pop(node_id)
+            for prefix in ("name-", "ref-", "items_kind-", "items_text-"):
+                st.session_state.pop(f"{prefix}{node_id}", None)
+            for i in range(len(DIAC_TOKENS)):
+                st.session_state.pop(f"diac-{node_id}-{i}", None)
+            if node.type == "nested_class":
+                _clear_node_state_keys(node.children)
+        except KeyError:
+            continue
+
+
+def _put_node_to_state(
+    node_id: str, node: InventoryClass, old_id: str | None = None
+) -> None:
+    """
+    Assign node to node_id in editor_state.item_map. Do not update
+    any widgets here, as that logic is handled by `_render_node`
+    and widget keys are derived from node_id.
+
+    If old_id is provided, removes old_id from item_map.
+    This is used when reindexing siblings after a pop operation
+    to update node_ids to match new indices.
+    """
+    item_map = st.session_state.editor_state.data.item_map
+    if old_id is not None:
+        item_map.pop(old_id, None)
+    item_map[node_id] = node
+
+
+def _get_node(node_id: str) -> InventoryClass | None:
+    """Get the InventoryClass node corresponding to the given node_id."""
+    data: dict = st.session_state.editor_state.data
+    item_map = data["item_map"]
+    return item_map.get(node_id, None)
+
+def _get_child_ids(node_id: str) -> list[str] | None:
+    data: dict = st.session_state.editor_state.data
+    node_id_map = data["node_id_map"]
+    child_ids = node_id_map.get(node_id, None)
+    return child_ids
+
+def _get_parent_id(node_id: str) -> str | None:
+    """Get the node_id of the parent of the given node_id, or None if top-level."""
+    indices = _validate_node_id(node_id)
+    if len(indices) == 1:
+        return None
+    parent_indices = indices[:-1]
+    parent_id = "item-" + "-".join(str(i) for i in parent_indices)
+    return parent_id
+
+
+def _validate_node_id(node_id: str) -> list[int]:
+    """
+    Verifies node id conforms to format "item-INT-INT-INT"
+    and returns list of integers indicating node index within tree.
+    """
+    if not node_id.startswith("item-"):
+        raise ValueError(
+            f"Expected node id with format `item-$INT-$INT-$INT... but got {node_id}"
+        )
+    index_strs = node_id.removeprefix("item-").split("-")
     try:
-        synced = _sync_to_state()
-        return _editor.to_yaml(synced)
-    except Exception:
-        return _editor.to_yaml(state)
+        indices = [int(i_str) for i_str in index_strs]
+    except ValueError:
+        raise ValueError(
+            "Error parsing node id indices — expected integers after `item-` prefix. "
+            f"Got: {index_strs}"
+        )
+    return indices
 
 
 # ---------------------------------------------------------------------------
@@ -136,8 +357,11 @@ def _yaml_preview(state: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _render_node(node_id: str, node: InventoryClass, depth: int = 0) -> None:
+def _render_node(node_id: str, depth: int = 0) -> None:
     """Render a single inventory node and recurse into children."""
+    
+    node = _get_node(node_id)
+    assert node is not None, "Error: cannot render non-existent node with id " + node_id
     is_nested = node.type == "nested_class"
 
     # Visual indentation: pair an invisible spacer column with the content column.
@@ -147,22 +371,22 @@ def _render_node(node_id: str, node: InventoryClass, depth: int = 0) -> None:
     else:
         content_col = st
 
-    node_ref = node.get("ref", "(ref not set)")
-    with content_col.popover(f"{node_id} `{node_ref}`"):
+    node_ref = node.value or "(ref not set)"
+    with content_col.popover(f"{node.name} `{node_ref}`"):
         # ── Name & Reference ──────────────────────────────────────────────
         col_name, col_ref = st.columns(2)
         with col_name:
             st.text_input(
                 "Node name",
                 key=f"name-{node_id}",
-                value=node["name"],
+                value=node.name,
                 placeholder="consonants",
             )
         with col_ref:
             st.text_input(
                 "Reference",
                 key=f"ref-{node_id}",
-                value=node["ref"],
+                value=node_ref,
                 placeholder="<C>",
             )
 
@@ -179,17 +403,21 @@ def _render_node(node_id: str, node: InventoryClass, depth: int = 0) -> None:
             col_kind, col_items = st.columns(2)
             with col_kind:
                 kind_options = ["phones", "flags"]
+                if node.type == "flag_class":
+                    selected_index = kind_options.index("flags")
+                else:
+                    selected_index = kind_options.index("phones")
                 st.selectbox(
                     "Item type",
                     options=kind_options,
-                    index=kind_options.index(node.get("items_kind", "phones")),
+                    index=selected_index,
                     key=f"items_kind-{node_id}",
                 )
             with col_items:
                 st.text_input(
                     "Items",
                     key=f"items_text-{node_id}",
-                    value=node.get("items_text", ""),
+                    value=", ".join(node.item_strs()),
                     placeholder="p, t, k",
                 )
 
@@ -212,20 +440,18 @@ def _render_node(node_id: str, node: InventoryClass, depth: int = 0) -> None:
         btn_add, btn_remove = st.columns(2)
         with btn_add:
             if st.button("＋ Add child", key=f"add-child-{node_id}"):
-                updated = _sync_to_state()
-                updated = _editor.add_child_node(updated, node_id)
-                st.session_state.editor_state = updated
+                _insert_child(node_id)
                 st.rerun()
         with btn_remove:
             if st.button("✕ Delete item", key=f"remove-{node_id}"):
-                updated = _sync_to_state()
-                updated = _editor.remove_item(updated, node_id)
-                st.session_state.editor_state = updated
+                _pop_node(node_id)
                 st.rerun()
 
     # Render children below the parent box, each with one additional level of indent.
-    for child in node.get("children", []):
-        _render_node(child, depth + 1)
+    if is_nested:
+        child_ids = _get_child_ids(node_id)
+        for child_id in child_ids:
+            _render_node(child_id, depth + 1)
 
 
 # ---------------------------------------------------------------------------
@@ -275,7 +501,7 @@ def inventory_page() -> None:
                 if selected_file == "(new file)":
                     _new_file()
                 else:
-                    _load_file(config_dir, selected_file)
+                    _load_file(selected_file)
                 st.rerun()
         with col_refresh:
             if st.button(
@@ -300,10 +526,10 @@ def inventory_page() -> None:
         )
         st.stop()
 
-    state: dict = st.session_state.editor_state
+    editor_state: EditorState = st.session_state.editor_state
 
     # ── Header row ────────────────────────────────────────────────────────
-    title_label = state.get("path") or "New inventory file"
+    title_label = editor_state.path or "New inventory file"
     st.header(title_label)
 
     col_path, col_spacer = st.columns([3, 5])
@@ -311,7 +537,7 @@ def inventory_page() -> None:
         st.text_input(
             "File path (relative to CONFIG_DIR)",
             key="path",
-            value=state.get("path", ""),
+            value=editor_state.path,
             placeholder="inventory/segments.yaml",
             help="Must be inside an `inventory/` directory, e.g. `inventory/segments.yaml`",
         )
@@ -321,23 +547,13 @@ def inventory_page() -> None:
 
     with col_add:
         if st.button("➕ Add top-level node", use_container_width=True):
-            updated = _sync_to_state()
-            updated = _editor.add_item(updated)
-            st.session_state.editor_state = updated
+            _insert_top_node()
             st.rerun()
 
     with col_save:
         if st.button("💾 Save YAML", use_container_width=True, type="primary"):
-            updated = _sync_to_state()
-            # pull the current path widget value
-            updated["path"] = st.session_state.get(
-                "path", updated.get("path", "")
-            ).strip()
             try:
-                saved_path = ...#_editor.save(config_dir, updated)
-                st.session_state.editor_state = updated
-                st.session_state.loaded_file = saved_path
-                st.toast(f"✅ Saved to `{saved_path}`", icon="✅")
+                st.toast(f"✅ Saved to `{editor_state.path}`", icon="✅")
             except ValueError as exc:
                 st.error(str(exc))
 
@@ -348,21 +564,21 @@ def inventory_page() -> None:
     if show_preview:
         with st.container(border=True):
             st.caption("YAML preview — reflects unsaved edits")
-            st.code(_yaml_preview(state), language="yaml")
+            st.code(_yaml_preview(editor_state), language="yaml")
 
     st.divider()
 
     # ── Node tree ─────────────────────────────────────────────────────────
-    nodes: list[dict] = state.get("nodes", [])
+    top_node_ids = editor_state.data["node_id_map"]["item"]
 
-    if not nodes:
+    if not top_node_ids:
         st.info(
             "No nodes yet. Click **➕ Add top-level node** to start — "
             "for example a `consonants` or `vowels` category."
         )
     else:
-        for node in nodes:
-            _render_node(node, depth=0)
+        for node_id in top_node_ids:
+            _render_node(node_id, depth=0)
 
 
 if __name__ == "__main__":

@@ -219,7 +219,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             child_values = [
                 pynini.accep(child.value, token_type=self.symbols)
                 for child in children
-                if child.type != "class"
+                if isinstance(child, InventoryItem)
             ]
             acceptor = pynini.union(*child_values)
             acceptor.optimize()
@@ -613,6 +613,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
                     match = token
                     break
             if not match:
+                breakpoint()
                 error = f"Unrecognized token '{input_str[i:]}' starting at position {i} in string '{input_str}'"
                 logger.error(error)
                 raise ValueError(error)

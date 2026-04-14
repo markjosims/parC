@@ -3,7 +3,10 @@
   "title": "Patterns",
   "description": "Configuration defining Finite State Acceptors (FSAs) describing languages of strings for use in morphological rules.",
   "type": "object",
-  "required": ["kind", "patterns"],
+  "required": [
+    "kind",
+    "patterns"
+  ],
   "properties": {
     "source_path": {
       "type": "string",
@@ -11,54 +14,49 @@
     },
     "kind": {
       "type": "string",
-      "enum": ["Patterns"]
+      "enum": [
+        "Patterns"
+      ]
     },
     "patterns": {
       "type": "array",
       "description": "A list of pattern definitions, where each entry is a mapping of the pattern name to its configuration.",
       "items": {
         "type": "object",
-        "minProperties": 1,
-        "maxProperties": 1,
-        "additionalProperties": {
-          "type": "object",
-          "required": ["pattern", "_ref"],
-          "properties": {
-            "pattern": {
-              "oneOf": [
-                {
-                  "type": "string",
-                  "description": "A regular expression string that can be interpreted as an FSA."
-                },
-                {
-                  "type": "array",
-                  "items": { "type": "string" },
-                  "description": "A list of strings to be compiled as the union of FSAs."
-                }
-              ]
-            },
-            "_ref": {
-              "type": "string",
-              "pattern": "^<.+>$",
-              "description": "A unique string surrounded by angle braces used to refer to this pattern in other rules or patterns."
-            },
-            "test_includes": {
-              "type": "array",
-              "description": "List of strings the pattern should accept.",
-              "items": {
-                "type": "string"
-              }
-            },
-            "test_excludes": {
-              "type": "array",
-              "description": "List of strings the pattern should not accept.",
-              "items": {
-                "type": "string"
-              }
+        "required": [
+          "pattern",
+          "_ref"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "A descriptive name for the pattern"
+          },
+          "pattern": {
+            "type": "string",
+            "description": "A regular expression string that can be interpreted as an FSA."
+          },
+          "_ref": {
+            "type": "string",
+            "pattern": "^<.+>$",
+            "description": "A unique string surrounded by angle braces used to refer to this pattern in other rules or patterns."
+          },
+          "test_includes": {
+            "type": "array",
+            "description": "List of strings the pattern should accept.",
+            "items": {
+              "type": "string"
             }
           },
-          "additionalProperties": false
-        }
+          "test_excludes": {
+            "type": "array",
+            "description": "List of strings the pattern should not accept.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
       }
     }
   },

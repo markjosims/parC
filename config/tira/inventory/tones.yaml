@@ -8,19 +8,19 @@ data:
   - name: Tones
     _ref: <T>
     _children:
-    - name: Falling
-      _ref: <HL>
-      _phones:
-      - ̂
-    - name: High
-      _ref: <H>
-      _phones:
-      - ́
-    - name: Low
-      _ref: <L>
-      _phones:
-      - ̀
-    - name: Rising
-      _ref: <LH>
-      _phones:
-      - ̌
+      - name: Falling
+        _ref: <HL>
+        _phones:
+        - ̂
+      - name: High
+        _ref: <H>
+        _phones:
+        - ́
+      - name: Low
+        _ref: <L>
+        _phones:
+        - ̀
+      - name: Rising
+        _ref: <LH>
+        _phones:
+        - ̌

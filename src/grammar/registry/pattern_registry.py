@@ -25,7 +25,8 @@ class Pattern(Acceptor):
         fsa: pynini.Fst accepting the pattern language.
     """
 
-    value: str | list[str] = ""
+    name: str = ""
+    value: str = ""
     _ref: str = ""
     used_by: list['Pattern'] = field(default_factory=list)
     uses: list['Pattern'] = field(default_factory=list)
@@ -69,13 +70,11 @@ class Pattern(Acceptor):
         Builds a Pattern from a config dict.
         """
 
-        # get source filepath if specified
-        source_path = item_dict.get("source", None)
-
         pattern = cls(
+            name=item_dict.get("name", ""),
             value=item_dict["pattern"],
             _ref=item_dict["_ref"],
-            source=source_path,
+            source=item_dict.get("source", None),
         )
         return pattern
 
@@ -131,10 +130,6 @@ class PatternRegistry(Registry):
         if not patterns:
             logger.error(f"No patterns found in config: {config}")
             return
-        # each pattern is stored as a dict {'Pattern_name': {**data}}
-        # since the _ref key in the pattern data is used as a unique
-        # identifier internally, we ignore the user-specified pattern name
-        patterns = [p.popitem()[1] for p in patterns]
 
         patterns_list = [Pattern.from_config(p) for p in patterns]
 
