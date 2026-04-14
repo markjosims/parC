@@ -36,6 +36,13 @@ DIAC_TOKENS: list[str] = [
     "<DIAC:ã>",
 ]
 
+_node_key2field = {
+    "name-": "name",
+    "ref-": "value",
+    "items_kind-": "type",
+    "items_text-": "children",
+}
+
 # Only InventoryClass is to be rendered: phone/flag leaf nodes
 # are built from CSVs in form for InventoryClass
 # and stored internally
@@ -260,7 +267,7 @@ def _clear_node_state_keys(node_ids: list[str]) -> None:
     for node_id in node_ids[:]:
         try:
             node = item_map.pop(node_id)
-            for prefix in ("name-", "ref-", "items_kind-", "items_text-"):
+            for prefix in _node_key2field.keys():
                 st.session_state.pop(f"{prefix}{node_id}", None)
             for i in range(len(DIAC_TOKENS)):
                 st.session_state.pop(f"diac-{node_id}-{i}", None)
@@ -289,17 +296,26 @@ def _put_node_to_state(
     item_map[node_id] = node
 
 
+def _build_node_from_form_data(node_id: str) -> InventoryClass:
+    node_data = {st.session_state[key + node_id] for key in _node_key2field.keys()}
+
+    # TODO: check class type, build child items, and return parent node
+    # caller function will need to handle populating global state
+
+
 def _get_node(node_id: str) -> InventoryClass | None:
     """Get the InventoryClass node corresponding to the given node_id."""
     data: dict = st.session_state.editor_state.data
     item_map = data["item_map"]
     return item_map.get(node_id, None)
 
+
 def _get_child_ids(node_id: str) -> list[str] | None:
     data: dict = st.session_state.editor_state.data
     node_id_map = data["node_id_map"]
     child_ids = node_id_map.get(node_id, None)
     return child_ids
+
 
 def _get_parent_id(node_id: str) -> str | None:
     """Get the node_id of the parent of the given node_id, or None if top-level."""
@@ -335,9 +351,10 @@ def _validate_node_id(node_id: str) -> list[int]:
 Node rendering (recursive)
 """
 
+
 def _render_node(node_id: str, depth: int = 0) -> None:
     """Render a single inventory node and recurse into children."""
-    
+
     node = _get_node(node_id)
     assert node is not None, "Error: cannot render non-existent node with id " + node_id
     is_nested = node.type == "nested_class"
@@ -431,6 +448,7 @@ def _render_node(node_id: str, depth: int = 0) -> None:
 Page function
 """
 
+
 def inventory_page() -> None:
     st.set_page_config(
         page_title="Inventory Editor",
@@ -442,7 +460,7 @@ def inventory_page() -> None:
     config_walker: ConfigWalker = st.session_state["config_walker"]
     inventory_files = config_walker.config_filemap[_config_key]
 
-    # Sidebar: file picker 
+    # Sidebar: file picker
     with st.sidebar:
         st.title("🔤 Inventory Editor")
         st.caption(f"`CONFIG_DIR`: `{config_dir}`")
