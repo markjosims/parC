@@ -135,11 +135,17 @@ def _populate_node_map(
     _traverse_nodes(top_items, sub_parent_id=parent_id)
     return item_map, node_id_map
 
+def _serialize_yaml(top_items: list[InventoryClass]) -> dict:
+    yaml_data = _inventory_tree_to_dict(top_items=top_items)
+    yaml_doc = {
+        "kind": _config_kind,
+        "data": yaml_data,
+    }
+    return yaml_doc
 
 def _inventory_tree_to_dict(top_items: list[InventoryClass]) -> list[dict]:
     """
     Convert inventory tree to a serializable format for YAML output.
-    This is the inverse of loading the tree from YAML.
     """
 
     return [node.to_dict() for node in top_items]
@@ -554,9 +560,10 @@ def inventory_page() -> None:
 
     # YAML preview
     if show_preview:
+        top_items = ...
         with st.container(border=True):
             st.caption("YAML preview — reflects unsaved edits")
-            # TODO implement YAML serialization
+            st.code(_serialize_yaml())
 
     st.divider()
 
