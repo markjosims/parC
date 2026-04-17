@@ -218,9 +218,7 @@ class InventoryClass(InventoryMember):
             json["_flags"] = [item.value for item in self.children]
         else:
             # self.type == "nested_class"
-            json["_children"] = {
-                child.value: child.to_dict() for child in self.children
-            }
+            json["_children"] = [child.to_dict() for child in self.children]
         return json
 
     def flatten(self) -> list[Union["InventoryItem", "InventoryClass"]]:
@@ -232,7 +230,7 @@ class InventoryClass(InventoryMember):
         else:
             items.extend(self.children)
         return items
-    
+
     def item_strs(self):
         return [child.value for child in self.children]
 

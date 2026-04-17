@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import streamlit as st
+from camel_converter import to_snake
 
 from src.config_utils.schema_validation import ConfigKindType
 
@@ -34,7 +35,18 @@ class EditorBase(ABC):
         self.kind = kind
         self.config_key = config_key
         self.path: str = ""
+        self.config_dir: str = ""
         self.data: dict = {}
+
+    @property
+    def subdir(self) -> str:
+        """Subdirectory name for this kind, derived via to_snake(kind)."""
+        return to_snake(self.kind)
+
+    @property
+    def stem(self) -> str:
+        """Filename stem of the loaded file, or '' for new files."""
+        return Path(self.path).stem if self.path else ""
 
     # ------------------------------------------------------------------
     # Abstract interface — subclasses must implement
@@ -80,6 +92,7 @@ class EditorBase(ABC):
     def load_file(self, filepath: str, config_walker: "ConfigWalker") -> None:
         """Clear widget state, then load and parse the given file."""
         self.clear_widget_keys()
+        self.config_dir = str(config_walker.config_dir)
         config_object = config_walker.config_data[self.config_key][filepath]
         self.data = self.build_state_from_config(config_object)
         self.path = filepath
@@ -90,14 +103,23 @@ class EditorBase(ABC):
         self.data = {}
         self.path = ""
 
-    def save(self, dest_path: str | Path) -> None:
+    def resolve_save_path(self, stem: str) -> Path:
+        """Build the full save path: config_dir / subdir / stem.yaml."""
+        if not stem:
+            raise ValueError("File name cannot be empty.")
+        if not self.config_dir:
+            raise ValueError("No config directory set — open a file first.")
+        return Path(self.config_dir) / self.subdir / f"{stem}.yaml"
+
+    def save(self, stem: str) -> None:
         """
-        Sync form → model, serialize to YAML, and write to dest_path.
-        Creates parent directories as needed.
+        Sync form → model, serialize to YAML, and write to the kind's subdirectory.
+        Updates self.path to the written location.
         """
+        dest = self.resolve_save_path(stem)
         self.read_form_to_state()
         yaml_doc = self.to_yaml()
-        dest = Path(dest_path)
         dest.parent.mkdir(parents=True, exist_ok=True)
         with dest.open("w", encoding="utf-8") as f:
             yaml.dump(yaml_doc, f, allow_unicode=True, sort_keys=False)
+        self.path = str(dest)

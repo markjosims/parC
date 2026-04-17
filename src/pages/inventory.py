@@ -13,7 +13,7 @@ Usage:
 """
 
 from __future__ import annotations
-import os
+from pathlib import Path
 
 import streamlit as st
 from src.grammar.registry.inventory_registry import (
@@ -411,11 +411,11 @@ def inventory_page() -> None:
         file_options = [None] + inventory_files
         file_indices = list(range(len(file_options)))
 
-        inventory_basenames = [os.path.basename(f) for f in inventory_files]
-        file_display_options = ["(new file)"] + inventory_basenames
+        inventory_stems = [Path(f).stem for f in inventory_files]
+        file_display_options = ["(new file)"] + inventory_stems
 
         if not inventory_files:
-            st.info(f"No Inventory YAML files found under `{config_dir}`.")
+            st.info("No inventory files found.")
 
         selected_file_idx = st.selectbox(
             "Inventory files",
@@ -465,17 +465,16 @@ def inventory_page() -> None:
         st.stop()
 
     # Header row
-    title_label = editor.path or "New inventory file"
-    st.header(title_label)
+    st.header(editor.stem or "New inventory file")
 
-    col_path, col_spacer = st.columns([3, 5])
-    with col_path:
+    col_name, col_spacer = st.columns([3, 5])
+    with col_name:
         st.text_input(
-            "File path (relative to CONFIG_DIR)",
-            key="path",
-            value=editor.path,
-            placeholder="inventory/segments.yaml",
-            help="Must be inside an `inventory/` directory, e.g. `inventory/segments.yaml`",
+            "File name",
+            key="file_name",
+            value=editor.stem,
+            placeholder="segments",
+            help="Name for this inventory file (no extension needed).",
         )
 
     # Toolbar
@@ -488,13 +487,13 @@ def inventory_page() -> None:
 
     with col_save:
         if st.button("💾 Save YAML", use_container_width=True, type="primary"):
-            dest = st.session_state.get("path", "").strip()
-            if not dest:
-                st.error("Enter a file path before saving.")
+            stem = st.session_state.get("file_name", "").strip()
+            if not stem:
+                st.error("Enter a file name before saving.")
             else:
                 try:
-                    editor.save(dest)
-                    st.toast(f"✅ Saved to `{dest}`", icon="✅")
+                    editor.save(stem)
+                    st.toast(f"✅ Saved as `{stem}`", icon="✅")
                 except (ValueError, OSError) as exc:
                     st.error(str(exc))
 

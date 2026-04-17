@@ -5,6 +5,7 @@ from src.grammar import Grammar
 from loguru import logger
 
 from src.pages.inventory import inventory_page
+from src.pages.patterns import patterns_page
 
 GRAMMAR_REGISTRY_CACHE: dict[str, tuple[float, Grammar]] = {}
 GRAMMAR_BUILD_STATUS: dict[tuple[str, str], dict] = {}
@@ -51,6 +52,7 @@ def navbar():
         "Home": [st.Page(home_page, title="Home")],
         "Edit grammar": [
             st.Page(inventory_page, title="Inventory"),
+            st.Page(patterns_page, title="Patterns"),
         ],
         "Inflect": [],
         "Parse": [],

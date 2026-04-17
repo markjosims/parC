@@ -80,12 +80,12 @@ class ConfigWalker:
 
     def read_config_files(self, kind: str) -> dict[str, str]:
         """
-        Load all `config` files for the specified kind within `config_dir`
+        Load all config files for the specified kind from its subdirectory
         into a dict mapping filename to data.
         """
         schema = load_schema(kind)
         config_objects = {}
-        for filename in self.glob_config_files():
+        for filename in self.glob_config_files(kind):
             with open(filename, "r") as f:
                 content = f.read()
                 content_norm = unicodedata.normalize("NFKD", content)
@@ -93,25 +93,32 @@ class ConfigWalker:
 
                 # store filepath for config
                 config_data["source_path"] = str(filename)
-                if config_data.get("kind") == kind:
-                    try:
-                        validate(instance=config_data, schema=schema)
-                        config_objects[str(filename)] = config_data
-                    except ValidationError as e:
-                        logger.exception(f"Invalid config file {filename}: {e}")
-                        raise ValidationError(f"Invalid config file {filename}: {e}")
+                if config_data.get("kind") != kind:
+                    logger.warning(
+                        f"File {filename} in '{to_snake(kind)}/' has kind "
+                        f"'{config_data.get('kind')}', expected '{kind}' — skipping."
+                    )
+                    continue
+                try:
+                    validate(instance=config_data, schema=schema)
+                    config_objects[str(filename)] = config_data
+                except ValidationError as e:
+                    logger.exception(f"Invalid config file {filename}: {e}")
+                    raise ValidationError(f"Invalid config file {filename}: {e}")
         return config_objects
 
-    def glob_config_files(self):
-        return self.config_dir.glob("**/*.yaml")
+    def glob_config_files(self, kind: str):
+        """Glob YAML files in the subdirectory for the given kind."""
+        subdir = to_snake(kind)
+        return (self.config_dir / subdir).glob("*.yaml")
 
-    def find_config_file(self, name: str) -> Path:
-        """Search all config subdirectories for <name>.yaml."""
-        for filename in self.glob_config_files(name):
+    def find_config_file(self, name: str, kind: str) -> Path:
+        """Search the kind's subdirectory for <name>.yaml."""
+        for filename in self.glob_config_files(kind):
             if Path(filename).stem == name:
                 return Path(filename)
         raise FileNotFoundError(
-            f"Config file '{name}.yaml' not found in any config subdirectory."
+            f"Config file '{name}.yaml' not found in '{to_snake(kind)}/' subdirectory."
         )
 
     def resolve_ref(self, name: str) -> dict:
