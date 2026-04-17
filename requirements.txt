@@ -19,3 +19,4 @@ watchdog
 streamlit
 levenshtein
 camel_converter
+numba
