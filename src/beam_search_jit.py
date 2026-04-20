@@ -58,7 +58,7 @@ from numba import njit
 # ---------------------------------------------------------------------------
 
 MAX_LABEL_LEN: int = 128   # max length of any label path
-MAX_BEAMS_BUFFER: int = 16384 #8192  # pre-allocated slot count for beam buffers
+MAX_BEAMS_BUFFER: int = 32748 #8192  # pre-allocated slot count for beam buffers
 
 # ---------------------------------------------------------------------------
 # Module-level working buffers — allocated once at import time.

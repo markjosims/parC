@@ -3,9 +3,9 @@ import os
 from src.beam_search import (
     ascii_table,
     intersect_beam,
+    intersect_beam_forward_back,
     decode_beam,
     WfsaCsr,
-    WfsaCsrBeam,
 )
 import pynini
 import graphviz
@@ -25,7 +25,7 @@ import string
 from nltk.corpus import words
 import nltk
 
-nltk.download('words', quiet=True)
+nltk.download("words", quiet=True)
 edit_transducer = EditTransducer(alphabet=ascii_lowercase, bound=5)
 
 
@@ -75,6 +75,7 @@ def get_random_lexicon(num_words: int) -> pynini.Fst:
     lexicon.optimize()
     return lexicon
 
+
 def apply_random_edit(word: str) -> str:
     if not word:
         return random.choice(ascii_lowercase)
@@ -89,14 +90,15 @@ def apply_random_edit(word: str) -> str:
 
     elif edit_type == "delete" and len(word) > 0:
         pos = random.randint(0, len(word) - 1)
-        return word[:pos] + word[pos + 1:]
+        return word[:pos] + word[pos + 1 :]
 
     elif edit_type == "substitute" and len(word) > 0:
         pos = random.randint(0, len(word) - 1)
         char = random.choice(string.ascii_lowercase)
-        return word[:pos] + char + word[pos + 1:]
+        return word[:pos] + char + word[pos + 1 :]
 
     return word
+
 
 def sample_word_and_edit(wordlist: list[str], num_edits: int = 5) -> tuple[str, str]:
     word = random.choice(wordlist)
@@ -105,12 +107,14 @@ def sample_word_and_edit(wordlist: list[str], num_edits: int = 5) -> tuple[str, 
         edited_word = apply_random_edit(edited_word)
     return word, edited_word
 
+
 def get_english_lexicon(num_words: int) -> tuple[list[str], pynini.Fst]:
     wordlist = words.words()
     sampled_words = random.sample(wordlist, num_words)
     lexicon = pynini.union(*sampled_words)
     lexicon.optimize()
     return sampled_words, lexicon
+
 
 """
 Edit graph search
@@ -150,7 +154,6 @@ def intersect_graphs(
 ) -> dict:
     lattice = query_graph @ search_graph
     lattice_num_states = lattice.num_states()
-    breakpoint()
     lattice = lattice.project("output")
     lattice.optimize()
     top_k_lattice = lattice_to_nshortest(lattice, nshortest=top_k)
@@ -224,7 +227,7 @@ def profile_beam_search(
     decoded_results = [decode_beam(beam) for beam in search_results]
 
     return {
-        "search_strategy": "beam_search_fuzzy",
+        "search_strategy": "beam",
         "lexicon_preproc_time": lexicon_preproc_time,
         "query_preproc_time": query_preproc_time,
         "search_time": search_time,
@@ -233,7 +236,79 @@ def profile_beam_search(
         "results": decoded_results,
     }
 
-def profile_graph_search(lexicon: pynini.Fst, query: str, top_k: int = 5) -> dict[str, Any]:
+
+def profile_beam_search_forward_backward(
+    lexicon: pynini.Fst,
+    query: str,
+    top_k: int = 5,
+    unique_only: bool = True,
+) -> dict[str, Any]:
+    # lexicon preprocessing
+    def preproc_lexicon():
+        lexicon_csr = WfsaCsr.from_pynini(lexicon)
+        lexicon_csr_rev = WfsaCsr.from_pynini(pynini.reverse(lexicon).optimize())
+        return lexicon_csr, lexicon_csr_rev
+
+    lexicon_preproc_time, (lexicon_csr, lexicon_csr_rev) = time_execution(
+        preproc_lexicon
+    )
+
+    # query preprocessing
+    def preproc_query():
+        query_fsa = pynini.accep(query)
+        query_csr = WfsaCsr.from_pynini(query_fsa)
+        query_csr_rev = WfsaCsr.from_pynini(pynini.reverse(query_fsa).optimize())
+        return query_csr, query_csr_rev
+
+    query_preproc_time, (query_csr, query_csr_rev) = time_execution(preproc_query)
+
+    # search
+    def execute_search():
+        results = intersect_beam_forward_back(
+            left_forward=query_csr,
+            left_backward=query_csr_rev,
+            right_forward=lexicon_csr,
+            right_backward=lexicon_csr_rev,
+            num_beam=top_k,
+            fuzzy_search=True,
+            unique_only=unique_only,
+        )
+        return results
+
+    def execute_search_jit():
+        results = intersect_beam_forward_back(
+            left_forward=query_csr,
+            left_backward=query_csr_rev,
+            right_forward=lexicon_csr,
+            right_backward=lexicon_csr_rev,
+            num_beam=top_k,
+            fuzzy_search=True,
+            unique_only=unique_only,
+            use_jit=True,
+        )
+        return results
+
+    search_time, search_results = time_execution(execute_search)
+    search_time_jit, _ = time_execution(execute_search_jit)
+
+    total_time = lexicon_preproc_time + query_preproc_time + search_time
+
+    decoded_results = [decode_beam(beam) for beam in search_results]
+
+    return {
+        "search_strategy": "beam_forward_backward",
+        "lexicon_preproc_time": lexicon_preproc_time,
+        "query_preproc_time": query_preproc_time,
+        "search_time": search_time,
+        "search_time_jit": search_time_jit,
+        "total_time": total_time,
+        "results": decoded_results,
+    }
+
+
+def profile_graph_search(
+    lexicon: pynini.Fst, query: str, top_k: int = 5
+) -> dict[str, Any]:
     # lexicon preprocessing
     lexicon_preproc_time, search_graph = time_execution(
         lambda: get_search_graph(lexicon)
@@ -258,7 +333,7 @@ def profile_graph_search(lexicon: pynini.Fst, query: str, top_k: int = 5) -> dic
     total_time = lexicon_preproc_time + query_preproc_time + search_time
 
     return {
-        "search_strategy": "edit_graph_search",
+        "search_strategy": "edit_graph",
         "lexicon_preproc_time": lexicon_preproc_time,
         "query_preproc_time": query_preproc_time,
         "search_time": search_time,
@@ -267,9 +342,11 @@ def profile_graph_search(lexicon: pynini.Fst, query: str, top_k: int = 5) -> dic
         "lattice_num_states": lattice_num_states,
     }
 
+
 """
 Data visualization and inspection
 """
+
 
 def prepare_df_for_plotting(time_df: pd.DataFrame) -> pd.DataFrame:
     # melt df so that we have a single "time_seconds" and "search_stage" column for plotting
@@ -298,18 +375,25 @@ def prepare_df_for_plotting(time_df: pd.DataFrame) -> pd.DataFrame:
 
     # track JIT separately from non-JIT beam search
     jit_mask = (time_df["search_stage"] == "search_time_jit") & (
-        time_df["search_strategy"] == "beam_search_fuzzy"
+        time_df["search_strategy"].str.startswith("beam")
     )
-    time_df.loc[jit_mask, "search_strategy"] = "beam_search_fuzzy_jit"
+    time_df.loc[jit_mask, "search_strategy"] = time_df.loc[jit_mask, "search_strategy"] + "_jit"
 
     # merge "search_time_jit" with "search_time"
     time_df.loc[jit_mask, "search_stage"] = "search_time"
 
     # get inverse of time for better visualization (higher is better)
-    time_df["words_per_sec"] = time_df["time_seconds"].apply(lambda x: 1 / x if x > 0 else float("inf"))
+    time_df["words_per_sec"] = time_df["time_seconds"].apply(
+        lambda x: 1 / x if x > 0 else float("inf")
+    )
     return time_df
 
-def time_by_lexicon_size(plot_df: pd.DataFrame, feature: Literal["num_states", "num_words"] = "num_states", num_beam: int = 50):
+
+def time_by_lexicon_size(
+    plot_df: pd.DataFrame,
+    feature: Literal["num_states", "num_words"] = "num_states",
+    num_beam: int = 50,
+):
     """
     seaborn lineplot showing search time by lexicon size, with separate colors for beam search and graph search
     and separate facets for lexicon preprocessing and search time (exclude query preprocessing)
@@ -318,15 +402,16 @@ def time_by_lexicon_size(plot_df: pd.DataFrame, feature: Literal["num_states", "
     """
     sns.set_style("whitegrid")
     plot_mask = (plot_df["search_stage"] == "search_time") & (
-        (plot_df["search_strategy"] == "edit_graph_search") | (plot_df["num_beam"] == num_beam)
+        (plot_df["search_strategy"] == "edit_graph") | (plot_df["num_beam"] == num_beam)
     )
     sns.lineplot(
         data=plot_df[plot_mask],
         x=feature,
         y="words_per_sec",
         hue="search_strategy",
-    ) 
+    )
     plt.show()
+
 
 def time_by_num_beam(plot_df: pd.DataFrame):
     """
@@ -336,7 +421,7 @@ def time_by_num_beam(plot_df: pd.DataFrame):
     """
     sns.set_style("whitegrid")
     beam_plot_df = plot_df[
-        (plot_df["search_strategy"].isin(["beam_search_fuzzy", "beam_search_fuzzy_jit"]))
+        (plot_df["search_strategy"].isin(["beam", "beam_jit"]))
         & plot_df["search_stage"].eq("search_time")
     ]
     g = sns.FacetGrid(
@@ -347,12 +432,17 @@ def time_by_num_beam(plot_df: pd.DataFrame):
         sharey=True,
     )
     g.map_dataframe(
-        sns.lineplot, "num_states", "words_per_sec", hue="num_beam", style="search_strategy"
+        sns.lineplot,
+        "num_states",
+        "words_per_sec",
+        hue="num_beam",
+        style="search_strategy",
     )
     g.set_axis_labels("Lexicon Size (Number of States)", "Words Per Second")
     g.set_titles("Query Length = {col_name}")
     g.add_legend(title="Beam Size")
     plt.show()
+
 
 def plot_recall(plot_df: pd.DataFrame):
     """
@@ -361,7 +451,8 @@ def plot_recall(plot_df: pd.DataFrame):
     """
     sns.set_style("whitegrid")
     recall_plot_df = plot_df[
-        (plot_df["search_strategy"] == "beam_search_fuzzy")
+        (plot_df["search_strategy"].str.startswith("beam"))
+        & (~plot_df["search_strategy"].str.endswith("jit"))
         & plot_df["search_stage"].eq("search_time")
     ]
     sns.lineplot(
@@ -369,8 +460,12 @@ def plot_recall(plot_df: pd.DataFrame):
         x="num_states",
         y="recall",
         hue="num_beam",
+        style="search_strategy",
+        markers=True,
+        dashes=False,
     )
     plt.show()
+
 
 def get_linreg_coeffs(plot_df, num_beam: int = 50) -> pd.DataFrame:
     """
@@ -379,7 +474,7 @@ def get_linreg_coeffs(plot_df, num_beam: int = 50) -> pd.DataFrame:
     """
     coeffs = []
     for strategy in plot_df["search_strategy"].unique():
-        if strategy.startswith("beam_search"):
+        if strategy.startswith("beam"):
 
             strategy_mask = (plot_df["search_strategy"] == strategy) & (
                 plot_df["num_beam"] == num_beam
@@ -388,7 +483,9 @@ def get_linreg_coeffs(plot_df, num_beam: int = 50) -> pd.DataFrame:
             strategy_mask = plot_df["search_strategy"] == strategy
         strategy_df = plot_df[strategy_mask]
         strategy_df = strategy_df[strategy_df["search_stage"] == "search_time"]
-        strategy_df = strategy_df.dropna(subset=["num_states", "num_words", "words_per_sec"])
+        strategy_df = strategy_df.dropna(
+            subset=["num_states", "num_words", "words_per_sec"]
+        )
 
         X_words = strategy_df[["num_words"]]
         X_states = strategy_df[["num_states"]]
@@ -401,9 +498,14 @@ def get_linreg_coeffs(plot_df, num_beam: int = 50) -> pd.DataFrame:
         state_model.fit(X_states, y)
 
         coeffs.append((strategy, word_model.coef_[0], word_model.intercept_, "words"))
-        coeffs.append((strategy, state_model.coef_[0], state_model.intercept_, "states"))
+        coeffs.append(
+            (strategy, state_model.coef_[0], state_model.intercept_, "states")
+        )
 
-    return pd.DataFrame(coeffs, columns=["search_strategy", "slope", "intercept", "feature"])
+    return pd.DataFrame(
+        coeffs, columns=["search_strategy", "slope", "intercept", "feature"]
+    )
+
 
 def get_words_per_sec(plot_df: pd.DataFrame, num_beam: int = 50) -> pd.DataFrame:
     """
@@ -412,7 +514,7 @@ def get_words_per_sec(plot_df: pd.DataFrame, num_beam: int = 50) -> pd.DataFrame
     """
     wps_rows = []
     for strategy in plot_df["search_strategy"].unique():
-        if strategy.startswith("beam_search"):
+        if strategy.startswith("beam"):
             strategy_mask = (plot_df["search_strategy"] == strategy) & (
                 plot_df["num_beam"] == num_beam
             )
@@ -424,11 +526,12 @@ def get_words_per_sec(plot_df: pd.DataFrame, num_beam: int = 50) -> pd.DataFrame
         wps_rows.append((strategy, words_per_sec))
 
     return pd.DataFrame(wps_rows, columns=["search_strategy", "words_per_sec"])
-    
+
 
 """
 Main profiling function
 """
+
 
 def run_profiler() -> pd.DataFrame:
     # run beam search with JIT so that function is pre-compiled
@@ -446,7 +549,7 @@ def run_profiler() -> pd.DataFrame:
     for size in tqdm(lexicon_sizes):
         wordlist, lexicon = get_english_lexicon(size)
         num_states = lexicon.num_states()
-        for _ in range(num_queries) :
+        for _ in range(num_queries):
             target, query = sample_word_and_edit(wordlist, num_edits=5)
             query_len = len(query)
 
@@ -463,7 +566,9 @@ def run_profiler() -> pd.DataFrame:
             )
 
             for num_beam in beam_sizes:
-                beam_result = profile_beam_search(lexicon, query, top_k=num_beam, unique_only=True)
+                beam_result = profile_beam_search(
+                    lexicon, query, top_k=num_beam, unique_only=True
+                )
 
                 # beam search may miss some results due to pruning
                 # calculate recall based on graph search results
@@ -489,11 +594,38 @@ def run_profiler() -> pd.DataFrame:
                     }
                 )
 
+                beam_fb_result = profile_beam_search_forward_backward(
+                    lexicon, query, top_k=num_beam, unique_only=True
+                )
+
+                # get foerward-backward beam search recall
+                fb_results_set = set(beam_fb_result["results"])
+                fb_recall = (
+                    len(graph_results_set.intersection(fb_results_set))
+                    / len(graph_results_set)
+                    if graph_results_set
+                    else 1.0
+                )
+
+                time_rows.append(
+                    {
+                        **beam_fb_result,
+                        "num_words": size,
+                        "num_states": num_states,
+                        "query_len": query_len,
+                        "recall": fb_recall,
+                        "num_beam": num_beam,
+                        "query": query,
+                        "target": target,
+                    }
+                )
+
     time_df = pd.DataFrame(time_rows)
     plot_df = prepare_df_for_plotting(time_df)
     return plot_df
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     profile_csv = "./tmp/beam_search_profile.csv"
     if os.path.exists(profile_csv):
         df = pd.read_csv(profile_csv)

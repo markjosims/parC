@@ -378,6 +378,55 @@ def intersect_beam(
 
     return successful_beams
 
+def intersect_beam_forward_back(
+    left_forward: WfsaCsr,
+    right_forward: WfsaCsr,
+    left_backward: WfsaCsr,
+    right_backward: WfsaCsr,
+    num_beam: int = 5,
+    fuzzy_search: bool = False,
+    unique_only: bool = False,
+    use_jit: bool = False,
+) -> list[WfsaCsrBeam]:
+    """
+    Wrapper over `intersect_beam` that performs beam search in both forward
+    and backward directions, then merges results by intersecting the resulting
+    beams. This allows for better recall of the top `num_beam` results,
+    since a path that is pruned in the forward search might be kept in the backward search,
+    and vice versa.
+    """
+    forward_hypotheses = intersect_beam(
+        left=left_forward,
+        right=right_forward,
+        num_beam=num_beam,
+        fuzzy_search=fuzzy_search,
+        unique_only=unique_only,
+        use_jit=use_jit,
+    )
+    backward_hypotheses = intersect_beam(
+        left=left_backward,
+        right=right_backward,
+        num_beam=num_beam,
+        fuzzy_search=fuzzy_search,
+        unique_only=unique_only,
+        use_jit=use_jit,
+    )
+    # reverse label sequences in backward hypotheses to match forward direction
+    backward_hypotheses = [
+        WfsaCsrBeam(
+            left_state=beam.left_state,
+            right_state=beam.right_state,
+            path_weight=beam.path_weight,
+            final=beam.final,
+            labels=tuple(reversed(beam.labels)),
+        )
+        for beam in backward_hypotheses
+    ]
+
+    # merge forward and backward hypotheses by intersecting label sequences
+    hypotheses_filtered = filter_repeat_beams(forward_hypotheses + backward_hypotheses)
+    hypotheses_filtered.sort(key=lambda b: b.path_weight)
+    return hypotheses_filtered[:num_beam]
 
 if __name__ == "__main__":
     test = pynini.union(
@@ -406,5 +455,5 @@ if __name__ == "__main__":
         unique_only=True,
         use_jit=True,
     )
-    decoded_jit = [decode_beam(res) for res in result]
+    decoded_jit = [decode_beam(res) for res in result_jit]
     breakpoint()
