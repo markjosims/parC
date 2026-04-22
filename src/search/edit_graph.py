@@ -1,10 +1,88 @@
+from string import ascii_lowercase
+import graphviz
 import pynini
 from pynini.lib import pynutil
+from pynini.lib.edit_transducer import EditTransducer
+from pynini.lib.rewrite import lattice_to_nshortest
 
 DEFAULT_INSERT_COST = 1
 DEFAULT_DELETE_COST = 1
 DEFAULT_SUBSTITUTE_COST = 1
 DEFAULT_EDIT_BOUND = 5
+
+_edit_transducer = EditTransducer(alphabet=ascii_lowercase, bound=5)
+
+ascii_table = pynini.SymbolTable()
+ascii_table.add_symbol("<eps>")
+alphabet = ["<eps>"] + list(ascii_lowercase)
+
+symbol_range = (1, 256)
+
+for i in range(*symbol_range):
+    ascii_table.add_symbol(chr(i))
+
+
+def set_symbols(fst: pynini.Fst):
+    fst.set_input_symbols(ascii_table)
+    fst.set_output_symbols(ascii_table)
+    return fst
+
+
+def print_fst(f):
+    f = set_symbols(f)
+    tmp_path = "./tmp/null.dot"
+    f.draw(tmp_path, portrait=True)
+    with open(tmp_path) as file:
+        graph = graphviz.Source(file.read())
+    graph.render(tmp_path.removesuffix(".dot") + ".gv")
+
+def decode_lattice(lattice: pynini.Fst) -> list[tuple[str, float]]:
+    result = []
+
+    path_iter = lattice.paths()
+    while not path_iter.done():
+        label_iter = path_iter.olabels()
+        label_chars = [ascii_table.find(label) for label in label_iter if label != 0]
+        label_str = "".join(label_chars)
+        weight = float(path_iter.weight())
+        result.append((label_str, weight))
+        path_iter.next()
+
+    result.sort(key=lambda t: t[-1])
+    return result
+
+
+def get_search_graph(lexicon: pynini.Fst, right_factor: pynini.Fst | None = None) -> pynini.Fst:
+    if right_factor is None:
+        right_factor = _edit_transducer._e_o
+    
+    search_graph = right_factor @ lexicon
+    search_graph.optimize()
+    return search_graph
+
+
+def get_query_graph(query_str: pynini.Fst, left_factor: pynini.Fst | None = None) -> pynini.Fst:
+    if left_factor is None:
+        left_factor = _edit_transducer._e_i
+
+    query_graph = query_str @ left_factor
+    query_graph.optimize()
+    return query_graph
+
+
+def intersect_graphs(
+    query_graph: pynini.FstLike, search_graph: pynini.Fst, top_k: int = 5
+) -> dict:
+    lattice = query_graph @ search_graph
+    lattice_num_states = lattice.num_states()
+    lattice = lattice.project("output")
+    lattice.optimize()
+    top_k_lattice = lattice_to_nshortest(lattice, nshortest=top_k)
+    result = decode_lattice(top_k_lattice)
+    return {
+        "result": result,
+        "lattice_num_states": lattice_num_states,
+    }
 
 
 def get_edit_factors(

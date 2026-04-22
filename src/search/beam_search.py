@@ -2,31 +2,7 @@ from typing import NamedTuple
 import pynini
 import numpy as np
 from dataclasses import dataclass
-import graphviz
 from src.search.beam_search_jit import intersect_beam_jit
-
-ascii_table = pynini.SymbolTable()
-ascii_table.add_symbol("<eps>")
-
-symbol_range = (1, 256)
-
-for i in range(*symbol_range):
-    ascii_table.add_symbol(chr(i))
-
-
-def set_symbols(fst: pynini.Fst):
-    fst.set_input_symbols(ascii_table)
-    fst.set_output_symbols(ascii_table)
-    return fst
-
-
-def print_fst(f):
-    f = set_symbols(f)
-    tmp_path = "./tmp/null.dot"
-    f.draw(tmp_path, portrait=True)
-    with open(tmp_path) as file:
-        graph = graphviz.Source(file.read())
-    graph.render(tmp_path.removesuffix(".dot") + ".gv")
 
 
 class WfsaCsr(NamedTuple):

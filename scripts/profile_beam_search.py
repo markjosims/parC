@@ -7,12 +7,17 @@ from src.search.beam_search import (
     decode_beam,
     WfsaCsr,
 )
+from src.search.edit_modeling import (
+    get_random_transition_matrix,
+    kl_divergence_from_uniform,
+    conditional_kl_divergence_from_uniform,
+)
+from src.search.edit_graph import intersect_graphs, ascii_table, alphabet
+
 import pynini
 import graphviz
 import numpy as np
 from pynini.lib.edit_transducer import EditTransducer
-from pynini.lib.rewrite import lattice_to_nshortest
-from string import ascii_lowercase
 import time
 from typing import Any, Literal
 import pandas as pd
@@ -21,12 +26,10 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from sklearn.linear_model import LinearRegression
 import random
-import string
 from nltk.corpus import words
 import nltk
 
 nltk.download("words", quiet=True)
-edit_transducer = EditTransducer(alphabet=ascii_lowercase, bound=5)
 
 
 """
@@ -76,26 +79,49 @@ def get_random_lexicon(num_words: int) -> pynini.Fst:
     return lexicon
 
 
-def apply_random_edit(word: str) -> str:
-    if not word:
-        return random.choice(ascii_lowercase)
+def apply_random_edit(
+    word: tuple[int], insert_prob: float, edit_prob_matrix: np.ndarray = None
+) -> tuple[int]:
+    """
+    Apply a random edit (insertion, deletion, substitution) to the input word,
+    where the word is a tuple of token indices.
 
-    edit_types = ["insert", "delete", "substitute"]
-    edit_type = random.choice(edit_types)
+    The type of edit is chosen based on the provided probabilities.
+     - insert_prob: probability of insertion (vs. deletion/substitution)
+     - edit_prob_matrix: a transition matrix of shape (vocab_size, vocab_size)
+        where edit_prob_matrix[i][j] gives the probability of substituting character i
+        with character j (when i != j). Assume row/column 0 corresponds to the null token
+        for insertions/deletions.
 
-    if edit_type == "insert":
-        pos = random.randint(0, len(word))
-        char = random.choice(string.ascii_lowercase)
-        return word[:pos] + char + word[pos:]
+    If edit_prob_matrix is not provided, assume uniform probabilities over edits.
 
-    elif edit_type == "delete" and len(word) > 0:
-        pos = random.randint(0, len(word) - 1)
-        return word[:pos] + word[pos + 1 :]
+    Choose edit by first deciding whether to insert or delete/substitute based on
+    insert_prob, then sample the index to perform the edit at uniformly from the word length,
+    and then sample the specific edit from the edit_prob_matrix.
+    """
+    insert_likelihood = np.random.random()
+    is_insert = insert_likelihood < insert_prob
 
-    elif edit_type == "substitute" and len(word) > 0:
-        pos = random.randint(0, len(word) - 1)
-        char = random.choice(string.ascii_lowercase)
-        return word[:pos] + char + word[pos + 1 :]
+    if edit_prob_matrix is None:
+        edit_prob_matrix = np.ones((len(ascii_table), len(ascii_table))) / len(
+            ascii_table
+        )
+
+    if is_insert:
+        index = np.random.randint(0, len(word) + 1)
+        insert_char = np.random.choice(len(ascii_table), p=edit_prob_matrix[0])
+        word = word[:index] + (insert_char,) + word[index:]
+    else:
+        index = np.random.randint(0, len(word))
+        original_char = word[index]
+        edit_probs = edit_prob_matrix[original_char]
+        new_char = np.random.choice(len(ascii_table), p=edit_probs)
+        if new_char == 0:
+            # Deletion
+            word = word[:index] + word[index + 1 :]
+        else:
+            # Substitution
+            word = word[:index] + (new_char,) + word[index + 1 :]
 
     return word
 
@@ -114,54 +140,6 @@ def get_english_lexicon(num_words: int) -> tuple[list[str], pynini.Fst]:
     lexicon = pynini.union(*sampled_words)
     lexicon.optimize()
     return sampled_words, lexicon
-
-
-"""
-Edit graph search
-"""
-
-
-def decode_lattice(lattice: pynini.Fst) -> list[tuple[str, float]]:
-    result = []
-
-    path_iter = lattice.paths()
-    while not path_iter.done():
-        label_iter = path_iter.olabels()
-        label_chars = [ascii_table.find(label) for label in label_iter if label != 0]
-        label_str = "".join(label_chars)
-        weight = float(path_iter.weight())
-        result.append((label_str, weight))
-        path_iter.next()
-
-    result.sort(key=lambda t: t[-1])
-    return result
-
-
-def get_search_graph(lexicon: pynini.Fst) -> pynini.Fst:
-    search_graph = edit_transducer._e_o @ lexicon
-    search_graph.optimize()
-    return search_graph
-
-
-def get_query_graph(query_str: pynini.Fst) -> pynini.Fst:
-    query_graph = query_str @ edit_transducer._e_i
-    query_graph.optimize()
-    return query_graph
-
-
-def intersect_graphs(
-    query_graph: pynini.FstLike, search_graph: pynini.Fst, top_k: int = 5
-) -> dict:
-    lattice = query_graph @ search_graph
-    lattice_num_states = lattice.num_states()
-    lattice = lattice.project("output")
-    lattice.optimize()
-    top_k_lattice = lattice_to_nshortest(lattice, nshortest=top_k)
-    result = decode_lattice(top_k_lattice)
-    return {
-        "result": result,
-        "lattice_num_states": lattice_num_states,
-    }
 
 
 """
@@ -377,7 +355,9 @@ def prepare_df_for_plotting(time_df: pd.DataFrame) -> pd.DataFrame:
     jit_mask = (time_df["search_stage"] == "search_time_jit") & (
         time_df["search_strategy"].str.startswith("beam")
     )
-    time_df.loc[jit_mask, "search_strategy"] = time_df.loc[jit_mask, "search_strategy"] + "_jit"
+    time_df.loc[jit_mask, "search_strategy"] = (
+        time_df.loc[jit_mask, "search_strategy"] + "_jit"
+    )
 
     # merge "search_time_jit" with "search_time"
     time_df.loc[jit_mask, "search_stage"] = "search_time"
