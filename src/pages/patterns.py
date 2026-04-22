@@ -14,7 +14,6 @@ Usage:
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -23,13 +22,19 @@ import streamlit as st
 from src.config_utils.config_walker import ConfigWalker
 from src.grammar.registry.pattern_registry import Pattern, PatternRegistry
 from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
-from src.pages.editor_utils import EditorBase
+from src.pages.editor_utils import EditorBase, editor_guard, editor_sidebar, editor_header
 
 _config_kind = "Patterns"
 _config_key = "pattern_configs"
 
 _NODE_PREFIXES = ("name-", "ref-", "pattern_text-", "test_includes-", "test_excludes-")
 
+_help_str = """
+Pattern files define FSA shorthands used in morphological rules.
+Each entry has a **reference** (e.g. `<V_Front>`) and a **pattern**
+string (a regex-like expression over inventory refs).
+Patterns are displayed in dependency order.
+"""
 
 """
 PatternEditor
@@ -244,99 +249,10 @@ def _render_pattern(uid: str, editor: PatternEditor) -> None:
 
 
 """
-Page function
+Page components
 """
 
-
-def patterns_page() -> None:
-    st.set_page_config(
-        page_title="Pattern Editor",
-        page_icon="🔣",
-        layout="wide",
-    )
-
-    config_dir: str = st.session_state["config_dir"]
-    config_walker: ConfigWalker = st.session_state["config_walker"]
-    pattern_files = config_walker.config_filemap[_config_key]
-
-    # Sidebar: file picker
-    with st.sidebar:
-        st.title("🔣 Pattern Editor")
-        st.caption(f"`CONFIG_DIR`: `{config_dir}`")
-        st.divider()
-
-        st.subheader("Open file")
-        file_options = [None] + pattern_files
-        file_indices = list(range(len(file_options)))
-        pattern_stems = [Path(f).stem for f in pattern_files]
-        file_display_options = ["(new file)"] + pattern_stems
-
-        if not pattern_files:
-            st.info("No pattern files found.")
-
-        selected_file_idx = st.selectbox(
-            "Pattern files",
-            options=file_indices,
-            format_func=lambda i: file_display_options[i],
-            key="file_selector",
-            label_visibility="collapsed",
-        )
-        selected_file = file_options[selected_file_idx]
-
-        col_open, col_refresh = st.columns(2)
-        with col_open:
-            if st.button("Open", use_container_width=True, type="primary"):
-                editor = PatternEditor()
-                try:
-                    if selected_file is None:
-                        editor.new_file()
-                    else:
-                        editor.load_file(selected_file, config_walker)
-                except (KeyError, ValueError) as exc:
-                    st.error(str(exc))
-                else:
-                    st.session_state["editor"] = editor
-                st.rerun()
-        with col_refresh:
-            if st.button(
-                "↺ Refresh",
-                use_container_width=True,
-                help="Re-scan CONFIG_DIR for pattern files",
-            ):
-                st.rerun()
-
-        st.divider()
-        st.subheader("About")
-        st.markdown(
-            "Pattern files define FSA shorthands used in morphological rules. "
-            "Each entry has a **reference** (e.g. `<V_Front>`) and a **pattern** "
-            "string (a regex-like expression over inventory refs). "
-            "Patterns are displayed in dependency order."
-        )
-
-    # Guard: no state yet
-    editor: PatternEditor | None = st.session_state.get("editor")
-    if editor is None:
-        st.info(
-            "👈 Select a file in the sidebar and click **Open**, "
-            "or open a **(new file)** to begin."
-        )
-        st.stop()
-
-    # Header
-    st.header(editor.stem or "New patterns file")
-
-    col_name, col_spacer = st.columns([3, 5])
-    with col_name:
-        st.text_input(
-            "File name",
-            key="file_name",
-            value=editor.stem,
-            placeholder="vowel_classes",
-            help="Name for this patterns file (no extension needed).",
-        )
-
-    # Toolbar
+def pattern_toolbar(editor: PatternEditor) -> None:
     col_add, col_save, col_preview_toggle, _ = st.columns([1.4, 1.2, 1.6, 5])
 
     with col_add:
@@ -368,10 +284,9 @@ def patterns_page() -> None:
                 _yaml.dump(editor.to_yaml(), allow_unicode=True, sort_keys=False)
             )
 
-    st.divider()
-
-    # Pattern list
-    id_map = editor.data.get("id_map", {})
+def pattern_form(editor: PatternEditor) -> None:
+    """Render form inputs for all patterns in editor.data."""
+    id_map: dict[str, Pattern] = editor.data.get("id_map", {})
     if not id_map:
         st.info(
             "No patterns yet. Click **➕ Add pattern** to start — "
@@ -380,6 +295,42 @@ def patterns_page() -> None:
     else:
         for uid in id_map:
             _render_pattern(uid, editor)
+
+"""
+Page function
+"""
+
+
+def patterns_page() -> None:
+    st.set_page_config(
+        page_title="Pattern Editor",
+        page_icon="🔣",
+        layout="wide",
+    )
+
+    config_dir: str = st.session_state["config_dir"]
+    config_walker: ConfigWalker = st.session_state["config_walker"]
+    pattern_files = config_walker.config_filemap[_config_key]
+
+    editor_sidebar(
+        kind=_config_kind,
+        editor_class=PatternEditor,
+        config_dir=config_dir,
+        config_walker=config_walker,
+        kind_files=pattern_files,
+        help_str=_help_str,
+    )
+
+    editor = editor_guard(kind=_config_kind)
+    editor_header(kind=_config_kind, editor=editor)
+
+    pattern_toolbar(editor)
+
+    st.divider()
+
+    pattern_form(editor)
+
+    
 
 
 if __name__ == "__main__":

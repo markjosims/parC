@@ -22,7 +22,12 @@ from src.grammar.registry.inventory_registry import (
     InventoryRegistry,
 )
 from src.config_utils.config_walker import ConfigWalker
-from src.pages.editor_utils import EditorBase
+from src.pages.editor_utils import (
+    EditorBase,
+    editor_guard,
+    editor_sidebar,
+    editor_header,
+)
 
 """
 Constants
@@ -41,6 +46,12 @@ _NODE_PREFIXES = ("name-", "ref-", "items_kind-", "items_text-")
 
 _config_kind = "Inventory"
 _config_key = "inventory_configs"
+
+_help_str = """
+    Inventory files define phoneme and symbol sets used by the FST parser.
+    Each node can contain **phones** (consonants, vowels, tones) or **flags**
+    (internal markers). See `README.md` for the full schema.
+"""
 
 
 """
@@ -109,9 +120,9 @@ class InventoryEditor(EditorBase):
     def __init__(self) -> None:
         super().__init__(kind=_config_kind, config_key=_config_key)
 
-    # ------------------------------------------------------------------
-    # EditorBase abstract methods
-    # ------------------------------------------------------------------
+    """
+    EditorBase abstract methods
+    """
 
     def build_state_from_config(self, config_object: dict) -> dict:
         filepath = config_object["source_path"]
@@ -172,9 +183,9 @@ class InventoryEditor(EditorBase):
             for i in range(len(DIAC_TOKENS)):
                 st.session_state.pop(f"diac-{node_id}-{i}", None)
 
-    # ------------------------------------------------------------------
-    # Tree accessors
-    # ------------------------------------------------------------------
+    """
+    Tree accessors
+    """
 
     def get_node(self, node_id: str) -> InventoryClass | None:
         return self.data["item_map"].get(node_id)
@@ -188,9 +199,9 @@ class InventoryEditor(EditorBase):
             return None
         return "item-" + "-".join(str(i) for i in indices[:-1])
 
-    # ------------------------------------------------------------------
-    # Tree mutations
-    # ------------------------------------------------------------------
+    """
+    Tree mutations
+    """
 
     def insert_top_node(self) -> str:
         """Append a new top-level node; return its node_id."""
@@ -266,7 +277,7 @@ class InventoryEditor(EditorBase):
                 sibling_ids.remove(node_id)
         else:
             # Clear widget keys for following siblings (their ids will change)
-            following = sibling_ids[indices[-1] + 1:]
+            following = sibling_ids[indices[-1] + 1 :]
             for sid in following:
                 self._clear_subtree_keys(sid)
             # Rebuild the subtree under parent
@@ -304,6 +315,8 @@ Node rendering (recursive)
 
 def _render_node(node_id: str, editor: InventoryEditor, depth: int = 0) -> None:
     """Render a single inventory node and recurse into children."""
+    # TODO: currently no way to edit the type of a nested_class node or convert
+    # between phone_class and flag_class — add this in the future if needed
     node = editor.get_node(node_id)
     assert node is not None, f"Cannot render non-existent node: {node_id}"
     is_nested = node.type == "nested_class"
@@ -386,98 +399,14 @@ def _render_node(node_id: str, editor: InventoryEditor, depth: int = 0) -> None:
 
 
 """
-Page function
+Page components
 """
 
 
-def inventory_page() -> None:
-    st.set_page_config(
-        page_title="Inventory Editor",
-        page_icon="🔤",
-        layout="wide",
-    )
-
-    config_dir: str = st.session_state["config_dir"]
-    config_walker: ConfigWalker = st.session_state["config_walker"]
-    inventory_files = config_walker.config_filemap[_config_key]
-
-    # Sidebar: file picker
-    with st.sidebar:
-        st.title("🔤 Inventory Editor")
-        st.caption(f"`CONFIG_DIR`: `{config_dir}`")
-        st.divider()
-
-        st.subheader("Open file")
-        file_options = [None] + inventory_files
-        file_indices = list(range(len(file_options)))
-
-        inventory_stems = [Path(f).stem for f in inventory_files]
-        file_display_options = ["(new file)"] + inventory_stems
-
-        if not inventory_files:
-            st.info("No inventory files found.")
-
-        selected_file_idx = st.selectbox(
-            "Inventory files",
-            options=file_indices,
-            format_func=lambda i: file_display_options[i],
-            key="file_selector",
-            label_visibility="collapsed",
-        )
-        selected_file = file_options[selected_file_idx]
-
-        col_open, col_refresh = st.columns(2)
-        with col_open:
-            if st.button("Open", use_container_width=True, type="primary"):
-                editor = InventoryEditor()
-                try:
-                    if selected_file is None:
-                        editor.new_file()
-                    else:
-                        editor.load_file(selected_file, config_walker)
-                except (KeyError, ValueError) as exc:
-                    st.error(str(exc))
-                else:
-                    st.session_state["editor"] = editor
-                st.rerun()
-        with col_refresh:
-            if st.button(
-                "↺ Refresh",
-                use_container_width=True,
-                help="Re-scan CONFIG_DIR for inventory files",
-            ):
-                st.rerun()
-
-        st.divider()
-        st.subheader("About")
-        st.markdown(
-            "Inventory files define phoneme and symbol sets used by the FST parser. "
-            "Each node can contain **phones** (consonants, vowels, tones) or **flags** "
-            "(internal markers). See `README.md` for the full schema."
-        )
-
-    # Guard: no state yet
-    editor: InventoryEditor | None = st.session_state.get("editor")
-    if editor is None:
-        st.info(
-            "👈 Select a file in the sidebar and click **Open**, or open a **(new file)** to begin."
-        )
-        st.stop()
-
-    # Header row
-    st.header(editor.stem or "New inventory file")
-
-    col_name, col_spacer = st.columns([3, 5])
-    with col_name:
-        st.text_input(
-            "File name",
-            key="file_name",
-            value=editor.stem,
-            placeholder="segments",
-            help="Name for this inventory file (no extension needed).",
-        )
-
-    # Toolbar
+def inventory_toolbar(editor: InventoryEditor) -> None:
+    """
+    Render toolbar with buttons for adding nodes, saving YAML, and toggling the preview pane.
+    """
     col_add, col_save, col_preview_toggle, _ = st.columns([1.4, 1.2, 1.6, 5])
 
     with col_add:
@@ -506,11 +435,14 @@ def inventory_page() -> None:
         with st.container(border=True):
             st.caption("YAML preview — reflects unsaved edits")
             import yaml as _yaml
+
             st.code(_yaml.dump(editor.to_yaml(), allow_unicode=True, sort_keys=False))
 
-    st.divider()
 
-    # Node tree
+def node_tree(editor: InventoryEditor) -> None:
+    """
+    Render the tree of inventory nodes by recursively rendering from the top-level nodes.
+    """
     top_node_ids = editor.data.get("node_id_map", {}).get("item", [])
 
     if not top_node_ids:
@@ -521,6 +453,40 @@ def inventory_page() -> None:
     else:
         for node_id in top_node_ids:
             _render_node(node_id, editor, depth=0)
+
+
+"""
+Page function
+"""
+
+
+def inventory_page() -> None:
+    st.set_page_config(
+        page_title="Inventory Editor",
+        page_icon="🔤",
+        layout="wide",
+    )
+
+    config_dir: str = st.session_state["config_dir"]
+    config_walker: ConfigWalker = st.session_state["config_walker"]
+    inventory_files = config_walker.config_filemap[_config_key]
+
+    editor_sidebar(
+        _config_kind,
+        InventoryEditor,
+        config_dir,
+        config_walker,
+        inventory_files,
+        _help_str,
+    )
+    editor = editor_guard(kind=_config_kind)
+
+    editor_header(kind=_config_kind, editor=editor)
+    inventory_toolbar(editor)
+
+    st.divider()
+
+    node_tree(editor)
 
 
 if __name__ == "__main__":

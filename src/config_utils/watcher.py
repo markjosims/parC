@@ -9,6 +9,8 @@ only accessible from the main script thread.  The watcher therefore sets a
 thread-safe threading.Event flag rather than touching st.session_state
 directly.  Call check_and_apply_invalidation() at the top of each page
 rerun to act on the flag from the main thread.
+
+BUG: `check_and_apply_invalidation` does not seem to be triggering correctly
 """
 
 from __future__ import annotations

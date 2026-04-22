@@ -123,3 +123,105 @@ class EditorBase(ABC):
         with dest.open("w", encoding="utf-8") as f:
             yaml.dump(yaml_doc, f, allow_unicode=True, sort_keys=False)
         self.path = str(dest)
+
+
+def editor_guard(kind: ConfigKindType) -> EditorBase:
+    """
+    Check if an Editor instance is in session state;
+    if not, show a prompt and stop execution.
+    """
+
+    # check if user just switched from a different page
+    current_page = st.session_state.get("current_page", "unknown")
+    if current_page != kind:
+        st.session_state.pop("editor", None)
+        st.session_state["current_page"] = kind
+
+    editor = st.session_state.get("editor")
+
+    if editor is None:
+        st.info(
+            "👈 Select a file in the sidebar and click **Open**, or open a **(new file)** to begin."
+        )
+        st.stop()
+    return editor
+
+
+def editor_sidebar(
+    kind: str,
+    editor_class: type[EditorBase],
+    config_dir: str,
+    config_walker: ConfigWalker,
+    kind_files: list[str],
+    help_str: str,
+) -> None:
+    """
+    Render sidebar for the inventory page, including file selector and about info.
+    """
+    with st.sidebar:
+        st.title("🔤 Inventory Editor")
+        st.caption(f"`CONFIG_DIR`: `{config_dir}`")
+        st.divider()
+
+        st.subheader("Open file")
+        file_options = [None] + kind_files
+        file_indices = list(range(len(file_options)))
+
+        kind_stems = [Path(f).stem for f in kind_files]
+        file_display_options = ["(new file)"] + kind_stems
+
+        if not kind_files:
+            st.info(f"No {kind} files found.")
+
+        selected_file_idx = st.selectbox(
+            f"{kind} files",
+            options=file_indices,
+            format_func=lambda i: file_display_options[i],
+            key="file_selector",
+            label_visibility="collapsed",
+        )
+        selected_file = file_options[selected_file_idx]
+
+        col_open, col_refresh = st.columns(2)
+        with col_open:
+            if st.button("Open", use_container_width=True, type="primary"):
+                editor = editor_class()
+                try:
+                    if selected_file is None:
+                        editor.new_file()
+                    else:
+                        editor.load_file(selected_file, config_walker)
+                except (KeyError, ValueError) as exc:
+                    st.error(str(exc))
+                else:
+                    st.session_state["editor"] = editor
+                st.rerun()
+        with col_refresh:
+            if st.button(
+                "↺ Refresh",
+                use_container_width=True,
+                help=f"Re-scan CONFIG_DIR for {kind} files",
+            ):
+                st.rerun()
+
+        st.divider()
+        st.subheader("About")
+        st.markdown(help_str)
+
+
+def editor_header(kind: ConfigKindType, editor: type[EditorBase]) -> None:
+    """
+    Render the page header, including the file name input field.
+    The file name is stored in session state and used when saving the YAML file.
+    """
+    st.header(editor.stem or f"New {kind} file")
+
+    col_name, _ = st.columns([3, 5])
+    with col_name:
+        st.text_input(
+            "File name",
+            key="file_name",
+            value=editor.stem,
+            placeholder="segments",
+            help=f"Name for this {kind} file (no extension needed).",
+        )
