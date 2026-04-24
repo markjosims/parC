@@ -384,6 +384,7 @@ def prepare_df_for_plotting(time_df: pd.DataFrame) -> pd.DataFrame:
             "query",
             "target",
             "lattice_num_states",
+            "alpha",
         ],
         value_vars=[
             "lexicon_preproc_time",
@@ -425,8 +426,13 @@ def time_by_lexicon_size(
     fix num_beam for beam search
     """
     sns.set_style("whitegrid")
-    plot_mask = (plot_df["search_stage"] == "search_time") & (
-        (plot_df["search_strategy"] == "edit_graph") | (plot_df["num_beam"] == num_beam)
+    plot_mask = (
+        (plot_df["search_stage"] == "search_time")
+        & (plot_df["alpha"].eq(0.0))
+        & (
+            (plot_df["search_strategy"] == "edit_graph")
+            | (plot_df["num_beam"] == num_beam)
+        )
     )
     sns.lineplot(
         data=plot_df[plot_mask],
@@ -447,6 +453,7 @@ def time_by_num_beam(plot_df: pd.DataFrame):
     beam_plot_df = plot_df[
         (plot_df["search_strategy"].isin(["beam", "beam_jit"]))
         & plot_df["search_stage"].eq("search_time")
+        & plot_df["alpha"].eq(0.0)
     ]
     g = sns.FacetGrid(
         beam_plot_df,
@@ -470,8 +477,8 @@ def time_by_num_beam(plot_df: pd.DataFrame):
 
 def plot_recall(plot_df: pd.DataFrame):
     """
-    plot recall by lexicon size, faceted by query length and colored by num_beam,
-    only showing beam search results
+    plot recall by alpha, faceted by query length and colored by num_beam,
+    only showing non-jit results
     """
     sns.set_style("whitegrid")
     recall_plot_df = plot_df[
@@ -481,7 +488,7 @@ def plot_recall(plot_df: pd.DataFrame):
     ]
     sns.lineplot(
         data=recall_plot_df,
-        x="num_states",
+        x="alpha",
         y="recall",
         hue="num_beam",
         style="search_strategy",
@@ -556,125 +563,6 @@ def get_words_per_sec(plot_df: pd.DataFrame, num_beam: int = 50) -> pd.DataFrame
 Main profiling function
 """
 
-
-def run_profiler() -> pd.DataFrame:
-    # run beam search with JIT so that function is pre-compiled
-    graph = WfsaCsr.from_pynini(pynini.accep("foo"))
-    intersect_beam(graph, graph, fuzzy_search=True, use_jit=True)
-
-    time_rows = []
-
-    # alphabet FSA: same regardless of lexicon
-    sigma = pynini.union(*alphabet).optimize()
-
-    # Hyperparameters for profiling
-    # - alphas: alpha values to pass to edit cost matrix construction
-    # - insert_prob: probability of insertion vs. deletion/substitution
-    #       when generating random edits
-    # - lexicon sizes: num words in search lexicon
-    # - num queries: number of random queries to sample per lexicon
-    # - beam sizes: number of beams to keep for beam search
-
-    alphas = np.logspace(0.0, 100, 5)
-    insert_prob = 0.3
-    # reverse for pyschological benefit
-    # (loop speeds up as it progresses instead of slowing down)
-    lexicon_sizes = np.arange(1_000, 101_000, 10_000)[::-1]
-    num_queries = 3
-    beam_sizes = [10, 20, 50, 100, 200]
-
-    for size in tqdm(lexicon_sizes):
-        for alpha in alphas:
-            edit_probs = get_random_transition_matrix(len(alphabet), alpha)
-            edit_costs = -np.log(
-                edit_probs + 1e-10
-            )  # add small value to prevent log(0)
-
-            wordlist, lexicon = get_english_lexicon(size)
-            num_states = lexicon.num_states()
-            for _ in range(num_queries):
-                target, query = sample_word_and_edit(
-                    wordlist,
-                    num_edits=5,
-                    edit_prob_matrix=edit_probs,
-                    insert_prob=insert_prob,
-                )
-                query_len = len(query)
-
-                graph_result, graph_result_row = perform_graph_search(
-                    size=size,
-                    sigma=sigma,
-                    lexicon=lexicon,
-                    num_states=num_states,
-                    target=target,
-                    query=query,
-                    query_len=query_len,
-                )
-                graph_results_set = set(graph_result["results"])
-
-                time_rows.append(graph_result_row)
-
-                for num_beam in beam_sizes:
-                    beam_result_row = perform_beam_search(
-                        size=size,
-                        lexicon=lexicon,
-                        num_states=num_states,
-                        target=target,
-                        query=query,
-                        query_len=query_len,
-                        graph_results_set=graph_results_set,
-                        num_beam=num_beam,
-                    )
-
-                    beam_result_row_w_costs = perform_beam_search(
-                        size=size,
-                        lexicon=lexicon,
-                        num_states=num_states,
-                        target=target,
-                        query=query,
-                        query_len=query_len,
-                        graph_results_set=graph_results_set,
-                        num_beam=num_beam,
-                        cost_matrix=edit_costs,
-                    )
-
-                    beam_search_fb_row = perform_beam_search_fb(
-                        size=size,
-                        lexicon=lexicon,
-                        num_states=num_states,
-                        target=target,
-                        query=query,
-                        query_len=query_len,
-                        num_beam=num_beam,
-                        graph_results_set=graph_results_set,
-                    )
-
-                    beam_search_fb_row_w_costs = perform_beam_search_fb(
-                        size=size,
-                        lexicon=lexicon,
-                        num_states=num_states,
-                        target=target,
-                        query=query,
-                        query_len=query_len,
-                        num_beam=num_beam,
-                        graph_results_set=graph_results_set,
-                        cost_matrix=edit_costs,
-                    )
-
-                    time_rows.extend(
-                        [
-                            beam_result_row,
-                            beam_result_row_w_costs,
-                            beam_search_fb_row,
-                            beam_search_fb_row_w_costs,
-                        ]
-                    )
-
-    time_df = pd.DataFrame(time_rows)
-    plot_df = prepare_df_for_plotting(time_df)
-    return plot_df
-
-
 def perform_beam_search_fb(
     size: int,
     lexicon: pynini.Fst,
@@ -685,6 +573,7 @@ def perform_beam_search_fb(
     num_beam: int,
     graph_results_set: set,
     cost_matrix: np.ndarray | None = None,
+    alpha: float = 0.0,
 ):
     beam_fb_result = profile_beam_search_forward_backward(
         lexicon, query, top_k=num_beam, unique_only=True, cost_matrix=cost_matrix
@@ -707,6 +596,7 @@ def perform_beam_search_fb(
         "num_beam": num_beam,
         "query": query,
         "target": target,
+        "alpha": alpha,
     }
 
     return beam_search_fb_row
@@ -722,6 +612,7 @@ def perform_beam_search(
     graph_results_set: set[str],
     num_beam: int,
     cost_matrix: np.ndarray | None = None,
+    alpha: float = 0.0,
 ):
     beam_result = profile_beam_search(
         lexicon, query, top_k=num_beam, unique_only=True, cost_matrix=cost_matrix
@@ -745,6 +636,7 @@ def perform_beam_search(
         "num_beam": num_beam,
         "query": query,
         "target": target,
+        "alpha": alpha,
     }
 
     return beam_result_row
@@ -758,9 +650,11 @@ def perform_graph_search(
     target: str,
     query: str,
     query_len: int,
+    alpha: float | None = None,
+    cost_matrix: np.ndarray | None = None,
 ):
     graph_result = profile_graph_search(
-        lexicon=lexicon, sigma=sigma, query=query, top_k=10
+        lexicon=lexicon, sigma=sigma, query=query, top_k=10, cost_matrix=cost_matrix
     )
     graph_result_row = {
         **graph_result,
@@ -769,9 +663,143 @@ def perform_graph_search(
         "query_len": query_len,
         "query": query,
         "target": target,
+        "alpha": alpha,
     }
 
     return graph_result, graph_result_row
+
+def run_profiler() -> pd.DataFrame:
+    # run beam search with JIT so that function is pre-compiled
+    graph = WfsaCsr.from_pynini(pynini.accep("foo"))
+    intersect_beam(graph, graph, fuzzy_search=True, use_jit=True)
+
+    time_rows = []
+
+    # alphabet FSA: same regardless of lexicon
+    sigma = pynini.union(*[c for c in alphabet if c]).optimize()
+
+    # Hyperparameters for profiling
+    # - alphas: alpha values to pass to edit cost matrix construction
+    # - insert_prob: probability of insertion vs. deletion/substitution
+    #       when generating random edits
+    # - lexicon sizes: num words in search lexicon
+    # - num queries: number of random queries to sample per lexicon
+    # - beam sizes: number of beams to keep for beam search
+
+    # alpha values in log space from [1e-3, 100]
+    alphas = np.logspace(-3, 2, 5)
+    insert_prob = 0.3
+    # reverse for pyschological benefit
+    # (loop speeds up as it progresses instead of slowing down)
+    # lexicon_sizes = np.arange(1_000, 101_000, 10_000)[::-1]
+    lexicon_sizes = [20]
+    num_queries = 3
+    beam_sizes = [10, 20, 50, 100, 200]
+
+    for size in tqdm(lexicon_sizes):
+        for alpha in tqdm(alphas):
+            edit_probs = get_random_transition_matrix(alphabet, alpha)
+            edit_costs = 1 - edit_probs
+
+            wordlist, lexicon = get_english_lexicon(size)
+            num_states = lexicon.num_states()
+            for _ in range(num_queries):
+                target, query = sample_word_and_edit(
+                    wordlist,
+                    num_edits=5,
+                    edit_prob_matrix=edit_probs,
+                    insert_prob=insert_prob,
+                )
+                query_len = len(query)
+
+                graph_result, graph_result_row = perform_graph_search(
+                    size=size,
+                    sigma=sigma,
+                    lexicon=lexicon,
+                    num_states=num_states,
+                    target=target,
+                    query=query,
+                    query_len=query_len,
+                )
+
+                graph_result_w_cost, graph_result_row_w_cost = perform_graph_search(
+                    size=size,
+                    sigma=sigma,
+                    lexicon=lexicon,
+                    num_states=num_states,
+                    target=target,
+                    query=query,
+                    query_len=query_len,
+                    alpha=alpha,
+                    cost_matrix=edit_costs,
+                )
+
+                time_rows.extend([graph_result_row, graph_result_row_w_cost])
+                graph_results_set = set(graph_result["results"])
+                graph_results_w_cost_set = set(graph_result_w_cost["results"])
+
+                for num_beam in beam_sizes:
+                    beam_result_row = perform_beam_search(
+                        size=size,
+                        lexicon=lexicon,
+                        num_states=num_states,
+                        target=target,
+                        query=query,
+                        query_len=query_len,
+                        graph_results_set=graph_results_set,
+                        num_beam=num_beam,
+                        alpha=alpha,
+                    )
+
+                    beam_result_row_w_costs = perform_beam_search(
+                        size=size,
+                        lexicon=lexicon,
+                        num_states=num_states,
+                        target=target,
+                        query=query,
+                        query_len=query_len,
+                        graph_results_set=graph_results_w_cost_set,
+                        num_beam=num_beam,
+                        cost_matrix=edit_costs,
+                        alpha=alpha,
+                    )
+
+                    beam_search_fb_row = perform_beam_search_fb(
+                        size=size,
+                        lexicon=lexicon,
+                        num_states=num_states,
+                        target=target,
+                        query=query,
+                        query_len=query_len,
+                        num_beam=num_beam,
+                        graph_results_set=graph_results_set,
+                    )
+
+                    beam_search_fb_row_w_costs = perform_beam_search_fb(
+                        size=size,
+                        lexicon=lexicon,
+                        num_states=num_states,
+                        target=target,
+                        query=query,
+                        query_len=query_len,
+                        num_beam=num_beam,
+                        graph_results_set=graph_results_w_cost_set,
+                        cost_matrix=edit_costs,
+                        alpha=alpha,
+                    )
+
+                    time_rows.extend(
+                        [
+                            beam_result_row,
+                            beam_result_row_w_costs,
+                            beam_search_fb_row,
+                            beam_search_fb_row_w_costs,
+                        ]
+                    )
+
+    time_df = pd.DataFrame(time_rows)
+    plot_df = prepare_df_for_plotting(time_df)
+    return plot_df
 
 
 if __name__ == "__main__":
