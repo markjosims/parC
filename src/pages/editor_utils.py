@@ -3,7 +3,7 @@ from __future__ import annotations
 import yaml
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any
 from loguru import logger
 
 import streamlit as st
@@ -169,10 +169,63 @@ class EditorBase(ABC):
         """
         dest = self.resolve_save_path(stem)
         yaml_doc = self.to_yaml()
+        
+        # Clean the dictionary to remove illicit nulls/empty strings before saving
+        yaml_doc = prune_config_dict(yaml_doc, self.kind)
+        
         dest.parent.mkdir(parents=True, exist_ok=True)
         with dest.open("w", encoding="utf-8") as f:
             yaml.dump(yaml_doc, f, allow_unicode=True, sort_keys=False)
         self.path = str(dest)
+
+
+def prune_config_dict(data: Any, kind: str) -> Any:
+    """
+    Recursively remove None values and empty strings from a dictionary,
+    unless they are explicitly allowed ("licit nulls") by the schema.
+    """
+    # Define keys that are allowed to be null for specific kinds
+    # Format: {Kind: {ParentKey: {LicitNullKey}}} or just {Kind: {LicitNullKey}}
+    # We use a set of strings for simple path-based matching
+    LICIT_PATHS = {
+        "FeatureMarkers": {"markers"}, # markers is a dict, values can be null
+        "Paradigm": {"feature_markers"}, # feature_markers is a dict, values can be null
+        "Rules": {"input_pattern", "output_pattern"},
+    }
+
+    kind_licit = LICIT_PATHS.get(kind, set())
+
+    if isinstance(data, dict):
+        new_dict = {}
+        for k, v in data.items():
+            # If the value is a licit null, keep it
+            if v is None and k in kind_licit:
+                new_dict[k] = v
+                continue
+            
+            # Recurse
+            pruned_v = prune_config_dict(v, kind)
+            
+            # Pruning logic: 
+            # 1. Skip None or empty string
+            # 2. Skip empty dictionaries (unless they are a licit path root)
+            if pruned_v in (None, ""):
+                continue
+            
+            # Special case: don't prune empty lists if the schema expects them 
+            # (e.g. lexical_features: [])
+            if pruned_v == {} and k not in kind_licit:
+                continue
+                
+            new_dict[k] = pruned_v
+        return new_dict
+    
+    elif isinstance(data, list):
+        # Recursively prune items in list, but keep the list itself even if empty
+        # (Schemes often distinguish between a missing key and an empty array)
+        return [prune_config_dict(i, kind) for i in data]
+    
+    return data
 
 
 def clear_all_editor_widget_keys() -> None:
