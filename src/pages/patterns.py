@@ -128,6 +128,13 @@ class PatternEditor(EditorBase):
             "patterns": [p.to_dict() for p in patterns],
         }
 
+    def get_default_data(self) -> dict:
+        return {
+            "patterns": [],
+            "id_map": {},
+            "test_results": {},
+        }
+
     # ------------------------------------------------------------------
     # Mutations
     # ------------------------------------------------------------------

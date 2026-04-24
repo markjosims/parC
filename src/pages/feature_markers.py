@@ -186,6 +186,15 @@ class FeatureMarkersEditor(EditorBase):
 
         return doc
 
+    def get_default_data(self) -> dict:
+        return {
+            "feature": "",
+            "global_order": "",
+            "inherits": "",
+            "global_markers": [],
+            "entries": [],
+        }
+
     def insert_entry(self) -> None:
         self.data["entries"].append(
             {"uuid": str(uuid.uuid4()), "feature_value": "", "markers": []}
@@ -195,7 +204,7 @@ class FeatureMarkersEditor(EditorBase):
         self.data["entries"] = [e for e in self.data["entries"] if e["uuid"] != e_uid]
 
     def add_marker(self, markers: list[Marker]) -> None:
-        markers.append(Marker(value="marker value...", type="suffix"))
+        markers.append(Marker(value="", type="suffix"))
 
     def remove_marker(self, markers: list[Marker], m_uuid: str) -> None:
         markers[:] = [m for m in markers if m.uuid != m_uuid]

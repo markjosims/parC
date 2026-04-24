@@ -105,6 +105,12 @@ class FeatureValuesEditor(EditorBase):
             "features": features_dict,
         }
 
+    def get_default_data(self) -> dict:
+        return {
+            "features": [],
+            "id_map": {},
+        }
+
     def insert_feature(self) -> str:
         """Append a blank feature; return its uuid."""
         new_feature = Feature(name="new_feature", values=["value1"])

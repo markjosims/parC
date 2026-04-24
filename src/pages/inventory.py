@@ -170,6 +170,12 @@ class InventoryEditor(EditorBase):
             "data": [node.to_dict() for node in top_items],
         }
 
+    def get_default_data(self) -> dict:
+        return {
+            "top_items": [],
+            "item_map": {},
+        }
+
     """
     Tree accessors
     """

@@ -128,6 +128,12 @@ class FeatureCombinationsEditor(EditorBase):
             "combinations": output_combos,
         }
 
+    def get_default_data(self) -> dict:
+        return {
+            "features": [],
+            "combinations": [],
+        }
+
     def insert_combination(self) -> None:
         features = self.data.get("features", [])
         new_combo = {"uuid": str(uuid.uuid4())}

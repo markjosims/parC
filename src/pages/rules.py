@@ -234,6 +234,13 @@ class RulesEditor(EditorBase):
             "rules": {rule._ref: _rule_to_dict(rule) for rule in rules},
         }
 
+    def get_default_data(self) -> dict:
+        return {
+            "rules": [],
+            "id_map": {},
+            "test_results": {},
+        }
+
     # ------------------------------------------------------------------
     # Mutations
     # ------------------------------------------------------------------

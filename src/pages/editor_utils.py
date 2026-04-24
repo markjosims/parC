@@ -127,6 +127,10 @@ class EditorBase(ABC):
         Delegate to model .to_dict() methods where possible.
         """
 
+    @abstractmethod
+    def get_default_data(self) -> dict:
+        """Return a dictionary matching the schema for an empty file of this kind."""
+
     # ------------------------------------------------------------------
     # Concrete lifecycle helpers
     # ------------------------------------------------------------------
@@ -145,8 +149,8 @@ class EditorBase(ABC):
         st.session_state["file_name"] = self.stem
 
     def new_file(self) -> None:
-        """Reset to a blank state (no file loaded)."""
-        self.data = {}
+        """Reset to a blank state matching the expected schema."""
+        self.data = self.get_default_data()
         self.path = ""
         st.session_state["file_name"] = ""
 

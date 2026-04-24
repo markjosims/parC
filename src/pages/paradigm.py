@@ -238,6 +238,18 @@ class ParadigmEditor(EditorBase):
         
         return doc
 
+    def get_default_data(self) -> dict:
+        return {
+            "part_of_speech": "",
+            "order_stages": [],
+            "global_markers": [],
+            "feature_mappings": [],
+            "feature_value_combinations": "",
+            "contingent_markers": [],
+            "pattern_filter": "",
+            "lexical_feature_filters": [],
+        }
+
     def add_marker(self, markers: list[Marker]) -> None:
         markers.append(Marker(value="", type="suffix"))
 

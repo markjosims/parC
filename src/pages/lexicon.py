@@ -134,6 +134,15 @@ class LexiconEditor(EditorBase):
             "principal_parts": self.data["principal_parts"],
         }
 
+    def get_default_data(self) -> dict:
+        return {
+            "name": "",
+            "features": [],
+            "lexical_features": [],
+            "principal_parts": [],
+            "rows": [],
+        }
+
     def save(self, stem: str) -> None:
         """Saves both the YAML config and the CSV lexicon."""
         # Ensure name matches stem

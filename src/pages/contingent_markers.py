@@ -216,6 +216,15 @@ class ContingentMarkersEditor(EditorBase):
         doc["markers"] = markers_list
         return doc
 
+    def get_default_data(self) -> dict:
+        return {
+            "outer_feature": "",
+            "inner_feature": "",
+            "global_order": "",
+            "global_markers": [],
+            "outer_entries": [],
+        }
+
     def insert_outer(self) -> None:
         self.data["outer_entries"].append({
             "uuid": str(uuid.uuid4()),
@@ -237,7 +246,7 @@ class ContingentMarkersEditor(EditorBase):
         outer["inner_entries"] = [i for i in outer["inner_entries"] if i["uuid"] != i_uid]
 
     def add_marker(self, markers: list[Marker]) -> None:
-        markers.append(Marker(value="marker value...", type="suffix"))
+        markers.append(Marker(value="", type="suffix"))
 
     def remove_marker(self, markers: list[Marker], m_uuid: str) -> None:
         markers[:] = [m for m in markers if m.uuid != m_uuid]
