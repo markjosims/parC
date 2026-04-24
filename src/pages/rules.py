@@ -19,6 +19,7 @@ from typing import Any, Literal
 import streamlit as st
 import yaml as _yaml
 
+from src.grammar import Grammar
 from src.config_utils.config_walker import ConfigWalker
 from src.grammar.registry.rule_registry import Rule, RuleRegistry
 from src.pages.editor_utils import EditorBase, editor_guard, editor_sidebar, editor_header
@@ -502,8 +503,7 @@ def _render_rule(uid: str, editor: RulesEditor) -> None:
                 if grammar is None:
                     st.warning("Grammar not loaded — cannot run tests.")
                 else:
-                    editor.read_form_to_state()
-                    editor.run_tests(uid, grammar)
+                    st.session_state["do_run_tests"] = uid
                     st.rerun()
         with col_remove:
             if st.button(
@@ -570,7 +570,6 @@ def rules_toolbar(editor: RulesEditor) -> None:
         show_preview = st.toggle("Show YAML preview", value=False)
 
     if show_preview:
-        editor.read_form_to_state()
         with st.container(border=True):
             st.caption("YAML preview — reflects unsaved edits")
             st.code(_yaml.dump(editor.to_yaml(), allow_unicode=True, sort_keys=False))
@@ -615,6 +614,15 @@ def rules_page() -> None:
     )
 
     editor = editor_guard(kind=_config_kind)
+    editor.read_form_to_state()
+
+    if "do_run_tests" in st.session_state:
+        uid: str = st.session_state.pop("do_run_tests")
+        grammar: Grammar | None = st.session_state.get("grammar")
+        if grammar is not None:
+            editor.run_tests(uid, grammar)
+            st.rerun()
+
     editor_header(kind=_config_kind, editor=editor)
 
     toolbar_placeholder = st.empty()
