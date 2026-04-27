@@ -506,7 +506,6 @@ def get_linreg_coeffs(plot_df, num_beam: int = 50) -> pd.DataFrame:
     coeffs = []
     for strategy in plot_df["search_strategy"].unique():
         if strategy.startswith("beam"):
-
             strategy_mask = (plot_df["search_strategy"] == strategy) & (
                 plot_df["num_beam"] == num_beam
             )
@@ -563,6 +562,7 @@ def get_words_per_sec(plot_df: pd.DataFrame, num_beam: int = 50) -> pd.DataFrame
 Main profiling function
 """
 
+
 def perform_beam_search_fb(
     size: int,
     lexicon: pynini.Fst,
@@ -580,7 +580,7 @@ def perform_beam_search_fb(
     )
 
     # get forward-backward beam search recall
-    fb_results_set = set(beam_fb_result["results"])
+    fb_results_set = set(word for word, _ in beam_fb_result["results"])
     fb_recall = (
         len(graph_results_set.intersection(fb_results_set)) / len(graph_results_set)
         if graph_results_set
@@ -620,7 +620,7 @@ def perform_beam_search(
 
     # beam search may miss some results due to pruning
     # calculate recall based on graph search results
-    beam_results_set = set(beam_result["results"])
+    beam_results_set = set(word for word, _ in beam_result["results"])
     recall = (
         len(graph_results_set.intersection(beam_results_set)) / len(graph_results_set)
         if graph_results_set
@@ -667,6 +667,7 @@ def perform_graph_search(
     }
 
     return graph_result, graph_result_row
+
 
 def run_profiler() -> pd.DataFrame:
     # run beam search with JIT so that function is pre-compiled
@@ -735,7 +736,7 @@ def run_profiler() -> pd.DataFrame:
                 )
 
                 time_rows.extend([graph_result_row, graph_result_row_w_cost])
-                graph_results_set = set(graph_result["results"])
+                graph_results_set = set(word for word, _ in graph_result["results"])
                 graph_results_w_cost_set = set(graph_result_w_cost["results"])
 
                 for num_beam in beam_sizes:
@@ -748,7 +749,6 @@ def run_profiler() -> pd.DataFrame:
                         query_len=query_len,
                         graph_results_set=graph_results_set,
                         num_beam=num_beam,
-                        alpha=alpha,
                     )
 
                     beam_result_row_w_costs = perform_beam_search(
