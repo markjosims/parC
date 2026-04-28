@@ -1,25 +1,21 @@
 kind: ContingentFeatureMarkers
-outer_feature: tam
-inner_feature: object
 global_order: argument_marking
 markers:
-- outer_feature_value: perfective
-  inner_feature_values:
-    1sg:
-    - type: suffix
-      value: -íŋì
-    2sg:
-    - type: suffix
-      value: -áŋà
-    1dual.incl:
-    - type: suffix
-      value: -átɛ́
-    1pl.incl:
-    - type: suffix
-      value: -átɛ́-r
-    1pl.excl:
-    - type: suffix
-      value: -éɲárɛ́
-    2pl:
-    - type: suffix
-      value: -átɛ́
+- features: {tam: perfective, object: 1sg}
+  realization:
+  - {type: suffix, value: -íŋì}
+- features: {tam: perfective, object: 2sg}
+  realization:
+  - {type: suffix, value: -áŋà}
+- features: {tam: perfective, object: 1dual.incl}
+  realization:
+  - {type: suffix, value: -átɛ́}
+- features: {tam: perfective, object: 1pl.incl}
+  realization:
+  - {type: suffix, value: -átɛ́-r}
+- features: {tam: perfective, object: 1pl.excl}
+  realization:
+  - {type: suffix, value: -éɲárɛ́}
+- features: {tam: perfective, object: 2pl}
+  realization:
+  - {type: suffix, value: -átɛ́}

@@ -3,7 +3,7 @@
   "title": "ContingentFeatureMarkers",
   "description": "Schema for morphological realizations contingent on multiple features.",
   "type": "object",
-  "required": ["kind", "inner_feature", "outer_feature", "markers"],
+  "required": ["kind", "markers"],
   "additionalProperties": false,
   "properties": {
     "source_path": {
@@ -13,14 +13,6 @@
     "kind": {
       "type": "string",
       "enum": ["ContingentFeatureMarkers"]
-    },
-    "inner_feature": {
-      "type": "string",
-      "description": "The name of the feature whose values define the inner branches of the hierarchy."
-    },
-    "outer_feature": {
-      "type": "string",
-      "description": "The name of the feature whose values define the outer branches of the hierarchy."
     },
     "global_order": {
       "type": "string",
@@ -33,27 +25,26 @@
     },
     "markers": {
       "type": "array",
-      "description": "An array over outer feature values.",
+      "description": "An array over feature vectors and their realizations.",
       "items": {
         "type": "object",
+        "required": ["features", "realization"],
         "properties": {
-          "outer_feature_value": {
-            "type": "string",
-            "description": "The feature value specified for the outer feature for all child nodes."
-          },
-          "inner_feature_values": {
+          "features": {
             "type": "object",
-            "additionalProperties": { 
-              "oneOf": [
-                { "$ref": "./FeatureMarkers.json#/definitions/marker" },
-                {
-                  "type": "array",
-                  "items": {
-                    "$ref": "./FeatureMarkers.json#/definitions/marker"
-                  }
+            "additionalProperties": { "type": "string" },
+            "description": "The feature value vector specified for this marker group."
+          },
+          "realization": {
+            "oneOf": [
+              { "$ref": "./FeatureMarkers.json#/definitions/marker" },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "./FeatureMarkers.json#/definitions/marker"
                 }
-              ]
-          }
+              }
+            ]
           }
         }
       } 
