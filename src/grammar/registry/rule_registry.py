@@ -263,16 +263,8 @@ class RuleRegistry(Registry, ReservedSymbolMixin):
                     used_by.append(other_rule)
 
             if rule.type == "rule_sequence":
-                sub_rules = []
-                sub_rule_refs = [ref.removeprefix("$") for ref in rule.rule_sequence]
-                for sub_rule in sub_rule_refs:
-                    if sub_rule in self.data:
-                        sub_rules.append(self.data[sub_rule])
-                    else:
-                        raise KeyError(
-                            f"Rule '{sub_rule}' referenced in rule sequence for "
-                            f"'{rule._ref}' not found in registry."
-                        )
+                sub_rules = [self.get_rule(ref) for ref in rule.rule_sequence]
+                sub_rule_refs = [sub_rule._ref for sub_rule in sub_rules]
                 rule.set_dependencies(
                     used_by=used_by,
                     rule_sequence=sub_rules,
@@ -286,3 +278,8 @@ class RuleRegistry(Registry, ReservedSymbolMixin):
         rules_sorted = [self.data[ref] for ref in rule_refs_sorted]
         self.rules_sorted = rules_sorted
 
+    def get_rule(self, ref: str) -> Rule:
+        ref = ref.removeprefix("$")
+        if ref not in self.data:
+            raise KeyError(f"Rule '{ref}' not found in registry.")
+        return self.data[ref]

@@ -103,6 +103,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
 
         self.rules: dict[str, Rule] = self.rule_registry.data
         self.rules_sorted: tuple[Rule, ...] = self.rule_registry.rules_sorted
+        self.get_rule = self.rule_registry.get_rule
 
         self.initialize()
         if not self.is_initialized:

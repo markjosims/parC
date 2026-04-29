@@ -453,8 +453,7 @@ class Paradigm:
 
         elif marker.type == "rule":
             assert isinstance(marker.value, str)
-            rule_name = marker.value.removeprefix("$")
-            marker_rule = self.fst_orchestrator.rules[rule_name]
+            marker_rule = self.fst_orchestrator.get_rule(marker.value)
         elif marker.type == "prefix":
             assert isinstance(marker.value, str)
             marker_rule = self.fst_orchestrator.prefix(marker.value)
@@ -467,7 +466,7 @@ class Paradigm:
                 marker.value[0], marker.value[1]
             )
         elif marker.type == "suppletion":
-            sigma_star = "<Sigma>*"
+            sigma_star = self.fst_orchestrator.sigma_star
             assert isinstance(marker.value, str)
             marker_rule = self.fst_orchestrator.replace_transducer(
                 sigma_star, marker.value
