@@ -12,6 +12,7 @@ from src.pages.contingent_markers import contingent_markers_page
 from src.pages.lexicon import lexicon_page
 from src.pages.paradigm import paradigm_page
 from src.pages.morpheme_sequence import morpheme_sequence_page
+from src.pages.morpheme_set import morpheme_set_page
 from src.pages.patterns import patterns_page
 from src.pages.rules import rules_page
 
@@ -67,9 +68,9 @@ def navbar():
         "Exponence": [
             st.Page(feature_values_page, title="Feature Values"),
             st.Page(feature_combinations_page, title="Feature Combinations"),
+            st.Page(morpheme_set_page, title="Morpheme Set"),
             st.Page(feature_markers_page, title="Feature Markers"),
             st.Page(contingent_markers_page, title="Contingent Markers"),
-
         ],
         "Morphotactics": [
             st.Page(morpheme_sequence_page, title="Morpheme Sequence"),

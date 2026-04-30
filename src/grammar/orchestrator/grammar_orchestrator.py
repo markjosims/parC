@@ -14,6 +14,7 @@ from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
 from src.grammar.registry.lexicon_registry import LexiconRegistry
 from src.grammar.registry.paradigm_registry import ParadigmRegistry
 from src.grammar.registry.morpheme_sequence_registry import MorphemeSequenceRegistry
+from src.grammar.registry.morpheme_set_registry import MorphemeSetRegistry
 
 
 class Grammar(Orchestrator):
@@ -32,7 +33,8 @@ class Grammar(Orchestrator):
         feature_definition_configs: dict[str, dict],
         feature_combination_configs: dict[str, dict],
         paradigm_configs: dict[str, dict],
-        morpheme_sequence_configs: dict[str, dict] = None,
+        morpheme_sequence_configs: dict[str, dict],
+        morpheme_set_configs: dict[str, dict],
     ):
         self.is_initialized = False
 
@@ -53,6 +55,10 @@ class Grammar(Orchestrator):
         self.marker_orchestrator = MarkerOrchestrator(
             contingent_marker_configs=contingent_feature_marker_configs,
             feature_marker_configs=feature_marker_configs,
+            feature_orchestrator=self.feature_orchestrator,
+        )
+        self.morpheme_set_registry = MorphemeSetRegistry(
+            config_objects=morpheme_set_configs,
             feature_orchestrator=self.feature_orchestrator,
         )
         self.paradigm_registry = ParadigmRegistry(

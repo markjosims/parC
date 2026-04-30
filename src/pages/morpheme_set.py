@@ -1,97 +1,80 @@
 """
-Streamlit Contingent Markers Editor
-===================================
-A UI for creating and editing contingent feature marker YAML configs.
+Streamlit Morpheme Set Editor
+=============================
+A UI for creating and editing morpheme set marker YAML configs.
 """
 
 from __future__ import annotations
 
 import uuid
-from typing import Any
 
 import streamlit as st
 import yaml
-from pathlib import Path
 
-from src.config_utils.config_walker import ConfigWalker
-from src.grammar.registry.feature_marker_registry import Marker
 from src.pages.editor_utils import (
     EditorBase,
     editor_guard,
     editor_header,
     editor_sidebar,
-    render_marker_list,
     render_editor_toolbar,
-    MARKER_WIDGET_PREFIXES,
 )
 
-_config_kind = "ContingentFeatureMarkers"
-_config_key = "contingent_feature_marker_configs"
+_config_kind = "MorphemeSet"
+_config_key = "morpheme_set_configs"
 
 # Prefix constants
-_GLOBAL_ORDER_PREFIX = "global-order-"
 _FEATURE_LIST_PREFIX = "features-list-"
 _ENTRY_VAL_PREFIX = "entry-val-"
 _REMOVE_ENTRY_PREFIX = "remove-entry-"
+_MORPHEME_VALUE_PREFIX = "morpheme-value-"
 
 _WIDGET_PREFIXES: list[str] = [
-    _GLOBAL_ORDER_PREFIX,
     _FEATURE_LIST_PREFIX,
     _ENTRY_VAL_PREFIX,
     _REMOVE_ENTRY_PREFIX,
-] + MARKER_WIDGET_PREFIXES
+    _MORPHEME_VALUE_PREFIX,
+]
 
 _help_str = """
-Contingent marker files define realizations contingent on feature vectors.
+Morpheme set files define morphemes mapped to feature vectors.
 - **Features**: Select the features that participate in these contingencies.
-- **Markers**: Map specific combinations of feature values to realizations.
+- **Morphemes**: Define the string of a given morpheme
 """
 
 
-class ContingentMarkersEditor(EditorBase):
+class MorphmeSetEditor(EditorBase):
     """
-    Editor for ContingentFeatureMarkers YAML configs.
+    Editor for MorphemeSet YAML configs.
 
     self.data keys:
         features       — list[str] (participating features)
         global_order   — str
         global_markers — list[Marker]
-        entries        — list[dict] (uuid, features: dict[str, str], realization: list[Marker])
+        entries        — list[dict] (uuid, features: dict[str, str], morpheme: list[Marker])
     """
 
     def __init__(self) -> None:
         super().__init__(kind=_config_kind, config_key=_config_key)
 
     def build_state_from_config(self, config_object: dict) -> dict:
-        global_order = config_object.get("global_order", "")
 
-        def load_markers(raw: Any) -> list[Marker]:
-            if not raw:
-                return []
-            if isinstance(raw, dict):
-                raw = [raw]
-            return [Marker.from_config(m) for m in raw]
-
-        global_markers = load_markers(config_object.get("global_markers", []))
-
-        markers_raw = config_object.get("markers", [])
+        morphemes_raw = config_object.get("data", [])
         features_set = set()
         entries = []
-        for entry_config in markers_raw:
+        for entry_config in morphemes_raw:
             f_vec = entry_config.get("features", {})
+            morpheme = entry_config.get("morpheme", "")
             features_set.update(f_vec.keys())
             entries.append(
                 {
                     "uuid": str(uuid.uuid4()),
                     "features": f_vec,
-                    "realization": load_markers(entry_config.get("realization", [])),
+                    "morpheme": morpheme,
                 }
             )
 
         return {
             "features": sorted(list(features_set)),
-            "global_order": global_order,
-            "global_markers": global_markers,
             "entries": entries,
         }
 
@@ -104,13 +87,6 @@ class ContingentMarkersEditor(EditorBase):
         if selected_features:
             self.data["features"] = selected_features
 
-        g_order = st.session_state.get(self.get_widget_key(_GLOBAL_ORDER_PREFIX, "main"))
-        if g_order is not None:
-            self.data["global_order"] = g_order
-
-        # 2. Global markers
-        self._sync_marker_list(self.data["global_markers"], "global")
-
         # 3. Entries
         for entry in self.data["entries"]:
             uid = entry["uuid"]
@@ -119,33 +95,19 @@ class ContingentMarkersEditor(EditorBase):
                 if val is not None:
                     entry["features"][f] = val.strip()
 
-            self._sync_marker_list(entry["realization"], f"entry-{uid}")
+            morpheme_val = self.get_node_widget(_MORPHEME_VALUE_PREFIX, uid)
+            if morpheme_val is not None:
+                entry["morpheme"] = morpheme_val.strip()
 
     def to_yaml(self) -> dict:
-        def serialize_markers(markers: list[Marker]) -> list[dict] | None:
-            if not markers:
-                return None
-            result = []
-            for m in markers:
-                d = {"type": m.type, "value": m.value}
-                if m.order:
-                    d["order"] = m.order
-                result.append(d)
-            return result
 
         doc = {
             "kind": self.kind,
             "features": self.data["features"],
         }
 
-        if self.data["global_order"]:
-            doc["global_order"] = self.data["global_order"]
 
-        global_markers = serialize_markers(self.data["global_markers"])
-        if global_markers:
-            doc["global_markers"] = global_markers
-
-        markers_list = []
+        morpheme_list = []
         for entry in self.data["entries"]:
             # Only include participating features
             clean_vec = {
@@ -156,41 +118,31 @@ class ContingentMarkersEditor(EditorBase):
             if not clean_vec:
                 continue
 
-            realization = serialize_markers(entry["realization"])
-            markers_list.append({"features": clean_vec, "realization": realization})
+            morpheme = entry["morpheme"]
+            morpheme_list.append({"features": clean_vec, "morpheme": morpheme})
 
-        doc["markers"] = markers_list
+        doc["data"] = morpheme_list
         return doc
 
     def get_default_data(self) -> dict:
         return {
             "features": [],
-            "global_order": "",
-            "global_markers": [],
             "entries": [],
         }
 
     def insert_entry(self) -> None:
         self.data["entries"].append(
-            {"uuid": str(uuid.uuid4()), "features": {}, "realization": []}
+            {"uuid": str(uuid.uuid4()), "features": {}, "morpheme": ""}
         )
 
     def remove_entry(self, uid: str) -> None:
         self.data["entries"] = [e for e in self.data["entries"] if e["uuid"] != uid]
 
-    def add_marker(self, markers: list[Marker]) -> None:
-        markers.append(Marker(value="", type="suffix"))
-
-    def remove_marker(self, markers: list[Marker], m_uuid: str) -> None:
-        markers[:] = [m for m in markers if m.uuid != m_uuid]
-
 
 def _render_entry(
     entry: dict,
     features: list[str],
-    editor: ContingentMarkersEditor,
-    available_rules: list[str],
-    available_principal_parts: list[str],
+    editor: MorphmeSetEditor,
 ) -> None:
     uid = entry["uuid"]
     with st.container(border=True):
@@ -212,26 +164,23 @@ def _render_entry(
                 editor.remove_entry(uid)
                 st.rerun()
 
-        render_marker_list(
-            entry["realization"],
-            f"entry-{uid}",
-            editor,
-            available_rules,
-            available_principal_parts,
-            label="Realization",
+        st.text_input(
+            "Morpheme",
+            key=editor.get_widget_key(_MORPHEME_VALUE_PREFIX, uid),
+            value=entry["morpheme"],
         )
 
 
-def contingent_markers_page() -> None:
+def morpheme_set_page() -> None:
     st.set_page_config(
-        page_title="Contingent Markers Editor",
+        page_title="Morpheme Set Editor",
         page_icon="👯",
         layout="wide",
     )
 
     editor_sidebar(
         kind=_config_kind,
-        editor_class=ContingentMarkersEditor,
+        editor_class=MorphmeSetEditor,
         config_key=_config_key,
         help_str=_help_str,
     )
@@ -242,18 +191,10 @@ def contingent_markers_page() -> None:
 
     grammar = st.session_state.get("grammar")
     available_features = []
-    available_rules = []
-    available_principal_parts = []
     if grammar:
         available_features = list(
             grammar.feature_orchestrator.feature_values_registry.features_to_values.keys()
         )
-        available_rules = list(grammar.fst_orchestrator.rule_registry.data.keys())
-        pp_sets = set()
-        for pos_config in grammar.lexicon_registry.config_objects.values():
-            for col in pos_config.get("columns", []):
-                pp_sets.add(col)
-        available_principal_parts = sorted(list(pp_sets))
 
     # 1. Config section
     current_features = editor.data.get("features", [])
@@ -263,23 +204,7 @@ def contingent_markers_page() -> None:
             options=available_features or current_features,
             default=current_features,
             key=editor.get_widget_key(_FEATURE_LIST_PREFIX, "main"),
-            help="Features that define the contingencies.",
-        )
-
-        st.text_input(
-            "Global Order Stage",
-            value=editor.data["global_order"],
-            key=editor.get_widget_key(_GLOBAL_ORDER_PREFIX, "main"),
-            placeholder="argument_marking",
-        )
-
-        render_marker_list(
-            editor.data["global_markers"],
-            "global",
-            editor,
-            available_rules,
-            available_principal_parts,
-            label="Global Markers",
+            help="Features each morpheme expones.",
         )
 
     toolbar_placeholder = st.empty()
@@ -296,9 +221,7 @@ def contingent_markers_page() -> None:
             cols[i].markdown(f"**{f}**")
 
         for entry in editor.data["entries"]:
-            _render_entry(
-                entry, features, editor, available_rules, available_principal_parts
-            )
+            _render_entry(entry, features, editor)
 
     with toolbar_placeholder.container():
         render_editor_toolbar(
@@ -307,4 +230,4 @@ def contingent_markers_page() -> None:
 
 
 if __name__ == "__main__":
-    contingent_markers_page()
+    morpheme_set_page()
