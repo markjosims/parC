@@ -21,6 +21,7 @@ from pathlib import Path
 from loguru import logger
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
 from watchdog.observers import Observer, ObserverType
+import streamlit as st
 
 
 # Module-level flag set by the watcher thread, consumed by the main thread.
@@ -45,7 +46,6 @@ def check_and_apply_invalidation(invalidate_keys: list[str]) -> bool:
     and returns True (caller should st.rerun() to reload).
     Returns False if no change was detected.
     """
-    import streamlit as st
 
     logger.info(f"Invalidation check: {invalidate_keys}")
 

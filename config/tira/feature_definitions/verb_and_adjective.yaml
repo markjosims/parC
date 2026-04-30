@@ -3,15 +3,7 @@ features:
   class_marker:
   - l
   - g
-  - r
   - ð
-  - n
-  - ŋ
-  - ɲ
-  - j
-  - s
-  - t̪
-  - c
   deixis:
   - itive
   - ventive
@@ -39,3 +31,10 @@ features:
   - dependent
   - imperative
   - infinitive
+  fv_class:
+  - aɔ
+  - ao
+  - ai
+  - ɔɔ
+  - ɔu
+  - ɔi

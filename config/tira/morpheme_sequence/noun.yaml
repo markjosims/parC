@@ -1,0 +1,6 @@
+kind: MorphemeSequence
+data:
+- type: MorphemeSet
+  value: $noun_prefix
+- type: Lexicon
+  value: $noun
