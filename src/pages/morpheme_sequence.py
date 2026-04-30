@@ -31,6 +31,9 @@ _STEP_VAL_PREFIX = "step-val-"
 _REMOVE_STEP_PREFIX = "remove-step-"
 _MOVE_UP_PREFIX = "move-up-"
 _MOVE_DOWN_PREFIX = "move-down-"
+_FIXED_FEAT_NAME_PREFIX = "fixed-feat-name-"
+_FIXED_FEAT_VAL_PREFIX = "fixed-feat-val-"
+_REMOVE_FIXED_FEAT_PREFIX = "remove-fixed-feat-"
 
 _WIDGET_PREFIXES: list[str] = [
     _STEP_TYPE_PREFIX,
@@ -38,6 +41,9 @@ _WIDGET_PREFIXES: list[str] = [
     _REMOVE_STEP_PREFIX,
     _MOVE_UP_PREFIX,
     _MOVE_DOWN_PREFIX,
+    _FIXED_FEAT_NAME_PREFIX,
+    _FIXED_FEAT_VAL_PREFIX,
+    _REMOVE_FIXED_FEAT_PREFIX,
 ]
 
 _MORPHEME_TYPES = ["Lexicon", "Paradigm", "Pattern", "Rule", "MorphemeSet"]
@@ -70,8 +76,18 @@ class MorphemeSequenceEditor(EditorBase):
                     "value": step.get("value", ""),
                 }
             )
+        fixed_features = []
+        for f_name, f_val in config_object.get("fixed_features", {}).items():
+            fixed_features.append(
+                {
+                    "uuid": str(uuid.uuid4()),
+                    "name": f_name,
+                    "value": f_val,
+                }
+            )
         return {
             "steps": steps,
+            "fixed_features": fixed_features,
         }
 
     def read_form_to_state(self) -> None:
@@ -85,6 +101,15 @@ class MorphemeSequenceEditor(EditorBase):
             if s_val is not None:
                 step["value"] = s_val
 
+        for ff in self.data["fixed_features"]:
+            uid = ff["uuid"]
+            f_name = self.get_node_widget(_FIXED_FEAT_NAME_PREFIX, uid)
+            f_val = self.get_node_widget(_FIXED_FEAT_VAL_PREFIX, uid)
+            if f_name is not None:
+                ff["name"] = f_name
+            if f_val is not None:
+                ff["value"] = f_val
+
     def to_yaml(self) -> dict:
         output_data = []
         for step in self.data["steps"]:
@@ -94,14 +119,21 @@ class MorphemeSequenceEditor(EditorBase):
                     "value": step["value"],
                 }
             )
+        fixed_features = {}
+        for ff in self.data["fixed_features"]:
+            if ff["name"]:
+                fixed_features[ff["name"]] = ff["value"]
+
         return {
             "kind": self.kind,
+            "fixed_features": fixed_features if fixed_features else None,
             "data": output_data,
         }
 
     def get_default_data(self) -> dict:
         return {
             "steps": [],
+            "fixed_features": [],
         }
 
     def insert_step(self) -> None:
@@ -125,6 +157,20 @@ class MorphemeSequenceEditor(EditorBase):
         new_idx = idx - 1 if direction == "up" else idx + 1
         if 0 <= new_idx < len(steps):
             steps[idx], steps[new_idx] = steps[new_idx], steps[idx]
+
+    def insert_fixed_feature(self) -> None:
+        self.data["fixed_features"].append(
+            {
+                "uuid": str(uuid.uuid4()),
+                "name": "",
+                "value": "",
+            }
+        )
+
+    def remove_fixed_feature(self, uid: str) -> None:
+        self.data["fixed_features"] = [
+            ff for ff in self.data["fixed_features"] if ff["uuid"] != uid
+        ]
 
 
 def _render_step(
@@ -256,8 +302,14 @@ def morpheme_sequence_page() -> None:
     available_patterns = []
     available_rules = []
     available_morpheme_sets = []
+    available_features = []
 
     if grammar:
+        available_features = sorted(
+            list(
+                grammar.feature_orchestrator.feature_values_registry.features_to_values.keys()
+            )
+        )
         available_lexicons = sorted(
             [
                 validate_file_reference_str(name)
@@ -292,7 +344,54 @@ def morpheme_sequence_page() -> None:
     toolbar_placeholder = st.empty()
     st.divider()
 
-    # 1. Sequence Editor
+    # 1. Fixed Features
+    with st.expander("Fixed Features", expanded=False):
+        st.caption("Features that are fixed to specific values for this sequence.")
+        fixed_features = editor.data.get("fixed_features", [])
+        for ff in fixed_features:
+            uid = ff["uuid"]
+            fc1, fc2, fc3 = st.columns([2.5, 2.5, 0.4])
+            with fc1:
+                st.selectbox(
+                    "Feature",
+                    options=[""] + available_features,
+                    index=(
+                        available_features.index(ff["name"]) + 1
+                        if ff["name"] in available_features
+                        else 0
+                    ),
+                    key=editor.get_widget_key(_FIXED_FEAT_NAME_PREFIX, uid),
+                    label_visibility="collapsed",
+                )
+            with fc2:
+                # get values for selected feature
+                f_vals = (
+                    grammar.feature_orchestrator.feature_values_registry.features_to_values.get(
+                        ff["name"], []
+                    )
+                    if grammar
+                    else []
+                )
+                st.selectbox(
+                    "Value",
+                    options=[""] + f_vals,
+                    index=(
+                        f_vals.index(ff["value"]) + 1
+                        if ff["value"] in f_vals
+                        else 0
+                    ),
+                    key=editor.get_widget_key(_FIXED_FEAT_VAL_PREFIX, uid),
+                    label_visibility="collapsed",
+                )
+            with fc3:
+                if st.button("✕", key=f"del-ff-{uid}", help="Remove fixed feature"):
+                    editor.remove_fixed_feature(uid)
+                    st.rerun()
+        if st.button("➕ Add fixed feature"):
+            editor.insert_fixed_feature()
+            st.rerun()
+
+    # 2. Sequence Editor
     st.subheader("Sequence Steps")
     steps = editor.data.get("steps", [])
     if not steps:
@@ -321,50 +420,6 @@ def morpheme_sequence_page() -> None:
         render_editor_toolbar(
             editor, add_label="Add step", add_callback=editor.insert_step
         )
-
-    # 2. Inflection Tester (read-only based on current state)
-    st.divider()
-    st.subheader("Inflection Tester")
-
-    # Try to resolve sequence from current data if it exists in registry,
-    # but registry might be stale. For immediate feedback, we might need a
-    # way to initialize a temporary sequence object.
-    # For now, if saved, use grammar's sequence.
-
-    if editor.path and grammar:
-        seq_name = editor.stem
-        sequence = grammar.morpheme_sequence_registry.get_sequence(seq_name)
-
-        if sequence:
-            if not sequence.is_initialized:
-                sequence.initialize()
-
-            all_features = sorted(list(sequence.features))
-            features = {}
-            if all_features:
-                st.caption("Enter feature values to test inflection:")
-                cols = st.columns(3)
-                for i, feat_name in enumerate(all_features):
-                    col = cols[i % 3]
-                    val = col.text_input(f"{feat_name}", key=f"test-feat-{feat_name}")
-                    if val:
-                        features[feat_name] = val
-
-            if st.button("Generate Forms"):
-                try:
-                    with st.spinner("Generating..."):
-                        forms = sequence.get_inflected_form(features)
-                    if not forms:
-                        st.warning("No forms generated.")
-                    else:
-                        st.success(f"Generated {len(forms)} forms:")
-                        st.write(", ".join(forms))
-                except Exception as e:
-                    st.error(f"Error: {e}")
-        else:
-            st.info("Save sequence to enable inflection tester.")
-    else:
-        st.info("Open an existing file to enable inflection tester.")
 
 
 if __name__ == "__main__":

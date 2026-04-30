@@ -143,16 +143,24 @@ def _render_entry(
     entry: dict,
     features: list[str],
     editor: MorphmeSetEditor,
+    features_to_values: dict[str, list[str]],
 ) -> None:
     uid = entry["uuid"]
     with st.container(border=True):
         cols = st.columns([1] * len(features) + [0.4])
         for i, f in enumerate(features):
             with cols[i]:
-                st.text_input(
+                f_vals = features_to_values.get(f, [])
+                options = ["unmarked"] + sorted(f_vals)
+                current_val = entry["features"].get(f, "unmarked")
+                if current_val not in options:
+                    options.append(current_val)
+
+                st.selectbox(
                     f,
+                    options=options,
+                    index=options.index(current_val),
                     key=editor.get_widget_key(_ENTRY_VAL_PREFIX, uid, suffix=f),
-                    value=entry["features"].get(f, "unmarked"),
                     label_visibility="collapsed" if len(features) > 1 else "visible",
                 )
         with cols[-1]:
@@ -191,10 +199,12 @@ def morpheme_set_page() -> None:
 
     grammar = st.session_state.get("grammar")
     available_features = []
+    features_to_values = {}
     if grammar:
-        available_features = list(
-            grammar.feature_orchestrator.feature_values_registry.features_to_values.keys()
+        features_to_values = (
+            grammar.feature_orchestrator.feature_values_registry.features_to_values
         )
+        available_features = list(features_to_values.keys())
 
     # 1. Config section
     current_features = editor.data.get("features", [])
@@ -221,7 +231,7 @@ def morpheme_set_page() -> None:
             cols[i].markdown(f"**{f}**")
 
         for entry in editor.data["entries"]:
-            _render_entry(entry, features, editor)
+            _render_entry(entry, features, editor, features_to_values)
 
     with toolbar_placeholder.container():
         render_editor_toolbar(

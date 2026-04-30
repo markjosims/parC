@@ -74,7 +74,9 @@ class LexiconEditor(EditorBase):
             st.error("Grammar not loaded. Cannot initialize lexicon.")
             st.stop()
 
-        lexicon = Lexicon.from_config(config_object, grammar.feature_orchestrator)
+        lexicon = Lexicon.from_config(
+            config_object, grammar.feature_orchestrator, grammar.fst_orchestrator
+        )
         pos = lexicon.part_of_speech
 
         rows = lexicon.entries.to_dict(orient="records")
@@ -92,7 +94,9 @@ class LexiconEditor(EditorBase):
     def read_form_to_state(self) -> None:
         """Sync widget values back to self.data."""
         # 1. POS Settings
-        features = st.session_state.get(self.get_widget_key(_FEATURES_PREFIX, "main"), [])
+        features = st.session_state.get(
+            self.get_widget_key(_FEATURES_PREFIX, "main"), []
+        )
         if features:
             self.data["features"] = features
 
@@ -155,13 +159,13 @@ class LexiconEditor(EditorBase):
         # 2. Save CSV
         dynamic_cols = self.data["principal_parts"] + self.data["lexical_features"]
         save_cols = ["root", "gloss"] + dynamic_cols
-        
+
         # Prepare DataFrame
         df_data = []
         for r in self.data["rows"]:
             df_row = {col: r.get(col, "") for col in save_cols}
             df_data.append(df_row)
-        
+
         df = pd.DataFrame(df_data)
         csv_path = Path(self.config_dir) / "lexicon" / f"{stem}.csv"
         csv_path.parent.mkdir(parents=True, exist_ok=True)
@@ -179,7 +183,11 @@ class LexiconEditor(EditorBase):
 
 
 def _render_lexicon_row(
-    row: dict, dynamic_cols: list[str], lexical_features: list[str], editor: LexiconEditor, grammar: Any
+    row: dict,
+    dynamic_cols: list[str],
+    lexical_features: list[str],
+    editor: LexiconEditor,
+    grammar: Any,
 ) -> None:
     uid = row["uuid"]
     # root, gloss, dynamic cols, delete btn
@@ -205,11 +213,17 @@ def _render_lexicon_row(
         with cols[i + 2]:
             if col in lexical_features and grammar:
                 # Use selectbox for lexical features
-                options = grammar.feature_orchestrator.feature_values_registry.features_to_values.get(col, [])
+                options = grammar.feature_orchestrator.feature_values_registry.features_to_values.get(
+                    col, []
+                )
                 st.selectbox(
                     col,
                     options=[""] + options,
-                    index=options.index(row.get(col)) + 1 if row.get(col) in options else 0,
+                    index=(
+                        options.index(row.get(col)) + 1
+                        if row.get(col) in options
+                        else 0
+                    ),
                     key=editor.get_widget_key(_ROW_COL_PREFIX, uid, suffix=col),
                     label_visibility="collapsed",
                 )
@@ -222,7 +236,9 @@ def _render_lexicon_row(
                 )
 
     with cols[-1]:
-        if st.button("✕", key=editor.get_widget_key(_REMOVE_ROW_PREFIX, uid), help="Delete row"):
+        if st.button(
+            "✕", key=editor.get_widget_key(_REMOVE_ROW_PREFIX, uid), help="Delete row"
+        ):
             editor.remove_row(uid)
             st.rerun()
 
@@ -280,7 +296,7 @@ def lexicon_page() -> None:
             value=", ".join(editor.data["principal_parts"]),
             key=editor.get_widget_key(_PRINCIPAL_PARTS_PREFIX, "main"),
             help="These columns will be added to the lexicon table below.",
-            on_change=st.rerun # Force table refresh
+            on_change=st.rerun,  # Force table refresh
         )
 
     toolbar_placeholder = st.empty()
@@ -288,7 +304,7 @@ def lexicon_page() -> None:
 
     # 2. Entries table
     dynamic_cols = editor.data["principal_parts"] + editor.data["lexical_features"]
-    
+
     # Table Header
     header_cols = st.columns([1.5, 1.5] + [1.2] * len(dynamic_cols) + [0.4])
     header_cols[0].markdown("**Root**")
@@ -300,7 +316,9 @@ def lexicon_page() -> None:
         st.info("No lexicon entries yet. Click **➕ Add lexicon row** to start.")
     else:
         for row in editor.data["rows"]:
-            _render_lexicon_row(row, dynamic_cols, editor.data["lexical_features"], editor, grammar)
+            _render_lexicon_row(
+                row, dynamic_cols, editor.data["lexical_features"], editor, grammar
+            )
 
     with toolbar_placeholder.container():
         render_editor_toolbar(

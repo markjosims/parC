@@ -101,8 +101,10 @@ class Lexicon:
     principal_parts: list[str] = field(init=False)
     lexical_features: list[Feature] = field(init=False)
     features: list[Feature] = field(init=False)
+    name: str = field(init=False)
 
     def __post_init__(self):
+        self.name = self.part_of_speech.name
         if "root" not in self.entries.columns:
             raise ValueError("Entries dataframe must contain a 'root' column")
         if "gloss" not in self.entries.columns:

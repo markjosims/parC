@@ -1,0 +1,8 @@
+kind: MorphemeSequence
+data:
+- type: MorphemeSet
+  value: $class_prefixes
+- type: MorphemeSet
+  value: $pre_stem_vowel
+- type: Paradigm
+  value: $verb_stem

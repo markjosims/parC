@@ -13,6 +13,11 @@
       "type": "string",
       "enum": ["MorphemeSequence"]
     },
+    "fixed_features": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Features that are fixed to specific values for this sequence."
+    },
     "data": {
       "type": "array",
       "items": {
@@ -21,7 +26,7 @@
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["Lexicon", "Paradigm", "Pattern", "Rule"]
+            "enum": ["Lexicon", "Paradigm", "Pattern", "Rule", "MorphemeSet"]
           },
           "value": {
             "type": "string",

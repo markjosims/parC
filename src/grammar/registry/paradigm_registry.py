@@ -33,6 +33,7 @@ from collections import defaultdict
 import pandas as pd
 from tqdm import tqdm
 import os
+import functools
 
 EDIT_BOUND = 5
 EDIT_COST = 1
@@ -120,7 +121,7 @@ class Paradigm:
             paradigm_name = Path(paradigm_source).stem
 
         part_of_speech_name = config["part_of_speech"]
-        lexicon = lexicon_registry.data[part_of_speech_name]
+        lexicon = lexicon_registry.get_lexicon(part_of_speech_name)
         marker_order = config.get("order", None)
 
         feature_value_combinations = None
@@ -186,7 +187,7 @@ class Paradigm:
         )
 
     def get_markers_for_feature_values(
-        self, feature_values: dict[str, str]
+        self, feature_values: dict[str, str], ignore_extra: bool = True
     ) -> MarkerList:
         """
         Get the list of markers that should be applied for a given combination of feature values.
@@ -238,7 +239,7 @@ class Paradigm:
             if feature_value_pair in self.feature_marker_map:
                 marker_list = self.feature_marker_map[feature_value_pair]
                 applicable_markers.extend(marker_list)
-            else:
+            elif not ignore_extra:
                 raise KeyError(
                     f"Cannot find FeatureMarker for  {feature_value_pair} for feature set {feature_values} "
                     f"where features {assigned_features} are assigned by ContingentMarkers"
@@ -688,7 +689,7 @@ class Paradigm:
         if not all_roots:
             return pynini.Fst()
 
-        stem_fsa = pynini.union(*[pynini.acceptor(r) for r in all_roots]).optimize()
+        stem_fsa = pynini.union(*[self.fst_orchestrator.fsa(r) for r in all_roots]).optimize()
         results = self.inflect_subparadigm(stem=stem_fsa, fixed_features=fixed_features)
 
         fsts = []

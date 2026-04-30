@@ -15,6 +15,7 @@ from src.pages.morpheme_sequence import morpheme_sequence_page
 from src.pages.morpheme_set import morpheme_set_page
 from src.pages.patterns import patterns_page
 from src.pages.rules import rules_page
+from src.pages.inflector import inflector_page
 
 _INVALIDATE_KEYS = ["grammar", "config_walker"]
 
@@ -80,7 +81,9 @@ def navbar():
             st.Page(lexicon_page, title="Lexical Roots"),
 
         ],
-        "Inflect": [],
+        "Inflect": [
+            st.Page(inflector_page, title="Inflector"),
+        ],
         "Parse": [],
         "Corpus": [],
     }

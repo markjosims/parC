@@ -74,6 +74,7 @@ class Grammar(Orchestrator):
             lexicon_registry=self.lexicon_registry,
             paradigm_registry=self.paradigm_registry,
             fst_orchestrator=self.fst_orchestrator,
+            morpheme_set_registry=self.morpheme_set_registry,
         )
 
         self.initialize()

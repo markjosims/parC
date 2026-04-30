@@ -156,17 +156,27 @@ class FeatureCombinationsEditor(EditorBase):
 
 
 def _render_combination(
-    combo: dict, features: list[str], editor: FeatureCombinationsEditor
+    combo: dict,
+    features: list[str],
+    editor: FeatureCombinationsEditor,
+    features_to_values: dict[str, list[str]],
 ) -> None:
     uid = combo["uuid"]
     cols = st.columns([1] * len(features) + [0.4])
 
     for i, f in enumerate(features):
         with cols[i]:
-            st.text_input(
+            f_vals = features_to_values.get(f, [])
+            options = ["unmarked", "*"] + sorted(f_vals)
+            current_val = combo.get(f, "unmarked")
+            if current_val not in options:
+                options.append(current_val)
+
+            st.selectbox(
                 f,  # Label
+                options=options,
+                index=options.index(current_val),
                 key=editor.get_widget_key(_COMBO_VAL_PREFIX, uid, suffix=f),
-                value=combo.get(f, "unmarked"),
                 label_visibility="collapsed" if len(features) > 1 else "visible",
             )
 
@@ -197,10 +207,12 @@ def feature_combinations_page() -> None:
     # 1. Feature selection section
     grammar = st.session_state.get("grammar")
     available_features = []
+    features_to_values = {}
     if grammar:
-        available_features = list(
-            grammar.feature_orchestrator.feature_values_registry.features_to_values.keys()
+        features_to_values = (
+            grammar.feature_orchestrator.feature_values_registry.features_to_values
         )
+        available_features = list(features_to_values.keys())
 
     current_features = editor.data.get("features", [])
 
@@ -238,7 +250,7 @@ def feature_combinations_page() -> None:
             st.info("No combinations yet. Click **➕ Add combination** to start.")
         else:
             for combo in combinations:
-                _render_combination(combo, features, editor)
+                _render_combination(combo, features, editor, features_to_values)
 
     with toolbar_placeholder.container():
         render_editor_toolbar(

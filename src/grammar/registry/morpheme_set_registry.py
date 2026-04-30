@@ -2,6 +2,7 @@ from src.grammar.classes import Registry
 from src.grammar.orchestrator.feature_orchestrator import (
     FeatureOrchestrator,
     stringify_features,
+    Feature,
 )
 from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
 from dataclasses import dataclass, field
@@ -27,6 +28,7 @@ class MorphemeSet:
     )
     source: os.PathLike | None = None
     fst_orchestrator: FstOrchestrator | None = None
+    features: set[Feature] = field(default_factory=set)
 
     @classmethod
     def from_config(
@@ -38,14 +40,16 @@ class MorphemeSet:
         """Build a MorphemeSet from a full YAML config dict."""
         source = config.get("source_path")
         morpheme_config = config.get("data", [])
+        features = set(config.get("features", []))
 
         feature_mappings: dict[frozenset[tuple[str, str]], str] = {}
         for entry in morpheme_config:
             features_dict = entry.get("features", {})
-            morpheme = entry.get("morpheme", [])
+            morpheme = entry.get("morpheme", "")
 
             # Validate features
             for f_name, f_val in features_dict.items():
+                features.add(f_name)
                 feature = feature_orchestrator.get_feature(f_name)
                 if f_val not in feature.values:
                     raise ValueError(
@@ -55,10 +59,13 @@ class MorphemeSet:
             vector = frozenset(features_dict.items())
             feature_mappings[vector] = morpheme
 
+        features = {feature_orchestrator.get_feature(f) for f in features}
+
         return cls(
             feature_mappings=feature_mappings,
             source=source,
             fst_orchestrator=fst_orchestrator,
+            features=features,
         )
 
     def get_morpheme(self, **feature_dict: str) -> str:
@@ -83,9 +90,9 @@ class MorphemeSet:
                 vector_fsa = self.fst_orchestrator.fsa(vector_str)
                 morpheme_fsa = self.fst_orchestrator.fsa(morpheme)
                 if direction == "morpheme_to_analysis":
-                    analyzer_fst = pynini.cross(vector_fsa, morpheme_fsa)
-                elif direction == "analysis_to_morpheme":
                     analyzer_fst = pynini.cross(morpheme_fsa, vector_fsa)
+                elif direction == "analysis_to_morpheme":
+                    analyzer_fst = pynini.cross(vector_fsa, morpheme_fsa)
                 return analyzer_fst
 
         raise KeyError(
