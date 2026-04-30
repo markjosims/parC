@@ -54,10 +54,15 @@ class FeatureOrchestrator(Orchestrator):
         return self.feature_combinations[name]
 
 
-def stringify_features(features: dict[str, str]) -> str:
+def stringify_features(features: dict[str, str] | frozenset[tuple[str, str]]) -> str:
+    if isinstance(features, dict):
+        feature_iterator = features.items()
+    else:
+        # features is frozenset of tuples, iterate directly
+        feature_iterator = features
     feature_strings = [
         f"[{feature_name}={feature_value or 'unmarked'}]"
-        for feature_name, feature_value in features.items()
+        for feature_name, feature_value in feature_iterator
     ]
     feature_strings.sort()
     result_str = "".join(feature_strings)
