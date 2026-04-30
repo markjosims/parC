@@ -1,4 +1,5 @@
 kind: ContingentFeatureMarkers
+features: ["tam", "deixis"]
 markers:
 - features: {tam: imperfective, deixis: itive}
   realization:

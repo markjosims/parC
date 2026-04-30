@@ -3,7 +3,11 @@
   "title": "ContingentFeatureMarkers",
   "description": "Schema for morphological realizations contingent on multiple features.",
   "type": "object",
-  "required": ["kind", "markers"],
+  "required": [
+    "kind",
+    "features",
+    "markers"
+  ],
   "additionalProperties": false,
   "properties": {
     "source_path": {
@@ -12,7 +16,16 @@
     },
     "kind": {
       "type": "string",
-      "enum": ["ContingentFeatureMarkers"]
+      "enum": [
+        "ContingentFeatureMarkers"
+      ]
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of inflectional features this set expones."
     },
     "global_order": {
       "type": "string",
@@ -20,7 +33,9 @@
     },
     "global_markers": {
       "type": "array",
-      "items": { "$ref": "./FeatureMarkers.json#/definitions/marker" },
+      "items": {
+        "$ref": "./FeatureMarkers.json#/definitions/marker"
+      },
       "description": "A marker or list of markers applied to all forms in this paradigm."
     },
     "markers": {
@@ -28,16 +43,23 @@
       "description": "An array over feature vectors and their realizations.",
       "items": {
         "type": "object",
-        "required": ["features", "realization"],
+        "required": [
+          "features",
+          "realization"
+        ],
         "properties": {
           "features": {
             "type": "object",
-            "additionalProperties": { "type": "string" },
+            "additionalProperties": {
+              "type": "string"
+            },
             "description": "The feature value vector specified for this marker group."
           },
           "realization": {
             "oneOf": [
-              { "$ref": "./FeatureMarkers.json#/definitions/marker" },
+              {
+                "$ref": "./FeatureMarkers.json#/definitions/marker"
+              },
               {
                 "type": "array",
                 "items": {
@@ -47,7 +69,7 @@
             ]
           }
         }
-      } 
+      }
     }
   }
 }

@@ -1,5 +1,6 @@
 kind: ContingentFeatureMarkers
 global_order: argument_marking
+features: ["tam", "subject"]
 markers:
 - features: {tam: perfective, subject: 1sg}
   realization:
