@@ -6,11 +6,14 @@ storing and managing the lexicon for a given language.
 
 from dataclasses import dataclass, field
 import os
-
+import pynini
 from loguru import logger
 from src.grammar.classes import Registry
 from src.grammar.registry.feature_values_registry import Feature
-from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
+from src.grammar.orchestrator.feature_orchestrator import (
+    FeatureOrchestrator,
+    stringify_features,
+)
 import pandas as pd
 import numpy as np
 
@@ -164,6 +167,43 @@ class Lexicon:
                 .tolist()
             )
         return self.entries[column].tolist()
+
+    def roots_to_analyses(self, features: dict[str, str] | None = None) -> pynini.Fst:
+        """
+        Transduces a root to a root with a stringified vector of all of the
+        root's lexical feature specifications.
+        """
+        filtered_df = self.entries
+        if features:
+            for feat_name, feat_val in features.items():
+                if feat_name in filtered_df.columns:
+                    mask = (
+                        (filtered_df[feat_name] == feat_val)
+                        | (filtered_df[feat_name] == "")
+                        | (filtered_df[feat_name].isna())
+                    )
+                    filtered_df = filtered_df[mask]
+
+        fsts = []
+        lexical_feat_names = [f.name for f in self.lexical_features]
+
+        for _, row in filtered_df.iterrows():
+            root = str(row["root"])
+            row_feats = {}
+            for fn in lexical_feat_names:
+                val = str(row.get(fn, "unmarked"))
+                if not val or val == "nan":
+                    val = "unmarked"
+                row_feats[fn] = val
+
+            analysis_suffix = stringify_features(row_feats)
+            # root -> root[analysis]
+            fsts.append(pynini.cross(root, root + analysis_suffix))
+
+        if not fsts:
+            return pynini.Fst()
+
+        return pynini.union(*fsts).optimize()
 
 
 @dataclass

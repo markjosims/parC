@@ -677,6 +677,29 @@ class Paradigm:
 
         return results
 
+    def get_subparadigm_inflect_graph(
+        self, fixed_features: dict[str, str] | None = None
+    ) -> pynini.Fst:
+        """
+        Wraps `inflect_subparadigm` but passes the all-roots FSA as the stem input.
+        Returns a single unioned FST.
+        """
+        all_roots = self.lexicon.get_roots()
+        if not all_roots:
+            return pynini.Fst()
+
+        stem_fsa = pynini.union(*[pynini.acceptor(r) for r in all_roots]).optimize()
+        results = self.inflect_subparadigm(stem=stem_fsa, fixed_features=fixed_features)
+
+        fsts = []
+        for fst, _ in results:
+            fsts.append(fst)
+
+        if not fsts:
+            return pynini.Fst()
+
+        return pynini.union(*fsts).optimize()
+
     def get_subparadigm_table(
         self,
         stem: str,
