@@ -22,7 +22,13 @@ import yaml as _yaml
 from src.grammar import Grammar
 from src.config_utils.config_walker import ConfigWalker
 from src.grammar.registry.rule_registry import Rule, RuleRegistry
-from src.pages.editor_utils import EditorBase, editor_guard, editor_sidebar, editor_header
+from src.pages.editor_utils import (
+    EditorBase,
+    editor_guard,
+    editor_sidebar,
+    editor_header,
+    render_editor_toolbar,
+)
 
 _config_kind = "Rules"
 _config_key = "rule_configs"
@@ -546,42 +552,6 @@ Page components
 """
 
 
-def rules_toolbar(editor: RulesEditor) -> None:
-    col_add, col_save, col_preview_toggle, _ = st.columns([2.2, 1.2, 1.6, 4])
-
-    with col_add:
-        rule_type = st.selectbox(
-            "New rule type",
-            options=_RULE_TYPES,
-            format_func=lambda s: s.replace("_", " ").title(),
-            label_visibility="collapsed",
-            key="new_rule_type_select",
-        )
-        if st.button("➕ Add rule", use_container_width=True):
-            editor.insert_rule(rule_type)
-            st.rerun()
-
-    with col_save:
-        if st.button("💾 Save YAML", use_container_width=True, type="primary"):
-            stem = st.session_state.get("file_name", "").strip()
-            if not stem:
-                st.error("Enter a file name before saving.")
-            else:
-                try:
-                    editor.save(stem)
-                    st.toast(f"✅ Saved as `{stem}`", icon="✅")
-                except (ValueError, OSError) as exc:
-                    st.error(str(exc))
-
-    with col_preview_toggle:
-        show_preview = st.toggle("Show YAML preview", value=False)
-
-    if show_preview:
-        with st.container(border=True):
-            st.caption("YAML preview — reflects unsaved edits")
-            st.code(_yaml.dump(editor.to_yaml(), allow_unicode=True, sort_keys=False))
-
-
 def rules_form(editor: RulesEditor) -> None:
     """Render all rule cards."""
     id_map: dict[str, Rule] = editor.data.get("id_map", {})
@@ -607,16 +577,10 @@ def rules_page() -> None:
         layout="wide",
     )
 
-    config_dir: str = st.session_state["config_dir"]
-    config_walker: ConfigWalker = st.session_state["config_walker"]
-    rule_files = config_walker.config_filemap[_config_key]
-
     editor_sidebar(
         kind=_config_kind,
         editor_class=RulesEditor,
-        config_dir=config_dir,
-        config_walker=config_walker,
-        kind_files=rule_files,
+        config_key=_config_key,
         help_str=_help_str,
     )
 
@@ -639,7 +603,19 @@ def rules_page() -> None:
     rules_form(editor)
 
     with toolbar_placeholder.container():
-        rules_toolbar(editor)
+        st.selectbox(
+            "New rule type",
+            options=_RULE_TYPES,
+            format_func=lambda s: s.replace("_", " ").title(),
+            key="new_rule_type_select",
+        )
+        render_editor_toolbar(
+            editor=editor,
+            add_label="Add rule",
+            add_callback=lambda: editor.insert_rule(
+                st.session_state.get("new_rule_type_select", "simple_rule")
+            ),
+        )
 
 
 if __name__ == "__main__":

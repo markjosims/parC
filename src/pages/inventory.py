@@ -31,6 +31,7 @@ from src.pages.editor_utils import (
     editor_guard,
     editor_sidebar,
     editor_header,
+    render_editor_toolbar,
 )
 from loguru import logger
 
@@ -409,40 +410,6 @@ Page components
 """
 
 
-def inventory_toolbar(editor: InventoryEditor) -> None:
-    """
-    Render toolbar with buttons for adding nodes, saving YAML, and toggling the preview pane.
-    """
-    col_add, col_save, col_preview_toggle, _ = st.columns([1.4, 1.2, 1.6, 5])
-
-    with col_add:
-        if st.button("➕ Add top-level node", use_container_width=True):
-            editor.insert_top_node()
-            st.rerun()
-
-    with col_save:
-        if st.button("💾 Save YAML", use_container_width=True, type="primary"):
-            stem = st.session_state.get("file_name", "").strip()
-            if not stem:
-                st.error("Enter a file name before saving.")
-            else:
-                try:
-                    editor.save(stem)
-                    st.toast(f"✅ Saved as `{stem}`", icon="✅")
-                except (ValueError, OSError) as exc:
-                    st.error(str(exc))
-
-    with col_preview_toggle:
-        show_preview = st.toggle("Show YAML preview", value=False)
-
-    # YAML preview
-    if show_preview:
-        with st.container(border=True):
-            st.caption("YAML preview — reflects unsaved edits")
-
-            st.code(yaml.dump(editor.to_yaml(), allow_unicode=True, sort_keys=False))
-
-
 def node_tree(editor: InventoryEditor) -> None:
     """
     Render the tree of inventory nodes by recursively rendering from the top-level nodes.
@@ -471,17 +438,11 @@ def inventory_page() -> None:
         layout="wide",
     )
 
-    config_dir: str = st.session_state["config_dir"]
-    config_walker: ConfigWalker = st.session_state["config_walker"]
-    inventory_files = config_walker.config_filemap[_config_key]
-
     editor_sidebar(
-        _config_kind,
-        InventoryEditor,
-        config_dir,
-        config_walker,
-        inventory_files,
-        _help_str,
+        kind=_config_kind,
+        editor_class=InventoryEditor,
+        config_key=_config_key,
+        help_str=_help_str,
     )
     editor = editor_guard(kind=_config_kind)
     editor.read_form_to_state()
@@ -494,7 +455,11 @@ def inventory_page() -> None:
 
     # render after node tree so that buttons are within the context of the editor content
     with toolbar_placeholder.container():
-        inventory_toolbar(editor)
+        render_editor_toolbar(
+            editor=editor,
+            add_label="Add top-level node",
+            add_callback=editor.insert_top_node,
+        )
 
 
 if __name__ == "__main__":

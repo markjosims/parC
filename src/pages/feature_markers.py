@@ -13,7 +13,6 @@ import streamlit as st
 import yaml
 from pathlib import Path
 
-from src.config_utils.config_walker import ConfigWalker
 from src.grammar.registry.feature_marker_registry import Marker
 from src.pages.editor_utils import (
     EditorBase,
@@ -22,6 +21,7 @@ from src.pages.editor_utils import (
     editor_sidebar,
     render_marker_list,
     render_editor_toolbar,
+    validate_file_reference_str,
     MARKER_WIDGET_PREFIXES,
 )
 
@@ -191,16 +191,10 @@ def feature_markers_page() -> None:
         layout="wide",
     )
 
-    config_dir: str = st.session_state["config_dir"]
-    config_walker: ConfigWalker = st.session_state["config_walker"]
-    fm_files = config_walker.config_filemap[_config_key]
-
     editor_sidebar(
         kind=_config_kind,
         editor_class=FeatureMarkersEditor,
-        config_dir=config_dir,
-        config_walker=config_walker,
-        kind_files=fm_files,
+        config_key=_config_key,
         help_str=_help_str,
     )
 
@@ -209,6 +203,8 @@ def feature_markers_page() -> None:
     editor_header(kind=_config_kind, editor=editor)
 
     # 1. Config section
+    config_walker = st.session_state["config_walker"]
+    fm_files = config_walker.config_filemap[_config_key]
     grammar = st.session_state.get("grammar")
     available_features = []
     available_rules = []
@@ -227,7 +223,9 @@ def feature_markers_page() -> None:
             for col in pos_config.get("columns", []):
                 pp_sets.add(col)
         available_principal_parts = sorted(list(pp_sets))
-        fm_configs = sorted([Path(f).stem for f in fm_files])
+        fm_configs = sorted(
+            [validate_file_reference_str(Path(f).stem) for f in fm_files]
+        )
 
     with st.expander("Configuration", expanded=not bool(editor.data["feature"])):
         col1, col2, col3 = st.columns(3)

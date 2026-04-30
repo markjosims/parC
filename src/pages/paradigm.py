@@ -324,12 +324,8 @@ class ParadigmEditor(EditorBase):
 def paradigm_page() -> None:
     st.set_page_config(page_title="Paradigm Editor", page_icon="🏗️", layout="wide")
 
-    config_dir: str = st.session_state["config_dir"]
-    config_walker: ConfigWalker = st.session_state["config_walker"]
-    p_files = config_walker.config_filemap[_config_key]
-
     editor_sidebar(
-        _config_kind, ParadigmEditor, config_dir, config_walker, p_files, _help_str
+        _config_kind, ParadigmEditor, _config_key, _help_str
     )
     editor = editor_guard(kind=_config_kind)
     editor.read_form_to_state()
@@ -346,7 +342,13 @@ def paradigm_page() -> None:
     available_patterns = []
 
     if grammar:
-        available_pos = list(grammar.lexicon_registry.data.keys())
+        config_walker = st.session_state.get("config_walker")
+        available_pos = sorted(
+            [
+                validate_file_reference_str(Path(f).stem)
+                for f in config_walker.config_filemap["part_of_speech_configs"]
+            ]
+        )
         available_features = list(
             grammar.feature_orchestrator.feature_values_registry.features_to_values.keys()
         )

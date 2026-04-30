@@ -227,16 +227,10 @@ def contingent_markers_page() -> None:
         layout="wide",
     )
 
-    config_dir: str = st.session_state["config_dir"]
-    config_walker: ConfigWalker = st.session_state["config_walker"]
-    cm_files = config_walker.config_filemap[_config_key]
-
     editor_sidebar(
         kind=_config_kind,
         editor_class=ContingentMarkersEditor,
-        config_dir=config_dir,
-        config_walker=config_walker,
-        kind_files=cm_files,
+        config_key=_config_key,
         help_str=_help_str,
     )
 

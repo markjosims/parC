@@ -13,12 +13,15 @@ import streamlit as st
 import yaml
 
 from src.config_utils.config_walker import ConfigWalker
-from src.grammar.registry.feature_combination_registry import FeatureCombinationsRegistry
+from src.grammar.registry.feature_combination_registry import (
+    FeatureCombinationsRegistry,
+)
 from src.pages.editor_utils import (
     EditorBase,
     editor_guard,
     editor_header,
     editor_sidebar,
+    render_editor_toolbar,
 )
 
 _config_kind = "FeatureCombinations"
@@ -66,11 +69,11 @@ class FeatureCombinationsEditor(EditorBase):
             features_to_values = grammar.feature_orchestrator.feature_values_registry
 
         filepath = config_object["source_path"]
-        # Dummy registry to leverage loading logic if needed, 
+        # Dummy registry to leverage loading logic if needed,
         # but we mostly care about the raw combinations list.
         features = config_object.get("features", [])
         raw_combos = config_object.get("combinations", [])
-        
+
         # Add stable UUIDs for Streamlit keys
         combinations = []
         for combo in raw_combos:
@@ -92,14 +95,16 @@ class FeatureCombinationsEditor(EditorBase):
         """Sync widget values back to self.data."""
         # 1. Update features list
         # Note: We use a multi-select in the header/top section
-        selected_features = st.session_state.get(self.get_widget_key(_FEATURE_LIST_PREFIX, "main"), [])
+        selected_features = st.session_state.get(
+            self.get_widget_key(_FEATURE_LIST_PREFIX, "main"), []
+        )
         if selected_features:
             self.data["features"] = selected_features
 
         # 2. Update combinations
         features = self.data.get("features", [])
         combinations = self.data.get("combinations", [])
-        
+
         for combo in combinations:
             uid = combo["uuid"]
             for f in features:
@@ -110,7 +115,7 @@ class FeatureCombinationsEditor(EditorBase):
     def to_yaml(self) -> dict:
         features = self.data.get("features", [])
         combinations = self.data.get("combinations", [])
-        
+
         output_combos = []
         for combo in combinations:
             cleaned_combo = {}
@@ -150,37 +155,37 @@ class FeatureCombinationsEditor(EditorBase):
             st.session_state.pop(f"{prefix}{uid}", None)
 
 
-def _render_combination(combo: dict, features: list[str], editor: FeatureCombinationsEditor) -> None:
+def _render_combination(
+    combo: dict, features: list[str], editor: FeatureCombinationsEditor
+) -> None:
     uid = combo["uuid"]
     cols = st.columns([1] * len(features) + [0.4])
-    
+
     for i, f in enumerate(features):
         with cols[i]:
             st.text_input(
-                f, # Label
+                f,  # Label
                 key=editor.get_widget_key(_COMBO_VAL_PREFIX, uid, suffix=f),
                 value=combo.get(f, "unmarked"),
-                label_visibility="collapsed" if len(features) > 1 else "visible"
+                label_visibility="collapsed" if len(features) > 1 else "visible",
             )
-            
+
     with cols[-1]:
-        if st.button("✕", key=editor.get_widget_key(_REMOVE_COMBO_PREFIX, uid), help="Delete this combination"):
+        if st.button(
+            "✕",
+            key=editor.get_widget_key(_REMOVE_COMBO_PREFIX, uid),
+            help="Delete this combination",
+        ):
             editor.remove_combination(uid)
             st.rerun()
 
 
 def feature_combinations_page() -> None:
 
-    config_dir: str = st.session_state["config_dir"]
-    config_walker: ConfigWalker = st.session_state["config_walker"]
-    combo_files = config_walker.config_filemap[_config_key]
-
     editor_sidebar(
         kind=_config_kind,
         editor_class=FeatureCombinationsEditor,
-        config_dir=config_dir,
-        config_walker=config_walker,
-        kind_files=combo_files,
+        config_key=_config_key,
         help_str=_help_str,
     )
 
@@ -193,17 +198,21 @@ def feature_combinations_page() -> None:
     grammar = st.session_state.get("grammar")
     available_features = []
     if grammar:
-        available_features = list(grammar.feature_orchestrator.feature_values_registry.features_to_values.keys())
-    
+        available_features = list(
+            grammar.feature_orchestrator.feature_values_registry.features_to_values.keys()
+        )
+
     current_features = editor.data.get("features", [])
-    
-    with st.expander("Configuration: Participating Features", expanded=not bool(current_features)):
+
+    with st.expander(
+        "Configuration: Participating Features", expanded=not bool(current_features)
+    ):
         selected_features = st.multiselect(
             "Select features to include in this combination set",
             options=available_features or current_features,
             default=current_features,
             key=editor.get_widget_key(_FEATURE_LIST_PREFIX, "main"),
-            help="Adding or removing features will update the table columns below."
+            help="Adding or removing features will update the table columns below.",
         )
         if selected_features != current_features:
             st.rerun()
@@ -216,13 +225,15 @@ def feature_combinations_page() -> None:
     combinations = editor.data.get("combinations", [])
 
     if not features:
-        st.warning("Please select at least one feature in the configuration section above.")
+        st.warning(
+            "Please select at least one feature in the configuration section above."
+        )
     else:
         # Header row for the "table"
         cols = st.columns([1] * len(features) + [0.4])
         for i, f in enumerate(features):
             cols[i].markdown(f"**{f}**")
-        
+
         if not combinations:
             st.info("No combinations yet. Click **➕ Add combination** to start.")
         else:
@@ -230,7 +241,9 @@ def feature_combinations_page() -> None:
                 _render_combination(combo, features, editor)
 
     with toolbar_placeholder.container():
-        render_editor_toolbar(editor, add_label="Add combination", add_callback=editor.insert_combination)
+        render_editor_toolbar(
+            editor, add_label="Add combination", add_callback=editor.insert_combination
+        )
 
 
 if __name__ == "__main__":

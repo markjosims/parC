@@ -22,7 +22,13 @@ from src.config_utils.config_walker import ConfigWalker
 from src.grammar import Grammar
 from src.grammar.registry.pattern_registry import Pattern, PatternRegistry
 from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
-from src.pages.editor_utils import EditorBase, editor_guard, editor_sidebar, editor_header
+from src.pages.editor_utils import (
+    EditorBase,
+    editor_guard,
+    editor_sidebar,
+    editor_header,
+    render_editor_toolbar,
+)
 
 _config_kind = "Patterns"
 _config_key = "pattern_configs"
@@ -266,37 +272,6 @@ def _render_pattern(uid: str, editor: PatternEditor) -> None:
 Page components
 """
 
-def pattern_toolbar(editor: PatternEditor) -> None:
-    col_add, col_save, col_preview_toggle, _ = st.columns([1.4, 1.2, 1.6, 5])
-
-    with col_add:
-        if st.button("➕ Add pattern", use_container_width=True):
-            editor.insert_pattern()
-            st.rerun()
-
-    with col_save:
-        if st.button("💾 Save YAML", use_container_width=True, type="primary"):
-            stem = st.session_state.get("file_name", "").strip()
-            if not stem:
-                st.error("Enter a file name before saving.")
-            else:
-                try:
-                    editor.save(stem)
-                    st.toast(f"✅ Saved as `{stem}`", icon="✅")
-                except (ValueError, OSError) as exc:
-                    st.error(str(exc))
-
-    with col_preview_toggle:
-        show_preview = st.toggle("Show YAML preview", value=False)
-
-    if show_preview:
-        import yaml as _yaml
-        with st.container(border=True):
-            st.caption("YAML preview — reflects unsaved edits")
-            st.code(
-                _yaml.dump(editor.to_yaml(), allow_unicode=True, sort_keys=False)
-            )
-
 def pattern_form(editor: PatternEditor) -> None:
     """Render form inputs for all patterns in editor.data."""
     id_map: dict[str, Pattern] = editor.data.get("id_map", {})
@@ -316,21 +291,15 @@ Page function
 
 def patterns_page() -> None:
     st.set_page_config(
-        page_title="Pattern Editor",
+        page_title="Patterns Editor",
         page_icon="🔣",
         layout="wide",
     )
 
-    config_dir: str = st.session_state["config_dir"]
-    config_walker: ConfigWalker = st.session_state["config_walker"]
-    pattern_files = config_walker.config_filemap[_config_key]
-
     editor_sidebar(
         kind=_config_kind,
         editor_class=PatternEditor,
-        config_dir=config_dir,
-        config_walker=config_walker,
-        kind_files=pattern_files,
+        config_key=_config_key,
         help_str=_help_str,
     )
 
@@ -354,7 +323,11 @@ def patterns_page() -> None:
     pattern_form(editor)
 
     with toolbar_placeholder.container():
-        pattern_toolbar(editor)
+        render_editor_toolbar(
+            editor=editor,
+            add_label="Add pattern",
+            add_callback=editor.insert_pattern,
+        )
 
     
 

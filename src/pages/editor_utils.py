@@ -55,10 +55,15 @@ class EditorBase(ABC):
             config_key: The key used in ConfigWalker.config_data,
                         e.g. "inventory_configs".
         """
+        config_walker = st.session_state.get("config_walker")
+        if config_walker is None:
+            raise RuntimeError("ConfigWalker not found in session state.")
+
         self.kind = kind
         self.config_key = config_key
+        self.config_walker = config_walker
         self.path: str = ""
-        self.config_dir: str = ""
+        self.config_dir: str = str(config_walker.config_dir)
         self.data: dict = {}
 
     @property
@@ -135,13 +140,12 @@ class EditorBase(ABC):
     # Concrete lifecycle helpers
     # ------------------------------------------------------------------
 
-    def load_file(self, filepath: str, config_walker: "ConfigWalker") -> None:
+    def load_file(self, filepath: str) -> None:
         """Clear widget state, then load and parse the given file."""
 
         logger.info(f"Loading {self.kind} file: {filepath}")
 
-        self.config_dir = str(config_walker.config_dir)
-        config_object = config_walker.config_data[self.config_key][filepath]
+        config_object = self.config_walker.config_data[self.config_key][filepath]
         self.data = self.build_state_from_config(config_object)
         self.path = filepath
 
@@ -194,7 +198,7 @@ class EditorBase(ABC):
                 r_in = self.get_node_widget(_MARKER_REPLACE_IN_PREFIX, scope, suffix=m_uid)
                 r_out = self.get_node_widget(_MARKER_REPLACE_OUT_PREFIX, scope, suffix=m_uid)
                 if r_in is not None and r_out is not None:
-                    marker.value = (r_in, r_out)
+                    marker.value = [r_in, r_out]
             else:
                 val = self.get_node_widget(_MARKER_VALUE_PREFIX, scope, suffix=m_uid)
                 if val is not None:
@@ -333,11 +337,7 @@ def editor_guard(kind: ConfigKindType) -> EditorBase:
 
         editor = editor_class()
         if file_name:
-            config_walker = st.session_state.get("config_walker")
-            if config_walker is None:
-                st.error("Config walker not found in session state.")
-                st.stop()
-            editor.load_file(file_name, config_walker=config_walker)
+            editor.load_file(file_name)
         else:
             editor.new_file()
 
@@ -359,14 +359,20 @@ def editor_guard(kind: ConfigKindType) -> EditorBase:
 def editor_sidebar(
     kind: str,
     editor_class: type[EditorBase],
-    config_dir: str,
-    config_walker: ConfigWalker,
-    kind_files: list[str],
+    config_key: str,
     help_str: str,
 ) -> None:
     """
     Render sidebar for the inventory page, including file selector and about info.
     """
+    config_walker = st.session_state.get("config_walker")
+    if config_walker is None:
+        st.error("Config walker not found in session state.")
+        st.stop()
+
+    config_dir = str(config_walker.config_dir)
+    kind_files = config_walker.config_filemap.get(config_key, [])
+
     with st.sidebar:
         st.title(f"🔤 {kind} Editor")
         st.caption(f"`CONFIG_DIR`: `{config_dir}`")

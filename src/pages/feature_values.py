@@ -11,13 +11,13 @@ from typing import Any
 import streamlit as st
 import yaml
 
-from src.config_utils.config_walker import ConfigWalker
 from src.grammar.registry.feature_values_registry import Feature, FeatureValuesRegistry
 from src.pages.editor_utils import (
     EditorBase,
     editor_guard,
     editor_header,
     editor_sidebar,
+    render_editor_toolbar,
 )
 
 _config_kind = "FeatureDefinitions"
@@ -192,36 +192,6 @@ def _render_feature(uid: str, editor: FeatureValuesEditor) -> None:
             st.rerun()
 
 
-def feature_values_toolbar(editor: FeatureValuesEditor) -> None:
-    """Toolbar for adding features and saving YAML."""
-    col_add, col_save, col_preview_toggle, _ = st.columns([1.4, 1.2, 1.6, 5])
-
-    with col_add:
-        if st.button("➕ Add feature", use_container_width=True):
-            editor.insert_feature()
-            st.rerun()
-
-    with col_save:
-        if st.button("💾 Save YAML", use_container_width=True, type="primary"):
-            stem = st.session_state.get("file_name", "").strip()
-            if not stem:
-                st.error("Enter a file name before saving.")
-            else:
-                try:
-                    editor.save(stem)
-                    st.toast(f"✅ Saved as `{stem}`", icon="✅")
-                except (ValueError, OSError) as exc:
-                    st.error(str(exc))
-
-    with col_preview_toggle:
-        show_preview = st.toggle("Show YAML preview", value=False)
-
-    if show_preview:
-        with st.container(border=True):
-            st.caption("YAML preview — reflects unsaved edits")
-            st.code(yaml.dump(editor.to_yaml(), allow_unicode=True, sort_keys=False))
-
-
 def feature_values_page() -> None:
     """Main page function for the Feature Values editor."""
     st.set_page_config(
@@ -230,16 +200,10 @@ def feature_values_page() -> None:
         layout="wide",
     )
 
-    config_dir: str = st.session_state["config_dir"]
-    config_walker: ConfigWalker = st.session_state["config_walker"]
-    feature_files = config_walker.config_filemap[_config_key]
-
     editor_sidebar(
         kind=_config_kind,
         editor_class=FeatureValuesEditor,
-        config_dir=config_dir,
-        config_walker=config_walker,
-        kind_files=feature_files,
+        config_key=_config_key,
         help_str=_help_str,
     )
 
@@ -259,7 +223,9 @@ def feature_values_page() -> None:
             _render_feature(uid, editor)
 
     with toolbar_placeholder.container():
-        feature_values_toolbar(editor)
+        render_editor_toolbar(
+            editor, add_label="Add feature", add_callback=editor.insert_feature
+        )
 
 
 if __name__ == "__main__":

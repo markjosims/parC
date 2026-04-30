@@ -19,8 +19,9 @@ from src.grammar.registry.lexicon_registry import Lexicon, LexiconRegistry
 from src.pages.editor_utils import (
     EditorBase,
     editor_guard,
-    editor_header,
     editor_sidebar,
+    editor_header,
+    render_editor_toolbar,
 )
 
 _config_kind = "PartOfSpeech"
@@ -226,52 +227,16 @@ def _render_lexicon_row(
             st.rerun()
 
 
-def lexicon_toolbar(editor: LexiconEditor) -> None:
-    col_add, col_save, col_preview_toggle, _ = st.columns([1.4, 1.2, 1.6, 5])
-
-    with col_add:
-        if st.button("➕ Add lexicon row", use_container_width=True):
-            editor.insert_row()
-            st.rerun()
-
-    with col_save:
-        if st.button("💾 Save (YAML + CSV)", use_container_width=True, type="primary"):
-            stem = st.session_state.get("file_name", "").strip()
-            if not stem:
-                st.error("Enter a file name before saving.")
-            else:
-                try:
-                    editor.save(stem)
-                    st.toast(f"✅ Saved `{stem}.yaml` and `{stem}.csv`", icon="✅")
-                except (ValueError, OSError) as exc:
-                    st.error(str(exc))
-
-    with col_preview_toggle:
-        show_preview = st.toggle("Show YAML preview", value=False)
-
-    if show_preview:
-        with st.container(border=True):
-            st.caption("YAML preview — reflects unsaved edits")
-            st.code(yaml.dump(editor.to_yaml(), allow_unicode=True, sort_keys=False))
-
-
 def lexicon_page() -> None:
     st.set_page_config(
-        page_title="Lexicon Editor",
         page_icon="📖",
         layout="wide",
     )
 
-    config_dir: str = st.session_state["config_dir"]
-    config_walker: ConfigWalker = st.session_state["config_walker"]
-    pos_files = config_walker.config_filemap[_config_key]
-
     editor_sidebar(
         kind=_config_kind,
         editor_class=LexiconEditor,
-        config_dir=config_dir,
-        config_walker=config_walker,
-        kind_files=pos_files,
+        config_key=_config_key,
         help_str=_help_str,
     )
 
@@ -338,7 +303,11 @@ def lexicon_page() -> None:
             _render_lexicon_row(row, dynamic_cols, editor.data["lexical_features"], editor, grammar)
 
     with toolbar_placeholder.container():
-        lexicon_toolbar(editor)
+        render_editor_toolbar(
+            editor=editor,
+            add_label="Add lexicon row",
+            add_callback=editor.insert_row,
+        )
 
 
 if __name__ == "__main__":
