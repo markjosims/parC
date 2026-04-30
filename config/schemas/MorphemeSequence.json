@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MorphemeSequence",
+  "description": "Configuration for sequencing lexical and morphological elements.",
+  "type": "object",
+  "required": ["kind", "data"],
+  "properties": {
+    "source_path": {
+      "type": "string",
+      "description": "The file path from which this config was loaded."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["MorphemeSequence"]
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "value"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["Lexicon", "Paradigm", "Pattern", "Rule"]
+          },
+          "value": {
+            "type": "string",
+            "description": "Reference (starts with $) or inline value for Pattern."
+          }
+        }
+      }
+    }
+  }
+}

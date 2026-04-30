@@ -13,6 +13,7 @@ from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
 from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
 from src.grammar.registry.lexicon_registry import LexiconRegistry
 from src.grammar.registry.paradigm_registry import ParadigmRegistry
+from src.grammar.registry.morpheme_sequence_registry import MorphemeSequenceRegistry
 
 
 class Grammar(Orchestrator):
@@ -31,6 +32,7 @@ class Grammar(Orchestrator):
         feature_definition_configs: dict[str, dict],
         feature_combination_configs: dict[str, dict],
         paradigm_configs: dict[str, dict],
+        morpheme_sequence_configs: dict[str, dict] = None,
     ):
         self.is_initialized = False
 
@@ -59,6 +61,12 @@ class Grammar(Orchestrator):
             lexicon_registry=self.lexicon_registry,
             fst_orchestrator=self.fst_orchestrator,
         )
+        self.morpheme_sequence_registry = MorphemeSequenceRegistry(
+            config_objects=morpheme_sequence_configs or {},
+            lexicon_registry=self.lexicon_registry,
+            paradigm_registry=self.paradigm_registry,
+            fst_orchestrator=self.fst_orchestrator,
+        )
 
         self.initialize()
 
@@ -70,8 +78,11 @@ class Grammar(Orchestrator):
                 self.lexicon_registry,
                 self.fst_orchestrator,
                 self.feature_orchestrator,
+                self.paradigm_registry,
             ]
         ):
+            # initialize morpheme sequences after all other registries are loaded
+            self.morpheme_sequence_registry.initialize_sequences()
             self.is_initialized = True
             logger.info("All child registries detected, Grammar loaded successfully.")
         else:
