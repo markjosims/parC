@@ -19,6 +19,7 @@ from src.pages.editor_utils import (
     editor_sidebar,
     render_editor_toolbar,
 )
+from loguru import logger
 
 _config_kind = "FeatureDefinitions"
 _config_key = "feature_definition_configs"
@@ -188,6 +189,9 @@ def _render_feature(uid: str, editor: FeatureValuesEditor) -> None:
                     st.rerun()
         
         if st.button("➕ Add value", key=editor.get_widget_key("add-val-", uid)):
+            # BUG: clicking the button doesn't trigger this branch!
+            logger.info(f"Adding value to feature {uid}")
+
             editor.add_value(uid)
             st.rerun()
 
