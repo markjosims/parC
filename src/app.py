@@ -11,6 +11,7 @@ from src.pages.feature_markers import feature_markers_page
 from src.pages.contingent_markers import contingent_markers_page
 from src.pages.lexicon import lexicon_page
 from src.pages.paradigm import paradigm_page
+from src.pages.morpheme_sequence import morpheme_sequence_page
 from src.pages.patterns import patterns_page
 from src.pages.rules import rules_page
 
@@ -58,16 +59,25 @@ def initialize_state():
 def navbar():
     pages = {
         "Home": [st.Page(home_page, title="Home")],
-        "Edit grammar": [
+        "Phonology": [
             st.Page(inventory_page, title="Inventory"),
+            st.Page(patterns_page, title="Patterns"),
+            st.Page(rules_page, title="Rules"),
+        ],
+        "Exponence": [
             st.Page(feature_values_page, title="Feature Values"),
             st.Page(feature_combinations_page, title="Feature Combinations"),
             st.Page(feature_markers_page, title="Feature Markers"),
             st.Page(contingent_markers_page, title="Contingent Markers"),
-            st.Page(lexicon_page, title="Lexicon"),
+
+        ],
+        "Morphotactics": [
+            st.Page(morpheme_sequence_page, title="Morpheme Sequence"),
             st.Page(paradigm_page, title="Paradigm"),
-            st.Page(patterns_page, title="Patterns"),
-            st.Page(rules_page, title="Rules"),
+        ],
+        "Lexicon": [
+            st.Page(lexicon_page, title="Lexical Roots"),
+
         ],
         "Inflect": [],
         "Parse": [],
