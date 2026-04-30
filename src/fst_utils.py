@@ -75,6 +75,9 @@ class Acceptor:
 
     def __post_init__(self):
         self.acceptor_built = False
+        
+        if self.value is not None and type(self.value) is not str:
+            raise ValueError(f"Value must be a string or None, but got {self.value} of type {type(self.value)}")
 
         if self.fsa is not None:
             raise ValueError(

@@ -436,6 +436,8 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         Parse each rule in `self.rules_sorted`
         """
         for rule in self.rules_sorted:
+            if rule.transducer_built:
+                continue
             rule_transducer = self._parse_rule(rule)
             rule.set_transducer(rule_transducer)
         self._rule_transducers_built = True

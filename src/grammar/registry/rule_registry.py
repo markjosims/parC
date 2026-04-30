@@ -139,43 +139,60 @@ class Rule(TransducerList):
         config: dict,
     ) -> 'Rule':
         """
-        Builds an Rule from a config dict, inferring the type
-        from the attributes contained
+        Builds a Rule from a config dict, inferring the type
+        from the attributes contained. This method is non-destructive
+        and safely handles both raw string and already-initialized
+        Acceptor inputs.
         """
-
         # infer rule type from attrs
-        # and set pattern strings to Acceptors
         if ("input_pattern" in config) and ("output_pattern" in config):
             rule_type = "simple_rule"
-            config["input_pattern"] = Acceptor(config["input_pattern"])
-            config["output_pattern"] = Acceptor(config["output_pattern"])
         elif "string_map" in config:
             rule_type = "string_map"
-            string_map = []
-            for input_str, output_str in config["string_map"]:
-                string_map.append((Acceptor(input_str), Acceptor(output_str)))
-            config["string_map"] = string_map
         elif "rule_sequence" in config:
             rule_type = "rule_sequence"
-            # no transformation done here: handled by RuleRegistry instead
         else:
             raise ValueError(f"Unrecognized rule type for rule {config}, check format")
 
-        config["type"] = rule_type
+        # Build construction kwargs explicitly to avoid mutating input dict
+        kwargs = {
+            "type": rule_type,
+            "_ref": config.get("_ref", ""),
+            "description": config.get("description"),
+            "source": config.get("source_path"),
+            "direction": config.get("direction", "ltr"),
+        }
 
-        # set secondary attrs to Acceptor (if applicable)
-        for attr_name in ("left_context", "right_context"):
-            if attr_name in config:
-                config[attr_name] = Acceptor(config[attr_name])
+        if rule_type == "simple_rule":
+            kwargs["input_pattern"] = cls._to_acceptor(config["input_pattern"])
+            kwargs["output_pattern"] = cls._to_acceptor(config["output_pattern"])
+        elif rule_type == "string_map":
+            kwargs["string_map"] = [
+                (cls._to_acceptor(inp), cls._to_acceptor(out))
+                for inp, out in config["string_map"]
+            ]
+        elif rule_type == "rule_sequence":
+            # Registry handles resolving these refs to Rule objects later
+            kwargs["rule_sequence"] = config.get("rule_sequence", [])
 
-        # cast test input, output string arrays to tuples
+        # Set secondary attrs
+        kwargs["left_context"] = cls._to_acceptor(config.get("left_context", ""))
+        kwargs["right_context"] = cls._to_acceptor(config.get("right_context", ""))
+
+        # Cast test mappings to tuples
         if "test_mappings" in config:
-            config["test_mappings"] = [
+            kwargs["test_mappings"] = [
                 tuple(mapping) for mapping in config["test_mappings"]
             ]
 
-        rule = cls(**config)
-        return rule
+        return cls(**kwargs)
+
+    @staticmethod
+    def _to_acceptor(val: Any) -> Acceptor:
+        """Helper to safely wrap string in Acceptor or return existing Acceptor."""
+        if isinstance(val, Acceptor):
+            return val
+        return Acceptor(val)
 
     def __str__(self):
         return f"Rule(_ref={self._ref}, type={self.type})"
