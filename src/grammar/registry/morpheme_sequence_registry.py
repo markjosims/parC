@@ -6,12 +6,14 @@ class, which manages multiple MorphemeSequence configurations.
 
 from loguru import logger
 import os
-import itertools
 import pynini
 from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
 from src.grammar.classes import Registry
 from src.grammar.registry.lexicon_registry import LexiconRegistry, Lexicon
 from src.grammar.registry.paradigm_registry import ParadigmRegistry, Paradigm
+from src.grammar.registry.morpheme_set_registry import MorphemeSetRegistry, MorphemeSet
+from src.grammar.registry.rule_registry import Rule
+
 
 class MorphemeSequence:
     """
@@ -25,6 +27,7 @@ class MorphemeSequence:
         sequence_data: list[dict],
         lexicon_registry: LexiconRegistry,
         paradigm_registry: ParadigmRegistry,
+        morpheme_set_registry: MorphemeSetRegistry,
         fst_orchestrator: FstOrchestrator,
         source_path: str | None = None,
     ):
@@ -32,10 +35,11 @@ class MorphemeSequence:
         self.sequence_data = sequence_data
         self.lexicon_registry = lexicon_registry
         self.paradigm_registry = paradigm_registry
+        self.morpheme_set_registry = morpheme_set_registry
         self.fst_orchestrator = fst_orchestrator
         self.source_path = source_path
         self.is_initialized = False
-        
+
         # To be populated during initialization
         self.morphemes = []
         self.features = set()
@@ -52,7 +56,7 @@ class MorphemeSequence:
         name = config.get("name")
         if not name and source_path:
             name = os.path.splitext(os.path.basename(source_path))[0]
-        
+
         return cls(
             name=name or "[UNNAMED]",
             sequence_data=config.get("data", []),
@@ -69,7 +73,7 @@ class MorphemeSequence:
             "data": self.sequence_data,
             "source_path": self.source_path,
         }
-        
+
     def initialize(self):
         """
         Resolve references and identify all involved features.
@@ -96,9 +100,11 @@ class MorphemeSequence:
             elif m_type == "Pattern":
                 resolved = self.fst_orchestrator.fsa(m_val)
             elif m_type == "Rule":
-                resolved = self.fst_orchestrator.get_rule(m_val)
+                resolved = lambda input_fst: self.fst_orchestrator.apply_rule(input_fst, m_val)
+            elif m_type == "MorphemeSet":
+                resolved = self.morpheme_set_registry.get_morpheme_set(m_val)
 
-            if resolved is None and m_type != "Pattern":
+            if resolved is None:
                 logger.error(f"Could not resolve {m_type} reference: {m_val}")
 
             self.morphemes.append({"type": m_type, "value": resolved})
@@ -128,19 +134,23 @@ class MorphemeSequence:
 
             if m_type == "Lexicon":
                 assert isinstance(resolved, Lexicon)
-                step_fst = resolved.roots_to_analyses(features)
+                step_fst = resolved.analyses_to_roots(features)
                 result_fst.concat(step_fst)
             elif m_type == "Paradigm":
                 assert isinstance(resolved, Paradigm)
                 step_fst = resolved.get_subparadigm_inflect_graph(features)
                 result_fst.concat(step_fst)
+            elif m_type == "MorphemeSet":
+                assert isinstance(resolved, MorphemeSet)
+                step_fst = resolved.analysis_to_morpheme(features)
+                result_fst.concat(step_fst)
             elif m_type == "Pattern":
                 # resolved is pynini.Fst from fst_orchestrator.fsa()
                 result_fst.concat(resolved)
             elif m_type == "Rule":
-                # resolved is Rule object with .fst property
-                # Rules are composed with ALL prior input
-                result_fst = result_fst @ resolved.fst
+                # resolved is a function that takes an FST and returns an FST
+                assert callable(resolved)
+                result_fst = resolved(result_fst)
 
         return result_fst.optimize()
 
@@ -152,9 +162,10 @@ class MorphemeSequence:
         # If features incomplete, we should theoretically expand to all combinations.
         # But for now, assume features passed are sufficient or 'unmarked' handles it.
         # User requested: "iterate over feature vectors in a for-loop and concatenating for each vector"
-        
+
         fst = self.get_sequence_fst(features)
         return self.fst_orchestrator.fsm_strings(fst)
+
 
 class MorphemeSequenceRegistry(Registry):
     """
@@ -172,7 +183,9 @@ class MorphemeSequenceRegistry(Registry):
         self.lexicon_registry = lexicon_registry
         self.paradigm_registry = paradigm_registry
         self.fst_orchestrator = fst_orchestrator
-        super().__init__(kind="MorphemeSequence", data=data, config_objects=config_objects)
+        super().__init__(
+            kind="MorphemeSequence", data=data, config_objects=config_objects
+        )
 
     def load_all_configs(self) -> dict[str, MorphemeSequence]:
         config_items: dict[str, MorphemeSequence] = {}
@@ -197,7 +210,7 @@ class MorphemeSequenceRegistry(Registry):
 
     def get_sequence(self, name: str) -> MorphemeSequence | None:
         return self.data.get(name)
-        
+
     def initialize_sequences(self):
         for sequence in self.data.values():
             sequence.initialize()

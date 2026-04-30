@@ -19,6 +19,7 @@ from src.pages.editor_utils import (
     editor_header,
     editor_sidebar,
     render_editor_toolbar,
+    validate_file_reference_str,
 )
 
 _config_kind = "MorphemeSequence"
@@ -39,12 +40,13 @@ _WIDGET_PREFIXES: list[str] = [
     _MOVE_DOWN_PREFIX,
 ]
 
-_MORPHEME_TYPES = ["Lexicon", "Paradigm", "Pattern", "Rule"]
+_MORPHEME_TYPES = ["Lexicon", "Paradigm", "Pattern", "Rule", "MorphemeSet"]
 
 _help_str = """
 Morpheme Sequence files define a sequence of morphemes (Lexicons, Paradigms, Patterns, or Rules)
 to be concatenated or composed to form fully inflected words.
 """
+
 
 class MorphemeSequenceEditor(EditorBase):
     """
@@ -61,11 +63,13 @@ class MorphemeSequenceEditor(EditorBase):
         raw_data = config_object.get("data", [])
         steps = []
         for step in raw_data:
-            steps.append({
-                "uuid": str(uuid.uuid4()),
-                "type": step.get("type", "Lexicon"),
-                "value": step.get("value", ""),
-            })
+            steps.append(
+                {
+                    "uuid": str(uuid.uuid4()),
+                    "type": step.get("type", "Lexicon"),
+                    "value": step.get("value", ""),
+                }
+            )
         return {
             "steps": steps,
         }
@@ -84,10 +88,12 @@ class MorphemeSequenceEditor(EditorBase):
     def to_yaml(self) -> dict:
         output_data = []
         for step in self.data["steps"]:
-            output_data.append({
-                "type": step["type"],
-                "value": step["value"],
-            })
+            output_data.append(
+                {
+                    "type": step["type"],
+                    "value": step["value"],
+                }
+            )
         return {
             "kind": self.kind,
             "data": output_data,
@@ -99,11 +105,13 @@ class MorphemeSequenceEditor(EditorBase):
         }
 
     def insert_step(self) -> None:
-        self.data["steps"].append({
-            "uuid": str(uuid.uuid4()),
-            "type": "Lexicon",
-            "value": "",
-        })
+        self.data["steps"].append(
+            {
+                "uuid": str(uuid.uuid4()),
+                "type": "Lexicon",
+                "value": "",
+            }
+        )
 
     def remove_step(self, uid: str) -> None:
         self.data["steps"] = [s for s in self.data["steps"] if s["uuid"] != uid]
@@ -113,35 +121,40 @@ class MorphemeSequenceEditor(EditorBase):
         idx = next((i for i, s in enumerate(steps) if s["uuid"] == uid), -1)
         if idx == -1:
             return
-        
+
         new_idx = idx - 1 if direction == "up" else idx + 1
         if 0 <= new_idx < len(steps):
             steps[idx], steps[new_idx] = steps[new_idx], steps[idx]
 
 
 def _render_step(
-    step: dict, 
-    editor: MorphemeSequenceEditor, 
+    step: dict,
+    editor: MorphemeSequenceEditor,
     available_lexicons: list[str],
     available_paradigms: list[str],
     available_patterns: list[str],
     available_rules: list[str],
+    available_morpheme_sets: list[str],
     index: int,
-    total: int
+    total: int,
 ) -> None:
     uid = step["uuid"]
     with st.container(border=True):
         col_type, col_val, col_move, col_del = st.columns([1.5, 4, 0.8, 0.4])
-        
+
         with col_type:
             st.selectbox(
                 "Type",
                 options=_MORPHEME_TYPES,
-                index=_MORPHEME_TYPES.index(step["type"]) if step["type"] in _MORPHEME_TYPES else 0,
+                index=(
+                    _MORPHEME_TYPES.index(step["type"])
+                    if step["type"] in _MORPHEME_TYPES
+                    else 0
+                ),
                 key=editor.get_widget_key(_STEP_TYPE_PREFIX, uid),
                 label_visibility="collapsed",
             )
-            
+
         with col_val:
             s_type = step["type"]
             options = []
@@ -153,10 +166,17 @@ def _render_step(
                 options = available_patterns
             elif s_type == "Rule":
                 options = available_rules
-            
+            elif s_type == "MorphemeSet":
+                options = available_morpheme_sets
+
             # Pattern can be inline, so allow text input if not in options
-            if s_type == "Pattern" and step["value"] and not step["value"].startswith("$") and step["value"] not in options:
-                 st.text_input(
+            if (
+                s_type == "Pattern"
+                and step["value"]
+                and not step["value"].startswith("$")
+                and step["value"] not in options
+            ):
+                st.text_input(
                     "Value",
                     value=step["value"],
                     key=editor.get_widget_key(_STEP_VAL_PREFIX, uid),
@@ -168,7 +188,7 @@ def _render_step(
                 all_opts = [""] + options
                 if current_val and current_val not in all_opts:
                     all_opts.append(current_val)
-                    
+
                 st.selectbox(
                     "Value",
                     options=all_opts,
@@ -182,22 +202,35 @@ def _render_step(
                     value=step["value"],
                     key=editor.get_widget_key(_STEP_VAL_PREFIX, uid),
                     label_visibility="collapsed",
-                    placeholder="Reference ($name) or inline pattern"
+                    placeholder="Reference ($name) or inline pattern",
                 )
 
         with col_move:
             m_up, m_down = st.columns(2)
-            if m_up.button("↑", key=editor.get_widget_key(_MOVE_UP_PREFIX, uid), disabled=(index == 0)):
+            if m_up.button(
+                "↑",
+                key=editor.get_widget_key(_MOVE_UP_PREFIX, uid),
+                disabled=(index == 0),
+            ):
                 editor.move_step(uid, "up")
                 st.rerun()
-            if m_down.button("↓", key=editor.get_widget_key(_MOVE_DOWN_PREFIX, uid), disabled=(index == total - 1)):
+            if m_down.button(
+                "↓",
+                key=editor.get_widget_key(_MOVE_DOWN_PREFIX, uid),
+                disabled=(index == total - 1),
+            ):
                 editor.move_step(uid, "down")
                 st.rerun()
 
         with col_del:
-            if st.button("✕", key=editor.get_widget_key(_REMOVE_STEP_PREFIX, uid), help="Remove step"):
+            if st.button(
+                "✕",
+                key=editor.get_widget_key(_REMOVE_STEP_PREFIX, uid),
+                help="Remove step",
+            ):
                 editor.remove_step(uid)
                 st.rerun()
+
 
 def morpheme_sequence_page() -> None:
     st.set_page_config(
@@ -222,12 +255,39 @@ def morpheme_sequence_page() -> None:
     available_paradigms = []
     available_patterns = []
     available_rules = []
-    
+    available_morpheme_sets = []
+
     if grammar:
-        available_lexicons = sorted(["$" + name for name in grammar.lexicon_registry.data.keys()])
-        available_paradigms = sorted(["$" + name for name in grammar.paradigm_registry.data.keys()])
-        available_patterns = sorted(["$" + name for name in grammar.fst_orchestrator.pattern_registry.data.keys()])
-        available_rules = sorted(["$" + name for name in grammar.fst_orchestrator.rule_registry.data.keys()])
+        available_lexicons = sorted(
+            [
+                validate_file_reference_str(name)
+                for name in grammar.lexicon_registry.data.keys()
+            ]
+        )
+        available_paradigms = sorted(
+            [
+                validate_file_reference_str(name)
+                for name in grammar.paradigm_registry.data.keys()
+            ]
+        )
+        available_patterns = sorted(
+            [
+                validate_file_reference_str(name)
+                for name in grammar.fst_orchestrator.pattern_registry.data.keys()
+            ]
+        )
+        available_rules = sorted(
+            [
+                validate_file_reference_str(name)
+                for name in grammar.fst_orchestrator.rule_registry.data.keys()
+            ]
+        )
+        available_morpheme_sets = sorted(
+            [
+                validate_file_reference_str(name)
+                for name in grammar.morpheme_set_registry.data.keys()
+            ]
+        )
 
     toolbar_placeholder = st.empty()
     st.divider()
@@ -243,39 +303,42 @@ def morpheme_sequence_page() -> None:
         h1.markdown("**Type**")
         h2.markdown("**Value (Reference or Inline Pattern)**")
         h3.markdown("**Move**")
-        
+
         for i, step in enumerate(steps):
             _render_step(
-                step, 
-                editor, 
-                available_lexicons, 
-                available_paradigms, 
-                available_patterns, 
+                step,
+                editor,
+                available_lexicons,
+                available_paradigms,
+                available_patterns,
                 available_rules,
+                available_morpheme_sets,
                 i,
-                len(steps)
+                len(steps),
             )
 
     with toolbar_placeholder.container():
-        render_editor_toolbar(editor, add_label="Add step", add_callback=editor.insert_step)
+        render_editor_toolbar(
+            editor, add_label="Add step", add_callback=editor.insert_step
+        )
 
     # 2. Inflection Tester (read-only based on current state)
     st.divider()
     st.subheader("Inflection Tester")
-    
-    # Try to resolve sequence from current data if it exists in registry, 
-    # but registry might be stale. For immediate feedback, we might need a 
+
+    # Try to resolve sequence from current data if it exists in registry,
+    # but registry might be stale. For immediate feedback, we might need a
     # way to initialize a temporary sequence object.
     # For now, if saved, use grammar's sequence.
-    
+
     if editor.path and grammar:
         seq_name = editor.stem
         sequence = grammar.morpheme_sequence_registry.get_sequence(seq_name)
-        
+
         if sequence:
             if not sequence.is_initialized:
                 sequence.initialize()
-                
+
             all_features = sorted(list(sequence.features))
             features = {}
             if all_features:
@@ -286,7 +349,7 @@ def morpheme_sequence_page() -> None:
                     val = col.text_input(f"{feat_name}", key=f"test-feat-{feat_name}")
                     if val:
                         features[feat_name] = val
-            
+
             if st.button("Generate Forms"):
                 try:
                     with st.spinner("Generating..."):
@@ -302,6 +365,7 @@ def morpheme_sequence_page() -> None:
             st.info("Save sequence to enable inflection tester.")
     else:
         st.info("Open an existing file to enable inflection tester.")
+
 
 if __name__ == "__main__":
     morpheme_sequence_page()
