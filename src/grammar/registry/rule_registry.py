@@ -188,7 +188,7 @@ class Rule(TransducerList):
         return cls(**kwargs)
 
     @staticmethod
-    def _to_acceptor(val: Any) -> Acceptor:
+    def _to_acceptor(val: str | Acceptor) -> Acceptor:
         """Helper to safely wrap string in Acceptor or return existing Acceptor."""
         if isinstance(val, Acceptor):
             return val
