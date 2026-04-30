@@ -10,6 +10,9 @@ import streamlit as st
 from camel_converter import to_snake
 
 from src.config_utils.schema_validation import ConfigKindType
+from src.fst_utils import Acceptor
+from src.grammar import Grammar
+from src.grammar.registry.rule_registry import Rule
 
 if TYPE_CHECKING:
     from src.config_utils.config_walker import ConfigWalker
@@ -65,6 +68,54 @@ class EditorBase(ABC):
         self.path: str = ""
         self.config_dir: str = str(config_walker.config_dir)
         self.data: dict = {}
+        self.errors: list[str] = []
+
+    def clear_errors(self) -> None:
+        """Clear the error list."""
+        self.errors = []
+
+    def add_error(self, message: str) -> None:
+        """Add a validation error message."""
+        if message not in self.errors:
+            self.errors.append(message)
+
+    def validate_pattern(self, value: str, label: str = "Pattern") -> str:
+        """
+        Validate that a string is a valid FST acceptor pattern.
+        Adds an error to self.errors if invalid.
+        Returns the original string.
+        """
+        grammar = st.session_state.get("grammar")
+        if grammar:
+            try:
+                grammar.fst_orchestrator.acceptor(value)
+            except Exception as e:
+                self.add_error(f"Invalid {label} '{value}': {str(e)}")
+        return value
+
+    def validate_acceptor(self, value: str, label: str = "Pattern") -> Acceptor:
+        """
+        Validate that a string is a valid FST acceptor pattern.
+        Adds an error to self.errors if invalid.
+        Returns an Acceptor object.
+        """
+        self.validate_pattern(value, label)
+        return Acceptor(value)
+
+    def validate_rule(self, rule: Rule) -> Rule:
+        """
+        Validate and compile a Rule object.
+        Adds an error to self.errors if compilation fails.
+        Returns the Rule object.
+        """
+        grammar = st.session_state.get("grammar")
+        if grammar:
+            try:
+                # Compile FST for the rule
+                grammar.fst_orchestrator.compile_rule(rule)
+            except Exception as e:
+                self.add_error(f"Rule '{rule._ref}' compilation failed: {str(e)}")
+        return rule
 
     @property
     def subdir(self) -> str:
@@ -75,13 +126,13 @@ class EditorBase(ABC):
     def stem(self) -> str:
         """file_name stem of the loaded file, or '' for new files."""
         return Path(self.path).stem if self.path else ""
-    
+
     @property
     def scope(self) -> str:
         """Scope string for widget keys, derived from kind and filename."""
         stem = self.stem or "new"
         return f"{to_snake(self.kind)}-{stem}"
-    
+
     def get_widget_key(self, prefix: str, widget_id: str, suffix: str = "") -> str:
         """
         Build a Streamlit widget key with the format:
@@ -92,7 +143,7 @@ class EditorBase(ABC):
         if suffix:
             key += f"-{suffix}"
         return key
-    
+
     def get_node_widget(
         self, prefix: str, node_id: str, suffix: str = ""
     ) -> str | None:
@@ -173,10 +224,10 @@ class EditorBase(ABC):
         """
         dest = self.resolve_save_path(stem)
         yaml_doc = self.to_yaml()
-        
+
         # Clean the dictionary to remove illicit nulls/empty strings before saving
         yaml_doc = prune_config_dict(yaml_doc, self.kind)
-        
+
         dest.parent.mkdir(parents=True, exist_ok=True)
         with dest.open("w", encoding="utf-8") as f:
             yaml.dump(yaml_doc, f, allow_unicode=True, sort_keys=False)
@@ -195,20 +246,32 @@ class EditorBase(ABC):
                 marker.order = m_order if m_order.strip() else None
 
             if marker.type == "replace":
-                r_in = self.get_node_widget(_MARKER_REPLACE_IN_PREFIX, scope, suffix=m_uid)
-                r_out = self.get_node_widget(_MARKER_REPLACE_OUT_PREFIX, scope, suffix=m_uid)
+                r_in = self.get_node_widget(
+                    _MARKER_REPLACE_IN_PREFIX, scope, suffix=m_uid
+                )
+                r_out = self.get_node_widget(
+                    _MARKER_REPLACE_OUT_PREFIX, scope, suffix=m_uid
+                )
                 if r_in is not None and r_out is not None:
-                    marker.value = [r_in, r_out]
-            else:
+                    value = [
+                        self.validate_pattern(
+                            r_in, label="Replace marker input pattern"
+                        ),
+                        self.validate_pattern(
+                            r_out, label="Replace marker output pattern"
+                        ),
+                    ]
+                    marker.value = tuple(value)
+            elif marker.type in ["suffix", "prefix", "suppletion"]:
                 val = self.get_node_widget(_MARKER_VALUE_PREFIX, scope, suffix=m_uid)
-                if val is not None:
-                    marker.value = val
+                val = self.validate_pattern(val, label=f"{marker.type.capitalize()} marker pattern")
+                marker.value = val or ""
+            else:  # marker.type in ["rule", "principal_part"]
+                marker.value = self.get_node_widget(_MARKER_VALUE_PREFIX, scope, suffix=m_uid) or ""
 
 
 def render_editor_toolbar(
-    editor: EditorBase, 
-    add_label: str = "Add entry", 
-    add_callback: callable = None
+    editor: EditorBase, add_label: str = "Add entry", add_callback: callable = None
 ) -> None:
     """Generic toolbar for Save, Preview, and Add actions."""
     col_add, col_save, col_preview_toggle, _ = st.columns([1.4, 1.2, 1.6, 5])
@@ -219,7 +282,12 @@ def render_editor_toolbar(
             st.rerun()
 
     with col_save:
-        if st.button("💾 Save YAML", use_container_width=True, type="primary"):
+        if st.button(
+            "💾 Save YAML",
+            use_container_width=True,
+            type="primary",
+            disabled=bool(editor.errors),
+        ):
             stem = st.session_state.get("file_name", "").strip()
             if not stem:
                 st.error("Enter a file name before saving.")
@@ -231,7 +299,9 @@ def render_editor_toolbar(
                     st.error(str(exc))
 
     with col_preview_toggle:
-        show_preview = st.toggle("Show YAML preview", value=False, key=f"preview-toggle-{editor.scope}")
+        show_preview = st.toggle(
+            "Show YAML preview", value=False, key=f"preview-toggle-{editor.scope}"
+        )
 
     if show_preview:
         with st.container(border=True):
@@ -255,8 +325,10 @@ def prune_config_dict(data: Any, kind: str) -> Any:
     # Format: {Kind: {ParentKey: {LicitNullKey}}} or just {Kind: {LicitNullKey}}
     # We use a set of strings for simple path-based matching
     LICIT_PATHS = {
-        "FeatureMarkers": {"markers"}, # markers is a dict, values can be null
-        "Paradigm": {"feature_markers"}, # feature_markers is a dict, values can be null
+        "FeatureMarkers": {"markers"},  # markers is a dict, values can be null
+        "Paradigm": {
+            "feature_markers"
+        },  # feature_markers is a dict, values can be null
         "Rules": {"input_pattern", "output_pattern"},
         "MorphemeSet": {"morpheme"},
     }
@@ -270,29 +342,29 @@ def prune_config_dict(data: Any, kind: str) -> Any:
             if v is None and k in kind_licit:
                 new_dict[k] = v
                 continue
-            
+
             # Recurse
             pruned_v = prune_config_dict(v, kind)
-            
-            # Pruning logic: 
+
+            # Pruning logic:
             # 1. Skip None or empty string
             # 2. Skip empty dictionaries (unless they are a licit path root)
             if pruned_v in (None, ""):
                 continue
-            
-            # Special case: don't prune empty lists if the schema expects them 
+
+            # Special case: don't prune empty lists if the schema expects them
             # (e.g. lexical_features: [])
             if pruned_v == {} and k not in kind_licit:
                 continue
-                
+
             new_dict[k] = pruned_v
         return new_dict
-    
+
     elif isinstance(data, list):
         # Recursively prune items in list, but keep the list itself even if empty
         # (Schemes often distinguish between a missing key and an empty array)
         return [prune_config_dict(i, kind) for i in data]
-    
+
     return data
 
 
@@ -428,7 +500,7 @@ def editor_sidebar(
         st.markdown(help_str)
 
 
-def editor_header(kind: ConfigKindType, editor: type[EditorBase]) -> None:
+def editor_header(kind: ConfigKindType, editor: EditorBase) -> None:
     """
     Render the page header, including the file name input field.
     The file name is stored in session state and used when saving the YAML file.
@@ -448,6 +520,10 @@ def editor_header(kind: ConfigKindType, editor: type[EditorBase]) -> None:
             help=f"Name for this {kind} file (no extension needed).",
         )
 
+    if editor.errors:
+        for error in editor.errors:
+            st.error(error)
+
 
 def render_marker_row(
     marker: "Marker",
@@ -464,9 +540,11 @@ def render_marker_row(
             selected_type = st.selectbox(
                 "Type",
                 options=MARKER_TYPES,
-                index=MARKER_TYPES.index(marker.type)
-                if marker.type in MARKER_TYPES
-                else 0,
+                index=(
+                    MARKER_TYPES.index(marker.type)
+                    if marker.type in MARKER_TYPES
+                    else 0
+                ),
                 key=editor.get_widget_key(_MARKER_TYPE_PREFIX, scope, suffix=m_uid),
                 label_visibility="collapsed",
             )
@@ -514,18 +592,23 @@ def render_marker_row(
             st.selectbox(
                 "Rule",
                 options=[""] + available_rules,
-                index=available_rules.index(marker.value) + 1
-                if isinstance(marker.value, str) and marker.value in available_rules
-                else 0,
+                index=(
+                    available_rules.index(marker.value) + 1
+                    if isinstance(marker.value, str) and marker.value in available_rules
+                    else 0
+                ),
                 key=editor.get_widget_key(_MARKER_VALUE_PREFIX, scope, suffix=m_uid),
             )
         elif marker.type == "principal_part":
             st.selectbox(
                 "Principal Part",
                 options=[""] + available_principal_parts,
-                index=available_principal_parts.index(marker.value) + 1
-                if isinstance(marker.value, str) and marker.value in available_principal_parts
-                else 0,
+                index=(
+                    available_principal_parts.index(marker.value) + 1
+                    if isinstance(marker.value, str)
+                    and marker.value in available_principal_parts
+                    else 0
+                ),
                 key=editor.get_widget_key(_MARKER_VALUE_PREFIX, scope, suffix=m_uid),
             )
         else:

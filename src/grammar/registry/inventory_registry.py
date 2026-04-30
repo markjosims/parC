@@ -44,6 +44,11 @@ class InventoryItem(InventoryMember):
     def __post_init__(self):
         super().__post_init__()
 
+        if self.value in ReservedSymbolMixin.reserved_symbols:
+            raise ValueError(
+                f"Inventory item value '{self.value}' is a reserved symbol and cannot be used."
+            )
+
         if (self.type == "flag") and (
             not self.value.startswith("[") or not self.value.endswith("]")
         ):

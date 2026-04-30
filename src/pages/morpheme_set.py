@@ -18,6 +18,7 @@ from src.pages.editor_utils import (
     editor_sidebar,
     render_editor_toolbar,
 )
+from src.grammar.registry.morpheme_set_registry import MorphemeSet
 
 _config_kind = "MorphemeSet"
 _config_key = "morpheme_set_configs"
@@ -80,6 +81,7 @@ class MorphmeSetEditor(EditorBase):
 
     def read_form_to_state(self) -> None:
         """Sync widget values back to self.data."""
+        self.clear_errors()
         # 1. Top-level fields
         selected_features = st.session_state.get(
             self.get_widget_key(_FEATURE_LIST_PREFIX, "main"), []
@@ -98,31 +100,36 @@ class MorphmeSetEditor(EditorBase):
             morpheme_val = self.get_node_widget(_MORPHEME_VALUE_PREFIX, uid)
             if morpheme_val is not None:
                 entry["morpheme"] = morpheme_val.strip()
+                self.validate_pattern(entry["morpheme"], f"Morpheme '{entry['morpheme']}'")
 
     def to_yaml(self) -> dict:
-
-        doc = {
-            "kind": self.kind,
-            "features": self.data["features"],
-        }
-
-
-        morpheme_list = []
+        grammar = st.session_state.get("grammar")
+        if grammar is None:
+            st.error("Grammar not loaded. Cannot serialize morpheme set.")
+            st.stop()
+        
+        feature_orchestrator = grammar.feature_orchestrator
+        features_objs = {feature_orchestrator.get_feature(f) for f in self.data["features"]}
+        
+        feature_mappings = {}
         for entry in self.data["entries"]:
             # Only include participating features
             clean_vec = {
                 k: v
                 for k, v in entry["features"].items()
-                if k in self.data["features"] and v
+                if k in self.data["features"] and v and v != "unmarked"
             }
             if not clean_vec:
                 continue
 
-            morpheme = entry["morpheme"]
-            morpheme_list.append({"features": clean_vec, "morpheme": morpheme})
+            vector = frozenset(clean_vec.items())
+            feature_mappings[vector] = entry["morpheme"]
 
-        doc["data"] = morpheme_list
-        return doc
+        ms = MorphemeSet(
+            features=features_objs,
+            feature_mappings=feature_mappings
+        )
+        return ms.to_dict()
 
     def get_default_data(self) -> dict:
         return {

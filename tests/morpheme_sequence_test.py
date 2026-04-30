@@ -1,5 +1,5 @@
 import pytest
-from src.grammar.orchestrator.grammar_orchestrator import Grammar
+from src.grammar import Grammar
 from src.config_utils.config_walker import ConfigWalker
 from pathlib import Path
 

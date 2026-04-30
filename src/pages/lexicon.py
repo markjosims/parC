@@ -13,6 +13,8 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 import yaml
+from src.grammar.registry.lexicon_registry import PartOfSpeech
+
 
 from src.config_utils.config_walker import ConfigWalker
 from src.grammar.registry.lexicon_registry import Lexicon, LexiconRegistry
@@ -93,6 +95,7 @@ class LexiconEditor(EditorBase):
 
     def read_form_to_state(self) -> None:
         """Sync widget values back to self.data."""
+        self.clear_errors()
         # 1. POS Settings
         features = st.session_state.get(
             self.get_widget_key(_FEATURES_PREFIX, "main"), []
@@ -122,6 +125,7 @@ class LexiconEditor(EditorBase):
             gloss = self.get_node_widget(_ROW_GLOSS_PREFIX, uid)
             if root is not None:
                 row["root"] = root
+                self.validate_pattern(root, f"Root '{root}'")
             if gloss is not None:
                 row["gloss"] = gloss
 
@@ -129,15 +133,30 @@ class LexiconEditor(EditorBase):
                 val = self.get_node_widget(_ROW_COL_PREFIX, uid, suffix=col)
                 if val is not None:
                     row[col] = val
+                    if col in self.data["principal_parts"] and val:
+                         self.validate_pattern(val, f"Principal Part '{col}' for root '{root}'")
 
     def to_yaml(self) -> dict:
-        return {
-            "kind": self.kind,
-            "name": self.stem,  # Use filename as POS name
-            "features": self.data["features"],
-            "lexical_features": self.data["lexical_features"],
-            "principal_parts": self.data["principal_parts"],
-        }
+
+        grammar = st.session_state.get("grammar")
+        if grammar is None:
+            st.error("Grammar not loaded. Cannot serialize part of speech.")
+            st.stop()
+
+        feature_orchestrator = grammar.feature_orchestrator
+
+        pos = PartOfSpeech(
+            name=self.stem,
+            features=[
+                feature_orchestrator.get_feature(f) for f in self.data["features"]
+            ],
+            lexical_features=[
+                feature_orchestrator.get_feature(f)
+                for f in self.data["lexical_features"]
+            ],
+            principal_parts=self.data["principal_parts"],
+        )
+        return pos.to_dict()
 
     def get_default_data(self) -> dict:
         return {

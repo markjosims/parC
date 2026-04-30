@@ -197,6 +197,46 @@ class Rule(TransducerList):
     def __str__(self):
         return f"Rule(_ref={self._ref}, type={self.type})"
 
+    def to_dict(self) -> dict:
+        """Serialize a Rule to a YAML-serializable dict (config format)."""
+        d: dict = {"_ref": self._ref}
+
+        if self.description:
+            d["description"] = self.description
+
+        if self.type == "simple_rule":
+            d["input_pattern"] = self.input_pattern.value or ""
+            d["output_pattern"] = self.output_pattern.value or ""
+            if self.left_context.value:
+                d["left_context"] = self.left_context.value
+            if self.right_context.value:
+                d["right_context"] = self.right_context.value
+            if self.direction != "ltr":
+                d["direction"] = self.direction
+
+        elif self.type == "string_map":
+            d["string_map"] = [
+                [inp.value or "", out.value or ""]
+                for inp, out in self.string_map
+            ]
+            if self.left_context.value:
+                d["left_context"] = self.left_context.value
+            if self.right_context.value:
+                d["right_context"] = self.right_context.value
+            if self.direction != "ltr":
+                d["direction"] = self.direction
+
+        elif self.type == "rule_sequence":
+            # self.rule_sequence can be list[Rule] (resolved) or list[str] (unresolved)
+            d["rule_sequence"] = [
+                r._ref if hasattr(r, "_ref") else r for r in self.rule_sequence
+            ]
+
+        if self.test_mappings:
+            d["test_mappings"] = [list(pair) for pair in self.test_mappings]
+
+        return d
+
 class AnonymousRule(Rule):
     """
     A subclass of Rule to represent rules that are generated internally by the FstRegistry
@@ -241,6 +281,12 @@ class RuleRegistry(Registry, ReservedSymbolMixin):
                     raise ValueError(error)
             config_items.update(config_data)
         return config_items
+
+    def to_dict(self) -> dict:
+        return {
+            "kind": self.kind,
+            "rules": [rule.to_dict() for rule in self.data.values()],
+        }
 
     def load_data_from_config(
         self,

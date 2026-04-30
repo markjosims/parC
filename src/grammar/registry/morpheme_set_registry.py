@@ -68,6 +68,17 @@ class MorphemeSet:
             features=features,
         )
 
+    def to_dict(self) -> dict:
+        """Serialize to MorphemeSet YAML format."""
+        doc = {
+            "kind": "MorphemeSet",
+            "features": sorted([f.name for f in self.features]),
+            "data": [],
+        }
+        for vector, morpheme in self.feature_mappings.items():
+            doc["data"].append({"features": dict(vector), "morpheme": morpheme})
+        return doc
+
     def get_morpheme(self, **feature_dict: str) -> str:
         """Retrieve morpheme matching the feature vector."""
         for vector, morpheme in self.feature_mappings.items():

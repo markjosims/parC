@@ -438,11 +438,11 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         for rule in self.rules_sorted:
             if rule.transducer_built:
                 continue
-            rule_transducer = self._parse_rule(rule)
+            rule_transducer = self.compile_rule(rule)
             rule.set_transducer(rule_transducer)
         self._rule_transducers_built = True
 
-    def _parse_rule(
+    def compile_rule(
         self, rule: Rule, lexical_features: dict[str, str] = None
     ) -> pynini.Fst | list[pynini.Fst]:
         """
@@ -458,29 +458,13 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             # sub-rules may themselves be rule sequences, so need to flatten
             rules_flat = []
             for subrule in rule.rule_sequence:
+                subrule: Rule | str
+                if isinstance(subrule, str):
+                    subrule = self.get_rule(subrule)
                 if not subrule.rule_sequence:
                     rules_flat.append(subrule)
                 else:
                     rules_flat.extend(subrule.rule_sequence)
-
-            if left_context:
-                # need to re-parse each rule using the new left context
-                rule_fsts_flat = []
-                for subrule in rules_flat:
-                    subrule = deepcopy(subrule)
-                    if subrule.left_context:
-                        subrule_left_context = self.concatenate_acceptors(
-                            left_context, subrule.left_context
-                        )
-                    else:
-                        subrule_left_context = left_context
-                    subrule.left_context = left_context
-                    new_rule = self._parse_rule(subrule)
-                    if not isinstance(new_rule, pynini.Fst):
-                        raise ValueError(
-                            f"Expected subrule to return a single FST on compilation, got {type(subrule)}"
-                        )
-                    rule_fsts_flat.append(new_rule)
             else:
                 rule_fsts_flat = [subrule.fst for subrule in rules_flat]
 
@@ -501,23 +485,17 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
 
     def _parse_rule_tau(self, rule: Rule) -> pynini.Fst:
         if rule.type == "simple_rule":
-            input_pattern = rule.input_pattern
-            if not input_pattern.acceptor_built:
-                input_pattern.set_acceptor(self._parse_pattern(input_pattern.value))
-            output_pattern = rule.output_pattern
-            if not output_pattern.acceptor_built:
-                output_pattern.set_acceptor(self._parse_pattern(output_pattern.value))
-            tau = pynini.cross(input_pattern.fsa, output_pattern.fsa)
+            input_fsa = self._cast_fsalike_to_fsa(rule.input)
+            output_fsa = self._cast_fsalike_to_fsa(rule.output)
+            tau = pynini.cross(input_fsa, output_fsa)
         elif rule.type == "string_map":
             transducers = []
-            for input_acceptor, output_acceptor in rule.string_map:
-                if not input_acceptor.acceptor_built:
-                    input_acceptor.set_acceptor(self._parse_pattern(input_acceptor.value))
-                if not output_acceptor.acceptor_built:
-                    output_acceptor.set_acceptor(self._parse_pattern(output_acceptor.value))
+            for input_pattern, output_pattern in rule.string_map:
+                input_fsa = self._cast_fsalike_to_fsa(input_pattern)
+                output_fsa = self._cast_fsalike_to_fsa(output_pattern)
                 transducer = pynini.cross(
-                    input_acceptor.fsa,
-                    output_acceptor.fsa,
+                    input_fsa,
+                    output_fsa,
                 )
                 transducers.append(transducer)
             tau = pynini.union(*transducers)
@@ -529,7 +507,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         return tau
 
     def _parse_rule_context(self, rule: Rule) -> tuple[pynini.Fst, pynini.Fst]:
-        left_context_fsa = self._parse_pattern(rule.left_context)
+        left_context_fsa = self._cast_fsalike_to_fsa(rule.left_context)
 
         # special case: if right context is just '#' (word edge)
         # interpret as [EOS] (otherwise _parse_pattern will
@@ -537,18 +515,8 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         if rule.right_context.value == self.word_edge:
             right_context_fsa = self.eow_fsa
         else:
-            right_context_fsa = self._parse_pattern(rule.right_context)
+            right_context_fsa = self._cast_fsalike_to_fsa(rule.right_context)
 
-        if (
-            isinstance(rule.left_context, Acceptor)
-            and not rule.left_context.acceptor_built
-        ):
-            rule.left_context.set_acceptor(left_context_fsa)
-        if (
-            isinstance(rule.right_context, Acceptor)
-            and not rule.right_context.acceptor_built
-        ):
-            rule.right_context.set_acceptor(right_context_fsa)
         return left_context_fsa, right_context_fsa
 
     def _parse_pattern(
@@ -894,6 +862,12 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             raise TypeError(error)
         fsa.optimize()
         return fsa
+    
+    def _cast_fsalike_to_acceptor(self, fsa_input: FsaLike, is_word: bool = True) -> Acceptor:
+        fsa = self._cast_fsalike_to_fsa(fsa_input, is_word)
+        acceptor = Acceptor()
+        acceptor.set_acceptor(fsa)
+        return acceptor
 
     def fsa(self, fsa_input: str) -> pynini.Fst:
         """
@@ -1050,7 +1024,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             input_pattern=input_acceptor,
             output_pattern=output_acceptor,
         )
-        rule_fst = self._parse_rule(replace_rule)
+        rule_fst = self.compile_rule(replace_rule)
         replace_rule.set_transducer(rule_fst)
         return replace_rule
 
@@ -1071,20 +1045,21 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             type="string_map",
             string_map=string_map_acceptors,
         )
-        rule_fst = self._parse_rule(string_map_rule)
+        rule_fst = self.compile_rule(string_map_rule)
         string_map_rule.set_transducer(rule_fst)
         return string_map_rule
 
-    def apply_rule(self, rule_input: FsaLike, rule_ref: str) -> pynini.Fst:
+    def apply_rule(self, rule_input: FsaLike, rule: str | Rule) -> pynini.Fst:
         """
         Applies the rule specified by `rule_ref` to the input string or FST
         and returns the output FST.
         """
-        rule = self.get_rule(rule_ref)
+        if isinstance(rule, str):
+            rule = self.get_rule(rule)
 
         if not rule.transducer_built:
             raise ValueError(
-                f"Rule '{rule_ref}' has uninitialized transducer, check logs for details."
+                f"Rule '{rule._ref}' has uninitialized transducer, check logs for details."
             )
 
         input_fsa = self._cast_fsalike_to_fsa(rule_input, is_word=True)
@@ -1155,7 +1130,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
 
     def test_pattern(
         self,
-        pattern_ref: str,
+        pattern_str: FsaLike,
         test_includes: list[str],
         test_excludes: list[str],
     ) -> dict:
@@ -1169,9 +1144,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
 
         Raises ``KeyError`` if *pattern_ref* is not in the registry.
         """
-        if pattern_ref not in self.patterns:
-            raise KeyError(f"Pattern ref '{pattern_ref}' not found in registry.")
-        pattern = self.patterns[pattern_ref]
+        pattern = self._cast_fsalike_to_fsa(pattern_str, is_word=False)
 
         results: list[dict] = []
         all_pass = True
@@ -1198,11 +1171,11 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             if not passed:
                 all_pass = False
 
-        return {"ref": pattern_ref, "results": results, "all_pass": all_pass}
+        return {"ref": pattern_str, "results": results, "all_pass": all_pass}
 
     def test_rule(
         self,
-        rule_ref: str,
+        rule: str | Rule,
         test_mappings: list[list[str]],
     ) -> dict:
         """
@@ -1215,16 +1188,13 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
 
         Raises ``KeyError`` if *rule_ref* is not in the registry.
         """
-        if rule_ref not in self.rules:
-            raise KeyError(f"Rule ref '{rule_ref}' not found in registry.")
-
         results: list[dict] = []
         all_pass = True
 
         for input_str, expected_output_str in test_mappings:
             output_strs = None
             try:
-                output_fsa = self.apply_rule(input_str, rule_ref)
+                output_fsa = self.apply_rule(input_str, rule)
                 output_fsa = pynini.project(output_fsa, project_type="output")
                 expected_output_fsa = self.word_fsa(expected_output_str)
                 intersection = pynini.intersect(output_fsa, expected_output_fsa)

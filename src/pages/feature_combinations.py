@@ -15,6 +15,7 @@ import yaml
 from src.config_utils.config_walker import ConfigWalker
 from src.grammar.registry.feature_combination_registry import (
     FeatureCombinationsRegistry,
+    FeatureValueCombinations,
 )
 from src.pages.editor_utils import (
     EditorBase,
@@ -113,6 +114,13 @@ class FeatureCombinationsEditor(EditorBase):
                     combo[f] = val.strip()
 
     def to_yaml(self) -> dict:
+        grammar = st.session_state.get("grammar")
+        if grammar is None:
+            st.error("Grammar not loaded. Cannot serialize feature combinations.")
+            st.stop()
+            
+        features_to_values = grammar.feature_orchestrator.feature_values_registry.features_to_values
+
         features = self.data.get("features", [])
         combinations = self.data.get("combinations", [])
 
@@ -127,11 +135,11 @@ class FeatureCombinationsEditor(EditorBase):
                 cleaned_combo[f] = val
             output_combos.append(cleaned_combo)
 
-        return {
-            "kind": self.kind,
-            "features": features,
-            "combinations": output_combos,
-        }
+        fvc = FeatureValueCombinations(
+            combinations=output_combos,
+            features_to_values=features_to_values,
+        )
+        return fvc.to_dict()
 
     def get_default_data(self) -> dict:
         return {

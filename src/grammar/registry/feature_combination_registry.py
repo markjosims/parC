@@ -29,6 +29,7 @@ class FeatureValueCombinations:
                 "FeatureValueCombinations requires at least one combination."
             )
 
+        self.original_combinations = combinations
         self.features_to_values = features_to_values
         self.source = source
 
@@ -143,6 +144,14 @@ class FeatureValueCombinations:
             valid_combinations = valid_combinations[valid_combination_mask]
 
         return valid_combinations.to_dict(orient="records")
+
+    def to_dict(self) -> dict:
+        """Serialize to FeatureCombinations YAML format."""
+        return {
+            "kind": "FeatureCombinations",
+            "features": self.feature_names,
+            "combinations": self.original_combinations,
+        }
 
     def __str__(self):
         return (

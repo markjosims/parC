@@ -95,6 +95,7 @@ class PatternEditor(EditorBase):
         Sync widget values from st.session_state back into Pattern objects.
         Clears cached test results for any pattern whose ref or value changed.
         """
+        self.clear_errors()
         id_map: dict[str, Pattern] = self.data.get("id_map", {})
         test_results: dict[str, Any] = self.data.get("test_results", {})
 
@@ -114,6 +115,9 @@ class PatternEditor(EditorBase):
                 pattern._ref = ref_val
             if pattern_val is not None:
                 pattern.value = pattern_val
+                # Trigger validation of the pattern text
+                self.validate_pattern(pattern_val, f"Pattern '{pattern._ref}'")
+
             if includes_val is not None:
                 pattern.test_includes = [
                     s.strip() for s in includes_val.split(",") if s.strip()

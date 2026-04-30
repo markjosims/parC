@@ -48,6 +48,16 @@ class PartOfSpeech:
                     f"Invariant feature '{feature}' also listed as a inflected feature."
                 )
 
+    def to_dict(self) -> dict:
+        """Serialize to PartOfSpeech YAML format."""
+        return {
+            "kind": "PartOfSpeech",
+            "name": self.name,
+            "features": [f.name for f in self.features],
+            "lexical_features": [f.name for f in self.lexical_features],
+            "principal_parts": self.principal_parts,
+        }
+
     @classmethod
     def from_config(
         cls, config: dict, feature_orchestrator: FeatureOrchestrator

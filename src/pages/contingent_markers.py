@@ -24,6 +24,8 @@ from src.pages.editor_utils import (
     render_editor_toolbar,
     MARKER_WIDGET_PREFIXES,
 )
+from src.grammar.registry.contingent_marker_registry import ContingentMarkers
+from src.grammar.registry.feature_marker_registry import MarkerList
 
 _config_kind = "ContingentFeatureMarkers"
 _config_key = "contingent_feature_marker_configs"
@@ -97,6 +99,7 @@ class ContingentMarkersEditor(EditorBase):
 
     def read_form_to_state(self) -> None:
         """Sync widget values back to self.data."""
+        self.clear_errors()
         # 1. Top-level fields
         selected_features = st.session_state.get(
             self.get_widget_key(_FEATURE_LIST_PREFIX, "main"), []
@@ -122,45 +125,26 @@ class ContingentMarkersEditor(EditorBase):
             self._sync_marker_list(entry["realization"], f"entry-{uid}")
 
     def to_yaml(self) -> dict:
-        def serialize_markers(markers: list[Marker]) -> list[dict] | None:
-            if not markers:
-                return None
-            result = []
-            for m in markers:
-                d = {"type": m.type, "value": m.value}
-                if m.order:
-                    d["order"] = m.order
-                result.append(d)
-            return result
-
-        doc = {
-            "kind": self.kind,
-            "features": self.data["features"],
-        }
-
-        if self.data["global_order"]:
-            doc["global_order"] = self.data["global_order"]
-
-        global_markers = serialize_markers(self.data["global_markers"])
-        if global_markers:
-            doc["global_markers"] = global_markers
-
-        markers_list = []
+        feature_mappings = {}
         for entry in self.data["entries"]:
-            # Only include participating features
+            # Only include participating features that have a non-empty, non-unmarked value
             clean_vec = {
                 k: v
                 for k, v in entry["features"].items()
-                if k in self.data["features"] and v
+                if k in self.data["features"] and v and v != "unmarked"
             }
             if not clean_vec:
                 continue
 
-            realization = serialize_markers(entry["realization"])
-            markers_list.append({"features": clean_vec, "realization": realization})
+            vector = frozenset(clean_vec.items())
+            feature_mappings[vector] = MarkerList(entry["realization"])
 
-        doc["markers"] = markers_list
-        return doc
+        cm = ContingentMarkers(
+            feature_mappings=feature_mappings,
+            global_order=self.data["global_order"] or None,
+            global_markers=MarkerList(self.data["global_markers"]),
+        )
+        return cm.to_dict()
 
     def get_default_data(self) -> dict:
         return {

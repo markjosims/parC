@@ -64,11 +64,20 @@ class FeatureValuesEditor(EditorBase):
         """
         Sync widget values from st.session_state back into Feature objects.
         """
+        self.clear_errors()
         id_map: dict[str, Feature] = self.data.get("id_map", {})
+        seen_names = set()
         for uid, feature in id_map.items():
             name_val = self.get_node_widget(_NAME_PREFIX, uid)
             if name_val is not None:
-                feature.name = name_val
+                name_val = name_val.strip()
+                if not name_val:
+                    self.add_error(f"Feature '{feature.name}': Name cannot be empty.")
+                elif name_val in seen_names:
+                    self.add_error(f"Duplicate feature name: '{name_val}'")
+                else:
+                    seen_names.add(name_val)
+                    feature.name = name_val
 
             # Read individual values
             new_values = []
@@ -79,13 +88,16 @@ class FeatureValuesEditor(EditorBase):
                     # Check if we have more values in the model than in widgets
                     # (this can happen if we haven't rendered them yet)
                     break
-                if val.strip():
-                    new_values.append(val.strip())
+                val = val.strip()
+                if val:
+                    new_values.append(val)
                 idx += 1
             
             # If we didn't find any widgets (e.g. first load or reset), 
             # don't overwrite the model with an empty list
             if idx > 0:
+                if not new_values:
+                    self.add_error(f"Feature '{feature.name}': Must have at least one value.")
                 if "unmarked" not in new_values:
                     new_values.append("unmarked")
                 feature.values = new_values
@@ -95,16 +107,8 @@ class FeatureValuesEditor(EditorBase):
         Serialize to FeatureDefinitions YAML format.
         """
         features: list[Feature] = self.data.get("features", [])
-        features_dict = {}
-        for f in features:
-            # strip "unmarked" for storage to stay consistent with auto-generation logic
-            clean_values = [v for v in f.values if v != "unmarked"]
-            features_dict[f.name] = clean_values
-
-        return {
-            "kind": self.kind,
-            "features": features_dict,
-        }
+        registry = FeatureValuesRegistry(data={f.name: f for f in features})
+        return registry.to_dict()
 
     def get_default_data(self) -> dict:
         return {

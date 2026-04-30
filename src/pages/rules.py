@@ -17,11 +17,10 @@ from __future__ import annotations
 from typing import Any, Literal
 
 import streamlit as st
-import yaml as _yaml
 
-from src.grammar import Grammar
 from src.config_utils.config_walker import ConfigWalker
 from src.grammar.registry.rule_registry import Rule, RuleRegistry
+from src.fst_utils import Acceptor
 from src.pages.editor_utils import (
     EditorBase,
     editor_guard,
@@ -29,6 +28,8 @@ from src.pages.editor_utils import (
     editor_header,
     render_editor_toolbar,
 )
+from src.fst_utils import Acceptor
+from src.grammar import Grammar
 
 _config_kind = "Rules"
 _config_key = "rule_configs"
@@ -76,45 +77,6 @@ Each entry is one of:
 - **Rule sequence**: ordered chain of other rules applied in sequence.
 """
 
-
-def _rule_to_dict(rule: Rule) -> dict:
-    """Serialize a Rule to a YAML-serializable dict (config format)."""
-    d: dict = {}
-
-    if rule.description:
-        d["description"] = rule.description
-
-    if rule.type == "simple_rule":
-        d["input_pattern"] = rule.input_pattern.value or ""
-        d["output_pattern"] = rule.output_pattern.value or ""
-        if rule.left_context.value:
-            d["left_context"] = rule.left_context.value
-        if rule.right_context.value:
-            d["right_context"] = rule.right_context.value
-        if rule.direction != "ltr":
-            d["direction"] = rule.direction
-
-    elif rule.type == "string_map":
-        d["string_map"] = [
-            [inp.value or "", out.value or ""]
-            for inp, out in rule.string_map
-        ]
-        if rule.left_context.value:
-            d["left_context"] = rule.left_context.value
-        if rule.right_context.value:
-            d["right_context"] = rule.right_context.value
-        if rule.direction != "ltr":
-            d["direction"] = rule.direction
-
-    elif rule.type == "rule_sequence":
-        d["rule_sequence"] = [r._ref for r in rule.rule_sequence]
-
-    if rule.test_mappings:
-        d["test_mappings"] = [list(pair) for pair in rule.test_mappings]
-
-    return d
-
-
 """
 RulesEditor
 """
@@ -152,8 +114,7 @@ class RulesEditor(EditorBase):
         Sync widget values from st.session_state back into Rule objects.
         Clears cached test results for any rule whose definition changed.
         """
-        from src.fst_utils import Acceptor
-
+        self.clear_errors()
         id_map: dict[str, Rule] = self.data.get("id_map", {})
         test_results: dict[str, Any] = self.data.get("test_results", {})
 
@@ -176,13 +137,13 @@ class RulesEditor(EditorBase):
                 right = self.get_node_widget(_RIGHT_CTX_PREFIX, uid)
                 direction = self.get_node_widget(_DIRECTION_PREFIX, uid)
                 if inp is not None:
-                    rule.input_pattern = Acceptor(inp)
+                    rule.input_pattern = self.validate_pattern(inp, f"Input Pattern for '{rule._ref}'")
                 if out is not None:
-                    rule.output_pattern = Acceptor(out)
+                    rule.output_pattern = self.validate_pattern(out, f"Output Pattern for '{rule._ref}'")
                 if left is not None:
-                    rule.left_context = Acceptor(left)
+                    rule.left_context = self.validate_pattern(left, f"Left Context for '{rule._ref}'")
                 if right is not None:
-                    rule.right_context = Acceptor(right)
+                    rule.right_context = self.validate_pattern(right, f"Right Context for '{rule._ref}'")
                 if direction is not None:
                     rule.direction = direction
 
@@ -193,18 +154,25 @@ class RulesEditor(EditorBase):
                 direction = self.get_node_widget(_DIRECTION_PREFIX, uid)
                 if raw is not None:
                     pairs = []
-                    for line in raw.splitlines():
+                    for i, line in enumerate(raw.splitlines()):
                         line = line.strip()
+                        if not line:
+                            continue
                         if "=>" in line:
                             parts = line.split("=>", 1)
                             pairs.append(
-                                (Acceptor(parts[0].strip()), Acceptor(parts[1].strip()))
+                                (
+                                    self.validate_pattern(parts[0].strip(), f"String Map Input (Line {i+1}) for '{rule._ref}'"),
+                                    self.validate_pattern(parts[1].strip(), f"String Map Output (Line {i+1}) for '{rule._ref}'")
+                                )
                             )
+                        else:
+                            self.add_error(f"Rule '{rule._ref}' string map: Missing '=>' on line {i+1}")
                     rule.string_map = pairs
                 if left is not None:
-                    rule.left_context = Acceptor(left)
+                    rule.left_context = self.validate_pattern(left, f"Left Context for '{rule._ref}'")
                 if right is not None:
-                    rule.right_context = Acceptor(right)
+                    rule.right_context = self.validate_pattern(right, f"Right Context for '{rule._ref}'")
                 if direction is not None:
                     rule.direction = direction
 
@@ -233,12 +201,12 @@ class RulesEditor(EditorBase):
             if rule._ref != old_ref:
                 test_results.pop(uid, None)
 
+            self.validate_rule(rule)
+
     def to_yaml(self) -> dict:
         rules: list[Rule] = self.data.get("rules", [])
-        return {
-            "kind": self.kind,
-            "rules": {rule._ref: _rule_to_dict(rule) for rule in rules},
-        }
+        registry = RuleRegistry(data={r._ref: r for r in rules})
+        return registry.to_dict()
 
     def get_default_data(self) -> dict:
         return {
@@ -253,7 +221,6 @@ class RulesEditor(EditorBase):
 
     def insert_rule(self, rule_type: Literal["simple_rule", "string_map", "rule_sequence"] = "simple_rule") -> str:
         """Append a blank rule; return its uuid."""
-        from src.fst_utils import Acceptor
 
         if rule_type == "simple_rule":
             new_rule = Rule(
@@ -294,7 +261,6 @@ class RulesEditor(EditorBase):
         new_type: Literal["simple_rule", "string_map", "rule_sequence"],
     ) -> None:
         """Change a rule's type and reset fields that are specific to the old type."""
-        from src.fst_utils import Acceptor
 
         rule = self.data["id_map"].get(uid)
         if rule is None:

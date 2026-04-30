@@ -66,6 +66,28 @@ class ContingentMarkers:
             source=source,
         )
 
+    def to_dict(self) -> dict:
+        """Serialize to ContingentFeatureMarkers YAML format."""
+        doc = {
+            "kind": "ContingentFeatureMarkers",
+        }
+        if self.global_order:
+            doc["global_order"] = self.global_order
+
+        global_markers = self.global_markers.to_dict()
+        if global_markers:
+            doc["global_markers"] = global_markers
+
+        markers_list = []
+        for vector, m_list in self.feature_mappings.items():
+            entry = {
+                "features": dict(vector),
+                "realization": m_list.to_dict(),
+            }
+            markers_list.append(entry)
+        doc["markers"] = markers_list
+        return doc
+
     def get_marker(self, **feature_dict: str) -> MarkerList:
         """Retrieve markers matching the feature vector."""
         for vector, markers in self.feature_mappings.items():

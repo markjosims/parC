@@ -14,6 +14,9 @@ import yaml
 from pathlib import Path
 
 from src.grammar.registry.feature_marker_registry import Marker
+from src.grammar.registry.feature_marker_registry import FeatureMarkers, MarkerList
+from src.grammar.registry.feature_values_registry import Feature
+from src.grammar import Grammar
 from src.pages.editor_utils import (
     EditorBase,
     editor_guard,
@@ -100,6 +103,7 @@ class FeatureMarkersEditor(EditorBase):
 
     def read_form_to_state(self) -> None:
         """Sync widget values back to self.data."""
+        self.clear_errors()
         # 1. Top-level fields
         feature_val = st.session_state.get(self.get_widget_key(_FEATURE_PREFIX, "main"))
         if feature_val is not None:
@@ -107,7 +111,7 @@ class FeatureMarkersEditor(EditorBase):
 
         inherits_val = st.session_state.get(self.get_widget_key(_INHERITS_PREFIX, "main"))
         if inherits_val is not None:
-            self.data["inherits"] = inherits_val
+            self.data["inherits"] = validate_file_reference_str(inherits_val)
 
         global_order_val = st.session_state.get(
             self.get_widget_key(_GLOBAL_ORDER_PREFIX, "main")
@@ -127,38 +131,28 @@ class FeatureMarkersEditor(EditorBase):
             self._sync_marker_list(entry["markers"], f"entry-{e_uid}")
 
     def to_yaml(self) -> dict:
-        def serialize_markers(markers: list[Marker]) -> list[dict] | None:
-            if not markers:
-                return None
-            result = []
-            for m in markers:
-                d = {"type": m.type, "value": m.value}
-                if m.order:
-                    d["order"] = m.order
-                result.append(d)
-            return result
-
-        doc = {
-            "kind": self.kind,
-            "feature": self.data["feature"],
-        }
-        if self.data["inherits"]:
-            doc["inherits"] = self.data["inherits"]
-        if self.data["global_order"]:
-            doc["global_order"] = self.data["global_order"]
-
-        global_markers = serialize_markers(self.data["global_markers"])
-        if global_markers:
-            doc["global_markers"] = global_markers
-
-        markers_dict = {}
+        grammar = st.session_state.get("grammar")
+        if grammar is None:
+            st.error("Grammar not loaded. Cannot serialize feature markers.")
+            st.stop()
+        
+        feature_orchestrator = grammar.feature_orchestrator
+        feature_obj = feature_orchestrator.get_feature(self.data["feature"])
+        
+        data_dict = {}
         for entry in self.data["entries"]:
             val = entry["feature_value"]
             if val:
-                markers_dict[val] = serialize_markers(entry["markers"])
-        doc["markers"] = markers_dict
-
-        return doc
+                data_dict[val] = MarkerList(entry["markers"])
+        
+        fm = FeatureMarkers(
+            feature=feature_obj,
+            inherits=self.data["inherits"] or None,
+            data=data_dict,
+            global_order=self.data["global_order"] or None,
+            global_markers=MarkerList(self.data["global_markers"]),
+        )
+        return fm.to_dict()
 
     def get_default_data(self) -> dict:
         return {

@@ -138,7 +138,7 @@ class InventoryEditor(EditorBase):
         objects.  Rebuilds children lists for leaf nodes from the
         comma-separated items text field.
         """
-
+        self.clear_errors()
         item_map: dict[str, InventoryClass] = self.data.get("item_map", {})
         for node_id, node in item_map.items():
             name_val = self.get_node_widget(_NODE_NAME_PREFIX, node_id)
@@ -147,22 +147,29 @@ class InventoryEditor(EditorBase):
                 node.name = name_val
             if ref_val is not None:
                 node.value = ref_val
+                # Validate ref_val against ReservedSymbols and <> format
+                try:
+                    # Temporary node for validation
+                    InventoryClass(value=ref_val, type=node.type)
+                except ValueError as e:
+                    self.add_error(f"Inventory Class '{node.name}': {str(e)}")
 
             kind_val = self.get_node_widget(_NODE_KIND_PREFIX, node_id)
             if kind_val and kind_val != node.type:
                 self.change_node_type(node_id, new_type=kind_val)
 
-            if kind_val != "nested_class":
+            if node.type != "nested_class":
                 items_val = self.get_node_widget(_NODE_ITEMS_PREFIX, node_id)
-                if kind_val is not None:
-                    node.type = "phone_class" if kind_val == "phones" else "flag_class"
                 if items_val is not None:
                     item_type = "phone" if node.type == "phone_class" else "flag"
                     raw_items = [s.strip() for s in items_val.split(",") if s.strip()]
-                    node.children = [
-                        InventoryItem(value=v, parent=node, type=item_type)
-                        for v in raw_items
-                    ]
+                    new_children = []
+                    for v in raw_items:
+                        try:
+                            new_children.append(InventoryItem(value=v, parent=node, type=item_type))
+                        except ValueError as e:
+                            self.add_error(f"In '{node.value}': {str(e)}")
+                    node.children = new_children
 
     def to_yaml(self) -> dict:
         top_items: list[InventoryClass] = self.data.get("top_items", [])
@@ -221,6 +228,7 @@ class InventoryEditor(EditorBase):
             value="<new_node_ref>",
             type="phone_class",
             children=[],
+            parent=parent_node,
         )
         parent_node.children.append(new_child)
         self.data["item_map"][new_child.uuid] = new_child

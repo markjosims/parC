@@ -92,6 +92,7 @@ class MorphemeSequenceEditor(EditorBase):
 
     def read_form_to_state(self) -> None:
         """Sync widget values back to self.data."""
+        self.clear_errors()
         for step in self.data["steps"]:
             uid = step["uuid"]
             s_type = self.get_node_widget(_STEP_TYPE_PREFIX, uid)
@@ -100,6 +101,8 @@ class MorphemeSequenceEditor(EditorBase):
                 step["type"] = s_type
             if s_val is not None:
                 step["value"] = s_val
+                if s_type == "morpheme":
+                     self.validate_pattern(s_val, f"Morpheme '{s_val}'")
 
         for ff in self.data["fixed_features"]:
             uid = ff["uuid"]

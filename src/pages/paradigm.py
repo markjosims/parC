@@ -25,6 +25,8 @@ from src.pages.editor_utils import (
     validate_file_reference_str,
     MARKER_WIDGET_PREFIXES,
 )
+from src.grammar.registry.paradigm_registry import Paradigm
+from src.grammar.registry.feature_marker_registry import MarkerList
 
 _config_kind = "Paradigm"
 _config_key = "paradigm_configs"
@@ -202,58 +204,64 @@ class ParadigmEditor(EditorBase):
                 lf["feature_value"] = val
 
     def to_yaml(self) -> dict:
-        def serialize_markers(markers: list[Marker]) -> list[dict] | None:
-            if not markers:
-                return None
-            res = []
-            for m in markers:
-                d = {"type": m.type, "value": m.value}
-                if m.order:
-                    d["order"] = m.order
-                res.append(d)
-            return res
-
-        fm_dict = {}
+        
+        grammar = st.session_state.get("grammar")
+        if grammar is None:
+            st.error("Grammar not loaded. Cannot serialize paradigm.")
+            st.stop()
+            
+        marker_orchestrator = grammar.marker_orchestrator
+        lexicon_registry = grammar.lexicon_registry
+        fst_orchestrator = grammar.fst_orchestrator
+        
+        # Get actual objects from registry by their source path stem (matched from self.data modes)
+        markers = []
+        fixed_features = {}
         for fm in self.data["feature_mappings"]:
-            if not fm["feature_name"]:
+            f_name = fm["feature_name"]
+            if not f_name:
                 continue
-            if fm["mode"] == "null":
-                fm_dict[fm["feature_name"]] = None
-            else:
-                fm_dict[fm["feature_name"]] = fm["value"]
+            if fm["mode"] == "ref":
+                ref_name = fm["value"].removeprefix("$")
+                markers.append(marker_orchestrator.get_feature_markers(ref_name))
+            elif fm["mode"] == "fixed":
+                fixed_features[f_name] = fm["value"]
+            # mode="null" is handled by ContingentMarkers
+            
+        contingent_markers = []
+        for cm in self.data["contingent_markers"]:
+            if cm["ref"]:
+                ref_name = cm["ref"].removeprefix("$")
+                contingent_markers.append(marker_orchestrator.get_contingent_markers(ref_name))
+                
+        lexicon = lexicon_registry.get_lexicon(self.data["part_of_speech"])
+        
+        feature_value_combinations = None
+        if self.data["feature_value_combinations"]:
+            ref_name = self.data["feature_value_combinations"].removeprefix("$")
+            feature_value_combinations = marker_orchestrator.get_feature_combinations(ref_name)
+            
+        fixed_lexical_features = []
+        feature_orchestrator = grammar.feature_orchestrator
+        for lf in self.data["lexical_feature_filters"]:
+            if lf["feature_name"] and lf["feature_value"]:
+                feat = feature_orchestrator.get_feature(lf["feature_name"])
+                fixed_lexical_features.append((feat, lf["feature_value"]))
 
-        lf_list = [
-            [lf["feature_name"], lf["feature_value"]]
-            for lf in self.data["lexical_feature_filters"]
-            if lf["feature_name"]
-        ]
-
-        doc = {
-            "kind": self.kind,
-            "part_of_speech": self.data["part_of_speech"],
-            "order": [s["name"] for s in self.data["order_stages"] if s["name"]],
-            "feature_markers": fm_dict,
-            "feature_value_combinations": (
-                self.data["feature_value_combinations"]
-                if self.data["feature_value_combinations"]
-                else None
-            ),
-            "contingent_markers": [
-                cm["ref"] for cm in self.data["contingent_markers"] if cm["ref"]
-            ],
-            "filter": {
-                "pattern": (
-                    self.data["pattern_filter"] if self.data["pattern_filter"] else None
-                ),
-                "lexical_features": lf_list,
-            },
-        }
-
-        gm = serialize_markers(self.data["global_markers"])
-        if gm:
-            doc["global_markers"] = gm
-
-        return doc
+        p = Paradigm(
+            name=self.stem,
+            markers=markers,
+            contingent_markers=contingent_markers,
+            lexicon=lexicon,
+            fst_orchestrator=fst_orchestrator,
+            pattern_filter=self.data["pattern_filter"] or None,
+            fixed_lexical_features=fixed_lexical_features,
+            fixed_features=fixed_features,
+            marker_order=[s["name"] for s in self.data["order_stages"] if s["name"]],
+            feature_value_combinations=feature_value_combinations,
+            global_markers=MarkerList(self.data["global_markers"]),
+        )
+        return p.to_dict()
 
     def get_default_data(self) -> dict:
         return {

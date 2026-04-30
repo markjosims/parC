@@ -52,12 +52,6 @@ class Marker(TransducerList):
     def __post_init__(self):
         super().__post_init__()
 
-        # allow empty value so frontend can instantiate marker objects
-        # before user has filled in a value
-        # TODO: standardize empty object instantiation logic across all configs
-        # if not self.value:
-        #     raise ValueError("Marker must have value")
-
         if self.type == "replace":
             if type(self.value) is not tuple:
                 raise ValueError(
@@ -84,6 +78,17 @@ class Marker(TransducerList):
             "principal_part",
         ):
             raise ValueError(f"Unrecognized marker type {self.type}")
+
+    def to_dict(self) -> dict:
+        """Serialize a Marker to a dict."""
+        d = {"type": self.type, "value": self.value}
+        if self.order:
+            d["order"] = self.order
+        if self.comment:
+            d["comment"] = self.comment
+        if self.lexical_features:
+            d["lexical_features"] = self.lexical_features
+        return d
 
     @classmethod
     def from_config(
@@ -256,10 +261,14 @@ class MarkerList(UserList):
             if marker.order is None and global_order is not None:
                 marker.order = global_order
 
-    def to_dict(self) -> dict:
-        """
-        TODO
-        """
+    def to_dict(self) -> list[dict] | dict | None:
+        """Serialize a MarkerList to a dict, list of dicts, or None."""
+        if not self:
+            return None
+        dicts = [m.to_dict() for m in self]
+        if len(dicts) == 1:
+            return dicts[0]
+        return dicts
 
     def __str__(self):
         return str(self.data)
@@ -442,6 +451,27 @@ class FeatureMarkers:
                     order_values.add(marker.order)
         return list(order_values)
 
+    def to_dict(self) -> dict:
+        doc = {
+            "kind": "FeatureMarkers",
+            "feature": self.feature.name,
+        }
+        if self.inherits:
+            doc["inherits"] = self.inherits
+        if self.global_order:
+            doc["global_order"] = self.global_order
+
+        global_markers = self.global_markers.to_dict()
+        if global_markers:
+            doc["global_markers"] = global_markers
+
+        markers_dict = {}
+        for val, m_list in self.data.items():
+            markers_dict[val] = m_list.to_dict()
+        doc["markers"] = markers_dict
+
+        return doc
+
     def __str__(self):
         return (
             f"FeatureMarkers(feature='{self.feature}', values={list(self.data.keys())})"
@@ -491,6 +521,12 @@ class FeatureMarkersRegistry(Registry):
                     raise ValueError(error)
             config_items.update(config_data)
         return config_items
+
+    def to_dict(self) -> dict:
+        return {
+            "kind": self.kind,
+            "markers": [m.to_dict() for m in self.data.values()],
+        }
 
     def load_data_from_config(self, config: dict) -> dict[str, FeatureMarkers]:
         source_path = config.get("source_path", "")

@@ -57,6 +57,10 @@ class Feature:
             return NotImplemented
         return self.name == other.name and set(self.values) == set(other.values)
 
+    def to_dict(self) -> list[str]:
+        """Return the list of values excluding 'unmarked'."""
+        return [v for v in self.values if v != "unmarked"]
+
 
 class FeatureValuesRegistry(Registry):
     """
@@ -76,6 +80,14 @@ class FeatureValuesRegistry(Registry):
     def _populate_features_to_values(self):
         self.features_to_values = {
             feature.name: feature.values for feature in self.data.values()
+        }
+
+    def to_dict(self) -> dict:
+        return {
+            "kind": self.kind,
+            "features": {
+                feature.name: feature.to_dict() for feature in self.data.values()
+            },
         }
 
     def load_all_configs(self) -> dict[str, Feature]:

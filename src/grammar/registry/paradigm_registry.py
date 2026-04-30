@@ -273,6 +273,47 @@ class Paradigm:
         self._build_all_marker_transducers()
         self.is_initialized = True
 
+    def to_dict(self) -> dict:
+        """Serialize to Paradigm YAML format."""
+        fm_dict = {}
+        # Fixed features
+        for f, v in self.fixed_features.items():
+            fm_dict[f] = v
+        # Feature markers (refs)
+        for fm in self.markers:
+            if fm.source:
+                fm_dict[fm.feature.name] = "$" + Path(fm.source).stem
+            else:
+                fm_dict[fm.feature.name] = "[UNRESOLVED]"
+
+        # Reconstruct filter
+        lf_list = [[f.name, v] for f, v in self.fixed_lexical_features]
+        filter_doc = {"lexical_features": lf_list}
+        if self.pattern_filter:
+            filter_doc["pattern"] = self.pattern_filter
+
+        doc = {
+            "kind": "Paradigm",
+            "part_of_speech": self.lexicon.name,
+            "order": self.marker_order,
+            "feature_markers": fm_dict,
+            "contingent_markers": [
+                "$" + Path(cm.source).stem for cm in self.contingent_markers if cm.source
+            ],
+            "filter": filter_doc,
+        }
+        if self.feature_value_combinations and self.feature_value_combinations.source:
+            doc["feature_value_combinations"] = Path(
+                self.feature_value_combinations.source
+            ).stem
+
+        if self.global_markers:
+            gm = self.global_markers.to_dict()
+            if gm:
+                doc["global_markers"] = gm
+
+        return doc
+
     def _validate_features_and_order_values(self):
         """
         Validate that all feature values in markers or contingent markers
