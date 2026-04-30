@@ -258,6 +258,7 @@ def prune_config_dict(data: Any, kind: str) -> Any:
         "FeatureMarkers": {"markers"}, # markers is a dict, values can be null
         "Paradigm": {"feature_markers"}, # feature_markers is a dict, values can be null
         "Rules": {"input_pattern", "output_pattern"},
+        "MorphemeSet": {"morpheme"},
     }
 
     kind_licit = LICIT_PATHS.get(kind, set())
