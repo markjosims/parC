@@ -214,11 +214,13 @@ def _render_lexicon_row(
     cols = st.columns([1.5, 1.5] + [1.2] * len(dynamic_cols) + [0.4])
 
     with cols[0]:
-        st.text_input(
+        editor.render_keyup_input(
             "Root",
+            _ROW_ROOT_PREFIX,
+            uid,
             value=row["root"],
-            key=editor.get_widget_key(_ROW_ROOT_PREFIX, uid),
             label_visibility="collapsed",
+            validation_fn=lambda v: editor.validate_pattern(v, f"Root '{v}'")
         )
     with cols[1]:
         st.text_input(
@@ -287,7 +289,8 @@ def lexicon_page() -> None:
         )
 
     # 1. Config section
-    with st.expander("POS Configuration", expanded=not bool(editor.data["rows"])):
+    with st.expander("POS Configuration", expanded=st.session_state.get(f"expanded-pos-{editor.scope}", True)):
+        st.session_state[f"expanded-pos-{editor.scope}"] = False # default to collapsed after first show
         col1, col2 = st.columns(2)
         with col1:
             current_f = editor.data["features"]

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 
 import streamlit as st
+from st_keyup import st_keyup
 from camel_converter import to_snake
 
 from src.config_utils.schema_validation import ConfigKindType
@@ -69,15 +70,70 @@ class EditorBase(ABC):
         self.config_dir: str = str(config_walker.config_dir)
         self.data: dict = {}
         self.errors: list[str] = []
+        self.field_errors: dict[str, str] = {}
 
     def clear_errors(self) -> None:
-        """Clear the error list."""
+        """Clear the error list and field errors."""
         self.errors = []
+        self.field_errors = {}
 
     def add_error(self, message: str) -> None:
         """Add a validation error message."""
         if message not in self.errors:
             self.errors.append(message)
+
+    @property
+    def is_valid(self) -> bool:
+        """Check if the editor state is valid (no global or field errors)."""
+        return not self.errors and not self.field_errors
+
+    def render_keyup_input(
+        self,
+        label: str,
+        prefix: str,
+        node_id: str,
+        value: str = "",
+        suffix: str = "",
+        placeholder: str = "",
+        validation_fn: callable | None = None,
+        **kwargs,
+    ) -> str:
+        """
+        Render a text input that validates on every keyup.
+        """
+        key = self.get_widget_key(prefix, node_id, suffix)
+
+        # st_keyup returns the current value
+        val = st_keyup(
+            label,
+            value=value,
+            key=key,
+            placeholder=placeholder,
+            **kwargs,
+        )
+
+        if validation_fn:
+            # We want to track field-specific errors
+            self.field_errors.pop(key, None)
+
+            # Temporary error list to catch what the validation_fn adds
+            old_errors = list(self.errors)
+            self.errors = []
+
+            try:
+                validation_fn(val)
+                if self.errors:
+                    self.field_errors[key] = self.errors[0]
+            except Exception as e:
+                self.field_errors[key] = str(e)
+            finally:
+                # Restore global errors
+                self.errors = old_errors + self.errors
+
+        if key in self.field_errors:
+            st.error(self.field_errors[key], icon="⚠️")
+
+        return val
 
     def validate_pattern(self, value: str, label: str = "Pattern") -> str:
         """
@@ -91,6 +147,42 @@ class EditorBase(ABC):
                 grammar.fst_orchestrator.acceptor(value)
             except Exception as e:
                 self.add_error(f"Invalid {label} '{value}': {str(e)}")
+        return value
+
+    def validate_no_reserved_symbols(self, value: str, label: str = "Item") -> str:
+        """Check if value is a reserved symbol."""
+        from src.fst_utils import ReservedSymbolMixin
+
+        if value in ReservedSymbolMixin.reserved_symbols:
+            self.add_error(
+                f"{label} '{value}' is a reserved symbol and cannot be used."
+            )
+        return value
+
+    def validate_inventory_item(
+        self, value: str, item_type: Literal["phone", "flag"], label: str = "Item"
+    ) -> str:
+        """Validate phone/flag formatting and reserved symbols."""
+        self.validate_no_reserved_symbols(value, label)
+        if item_type == "flag":
+            if not value.startswith("[") or not value.endswith("]"):
+                self.add_error(
+                    f"Flag {label} '{value}' must start with '[' and end with ']'"
+                )
+        elif item_type == "phone":
+            if any(c in value for c in "[]<>"):
+                self.add_error(
+                    f"Phone {label} '{value}' cannot contain '[', ']', '<', or '>'"
+                )
+        return value
+
+    def validate_inventory_class(self, value: str, label: str = "Class") -> str:
+        """Validate class formatting and reserved symbols."""
+        self.validate_no_reserved_symbols(value, label)
+        if not value.startswith("<") or not value.endswith(">"):
+            self.add_error(
+                f"Class {label} '{value}' must start with '<' and end with '>'"
+            )
         return value
 
     def validate_acceptor(self, value: str, label: str = "Pattern") -> Acceptor:
@@ -264,10 +356,15 @@ class EditorBase(ABC):
                     marker.value = tuple(value)
             elif marker.type in ["suffix", "prefix", "suppletion"]:
                 val = self.get_node_widget(_MARKER_VALUE_PREFIX, scope, suffix=m_uid)
-                val = self.validate_pattern(val, label=f"{marker.type.capitalize()} marker pattern")
+                val = self.validate_pattern(
+                    val, label=f"{marker.type.capitalize()} marker pattern"
+                )
                 marker.value = val or ""
             else:  # marker.type in ["rule", "principal_part"]
-                marker.value = self.get_node_widget(_MARKER_VALUE_PREFIX, scope, suffix=m_uid) or ""
+                marker.value = (
+                    self.get_node_widget(_MARKER_VALUE_PREFIX, scope, suffix=m_uid)
+                    or ""
+                )
 
 
 def render_editor_toolbar(
@@ -286,7 +383,7 @@ def render_editor_toolbar(
             "💾 Save YAML",
             use_container_width=True,
             type="primary",
-            disabled=bool(editor.errors),
+            disabled=not editor.is_valid,
         ):
             stem = st.session_state.get("file_name", "").strip()
             if not stem:

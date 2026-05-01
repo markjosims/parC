@@ -38,6 +38,7 @@ This editor allows you to define features (either morphological or lexical)
 and their possible values.
 """
 
+
 class FeatureValuesEditor(EditorBase):
     """
     Editor for FeatureDefinitions YAML configs.
@@ -49,6 +50,24 @@ class FeatureValuesEditor(EditorBase):
 
     def __init__(self) -> None:
         super().__init__(kind=_config_kind, config_key=_config_key)
+
+    def validate_feature_name(self, name: str, uid: str) -> None:
+        """Check for empty or duplicate feature names."""
+        name = name.strip()
+        if not name:
+            self.add_error("Feature name cannot be empty.")
+            return
+        
+        id_map = self.data.get("id_map", {})
+        for other_uid, other_feat in id_map.items():
+            if other_uid != uid and other_feat.name == name:
+                self.add_error(f"Duplicate feature name: '{name}'")
+                return
+
+    def validate_feature_values(self, values_str: str, feat_name: str) -> None:
+        """Check for empty values list."""
+        if not values_str.strip():
+            self.add_error(f"Feature '{feat_name}' must have at least one value.")
 
     def build_state_from_config(self, config_object: dict) -> dict:
         filepath = config_object["source_path"]
@@ -66,18 +85,12 @@ class FeatureValuesEditor(EditorBase):
         """
         self.clear_errors()
         id_map: dict[str, Feature] = self.data.get("id_map", {})
-        seen_names = set()
         for uid, feature in id_map.items():
             name_val = self.get_node_widget(_NAME_PREFIX, uid)
             if name_val is not None:
                 name_val = name_val.strip()
-                if not name_val:
-                    self.add_error(f"Feature '{feature.name}': Name cannot be empty.")
-                elif name_val in seen_names:
-                    self.add_error(f"Duplicate feature name: '{name_val}'")
-                else:
-                    seen_names.add(name_val)
-                    feature.name = name_val
+                self.validate_feature_name(name_val, uid)
+                feature.name = name_val
 
             # Read individual values
             new_values = []
@@ -85,22 +98,19 @@ class FeatureValuesEditor(EditorBase):
             while True:
                 val = self.get_node_widget(_VALUE_ITEM_PREFIX, uid, suffix=str(idx))
                 if val is None:
-                    # Check if we have more values in the model than in widgets
-                    # (this can happen if we haven't rendered them yet)
                     break
                 val = val.strip()
                 if val:
                     new_values.append(val)
                 idx += 1
-            
-            # If we didn't find any widgets (e.g. first load or reset), 
-            # don't overwrite the model with an empty list
+
             if idx > 0:
                 if not new_values:
                     self.add_error(f"Feature '{feature.name}': Must have at least one value.")
                 if "unmarked" not in new_values:
                     new_values.append("unmarked")
                 feature.values = new_values
+
 
     def to_yaml(self) -> dict:
         """
@@ -129,7 +139,7 @@ class FeatureValuesEditor(EditorBase):
         self.data["features"].remove(feature)
         for prefix in _WIDGET_PREFIXES:
             # Note: this doesn't clear the indexed value_item keys
-            # because we don't know the count here easily. 
+            # because we don't know the count here easily.
             # clear_all_editor_widget_keys handles it better on page switch.
             st.session_state.pop(f"{prefix}{uid}", None)
         return feature
@@ -139,7 +149,9 @@ class FeatureValuesEditor(EditorBase):
         feature = self.data["id_map"][uid]
         # Insert at end but before "unmarked"
         if "unmarked" in feature.values:
-            feature.values.insert(len(feature.values) - 1, f"value_{len(feature.values)}")
+            feature.values.insert(
+                len(feature.values) - 1, f"value_{len(feature.values)}"
+            )
         else:
             feature.values.append(f"value_{len(feature.values) + 1}")
 
@@ -158,14 +170,20 @@ def _render_feature(uid: str, editor: FeatureValuesEditor) -> None:
     # Filter "unmarked" for user-facing field to avoid confusion
     display_values = [v for v in feature.values if v != "unmarked"]
 
-    with st.expander(f"Feature: `{feature.name}`", expanded=True):
+    with st.expander(
+        f"Feature: `{feature.name}`",
+        expanded=True,
+        key=editor.get_widget_key("expander-", uid),
+    ):
         col_name, col_remove = st.columns([4, 1])
         with col_name:
-            st.text_input(
+            editor.render_keyup_input(
                 "Feature Name",
-                key=editor.get_widget_key(_NAME_PREFIX, uid),
+                _NAME_PREFIX,
+                uid,
                 value=feature.name,
                 placeholder="tam",
+                validation_fn=lambda v: editor.validate_feature_name(v, uid)
             )
         with col_remove:
             st.write("##")  # alignment
@@ -181,23 +199,34 @@ def _render_feature(uid: str, editor: FeatureValuesEditor) -> None:
         for i, val in enumerate(display_values):
             v_col, d_col = st.columns([4, 4])
             with v_col:
-                st.text_input(
+                editor.render_keyup_input(
                     f"Value {i+1}",
-                    key=editor.get_widget_key(_VALUE_ITEM_PREFIX, uid, suffix=str(i)),
+                    _VALUE_ITEM_PREFIX,
+                    uid,
                     value=val,
+                    suffix=str(i),
                     label_visibility="collapsed",
+                    validation_fn=(
+                        lambda v: editor.validate_feature_values(v, feature.name)
+                        if i == 0
+                        else None
+                    ),
                 )
             with d_col:
-                if st.button("✕", key=editor.get_widget_key("del-val-", uid, suffix=str(i)), help="Delete this value"):
+                if st.button(
+                    "✕",
+                    key=editor.get_widget_key("del-val-", uid, suffix=str(i)),
+                    help="Delete this value",
+                ):
                     editor.remove_value(uid, i)
                     st.rerun()
-        
-        if st.button("➕ Add value", key=editor.get_widget_key("add-val-", uid)):
-            # BUG: clicking the button doesn't trigger this branch!
-            logger.info(f"Adding value to feature {uid}")
 
-            editor.add_value(uid)
-            st.rerun()
+        st.button(
+            "➕ Add value",
+            key=editor.get_widget_key("add-val-", uid),
+            on_click=editor.add_value,
+            args=(uid,),
+        )
 
 
 def feature_values_page() -> None:

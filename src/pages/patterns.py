@@ -114,9 +114,9 @@ class PatternEditor(EditorBase):
             if ref_val is not None:
                 pattern._ref = ref_val
             if pattern_val is not None:
-                pattern.value = pattern_val
-                # Trigger validation of the pattern text
+                # Trigger validation of the pattern text; adds to self.errors
                 self.validate_pattern(pattern_val, f"Pattern '{pattern._ref}'")
+                pattern.value = pattern_val
 
             if includes_val is not None:
                 pattern.test_includes = [
@@ -196,7 +196,7 @@ def _render_pattern(uid: str, editor: PatternEditor) -> None:
     ref_label = pattern._ref or "(ref not set)"
     name_label = pattern.name or "(unnamed)"
 
-    with st.expander(f"{name_label} `{ref_label}`", expanded=False):
+    with st.expander(f"{name_label} `{ref_label}`", expanded=False, key=editor.get_widget_key("expander-", uid)):
         col_name, col_ref = st.columns(2)
         with col_name:
             st.text_input(
@@ -213,12 +213,13 @@ def _render_pattern(uid: str, editor: PatternEditor) -> None:
                 placeholder="<V_Front>",
             )
 
-        st.text_input(
+        editor.render_keyup_input(
             "Pattern",
-            key=editor.get_widget_key(_PATTERN_TEXT_PREFIX, uid),
+            _PATTERN_TEXT_PREFIX,
+            uid,
             value=pattern.value,
             placeholder="(<e>|<i>|<ɛ>)",
-            help="Regular expression string interpreted as an FSA.",
+            validation_fn=lambda v: editor.validate_pattern(v, f"Pattern '{pattern._ref}'")
         )
 
         col_inc, col_exc = st.columns(2)
@@ -228,7 +229,6 @@ def _render_pattern(uid: str, editor: PatternEditor) -> None:
                 key=editor.get_widget_key(_TEST_INCLUDES_PREFIX, uid),
                 value=", ".join(pattern.test_includes),
                 placeholder="e, i, ɛ",
-                help="Comma-separated strings the pattern should accept.",
             )
         with col_exc:
             st.text_input(
@@ -236,7 +236,6 @@ def _render_pattern(uid: str, editor: PatternEditor) -> None:
                 key=editor.get_widget_key(_TEST_EXCLUDES_PREFIX, uid),
                 value=", ".join(pattern.test_excludes),
                 placeholder="a, o, u",
-                help="Comma-separated strings the pattern should reject.",
             )
 
         col_test, col_remove = st.columns(2)

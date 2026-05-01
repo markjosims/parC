@@ -179,10 +179,12 @@ def _render_entry(
                 editor.remove_entry(uid)
                 st.rerun()
 
-        st.text_input(
+        editor.render_keyup_input(
             "Morpheme",
-            key=editor.get_widget_key(_MORPHEME_VALUE_PREFIX, uid),
+            _MORPHEME_VALUE_PREFIX,
+            uid,
             value=entry["morpheme"],
+            validation_fn=lambda v: editor.validate_pattern(v, f"Morpheme '{v}'")
         )
 
 
@@ -215,7 +217,8 @@ def morpheme_set_page() -> None:
 
     # 1. Config section
     current_features = editor.data.get("features", [])
-    with st.expander("Configuration", expanded=not bool(current_features)):
+    with st.expander("Configuration", expanded=st.session_state.get(f"expanded-ms-{editor.scope}", True)):
+        st.session_state[f"expanded-ms-{editor.scope}"] = False
         st.multiselect(
             "Participating Features",
             options=available_features or current_features,

@@ -146,14 +146,10 @@ class InventoryEditor(EditorBase):
             if name_val is not None:
                 node.name = name_val
             if ref_val is not None:
+                # Synchronize value; validate_inventory_class adds to self.errors
+                self.validate_inventory_class(ref_val, f"Inventory Class '{node.name}'")
                 node.value = ref_val
-                # Validate ref_val against ReservedSymbols and <> format
-                try:
-                    # Temporary node for validation
-                    InventoryClass(value=ref_val, type=node.type)
-                except ValueError as e:
-                    self.add_error(f"Inventory Class '{node.name}': {str(e)}")
-
+                
             kind_val = self.get_node_widget(_NODE_KIND_PREFIX, node_id)
             if kind_val and kind_val != node.type:
                 self.change_node_type(node_id, new_type=kind_val)
@@ -161,14 +157,18 @@ class InventoryEditor(EditorBase):
             if node.type != "nested_class":
                 items_val = self.get_node_widget(_NODE_ITEMS_PREFIX, node_id)
                 if items_val is not None:
-                    item_type = "phone" if node.type == "phone_class" else "flag"
+                    item_type: Literal["phone", "flag"] = "phone" if node.type == "phone_class" else "flag"
                     raw_items = [s.strip() for s in items_val.split(",") if s.strip()]
                     new_children = []
                     for v in raw_items:
+                        # Add errors for keyup/global display
+                        self.validate_inventory_item(v, item_type, f"In '{node.value}'")
                         try:
                             new_children.append(InventoryItem(value=v, parent=node, type=item_type))
-                        except ValueError as e:
-                            self.add_error(f"In '{node.value}': {str(e)}")
+                        except ValueError:
+                            # Already handled by validate_inventory_item adding to self.errors
+                            # We just need to prevent the crash
+                            pass
                     node.children = new_children
 
     def to_yaml(self) -> dict:
@@ -183,6 +183,12 @@ class InventoryEditor(EditorBase):
             "top_items": [],
             "item_map": {},
         }
+
+    def validate_items_str(self, value: str, item_type: Literal["phone", "flag"], label: str = "Items") -> None:
+        """Validate a comma-separated list of inventory items."""
+        raw_items = [s.strip() for s in value.split(",") if s.strip()]
+        for v in raw_items:
+            self.validate_inventory_item(v, item_type, label)
 
     """
     Tree accessors
@@ -331,7 +337,7 @@ def _render_node(node: InventoryClass, editor: InventoryEditor, depth: int = 0) 
         item_str = ", ".join(child.value for child in node.children)
         node_caption += f": `{item_str}`"
 
-    with content_col.popover(node_caption):
+    with content_col.popover(node_caption, key=editor.get_widget_key("popover-", node.uuid)):
         col_name, col_ref = st.columns(2)
         with col_name:
             st.text_input(
@@ -341,11 +347,13 @@ def _render_node(node: InventoryClass, editor: InventoryEditor, depth: int = 0) 
                 placeholder="consonants",
             )
         with col_ref:
-            st.text_input(
+            editor.render_keyup_input(
                 "Reference",
-                key=editor.get_widget_key(_NODE_REF_PREFIX, node.uuid),
+                _NODE_REF_PREFIX,
+                node.uuid,
                 value=node_ref,
                 placeholder="<C>",
+                validation_fn=lambda v: editor.validate_inventory_class(v, f"Inventory Class '{node.name}'")
             )
 
         class_names = ["phone_class", "flag_class", "nested_class"]
@@ -376,11 +384,14 @@ def _render_node(node: InventoryClass, editor: InventoryEditor, depth: int = 0) 
             )
             st.caption("This node has children — phones and flags are disabled.")
         else:
-            st.text_input(
+            item_type: Literal["phone", "flag"] = "phone" if node.type == "phone_class" else "flag"
+            editor.render_keyup_input(
                 "Items",
-                key=editor.get_widget_key(_NODE_ITEMS_PREFIX, node.uuid),
+                _NODE_ITEMS_PREFIX,
+                node.uuid,
                 value=", ".join(node.item_strs()),
                 placeholder="p, t, k",
+                validation_fn=lambda v: editor.validate_items_str(v, item_type, f"In '{node.value}'")
             )
 
             with st.expander("🔡 Insert diacritic"):
