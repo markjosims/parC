@@ -54,10 +54,12 @@ class ReservedSymbolMixin:
         left_delimiters
         + right_delimiters
         + unary_operators
-        + (pipe_operator,)
+        + (pipe_operator, caret_operator)
         + reserved_refs
         + bow_eow_flags
+        + edit_flags
         + boundary_symbols
+        + (word_edge,)
     )
 
 def is_acceptor(fsa: pynini.Fst) -> bool:
