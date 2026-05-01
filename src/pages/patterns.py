@@ -173,8 +173,10 @@ class PatternEditor(EditorBase):
         """
         pattern = self.data["id_map"][uid]
         fst_orch: FstOrchestrator = grammar.fst_orchestrator
+        # pass pattern.value rather than pattern._ref since the ref may
+        # not be in the Grammar or may be stale
         results = fst_orch.test_pattern(
-            pattern._ref,
+            pattern.value,
             pattern.test_includes,
             pattern.test_excludes,
         )
@@ -239,7 +241,11 @@ def _render_pattern(uid: str, editor: PatternEditor) -> None:
 
         col_test, col_remove = st.columns(2)
         with col_test:
-            if st.button("▶ Run tests", key=editor.get_widget_key(_TEST_BUTTON_PREFIX, uid), use_container_width=True):
+            if st.button(
+                "▶ Run tests",
+                key=editor.get_widget_key(_TEST_BUTTON_PREFIX, uid),
+                use_container_width=True,
+            ):
                 grammar = st.session_state.get("grammar")
                 if grammar is None:
                     st.warning("Grammar not loaded — cannot run tests.")
@@ -248,7 +254,9 @@ def _render_pattern(uid: str, editor: PatternEditor) -> None:
                     st.rerun()
         with col_remove:
             if st.button(
-                "✕ Delete", key=editor.get_widget_key(_REMOVE_PREFIX, uid), use_container_width=True
+                "✕ Delete",
+                key=editor.get_widget_key(_REMOVE_PREFIX, uid),
+                use_container_width=True,
             ):
                 editor.remove_pattern(uid)
                 st.rerun()
@@ -276,6 +284,7 @@ def _render_pattern(uid: str, editor: PatternEditor) -> None:
 Page components
 """
 
+
 def pattern_form(editor: PatternEditor) -> None:
     """Render form inputs for all patterns in editor.data."""
     id_map: dict[str, Pattern] = editor.data.get("id_map", {})
@@ -287,6 +296,7 @@ def pattern_form(editor: PatternEditor) -> None:
     else:
         for uid in id_map:
             _render_pattern(uid, editor)
+
 
 """
 Page function
@@ -332,8 +342,6 @@ def patterns_page() -> None:
             add_label="Add pattern",
             add_callback=editor.insert_pattern,
         )
-
-    
 
 
 if __name__ == "__main__":
