@@ -209,6 +209,10 @@ class Paradigm:
             )
         # TODO: add helper function for checking valid combination when feature_value_combinations is not built
 
+        # TMP remove all unmarked features
+        # TODO: standardize handling unmarked features
+        feature_values = {k: v for k, v in feature_values.items() if v != "unmarked"}
+
         # filter out fixed features
         for fixed_feature, fixed_value in self.fixed_features.items():
             if fixed_feature not in feature_values:
@@ -298,7 +302,9 @@ class Paradigm:
             "order": self.marker_order,
             "feature_markers": fm_dict,
             "contingent_markers": [
-                "$" + Path(cm.source).stem for cm in self.contingent_markers if cm.source
+                "$" + Path(cm.source).stem
+                for cm in self.contingent_markers
+                if cm.source
             ],
             "filter": filter_doc,
         }
@@ -730,7 +736,9 @@ class Paradigm:
         if not all_roots:
             return pynini.Fst()
 
-        stem_fsa = pynini.union(*[self.fst_orchestrator.fsa(r) for r in all_roots]).optimize()
+        stem_fsa = pynini.union(
+            *[self.fst_orchestrator.fsa(r) for r in all_roots]
+        ).optimize()
         results = self.inflect_subparadigm(stem=stem_fsa, fixed_features=fixed_features)
 
         fsts = []

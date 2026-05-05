@@ -81,6 +81,11 @@ class MorphemeSet:
 
     def get_morpheme(self, **feature_dict: str) -> str:
         """Retrieve morpheme matching the feature vector."""
+
+        # TMP remove all unmarked features
+        # TODO: standardize handling unmarked features
+        feature_values = {k: v for k, v in feature_values.items() if v != "unmarked"}
+
         for vector, morpheme in self.feature_mappings.items():
             if vector.issubset(feature_dict.items()):
                 return morpheme
