@@ -11,7 +11,9 @@ from typing import Any
 import streamlit as st
 import yaml
 
+from src.grammar import Grammar
 from src.grammar.registry.feature_values_registry import Feature, FeatureValuesRegistry
+from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
 from src.pages.editor_utils import (
     EditorBase,
     editor_guard,

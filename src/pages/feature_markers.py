@@ -268,16 +268,16 @@ def feature_markers_page() -> None:
     st.divider()
 
     # 2. Entries section
-    feature = editor.data["feature"]
+    feature: Feature = editor.data["feature"]
 
     for entry in editor.data["entries"]:
         e_uid = entry["uuid"]
         with st.container(border=True):
             col_val, col_del = st.columns([4, 1])
             with col_val:
-                if feature.values:
+                if feature and feature.values:
                     st.selectbox(
-                        f"Value for {feature}",
+                        f"Value for {feature.name}",
                         options=[""] + feature.values,
                         index=(
                             feature.values.index(entry["feature_value"]) + 1
@@ -315,7 +315,6 @@ def feature_markers_page() -> None:
         render_editor_toolbar(
             editor, add_label="Add value entry", add_callback=editor.insert_entry
         )
-
 
 if __name__ == "__main__":
     feature_markers_page()

@@ -7,12 +7,15 @@ A UI for creating and editing MorphemeSequence YAML configs.
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import streamlit as st
 import yaml
 from pathlib import Path
 
+from src.grammar import Grammar
+from src.grammar.registry.feature_values_registry import Feature
+from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
 from src.pages.editor_utils import (
     EditorBase,
     editor_guard,
@@ -66,6 +69,9 @@ class MorphemeSequenceEditor(EditorBase):
         super().__init__(kind=_config_kind, config_key=_config_key)
 
     def build_state_from_config(self, config_object: dict) -> dict:
+        grammar: Grammar = st.session_state.grammar
+        feature_orchestrator: FeatureOrchestrator = grammar.feature_orchestrator
+
         raw_data = config_object.get("data", [])
         steps = []
         for step in raw_data:
@@ -78,10 +84,11 @@ class MorphemeSequenceEditor(EditorBase):
             )
         fixed_features = []
         for f_name, f_val in config_object.get("fixed_features", {}).items():
+            feat = feature_orchestrator.get_feature(f_name)
             fixed_features.append(
                 {
                     "uuid": str(uuid.uuid4()),
-                    "name": f_name,
+                    "feature": feat,
                     "value": f_val,
                 }
             )
@@ -102,14 +109,14 @@ class MorphemeSequenceEditor(EditorBase):
             if s_val is not None:
                 step["value"] = s_val
                 if s_type == "morpheme":
-                     self.validate_pattern(s_val, f"Morpheme '{s_val}'")
+                    self.validate_pattern(s_val, f"Morpheme '{s_val}'")
 
         for ff in self.data["fixed_features"]:
             uid = ff["uuid"]
-            f_name = self.get_node_widget(_FIXED_FEAT_NAME_PREFIX, uid)
+            feat = self.get_node_widget(_FIXED_FEAT_NAME_PREFIX, uid)
             f_val = self.get_node_widget(_FIXED_FEAT_VAL_PREFIX, uid)
-            if f_name is not None:
-                ff["name"] = f_name
+            if feat is not None:
+                ff["feature"] = feat
             if f_val is not None:
                 ff["value"] = f_val
 
@@ -124,8 +131,9 @@ class MorphemeSequenceEditor(EditorBase):
             )
         fixed_features = {}
         for ff in self.data["fixed_features"]:
-            if ff["name"]:
-                fixed_features[ff["name"]] = ff["value"]
+            feat: Feature = ff["feature"]
+            if feat:
+                fixed_features[feat.name] = ff["value"]
 
         return {
             "kind": self.kind,
@@ -165,7 +173,7 @@ class MorphemeSequenceEditor(EditorBase):
         self.data["fixed_features"].append(
             {
                 "uuid": str(uuid.uuid4()),
-                "name": "",
+                "feature": "",
                 "value": "",
             }
         )
@@ -299,7 +307,7 @@ def morpheme_sequence_page() -> None:
     editor.read_form_to_state()
     editor_header(kind=_config_kind, editor=editor)
 
-    grammar = st.session_state.get("grammar")
+    grammar: Grammar = st.session_state.grammar
     available_lexicons = []
     available_paradigms = []
     available_patterns = []
@@ -309,9 +317,7 @@ def morpheme_sequence_page() -> None:
 
     if grammar:
         available_features = sorted(
-            list(
-                grammar.feature_orchestrator.feature_values_registry.features_to_values.keys()
-            )
+            list(grammar.feature_orchestrator.features.values())
         )
         available_lexicons = sorted(
             [
@@ -357,10 +363,11 @@ def morpheme_sequence_page() -> None:
             with fc1:
                 st.selectbox(
                     "Feature",
-                    options=[""] + available_features,
+                    options=[""] + [feature.name for feature in available_features],
+                    format_func=lambda f: f.name if isinstance(f, Feature) else f,
                     index=(
-                        available_features.index(ff["name"]) + 1
-                        if ff["name"] in available_features
+                        available_features.index(ff["feature"]) + 1
+                        if ff.get("feature", None) in available_features
                         else 0
                     ),
                     key=editor.get_widget_key(_FIXED_FEAT_NAME_PREFIX, uid),
@@ -368,20 +375,15 @@ def morpheme_sequence_page() -> None:
                 )
             with fc2:
                 # get values for selected feature
-                f_vals = (
-                    grammar.feature_orchestrator.feature_values_registry.features_to_values.get(
-                        ff["name"], []
-                    )
-                    if grammar
-                    else []
-                )
+                feat_obj = None
+                if ff.get("feature", None):
+                    feat_obj = grammar.feature_orchestrator.get_feature(ff.get("feature", None))
+                f_vals = feat_obj.values if feat_obj else []
                 st.selectbox(
                     "Value",
                     options=[""] + f_vals,
                     index=(
-                        f_vals.index(ff["value"]) + 1
-                        if ff["value"] in f_vals
-                        else 0
+                        f_vals.index(ff["value"]) + 1 if ff["value"] in f_vals else 0
                     ),
                     key=editor.get_widget_key(_FIXED_FEAT_VAL_PREFIX, uid),
                     label_visibility="collapsed",

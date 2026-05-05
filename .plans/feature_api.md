@@ -9,6 +9,23 @@ Pages @src/pages in should have a consistent interface for interacting with `Fea
 2. Always load in `Feature` objects where possible.
 3. Move duplicated logic to @src/pages/editor_utils.py.
     This should at least include adding a new helper `feature_multiselect` which allows the user to pick multiple feature values that are saved to some key in the editor state as this logic is repeated across @src/pages/lexicon.py, @src/pages/contingent_markers.py and @src/pages/morpheme_set.py.
+4. Import classes at top of module (if not imported already).
+    NEVER import inside a function call.
+
+    ```python
+    from src.grammar import Grammar
+    from src.grammar.registry.feature_values_registry import Feature
+    from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
+    from src.pages.editor_utils import feature_multiselect
+    ```
+
+5. Use typing hints for linting and autocompletions in IDE:
+
+    ```python
+    grammar: Grammar = st.session_state.grammar
+    feature_orchestrator: FeatureOrchestrator = grammar.feature_orchestrator
+    features: list[Feature] = self.data['features']
+    ```
 
 ## Implementation Notes
 

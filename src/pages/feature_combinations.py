@@ -19,12 +19,14 @@ from src.grammar.registry.feature_combination_registry import (
     FeatureValueCombinations,
 )
 from src.grammar.registry.feature_values_registry import Feature
+from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
 from src.pages.editor_utils import (
     EditorBase,
     editor_guard,
     editor_header,
     editor_sidebar,
     render_editor_toolbar,
+    feature_multiselect,
 )
 
 _config_kind = "FeatureCombinations"
@@ -53,28 +55,26 @@ class FeatureCombinationsEditor(EditorBase):
     Editor for FeatureCombinations YAML configs.
 
     self.data keys:
-        features     — list[str] (names of features included in this config)
-        combinations — list[dict] (each dict has uuid and feature values)
+        features     — list[Feature] (Feature objects included in this config)
+        combinations — list[dict] (each dict has uuid and feature values with string keys)
     """
 
     def __init__(self) -> None:
         super().__init__(kind=_config_kind, config_key=_config_key)
 
     def build_state_from_config(self, config_object: dict) -> dict:
-        # We need the FeatureValuesRegistry to build the backend object,
-        # though for the editor we mainly want the raw data.
-        grammar = st.session_state.get("grammar")
+        grammar: Grammar = st.session_state.grammar
+        feature_orchestrator = grammar.feature_orchestrator
 
-        # Dummy registry to leverage loading logic if needed,
-        # but we mostly care about the raw combinations list.
-        features = config_object.get("features", [])
+        feature_names = config_object.get("features", [])
+        features = [feature_orchestrator.get_feature(fn) for fn in feature_names]
         raw_combos = config_object.get("combinations", [])
 
         # Add stable UUIDs for Streamlit keys
         combinations = []
         for combo in raw_combos:
             combo_with_id = {"uuid": str(uuid.uuid4())}
-            for f in features:
+            for f in feature_names:
                 val = combo.get(f, "unmarked")
                 # Handle lists -> comma string for UI
                 if isinstance(val, list):
@@ -90,12 +90,7 @@ class FeatureCombinationsEditor(EditorBase):
     def read_form_to_state(self) -> None:
         """Sync widget values back to self.data."""
         # 1. Update features list
-        # Note: We use a multi-select in the header/top section
-        selected_features = st.session_state.get(
-            self.get_widget_key(_FEATURE_LIST_PREFIX, "main"), []
-        )
-        if selected_features:
-            self.data["features"] = selected_features
+        # features are updated via feature_multiselect callback
 
         # 2. Update combinations
         features = self.data.get("features", [])
@@ -104,12 +99,12 @@ class FeatureCombinationsEditor(EditorBase):
         for combo in combinations:
             uid = combo["uuid"]
             for f in features:
-                val = self.get_node_widget(_COMBO_VAL_PREFIX, uid, suffix=f)
+                val = self.get_node_widget(_COMBO_VAL_PREFIX, uid, suffix=f.name)
                 if val is not None:
-                    combo[f] = val.strip()
+                    combo[f.name] = val.strip()
 
     def to_yaml(self) -> dict:
-        grammar = st.session_state.get("grammar")
+        grammar: Grammar = st.session_state.grammar
         if grammar is None:
             st.error("Grammar not loaded. Cannot serialize feature combinations.")
             st.stop()
@@ -122,11 +117,11 @@ class FeatureCombinationsEditor(EditorBase):
         for combo in combinations:
             cleaned_combo = {}
             for f in features:
-                val = combo.get(f, "unmarked")
+                val = combo.get(f.name, "unmarked")
                 # Parse comma strings back to lists if needed
                 if "," in val:
                     val = [v.strip() for v in val.split(",") if v.strip()]
-                cleaned_combo[f] = val
+                cleaned_combo[f.name] = val
             output_combos.append(cleaned_combo)
 
         fvc = FeatureValueCombinations(
@@ -145,7 +140,7 @@ class FeatureCombinationsEditor(EditorBase):
         features = self.data.get("features", [])
         new_combo = {"uuid": str(uuid.uuid4())}
         for f in features:
-            new_combo[f] = "unmarked"
+            new_combo[f.name] = "unmarked"
         self.data["combinations"].append(new_combo)
 
     def remove_combination(self, uid: str) -> None:
@@ -169,15 +164,15 @@ def _render_combination(
         with cols[i]:
             f_vals = f.values
             options = ["unmarked", "*"] + sorted(f_vals)
-            current_val = combo.get(f, "unmarked")
+            current_val = combo.get(f.name, "unmarked")
             if current_val not in options:
                 options.append(current_val)
 
             st.selectbox(
-                f,  # Label
+                f.name,  # Label
                 options=options,
                 index=options.index(current_val),
-                key=editor.get_widget_key(_COMBO_VAL_PREFIX, uid, suffix=f),
+                key=editor.get_widget_key(_COMBO_VAL_PREFIX, uid, suffix=f.name),
                 label_visibility="collapsed" if len(features) > 1 else "visible",
             )
 
@@ -206,26 +201,18 @@ def feature_combinations_page() -> None:
     editor_header(kind=_config_kind, editor=editor)
 
     # 1. Feature selection section
-    grammar: Grammar = st.session_state.get("grammar")
-    available_features = []
-    if grammar:
-        available_features = grammar.feature_orchestrator.features
-
+    grammar: Grammar = st.session_state.grammar
     current_features = editor.data.get("features", [])
 
     with st.expander(
         "Configuration: Participating Features", expanded=not bool(current_features)
     ):
-        selected_features = st.multiselect(
+        feature_multiselect(
             "Select features to include in this combination set",
-            options=available_features or current_features,
-            default=current_features,
-            key=editor.get_widget_key(_FEATURE_LIST_PREFIX, "main"),
-            help="Adding or removing features will update the table columns below.",
-            format_func=lambda feature: feature.name,
+            editor,
+            _FEATURE_LIST_PREFIX,
+            help_str="Adding or removing features will update the table columns below.",
         )
-        if selected_features != current_features:
-            st.rerun()
 
     toolbar_placeholder = st.empty()
     st.divider()
@@ -242,7 +229,7 @@ def feature_combinations_page() -> None:
         # Header row for the "table"
         cols = st.columns([1] * len(features) + [0.4])
         for i, f in enumerate(features):
-            cols[i].markdown(f"**{f}**")
+            cols[i].markdown(f"**{f.name}**")
 
         if not combinations:
             st.info("No combinations yet. Click **➕ Add combination** to start.")

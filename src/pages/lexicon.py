@@ -8,11 +8,15 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import pandas as pd
 import streamlit as st
 import yaml
+
+from src.grammar import Grammar
+from src.grammar.registry.feature_values_registry import Feature
+from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
 from src.grammar.registry.lexicon_registry import PartOfSpeech
 
 
@@ -24,7 +28,11 @@ from src.pages.editor_utils import (
     editor_sidebar,
     editor_header,
     render_editor_toolbar,
+    feature_multiselect,
 )
+
+if TYPE_CHECKING:
+    from src.grammar.registry.lexicon_registry import Marker
 
 _config_kind = "PartOfSpeech"
 _config_key = "part_of_speech_configs"
@@ -57,12 +65,12 @@ Lexicon files define a Part of Speech (POS) and its associated vocabulary.
 
 class LexiconEditor(EditorBase):
     """
-    Editor for PartOfSpeech YAML configs + CSV lexicons.
+    Editor for PartOfSpeech YAML configs + CSV lexicon.
 
     self.data keys:
         name             — str
-        features         — list[str]
-        lexical_features — list[str]
+        features         — list[Feature]
+        lexical_features — list[Feature]
         principal_parts  — list[str]
         rows             — list[dict] (uuid, root, gloss, + dynamic cols)
     """
@@ -71,7 +79,7 @@ class LexiconEditor(EditorBase):
         super().__init__(kind=_config_kind, config_key=_config_key)
 
     def build_state_from_config(self, config_object: dict) -> dict:
-        grammar = st.session_state.get("grammar")
+        grammar: Grammar = st.session_state.grammar
         if grammar is None:
             st.error("Grammar not loaded. Cannot initialize lexicon.")
             st.stop()
@@ -87,8 +95,8 @@ class LexiconEditor(EditorBase):
 
         return {
             "name": pos.name,
-            "features": [f.name for f in pos.features],
-            "lexical_features": [f.name for f in pos.lexical_features],
+            "features": pos.features,
+            "lexical_features": pos.lexical_features,
             "principal_parts": pos.principal_parts,
             "rows": rows,
         }
@@ -96,18 +104,8 @@ class LexiconEditor(EditorBase):
     def read_form_to_state(self) -> None:
         """Sync widget values back to self.data."""
         self.clear_errors()
-        # 1. POS Settings
-        features = st.session_state.get(
-            self.get_widget_key(_FEATURES_PREFIX, "main"), []
-        )
-        if features:
-            self.data["features"] = features
 
-        lexical_features = st.session_state.get(
-            self.get_widget_key(_LEXICAL_FEATURES_PREFIX, "main"), []
-        )
-        if lexical_features:
-            self.data["lexical_features"] = lexical_features
+        # Features are updated via feature_multiselect callback
 
         pp_text = st.session_state.get(
             self.get_widget_key(_PRINCIPAL_PARTS_PREFIX, "main"), ""
@@ -118,7 +116,8 @@ class LexiconEditor(EditorBase):
             ]
 
         # 2. Table Rows
-        dynamic_cols = self.data["principal_parts"] + self.data["lexical_features"]
+        lexical_feature_names = [f.name for f in self.data["lexical_features"]]
+        dynamic_cols = self.data["principal_parts"] + lexical_feature_names
         for row in self.data["rows"]:
             uid = row["uuid"]
             root = self.get_node_widget(_ROW_ROOT_PREFIX, uid)
@@ -138,22 +137,15 @@ class LexiconEditor(EditorBase):
 
     def to_yaml(self) -> dict:
 
-        grammar = st.session_state.get("grammar")
+        grammar: Grammar = st.session_state.grammar
         if grammar is None:
             st.error("Grammar not loaded. Cannot serialize part of speech.")
             st.stop()
 
-        feature_orchestrator = grammar.feature_orchestrator
-
         pos = PartOfSpeech(
             name=self.stem,
-            features=[
-                feature_orchestrator.get_feature(f) for f in self.data["features"]
-            ],
-            lexical_features=[
-                feature_orchestrator.get_feature(f)
-                for f in self.data["lexical_features"]
-            ],
+            features=self.data["features"],
+            lexical_features=self.data["lexical_features"],
             principal_parts=self.data["principal_parts"],
         )
         return pos.to_dict()
@@ -176,7 +168,8 @@ class LexiconEditor(EditorBase):
         super().save(stem)
 
         # 2. Save CSV
-        dynamic_cols = self.data["principal_parts"] + self.data["lexical_features"]
+        lexical_feature_names = [f.name for f in self.data["lexical_features"]]
+        dynamic_cols = self.data["principal_parts"] + lexical_feature_names
         save_cols = ["root", "gloss"] + dynamic_cols
 
         # Prepare DataFrame
@@ -191,7 +184,8 @@ class LexiconEditor(EditorBase):
         df.to_csv(csv_path, index=False)
 
     def insert_row(self) -> None:
-        dynamic_cols = self.data["principal_parts"] + self.data["lexical_features"]
+        lexical_feature_names = [f.name for f in self.data["lexical_features"]]
+        dynamic_cols = self.data["principal_parts"] + lexical_feature_names
         new_row = {"uuid": str(uuid.uuid4()), "root": "", "gloss": ""}
         for col in dynamic_cols:
             new_row[col] = ""
@@ -204,9 +198,9 @@ class LexiconEditor(EditorBase):
 def _render_lexicon_row(
     row: dict,
     dynamic_cols: list[str],
-    lexical_features: list[str],
+    lexical_features: list[Feature],
     editor: LexiconEditor,
-    grammar: Any,
+    grammar: Grammar,
 ) -> None:
     uid = row["uuid"]
     # root, gloss, dynamic cols, delete btn
@@ -232,11 +226,10 @@ def _render_lexicon_row(
 
     for i, col in enumerate(dynamic_cols):
         with cols[i + 2]:
-            if col in lexical_features and grammar:
+            feat_obj = next((f for f in lexical_features if f.name == col), None)
+            if feat_obj and grammar:
                 # Use selectbox for lexical features
-                options = grammar.feature_orchestrator.feature_values_registry.features_to_values.get(
-                    col, []
-                )
+                options = feat_obj.values
                 st.selectbox(
                     col,
                     options=[""] + options,
@@ -281,37 +274,26 @@ def lexicon_page() -> None:
     editor.read_form_to_state()
     editor_header(kind=_config_kind, editor=editor)
 
-    grammar = st.session_state.get("grammar")
-    available_features = []
-    if grammar:
-        available_features = list(
-            grammar.feature_orchestrator.feature_values_registry.features_to_values.keys()
-        )
+    grammar: Grammar = st.session_state.grammar
 
     # 1. Config section
     with st.expander("POS Configuration", expanded=st.session_state.get(f"expanded-pos-{editor.scope}", True)):
         st.session_state[f"expanded-pos-{editor.scope}"] = False # default to collapsed after first show
         col1, col2 = st.columns(2)
         with col1:
-            current_f = editor.data["features"]
-            sel_f = st.multiselect(
+            feature_multiselect(
                 "Inflected Features",
-                options=available_features or current_f,
-                default=current_f,
-                key=editor.get_widget_key(_FEATURES_PREFIX, "main"),
+                editor,
+                _FEATURES_PREFIX,
+                data_key="features",
             )
-            if sel_f != current_f:
-                st.rerun()
         with col2:
-            current_lf = editor.data["lexical_features"]
-            sel_lf = st.multiselect(
+            feature_multiselect(
                 "Lexical Features",
-                options=available_features or current_lf,
-                default=current_lf,
-                key=editor.get_widget_key(_LEXICAL_FEATURES_PREFIX, "main"),
+                editor,
+                _LEXICAL_FEATURES_PREFIX,
+                data_key="lexical_features",
             )
-            if sel_lf != current_lf:
-                st.rerun()
 
         st.text_input(
             "Principal Parts (comma-separated columns)",
@@ -325,7 +307,8 @@ def lexicon_page() -> None:
     st.divider()
 
     # 2. Entries table
-    dynamic_cols = editor.data["principal_parts"] + editor.data["lexical_features"]
+    lexical_feature_names = [f.name for f in editor.data["lexical_features"]]
+    dynamic_cols = editor.data["principal_parts"] + lexical_feature_names
 
     # Table Header
     header_cols = st.columns([1.5, 1.5] + [1.2] * len(dynamic_cols) + [0.4])

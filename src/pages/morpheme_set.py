@@ -11,12 +11,16 @@ import uuid
 import streamlit as st
 import yaml
 
+from src.grammar import Grammar
+from src.grammar.registry.feature_values_registry import Feature
+from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
 from src.pages.editor_utils import (
     EditorBase,
     editor_guard,
     editor_header,
     editor_sidebar,
     render_editor_toolbar,
+    feature_multiselect,
 )
 from src.grammar.registry.morpheme_set_registry import MorphemeSet
 
@@ -48,16 +52,16 @@ class MorphmeSetEditor(EditorBase):
     Editor for MorphemeSet YAML configs.
 
     self.data keys:
-        features       — list[str] (participating features)
-        global_order   — str
-        global_markers — list[Marker]
-        entries        — list[dict] (uuid, features: dict[str, str], morpheme: list[Marker])
+        features       — list[Feature] (participating features)
+        entries        — list[dict] (uuid, features: dict[str, str], morpheme: str)
     """
 
     def __init__(self) -> None:
         super().__init__(kind=_config_kind, config_key=_config_key)
 
     def build_state_from_config(self, config_object: dict) -> dict:
+        grammar: Grammar = st.session_state.grammar
+        feature_orchestrator = grammar.feature_orchestrator
 
         morphemes_raw = config_object.get("data", [])
         features_set = set()
@@ -74,8 +78,13 @@ class MorphmeSetEditor(EditorBase):
                 }
             )
 
+        # Also check top-level 'features' if present
+        features_set.update(config_object.get("features", []))
+
+        features = [feature_orchestrator.get_feature(f) for f in sorted(list(features_set))]
+
         return {
-            "features": sorted(list(features_set)),
+            "features": features,
             "entries": entries,
         }
 
@@ -83,19 +92,15 @@ class MorphmeSetEditor(EditorBase):
         """Sync widget values back to self.data."""
         self.clear_errors()
         # 1. Top-level fields
-        selected_features = st.session_state.get(
-            self.get_widget_key(_FEATURE_LIST_PREFIX, "main"), []
-        )
-        if selected_features:
-            self.data["features"] = selected_features
+        # features are updated via feature_multiselect callback
 
         # 3. Entries
         for entry in self.data["entries"]:
             uid = entry["uuid"]
             for f in self.data["features"]:
-                val = self.get_node_widget(_ENTRY_VAL_PREFIX, uid, suffix=f)
+                val = self.get_node_widget(_ENTRY_VAL_PREFIX, uid, suffix=f.name)
                 if val is not None:
-                    entry["features"][f] = val.strip()
+                    entry["features"][f.name] = val.strip()
 
             morpheme_val = self.get_node_widget(_MORPHEME_VALUE_PREFIX, uid)
             if morpheme_val is not None:
@@ -103,21 +108,19 @@ class MorphmeSetEditor(EditorBase):
                 self.validate_pattern(entry["morpheme"], f"Morpheme '{entry['morpheme']}'")
 
     def to_yaml(self) -> dict:
-        grammar = st.session_state.get("grammar")
+        grammar: Grammar = st.session_state.grammar
         if grammar is None:
             st.error("Grammar not loaded. Cannot serialize morpheme set.")
             st.stop()
         
-        feature_orchestrator = grammar.feature_orchestrator
-        features_objs = {feature_orchestrator.get_feature(f) for f in self.data["features"]}
-        
         feature_mappings = {}
+        feature_names = [f.name for f in self.data["features"]]
         for entry in self.data["entries"]:
             # Only include participating features
             clean_vec = {
                 k: v
                 for k, v in entry["features"].items()
-                if k in self.data["features"] and v and v != "unmarked"
+                if k in feature_names and v and v != "unmarked"
             }
             if not clean_vec:
                 continue
@@ -126,7 +129,7 @@ class MorphmeSetEditor(EditorBase):
             feature_mappings[vector] = entry["morpheme"]
 
         ms = MorphemeSet(
-            features=features_objs,
+            features=set(self.data["features"]),
             feature_mappings=feature_mappings
         )
         return ms.to_dict()
@@ -148,26 +151,25 @@ class MorphmeSetEditor(EditorBase):
 
 def _render_entry(
     entry: dict,
-    features: list[str],
+    features: list[Feature],
     editor: MorphmeSetEditor,
-    features_to_values: dict[str, list[str]],
 ) -> None:
     uid = entry["uuid"]
     with st.container(border=True):
         cols = st.columns([1] * len(features) + [0.4])
         for i, f in enumerate(features):
             with cols[i]:
-                f_vals = features_to_values.get(f, [])
+                f_vals = f.values
                 options = ["unmarked"] + sorted(f_vals)
-                current_val = entry["features"].get(f, "unmarked")
+                current_val = entry["features"].get(f.name, "unmarked")
                 if current_val not in options:
                     options.append(current_val)
 
                 st.selectbox(
-                    f,
+                    f.name,
                     options=options,
                     index=options.index(current_val),
-                    key=editor.get_widget_key(_ENTRY_VAL_PREFIX, uid, suffix=f),
+                    key=editor.get_widget_key(_ENTRY_VAL_PREFIX, uid, suffix=f.name),
                     label_visibility="collapsed" if len(features) > 1 else "visible",
                 )
         with cols[-1]:
@@ -191,7 +193,7 @@ def _render_entry(
 def morpheme_set_page() -> None:
     st.set_page_config(
         page_title="Morpheme Set Editor",
-        page_icon="👯",
+        page_icon="🧱",
         layout="wide",
     )
 
@@ -206,25 +208,17 @@ def morpheme_set_page() -> None:
     editor.read_form_to_state()
     editor_header(kind=_config_kind, editor=editor)
 
-    grammar = st.session_state.get("grammar")
-    available_features = []
-    features_to_values = {}
-    if grammar:
-        features_to_values = (
-            grammar.feature_orchestrator.feature_values_registry.features_to_values
-        )
-        available_features = list(features_to_values.keys())
+    grammar: Grammar = st.session_state.grammar
 
     # 1. Config section
     current_features = editor.data.get("features", [])
     with st.expander("Configuration", expanded=st.session_state.get(f"expanded-ms-{editor.scope}", True)):
         st.session_state[f"expanded-ms-{editor.scope}"] = False
-        st.multiselect(
+        feature_multiselect(
             "Participating Features",
-            options=available_features or current_features,
-            default=current_features,
-            key=editor.get_widget_key(_FEATURE_LIST_PREFIX, "main"),
-            help="Features each morpheme expones.",
+            editor,
+            _FEATURE_LIST_PREFIX,
+            help_str="Features each morpheme expones.",
         )
 
     toolbar_placeholder = st.empty()
@@ -238,10 +232,10 @@ def morpheme_set_page() -> None:
         # Table Header
         cols = st.columns([1] * len(features) + [0.4])
         for i, f in enumerate(features):
-            cols[i].markdown(f"**{f}**")
+            cols[i].markdown(f"**{f.name}**")
 
         for entry in editor.data["entries"]:
-            _render_entry(entry, features, editor, features_to_values)
+            _render_entry(entry, features, editor)
 
     with toolbar_placeholder.container():
         render_editor_toolbar(

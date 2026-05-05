@@ -7,12 +7,15 @@ A UI for creating and editing Paradigm YAML configs.
 from __future__ import annotations
 
 import uuid
-from typing import Any, Literal
+from typing import Any, Literal, TYPE_CHECKING
 
 import streamlit as st
 import yaml
 from pathlib import Path
 
+from src.grammar import Grammar
+from src.grammar.registry.feature_values_registry import Feature
+from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
 from src.config_utils.config_walker import ConfigWalker
 from src.grammar.registry.feature_marker_registry import Marker
 from src.pages.editor_utils import (
@@ -27,6 +30,9 @@ from src.pages.editor_utils import (
 )
 from src.grammar.registry.paradigm_registry import Paradigm
 from src.grammar.registry.feature_marker_registry import MarkerList
+
+if TYPE_CHECKING:
+    from src.grammar.registry.lexicon_registry import Lexicon
 
 _config_kind = "Paradigm"
 _config_key = "paradigm_configs"
@@ -79,6 +85,9 @@ class ParadigmEditor(EditorBase):
         super().__init__(kind=_config_kind, config_key=_config_key)
 
     def build_state_from_config(self, config_object: dict) -> dict:
+        grammar: Grammar = st.session_state.grammar
+        feature_orchestrator: FeatureOrchestrator = grammar.feature_orchestrator
+
         # 1. Basics
         pos = config_object.get("part_of_speech", "")
         marker_order = config_object.get("order", [])
@@ -103,10 +112,12 @@ class ParadigmEditor(EditorBase):
                 else:
                     mode = "fixed"
                     val = str(m_str)
+            
+            feature = feature_orchestrator.get_feature(f_name)
             feature_mappings.append(
                 {
                     "uuid": str(uuid.uuid4()),
-                    "feature_name": f_name,
+                    "feature": feature,
                     "mode": mode,
                     "value": val,
                 }
@@ -125,10 +136,11 @@ class ParadigmEditor(EditorBase):
         lf_filters = []
         for pair in filter_cfg.get("lexical_features", []):
             if len(pair) == 2:
+                feat = feature_orchestrator.get_feature(pair[0])
                 lf_filters.append(
                     {
                         "uuid": str(uuid.uuid4()),
-                        "feature_name": pair[0],
+                        "feature": feat,
                         "feature_value": pair[1],
                     }
                 )
@@ -173,11 +185,11 @@ class ParadigmEditor(EditorBase):
         # Feature Mappings
         for fm in self.data["feature_mappings"]:
             uid = fm["uuid"]
-            name = self.get_node_widget(_FEATURE_MAPPING_NAME_PREFIX, uid)
+            feature = self.get_node_widget(_FEATURE_MAPPING_NAME_PREFIX, uid)
             mode = self.get_node_widget(_FEATURE_MAPPING_MODE_PREFIX, uid)
             val = self.get_node_widget(_FEATURE_MAPPING_VALUE_PREFIX, uid)
-            if name is not None:
-                fm["feature_name"] = name
+            if feature is not None:
+                fm["feature"] = feature
             if mode is not None:
                 fm["mode"] = mode
             if val is not None:
@@ -196,16 +208,16 @@ class ParadigmEditor(EditorBase):
         # LF Filters
         for lf in self.data["lexical_feature_filters"]:
             uid = lf["uuid"]
-            name = self.get_node_widget(_LF_FILTER_NAME_PREFIX, uid)
+            feature = self.get_node_widget(_LF_FILTER_NAME_PREFIX, uid)
             val = self.get_node_widget(_LF_FILTER_VAL_PREFIX, uid)
-            if name is not None:
-                lf["feature_name"] = name
+            if feature is not None:
+                lf["feature"] = feature
             if val is not None:
                 lf["feature_value"] = val
 
     def to_yaml(self) -> dict:
         
-        grammar = st.session_state.get("grammar")
+        grammar: Grammar = st.session_state.grammar
         if grammar is None:
             st.error("Grammar not loaded. Cannot serialize paradigm.")
             st.stop()
@@ -218,14 +230,14 @@ class ParadigmEditor(EditorBase):
         markers = []
         fixed_features = {}
         for fm in self.data["feature_mappings"]:
-            f_name = fm["feature_name"]
-            if not f_name:
+            feature: Feature = fm["feature"]
+            if not feature:
                 continue
             if fm["mode"] == "ref":
                 ref_name = fm["value"].removeprefix("$")
                 markers.append(marker_orchestrator.get_feature_markers(ref_name))
             elif fm["mode"] == "fixed":
-                fixed_features[f_name] = fm["value"]
+                fixed_features[feature.name] = fm["value"]
             # mode="null" is handled by ContingentMarkers
             
         contingent_markers = []
@@ -242,11 +254,9 @@ class ParadigmEditor(EditorBase):
             feature_value_combinations = marker_orchestrator.get_feature_combinations(ref_name)
             
         fixed_lexical_features = []
-        feature_orchestrator = grammar.feature_orchestrator
         for lf in self.data["lexical_feature_filters"]:
-            if lf["feature_name"] and lf["feature_value"]:
-                feat = feature_orchestrator.get_feature(lf["feature_name"])
-                fixed_lexical_features.append((feat, lf["feature_value"]))
+            if lf["feature"] and lf["feature_value"]:
+                fixed_lexical_features.append((lf["feature"], lf["feature_value"]))
 
         p = Paradigm(
             name=self.stem,
@@ -339,7 +349,7 @@ def paradigm_page() -> None:
     editor.read_form_to_state()
     editor_header(kind=_config_kind, editor=editor)
 
-    grammar = st.session_state.get("grammar")
+    grammar: Grammar = st.session_state.grammar
     available_pos = []
     available_features = []
     available_rules = []
@@ -357,9 +367,7 @@ def paradigm_page() -> None:
                 for f in config_walker.config_filemap["part_of_speech_configs"]
             ]
         )
-        available_features = list(
-            grammar.feature_orchestrator.feature_values_registry.features_to_values.keys()
-        )
+        available_features = sorted(list(grammar.feature_orchestrator.features.values()))
         available_rules = list(grammar.fst_orchestrator.rule_registry.data.keys())
         pp_sets = set()
         for pos_config in grammar.lexicon_registry.config_objects.values():
@@ -487,9 +495,10 @@ def paradigm_page() -> None:
                     st.selectbox(
                         "Feature",
                         options=[""] + available_features,
+                        format_func=lambda f: f.name if isinstance(f, Feature) else f,
                         index=(
-                            available_features.index(fm["feature_name"]) + 1
-                            if fm["feature_name"] in available_features
+                            available_features.index(fm["feature"]) + 1
+                            if fm["feature"] in available_features
                             else 0
                         ),
                         key=editor.get_widget_key(_FEATURE_MAPPING_NAME_PREFIX, uid),
@@ -571,9 +580,10 @@ def paradigm_page() -> None:
                 st.selectbox(
                     "Lexical Feature",
                     options=[""] + available_features,
+                    format_func=lambda f: f.name if isinstance(f, Feature) else f,
                     index=(
-                        available_features.index(lf["feature_name"]) + 1
-                        if lf["feature_name"] in available_features
+                        available_features.index(lf["feature"]) + 1
+                        if lf["feature"] in available_features
                         else 0
                     ),
                     key=editor.get_widget_key(_LF_FILTER_NAME_PREFIX, uid),
@@ -581,13 +591,8 @@ def paradigm_page() -> None:
                 )
             with lc2:
                 # get values for selected feature
-                l_vals = (
-                    grammar.feature_orchestrator.feature_values_registry.features_to_values.get(
-                        lf["feature_name"], []
-                    )
-                    if grammar
-                    else []
-                )
+                feat_obj: Feature = lf["feature"]
+                l_vals = feat_obj.values if feat_obj else []
                 st.selectbox(
                     "Value",
                     options=[""] + l_vals,
@@ -599,13 +604,6 @@ def paradigm_page() -> None:
                     key=editor.get_widget_key(_LF_FILTER_VAL_PREFIX, uid),
                     label_visibility="collapsed",
                 )
-            with lc3:
-                if st.button("✕", key=f"del-lf-{uid}"):
-                    editor.remove_lf_filter(uid)
-                    st.rerun()
-        if st.button("➕ Add lexical filter"):
-            editor.insert_lf_filter()
-            st.rerun()
 
     toolbar_placeholder = st.empty()
     with toolbar_placeholder.container():

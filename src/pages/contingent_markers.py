@@ -11,10 +11,10 @@ from typing import Any
 
 import streamlit as st
 
-from src.grammar.registry.feature_values_registry import Feature
-from src.grammar.registry.feature_marker_registry import Marker
 from src.grammar import Grammar
+from src.grammar.registry.feature_values_registry import Feature
 from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
+from src.grammar.registry.feature_marker_registry import Marker
 from src.pages.editor_utils import (
     EditorBase,
     editor_guard,
@@ -22,6 +22,7 @@ from src.pages.editor_utils import (
     editor_sidebar,
     render_marker_list,
     render_editor_toolbar,
+    feature_multiselect,
     MARKER_WIDGET_PREFIXES,
 )
 from src.grammar.registry.contingent_marker_registry import ContingentMarkers
@@ -71,7 +72,7 @@ class ContingentMarkersEditor(EditorBase):
         """
         global_order = config_object.get("global_order", "")
 
-        grammar: Grammar = st.session_state.get("grammar")
+        grammar: Grammar = st.session_state.grammar
         feature_orchestrator: FeatureOrchestrator = grammar.feature_orchestrator
         feature_names = config_object.get("features", [])
         features = [
@@ -111,11 +112,7 @@ class ContingentMarkersEditor(EditorBase):
         """Sync widget values back to self.data."""
         self.clear_errors()
         # 1. Top-level fields
-        selected_features = st.session_state.get(
-            self.get_widget_key(_FEATURE_LIST_PREFIX, "main"), []
-        )
-        if selected_features:
-            self.data["features"] = selected_features
+        # features are updated via feature_multiselect callback
 
         g_order = st.session_state.get(
             self.get_widget_key(_GLOBAL_ORDER_PREFIX, "main")
@@ -130,21 +127,22 @@ class ContingentMarkersEditor(EditorBase):
         for entry in self.data["entries"]:
             uid = entry["uuid"]
             for f in self.data["features"]:
-                val = self.get_node_widget(_ENTRY_VAL_PREFIX, uid, suffix=f)
+                val = self.get_node_widget(_ENTRY_VAL_PREFIX, uid, suffix=f.name)
                 if val is not None:
-                    entry["features"][f] = val.strip()
+                    entry["features"][f.name] = val.strip()
 
             self._sync_marker_list(entry["realization"], f"entry-{uid}")
 
     def to_yaml(self) -> dict:
-        features = self.data["features"]
+        features: list[Feature] = self.data["features"]
         feature_mappings = {}
+        feature_names = [f.name for f in features]
         for entry in self.data["entries"]:
             # Only include participating features that have a non-empty, non-unmarked value
             clean_vec = {
                 k: v
                 for k, v in entry["features"].items()
-                if k in self.data["features"] and v and v != "unmarked"
+                if k in feature_names and v and v != "unmarked"
             }
             if not clean_vec:
                 continue
@@ -197,15 +195,15 @@ def _render_entry(
             with cols[i]:
                 f_vals = f.values
                 options = ["unmarked"] + sorted(f_vals)
-                current_val = entry["features"].get(f, "unmarked")
+                current_val = entry["features"].get(f.name, "unmarked")
                 if current_val not in options:
                     options.append(current_val)
 
                 st.selectbox(
-                    f,
+                    f.name,
                     options=options,
                     index=options.index(current_val),
-                    key=editor.get_widget_key(_ENTRY_VAL_PREFIX, uid, suffix=f),
+                    key=editor.get_widget_key(_ENTRY_VAL_PREFIX, uid, suffix=f.name),
                     label_visibility="collapsed" if len(features) > 1 else "visible",
                 )
         with cols[-1]:
@@ -245,12 +243,10 @@ def contingent_markers_page() -> None:
     editor.read_form_to_state()
     editor_header(kind=_config_kind, editor=editor)
 
-    grammar: Grammar = st.session_state.get("grammar")
-    available_features = []
+    grammar: Grammar = st.session_state.grammar
     available_rules = []
     available_principal_parts = []
     if grammar:
-        available_features = list(grammar.feature_orchestrator.features.values())
         available_rules = list(grammar.fst_orchestrator.rule_registry.data.keys())
         pp_sets = set()
         for pos_config in grammar.lexicon_registry.config_objects.values():
@@ -261,13 +257,11 @@ def contingent_markers_page() -> None:
     # 1. Config section
     current_features = editor.data.get("features", [])
     with st.expander("Configuration", expanded=not bool(current_features)):
-        st.multiselect(
+        feature_multiselect(
             "Participating Features",
-            options=available_features or current_features,
-            format_func=lambda feature: feature.name,
-            default=current_features,
-            key=editor.get_widget_key(_FEATURE_LIST_PREFIX, "main"),
-            help="Features that define the contingencies.",
+            editor,
+            _FEATURE_LIST_PREFIX,
+            help_str="Features that define the contingencies.",
         )
 
         st.text_input(
