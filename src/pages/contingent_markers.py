@@ -10,10 +10,7 @@ import uuid
 from typing import Any
 
 import streamlit as st
-import yaml
-from pathlib import Path
 
-from src.config_utils.config_walker import ConfigWalker
 from src.grammar.registry.feature_marker_registry import Marker
 from src.pages.editor_utils import (
     EditorBase,
@@ -65,6 +62,9 @@ class ContingentMarkersEditor(EditorBase):
         super().__init__(kind=_config_kind, config_key=_config_key)
 
     def build_state_from_config(self, config_object: dict) -> dict:
+        """
+        
+        """
         global_order = config_object.get("global_order", "")
 
         def load_markers(raw: Any) -> list[Marker]:
