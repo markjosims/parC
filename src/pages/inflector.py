@@ -46,8 +46,11 @@ def inflector_page() -> None:
 
     st.divider()
 
+    lexical_features = {}
+
     # 2. Setup Inputs based on selection
     if inflect_type == "Paradigm":
+        
         obj = grammar.paradigm_registry.get_paradigm(selected_name)
         if not obj.is_initialized:
             obj.initialize()
@@ -66,6 +69,7 @@ def inflector_page() -> None:
         # Features
         st.write("#### Feature Values")
         fixed = obj.fixed_features or {}
+        
         # Get free features
         if obj.feature_value_combinations:
             ftv = dict(obj.feature_value_combinations.features_to_values)
@@ -126,10 +130,12 @@ def inflector_page() -> None:
                 if step["type"] == "Lexicon":
                     roots = step["value"].get_roots()
                     s = st.selectbox(label, roots, key=f"ms-stem-{i}")
+                    lexical_features.update(step["value"].get_features_for_root(s))
                     stems.append(s)
                 elif step["type"] == "Paradigm":
                     roots = step["value"].lexicon.get_roots()
                     s = st.selectbox(label, roots, key=f"ms-stem-{i}")
+                    lexical_features.update(step["value"].lexicon.get_features_for_root(s))
                     stems.append(s)
             else:
                 s = st.text_input(label, key=f"ms-stem-{i}")
@@ -147,6 +153,12 @@ def inflector_page() -> None:
             for i, f_name in enumerate(all_features):
                 if f_name in obj.fixed_features:
                     continue
+                
+                if f_name in lexical_features:
+                    feature_values[f_name] = lexical_features[f_name]
+                    st.write(f"{f_name}: {lexical_features[f_name]} (from lexicon)")
+                    continue
+
                 with cols[i % 3]:
                     f_vals = [""] + sorted(features_to_values.get(f_name, []))
                     val = st.selectbox(f_name, options=f_vals, key=f"ms-feat-{f_name}")
