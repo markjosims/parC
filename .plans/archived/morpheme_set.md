@@ -3,6 +3,7 @@
 A set of affixes or clitics exponing inflectional features.
 
 ## Config file
+
 ```yaml
 kind: MorphemeSet
 features:
@@ -21,14 +22,17 @@ data:
 ```
 
 ## Python backend
+
 `MorphemeSet` class loads a config file following the logic of `ContingentMarkers` (but simpler since there are no global markers or inheritance).
 `MorphemeSetRegistry` is a simple aggregator of `MorphemeSet` classes.
 
 ## Streamlit frontend
+
 `Morpheme Set` editor page should follow `ContingentMarkers` page closely save the morphemes are entered as a simple string rather than as a marker.
 
 ## Plan & Implementation
+
 - [x] JSON schema
 - [x] `MorphemeSet` class
 - [x] `MorphemeSetRegistry` class
-- [ ] `Morpheme Set` editor
+- [x] `Morpheme Set` editor

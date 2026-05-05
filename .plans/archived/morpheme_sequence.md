@@ -1,10 +1,12 @@
 # Morpheme sequences
+
 Add new grammar modules to better handle concatenative morphology and sequencing of lexical and morphological elements.
 Consider that a `Paradigm` takes a `Lexicon` and a set of operations (consisting of `FeatureMarkers` and `ContingentFeatureMarkers`) and produces fully inflected words, defining morphotactics for how operations are applied to each feature combination for each root.
 A `MorphemeSequence` class takes a list of "morphemes" and defines morphotactics for how these may be sequenced.
 "Morpheme" here may be 1. members of a `Lexicon` class, 2. a `Paradigm` class (necessary for `Lexicon` classes with inflectional features) and 3. a simple `Pattern` string to be inserted between two `Lexicon` or `Paradigm` members or 4. a `Rule` to apply to all prior input.
 
 ## Demonstration with data
+
 Similar to a `Paradigm`, the primary functionality of a `MorphemeSequence` is to define a bijection between fully inflected strings and tuples of a morphological feature vector and lexical root (or many, in the case of `MorphemeSequence`).
 The inflectional features that constitute a feature vector for a `MorphemeSequence` is the union of the lexical features of all of its constituent `Lexicon` and the lexical and inflectional features of `Paradigm` objects.
 Recall that `Lexicon` object specifies a set of inflectional and lexical features.
@@ -49,11 +51,13 @@ We can represent this as a `MorphemeSequence` e.g. `ClassPrefix-NounStem-CaseSuf
 Consider how this pattern may be captured by sequencing `Lexicon` classes and constraining their possible permutations.
 
 Let the following features and values be defined:
+
 - `noun_class_sg`: e.g. 'ð', 'r', 'j', the class a noun takes when marked with singular number
 - `noun_class_pl`: e.g. 'ð', 'r', 'j', the class a noun takes when marked with plural number
 - `noun_case`: 'ACC' or 'NOM'
 
 We then define a `Lexicon` class for `ClassPrefix` with `noun_class_sg` and `noun_class_pl` as lexical features, e.g:
+
 ```csv
 root,noun_class_sg,noun_class_pl
 j-,,j
@@ -64,7 +68,9 @@ l-,,l
 -,g,
 ŋ-,,ŋ
 ```
+
 And `NounStem` as a `Lexicon` class with the same lexical features.
+
 ```
 root,gloss,noun_class_sg,noun_class_pl
 àŋàl,sheep,ð,j
@@ -72,8 +78,10 @@ àŋàl,sheep,ð,j
 òló,elbow,l,ŋ
 ùt̪ùlú,spider,g,l
 ```
+
 Whereas a prefix is paired with a single number/class feature and the other is left unmarked, nouns have both features specified.
 By allowing empty features in one morpheme to match with any feature specification for another, we can properly control the prefix<-->noun pairings.
+
 ```
 - ð-àŋàl    sheep[noun_class_sg=ð,noun_class_pl=unmarked]
 - j-àŋàl    sheep[noun_class_sg=unmarked,noun_class_pl=j]
@@ -87,13 +95,17 @@ By allowing empty features in one morpheme to match with any feature specificati
 - -ùt̪ùlú    spider[noun_class_sg=unmarked,noun_class_pl=g]
 - l-ùt̪ùlú   spider[noun_class_sg=unmarked,noun_class_pl=l]
 ```
+
 Since case is orthogonal to number and class, we define a trivial `Lexicon` object with two records:
+
 ```
 root,case
 ,nom
 -a,acc
 ```
+
 Which gives us the following sequences:
+
 ```
 - ð-àŋàl    sheep[noun_class_sg=ð,noun_class_pl=unmarked,case=nom]
 - ð-àŋàl-a  sheep[noun_class_sg=ð,noun_class_pl=unmarked,case=acc]
@@ -104,7 +116,9 @@ Which gives us the following sequences:
 - ð-ɔ̀nd̪ɔ̀-a  gourd[noun_class_sg=ð,noun_class_pl=unmarked,case=acc]
 ...
 ```
+
 We then apply the `HiatusResolution` rule to handle vowel elision and tone assignment.
+
 ```
 - ð-àŋàl    sheep[noun_class_sg=ð,noun_class_pl=unmarked,case=nom]
 - ð-àŋàl-à  sheep[noun_class_sg=ð,noun_class_pl=unmarked,case=acc]
@@ -115,10 +129,12 @@ We then apply the `HiatusResolution` rule to handle vowel elision and tone assig
 - ð-ɔ̀nd̪-à  gourd[noun_class_sg=ð,noun_class_pl=unmarked,case=acc]
 ...
 ```
+
 Thus we define a sequence `ClassPrefix-NounStem-CaseSuffix-HiatusResolution` which constructs a bijection between gloss+feature vector tuples.
 
 Now briefly consider a sequence containing a `Paradigm`, for example `ArgumentMarker-VerbStem-FinalVowel`.
 `ArgumentMarker` is a paradigm built from the `ArgumentPrefix` `Lexicon` object with `tam` and `deixis` as lexical features and `class` as an inflected feature.
+
 ```csv
 root,tam,deixis
 [CL]ə̀-,,pfv,ventive
@@ -126,7 +142,9 @@ root,tam,deixis
 [CL]á-,,ipfv,ventive
 [CL]á-,,ipfv,itive
 ```
+
 The `ArgumentMarker` paradigm links a `FeatureMarker` definition which inflects the `class` feature, replacing the `[CL]` flag with the appropriate prefix, yielding bijections such as:
+
 ```
 - j-ə̀-  [tam=pfv,deixis=ventive,class=j]
 - ð-ə̀-  [tam=pfv,deixis=ventive,class=ð]
@@ -139,20 +157,26 @@ The `ArgumentMarker` paradigm links a `FeatureMarker` definition which inflects 
 - j-á-  [tam=ipfv,deixis=ventive,class=j]
 ...
 ```
+
 We also have `VerbStem`, which is built off the `VerbRoot` lexicon, which has lexical feature `finalvowel` and inflectional features `tam` and `deixis`:
+
 ```csv
 root,gloss,finalvowel
 vəlɛð,pull,aɔ
 kɜc,take,ɔi
 ```
+
 The `VerbStem` paradigm provides rules for exponing `tam` and `deixis`, yielding the following bijections:
+
 ```
 - və̀lɛ̀ð pull[tam=perfective,deixis=ventive]
 - və́lɛ̀ð pull[tam=perfective,deixis=itive]
 - və̀lɛ̀ð pull[tam=imperfective,deixis=ventive]
 - və́lɛ̀ð pull[tam=imperfective,deixis=itive]
 ```
+
 Finally, `FinalVowel` is a `Lexicon` object with `tam`, `deixis` and `finalvowel` as lexical features:
+
 ```csv
 root,finalvowel,tam,deixis
 -à,aɔ,itive,imperfective
@@ -164,7 +188,9 @@ root,finalvowel,tam,deixis
 -ì,ɔi,itive,perfective
 -í,ɔi,ventive,perfective
 ```
+
 Combining all three gives us bijections for fully inflected Tira verbs:
+
 ```
 - j-ə̀-və̀lɛ̀ð-ɔ́   pull[tam=perfective,deixis=ventive,class=j,finalvowel=aɔ]
 - l-ə̀-və̀lɛ̀ð-ɔ́   pull[tam=perfective,deixis=ventive,class=l,finalvowel=aɔ]
@@ -177,7 +203,9 @@ Combining all three gives us bijections for fully inflected Tira verbs:
 ```
 
 ## YAML config
+
 The YAML for the morpheme sequence is simple:
+
 ```yaml
 kind: MorphemeSequence
 data:
@@ -192,9 +220,11 @@ data:
     - type: Rule
       value: $vowel_hiatus_resolution
 ```
+
 Where the `type` attr indicates the type of morpheme and `value` is either a reference to an existing file (for `Lexicon` and `Paradigm`), `Rule` class, `Pattern` class, or an inline `Pattern` string (note: no other types can be specified inline!)
 
 ## Python backend
+
 A `MorphemeSequence` class requires a `ParadigmRegistry` to retrieve paradigms, `LexiconRegistry` to retrieve lexicons, and `FstOrchestrator` to retrieve patterns and rules and to compile pattern strings.
 It loads a single config file, and, similar to a `Paradigm`, implements functions for querying a fully inflected sequence based on inflectional features.
 
@@ -205,6 +235,7 @@ We now need to consider the possible set of lexical items at each stage of the s
 This can be implemented straightforwardly by first defining the possible feature space (which may simply be the Cartesian product of all constituent features, or the user may pass in a `FeatureCombinations` config), and for each feature vector therein, iterating through the sequence of morphemes and retrieving the subset of strings which map to a proper subset of the feature vector (allowing `unmarked` to match any feature value).
 
 ## Graph construction
+
 The `MorphemeSequence` graph will be formed by a simple concatenation of the graph of each item in the sequence.
 To this end, we need a way of getting an acceptor over all roots matching a particular feature set for a `Lexicon` and `Paradigm` object.
 
@@ -217,17 +248,18 @@ For the `Lexicon` class, we need to create a new method `roots_to_analyses` whic
 This method should have optional arguments allowing a feature set to be passed which constrains the roots that participate in the resulting graph.
 
 Then for each unique feature vector on the possible set for a given `MorphemeSequence` class, build the sequence graph for that feature set by concatenating sequence items with the following algorithm:
+
 - For a `Lexicon` item concatenate the output of `roots_to_analyses(feature_vector)`
 - For a `Paradigm` item concatenate the output of `get_subparadigm_inflect_graph(feature_vector)`
 - For a `Pattern` item simply concatenate the pattern acceptor
-- For a `Rule` item simply compose the rule (or list of rules, if the type is `rule_sequence`) 
-
+- For a `Rule` item simply compose the rule (or list of rules, if the type is `rule_sequence`)
 
 ## Implementation Plan & Notes
+
 - [x] Create `MorphemeSequence` orchestrator + registry.
 - [x] Hook into `Grammar` class.
 - [x] Define JSON schema and update `ConfigWalker`.
-- [ ] Add `roots_to_analyses` to `Lexicon` class
-- [ ] Add `get_subparadigm_inflect_graph` to `Paradigm` class
-- [ ] Implement FST concatenation and feature intersection logic.
-- [ ] Add Streamlit UI page for `MorphemeSequence`.
+- [X] Add `roots_to_analyses` to `Lexicon` class
+- [X] Add `get_subparadigm_inflect_graph` to `Paradigm` class
+- [X] Implement FST concatenation and feature intersection logic.
+- [X] Add Streamlit UI page for `MorphemeSequence`.

@@ -5,9 +5,9 @@
 General questions:
 
 - **Loading:** Most classes use `.from_config`. `Rule.from_config` was destructive but is now fixed.
-- **Updating state:** Handled via Streamlit session state and `read_form_to_state`. 
-    - *Inconsistency:* Some pages sync to raw `dict` in `self.data` (lexicon, paradigm), others sync directly to model objects (rules, features, inventory).
-    - *Validation:* Minimal. Errors during sync (like bad regex or missing `=>` in string maps) can cause crashes or bad YAML.
+- **Updating state:** Handled via Streamlit session state and `read_form_to_state`.
+  - *Inconsistency:* Some pages sync to raw `dict` in `self.data` (lexicon, paradigm), others sync directly to model objects (rules, features, inventory).
+  - *Validation:* Minimal. Errors during sync (like bad regex or missing `=>` in string maps) can cause crashes or bad YAML.
 - **Writing to YAML:** Standardized to use `.to_dict()` methods in the model/registry layer. All target editors have been refactored to use this approach.
 - **Syncing with Grammar:** Users need a "Dirty" flag or a "Rebuild Grammar" button when changes are made but not yet compiled into FSTs.
 - **Fetching from Grammar:** Editors now fetch live objects (Features, Rules, Lexicons) from `st.session_state.grammar` for high-fidelity serialization.
@@ -39,9 +39,9 @@ The next critical phase is **Input Validation** and **Dirty State Tracking**.
 
 ### Suggested Implementation
 
-1.  **Non-blocking Errors**: Use `st.error` in the widget rendering loop or `editor_header`. Allow the UI to remain interactive but disable the **Save** button via a `valid` flag in `EditorBase`.
-2.  **Explicit Validation Methods**: Add `validate(self) -> list[str]` to `EditorBase`. Call it in `editor_header`.
-3.  **Model-Level Guards**: Leverage `InventoryItem` and `InventoryClass` `__post_init__` validation during `read_form_to_state`.
+1. **Non-blocking Errors**: Use `st.error` in the widget rendering loop or `editor_header`. Allow the UI to remain interactive but disable the **Save** button via a `valid` flag in `EditorBase`.
+2. **Explicit Validation Methods**: Add `validate(self) -> list[str]` to `EditorBase`. Call it in `editor_header`.
+3. **Model-Level Guards**: Leverage `InventoryItem` and `InventoryClass` `__post_init__` validation during `read_form_to_state`.
 
 ## Plan
 

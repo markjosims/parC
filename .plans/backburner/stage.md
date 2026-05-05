@@ -1,6 +1,7 @@
 # Stage config
 
 ## Part 1: Order -> Stage rename
+
 Rename all instances of "order" to "stage" (and change flavortext as appropriate for naturalness).
 Each marker is associated with a single Stage, and each Paradigm gives an ordered list of Stages.
 
@@ -8,9 +9,11 @@ Each marker is associated with a single Stage, and each Paradigm gives an ordere
 - [ ] Fix flavor text
 
 ## Part 2: Stages config
+
 Create a new `Stages` config.
 It's data is a list of dicts with keys `name` and `description`.
-```
+
+```yaml
 kind: Stages
 data:
     - name: inner_suffixation
@@ -20,8 +23,10 @@ data:
     - name: outer_suffixation
       description: suffixes that attach after inner suffixes, marking participant person and number
 ```
+
 Need to implement `StageList` and `StageListRegistry` as Python classes following other examples in the [registry folder](../src/grammar/registry/).
 Logic is simple:
+
 ```python
 @dataclass
 class StageList:
@@ -42,6 +47,7 @@ class StageListRegistry(Registry):
 - [ ] Implement StageListRegistry
 
 ## Part 3: Backend refactor
+
 ...
 
 ## Part 4: Frontend refactor
