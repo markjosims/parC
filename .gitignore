@@ -222,3 +222,4 @@ tmp/
 # Coding agent files
 .claude/
 .codex
+.gemini/
