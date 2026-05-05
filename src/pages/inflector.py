@@ -10,6 +10,10 @@ from __future__ import annotations
 import streamlit as st
 import pandas as pd
 from src.pages.editor_utils import editor_guard, validate_file_reference_str
+from src.grammar import Grammar
+from src.grammar.registry.paradigm_registry import Paradigm
+from src.grammar.registry.morpheme_sequence_registry import MorphemeSequence
+from src.grammar.registry.feature_values_registry import Feature
 
 
 def inflector_page() -> None:
@@ -19,7 +23,7 @@ def inflector_page() -> None:
         "Test inflection and view intermediate stages for Paradigms or MorphemeSequences."
     )
 
-    grammar = st.session_state.get("grammar")
+    grammar: Grammar = st.session_state.get("grammar")
     if not grammar:
         st.error("Grammar not loaded. Please ensure your configuration is valid.")
         return
@@ -50,8 +54,8 @@ def inflector_page() -> None:
 
     # 2. Setup Inputs based on selection
     if inflect_type == "Paradigm":
-        
-        obj = grammar.paradigm_registry.get_paradigm(selected_name)
+
+        obj: Paradigm = grammar.paradigm_registry.get_paradigm(selected_name)
         if not obj.is_initialized:
             obj.initialize()
 
@@ -68,20 +72,20 @@ def inflector_page() -> None:
 
         # Features
         st.write("#### Feature Values")
-        fixed = obj.fixed_features or {}
-        
-        # Get free features
-        if obj.feature_value_combinations:
-            ftv = dict(obj.feature_value_combinations.features_to_values)
-        else:
-            ftv = {f.name: list(f.values) for f in obj.features}
+        fixed: dict[str, Feature] = obj.fixed_features or {}
 
-        free_features = {k: v for k, v in ftv.items() if k not in fixed}
+        # Get free features
+
+        free_features: list[Feature] = [
+            feature for feature in obj.features if feature.name not in fixed
+        ]
 
         feature_values = fixed.copy()
         if free_features:
             cols = st.columns(3)
-            for i, (f_name, f_vals) in enumerate(free_features.items()):
+            for i, feature in enumerate(free_features):
+                f_name = feature.name
+                f_vals = feature.values
                 with cols[i % 3]:
                     val = st.selectbox(
                         f_name, [""] + sorted(f_vals), key=f"feat-{f_name}"
@@ -100,7 +104,9 @@ def inflector_page() -> None:
                     st.error(f"Error: {e}")
 
     else:  # MorphemeSequence
-        obj = grammar.morpheme_sequence_registry.get_sequence(selected_name)
+        obj: MorphemeSequence = grammar.morpheme_sequence_registry.get_sequence(
+            selected_name
+        )
         if not obj.is_initialized:
             obj.initialize()
 
@@ -135,7 +141,9 @@ def inflector_page() -> None:
                 elif step["type"] == "Paradigm":
                     roots = step["value"].lexicon.get_roots()
                     s = st.selectbox(label, roots, key=f"ms-stem-{i}")
-                    lexical_features.update(step["value"].lexicon.get_features_for_root(s))
+                    lexical_features.update(
+                        step["value"].lexicon.get_features_for_root(s)
+                    )
                     stems.append(s)
             else:
                 s = st.text_input(label, key=f"ms-stem-{i}")
@@ -144,26 +152,29 @@ def inflector_page() -> None:
         # Features
         st.write("#### Feature Values")
         all_features = sorted(list(obj.features))
-        features_to_values = (
-            grammar.feature_orchestrator.feature_values_registry.features_to_values
-        )
+
         feature_values = obj.fixed_features.copy()
         if all_features:
             cols = st.columns(3)
-            for i, f_name in enumerate(all_features):
-                if f_name in obj.fixed_features:
+            for i, feature in enumerate(all_features):
+                if feature.name in obj.fixed_features:
                     continue
-                
-                if f_name in lexical_features:
-                    feature_values[f_name] = lexical_features[f_name]
-                    st.write(f"{f_name}: {lexical_features[f_name]} (from lexicon)")
+
+                if feature.name in lexical_features:
+                    feature_values[feature.name] = lexical_features[feature.name]
+                    st.write(
+                        f"{feature.name}: {lexical_features[feature.name]} (from lexicon)"
+                    )
                     continue
 
                 with cols[i % 3]:
-                    f_vals = [""] + sorted(features_to_values.get(f_name, []))
-                    val = st.selectbox(f_name, options=f_vals, key=f"ms-feat-{f_name}")
+                    val = st.selectbox(
+                        feature.name,
+                        options=feature.values,
+                        key=f"ms-feat-{feature.name}",
+                    )
                     if val:
-                        feature_values[f_name] = val
+                        feature_values[feature.name] = val
 
         if st.button("Run Inflection", type="primary"):
             if any(not s for s in stems):

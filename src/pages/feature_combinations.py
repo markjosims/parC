@@ -13,10 +13,12 @@ import streamlit as st
 import yaml
 
 from src.config_utils.config_walker import ConfigWalker
+from src.grammar import Grammar
 from src.grammar.registry.feature_combination_registry import (
     FeatureCombinationsRegistry,
     FeatureValueCombinations,
 )
+from src.grammar.registry.feature_values_registry import Feature
 from src.pages.editor_utils import (
     EditorBase,
     editor_guard,
@@ -62,14 +64,7 @@ class FeatureCombinationsEditor(EditorBase):
         # We need the FeatureValuesRegistry to build the backend object,
         # though for the editor we mainly want the raw data.
         grammar = st.session_state.get("grammar")
-        if grammar is None:
-            # Fallback for initialization if grammar isn't loaded yet
-            # but usually it is required by the app lifecycle.
-            features_to_values = {}
-        else:
-            features_to_values = grammar.feature_orchestrator.feature_values_registry
 
-        filepath = config_object["source_path"]
         # Dummy registry to leverage loading logic if needed,
         # but we mostly care about the raw combinations list.
         features = config_object.get("features", [])
@@ -119,9 +114,8 @@ class FeatureCombinationsEditor(EditorBase):
             st.error("Grammar not loaded. Cannot serialize feature combinations.")
             st.stop()
             
-        features_to_values = grammar.feature_orchestrator.feature_values_registry.features_to_values
 
-        features = self.data.get("features", [])
+        features: list[Feature] = self.data.get("features", [])
         combinations = self.data.get("combinations", [])
 
         output_combos = []
@@ -137,7 +131,7 @@ class FeatureCombinationsEditor(EditorBase):
 
         fvc = FeatureValueCombinations(
             combinations=output_combos,
-            features_to_values=features_to_values,
+            features = features,
         )
         return fvc.to_dict()
 
@@ -165,16 +159,15 @@ class FeatureCombinationsEditor(EditorBase):
 
 def _render_combination(
     combo: dict,
-    features: list[str],
+    features: list[Feature],
     editor: FeatureCombinationsEditor,
-    features_to_values: dict[str, list[str]],
 ) -> None:
     uid = combo["uuid"]
     cols = st.columns([1] * len(features) + [0.4])
 
     for i, f in enumerate(features):
         with cols[i]:
-            f_vals = features_to_values.get(f, [])
+            f_vals = f.values
             options = ["unmarked", "*"] + sorted(f_vals)
             current_val = combo.get(f, "unmarked")
             if current_val not in options:
@@ -213,14 +206,10 @@ def feature_combinations_page() -> None:
     editor_header(kind=_config_kind, editor=editor)
 
     # 1. Feature selection section
-    grammar = st.session_state.get("grammar")
+    grammar: Grammar = st.session_state.get("grammar")
     available_features = []
-    features_to_values = {}
     if grammar:
-        features_to_values = (
-            grammar.feature_orchestrator.feature_values_registry.features_to_values
-        )
-        available_features = list(features_to_values.keys())
+        available_features = grammar.feature_orchestrator.features
 
     current_features = editor.data.get("features", [])
 
@@ -233,6 +222,7 @@ def feature_combinations_page() -> None:
             default=current_features,
             key=editor.get_widget_key(_FEATURE_LIST_PREFIX, "main"),
             help="Adding or removing features will update the table columns below.",
+            format_func=lambda feature: feature.name,
         )
         if selected_features != current_features:
             st.rerun()
@@ -258,7 +248,7 @@ def feature_combinations_page() -> None:
             st.info("No combinations yet. Click **➕ Add combination** to start.")
         else:
             for combo in combinations:
-                _render_combination(combo, features, editor, features_to_values)
+                _render_combination(combo, features, editor)
 
     with toolbar_placeholder.container():
         render_editor_toolbar(

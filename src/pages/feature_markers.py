@@ -69,7 +69,9 @@ class FeatureMarkersEditor(EditorBase):
         super().__init__(kind=_config_kind, config_key=_config_key)
 
     def build_state_from_config(self, config_object: dict) -> dict:
-        feature = config_object.get("feature", "")
+        grammar: Grammar = st.session_state.get("grammar")
+        feature_name = config_object.get("feature", "")
+        feature = grammar.feature_orchestrator.get_feature(feature_name)
         global_order = config_object.get("global_order", "")
         inherits = config_object.get("inherits", "")
 
@@ -109,7 +111,9 @@ class FeatureMarkersEditor(EditorBase):
         if feature_val is not None:
             self.data["feature"] = feature_val
 
-        inherits_val = st.session_state.get(self.get_widget_key(_INHERITS_PREFIX, "main"))
+        inherits_val = st.session_state.get(
+            self.get_widget_key(_INHERITS_PREFIX, "main")
+        )
         if inherits_val is not None:
             self.data["inherits"] = validate_file_reference_str(inherits_val)
 
@@ -135,16 +139,16 @@ class FeatureMarkersEditor(EditorBase):
         if grammar is None:
             st.error("Grammar not loaded. Cannot serialize feature markers.")
             st.stop()
-        
+
         feature_orchestrator = grammar.feature_orchestrator
         feature_obj = feature_orchestrator.get_feature(self.data["feature"])
-        
+
         data_dict = {}
         for entry in self.data["entries"]:
             val = entry["feature_value"]
             if val:
                 data_dict[val] = MarkerList(entry["markers"])
-        
+
         fm = FeatureMarkers(
             feature=feature_obj,
             inherits=self.data["inherits"] or None,
@@ -199,16 +203,14 @@ def feature_markers_page() -> None:
     # 1. Config section
     config_walker = st.session_state["config_walker"]
     fm_files = config_walker.config_filemap[_config_key]
-    grammar = st.session_state.get("grammar")
+    grammar: Grammar = st.session_state.get("grammar")
     available_features = []
     available_rules = []
     available_principal_parts = []
     fm_configs = []
 
     if grammar:
-        available_features = list(
-            grammar.feature_orchestrator.feature_values_registry.features_to_values.keys()
-        )
+        available_features = grammar.feature_orchestrator.features
         available_rules = list(grammar.fst_orchestrator.rule_registry.data.keys())
         # Principal parts are columns in PartOfSpeech configs
         pos_reg = grammar.lexicon_registry
@@ -227,18 +229,22 @@ def feature_markers_page() -> None:
             st.selectbox(
                 "Target Feature",
                 options=[""] + available_features,
-                index=available_features.index(editor.data["feature"]) + 1
-                if editor.data["feature"] in available_features
-                else 0,
+                index=(
+                    available_features.index(editor.data["feature"]) + 1
+                    if editor.data["feature"] in available_features
+                    else 0
+                ),
                 key=editor.get_widget_key(_FEATURE_PREFIX, "main"),
             )
         with col2:
             st.selectbox(
                 "Inherits from",
                 options=[""] + fm_configs,
-                index=fm_configs.index(editor.data["inherits"]) + 1
-                if editor.data["inherits"] in fm_configs
-                else 0,
+                index=(
+                    fm_configs.index(editor.data["inherits"]) + 1
+                    if editor.data["inherits"] in fm_configs
+                    else 0
+                ),
                 key=editor.get_widget_key(_INHERITS_PREFIX, "main"),
             )
         with col3:
@@ -263,22 +269,21 @@ def feature_markers_page() -> None:
 
     # 2. Entries section
     feature = editor.data["feature"]
-    feature_values = []
-    if grammar and feature in grammar.feature_orchestrator.feature_values_registry.features_to_values:
-        feature_values = grammar.feature_orchestrator.feature_values_registry.features_to_values[feature]
 
     for entry in editor.data["entries"]:
         e_uid = entry["uuid"]
         with st.container(border=True):
             col_val, col_del = st.columns([4, 1])
             with col_val:
-                if feature_values:
+                if feature.values:
                     st.selectbox(
                         f"Value for {feature}",
-                        options=[""] + feature_values,
-                        index=feature_values.index(entry["feature_value"]) + 1
-                        if entry["feature_value"] in feature_values
-                        else 0,
+                        options=[""] + feature.values,
+                        index=(
+                            feature.values.index(entry["feature_value"]) + 1
+                            if entry["feature_value"] in feature.values
+                            else 0
+                        ),
                         key=editor.get_widget_key(_ENTRY_VAL_PREFIX, e_uid),
                     )
                 else:
@@ -307,7 +312,9 @@ def feature_markers_page() -> None:
             )
 
     with toolbar_placeholder.container():
-        render_editor_toolbar(editor, add_label="Add value entry", add_callback=editor.insert_entry)
+        render_editor_toolbar(
+            editor, add_label="Add value entry", add_callback=editor.insert_entry
+        )
 
 
 if __name__ == "__main__":

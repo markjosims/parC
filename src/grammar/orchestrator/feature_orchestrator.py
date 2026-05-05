@@ -38,14 +38,10 @@ class FeatureOrchestrator(Orchestrator):
         )
 
         self.features: dict[str, Feature] = self.feature_values_registry.data
+        self.get_feature = self.feature_values_registry.get_feature
         self.feature_combinations: dict[str, FeatureValueCombinations] = (
             self.feature_combinations_registry.data
         )
-
-    def get_feature(self, name: str) -> Feature:
-        if name not in self.features:
-            raise KeyError(f"No feature found with name '{name}'.")
-        return self.features[name]
 
     def get_feature_combinations(self, name: str) -> FeatureValueCombinations:
         name = name.removeprefix("$")

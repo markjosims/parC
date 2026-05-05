@@ -57,6 +57,11 @@ class Feature:
             return NotImplemented
         return self.name == other.name and set(self.values) == set(other.values)
 
+    def __lt__(self, other):
+        if not isinstance(other, Feature):
+            return NotImplemented
+        return self.name < other.name
+
     def to_dict(self) -> list[str]:
         """Return the list of values excluding 'unmarked'."""
         return [v for v in self.values if v != "unmarked"]
@@ -75,12 +80,11 @@ class FeatureValuesRegistry(Registry):
         config_objects: dict[str, dict] | None = None,
     ):
         super().__init__(kind="FeatureDefinitions", data=data, config_objects=config_objects)
-        self._populate_features_to_values()
-
-    def _populate_features_to_values(self):
-        self.features_to_values = {
-            feature.name: feature.values for feature in self.data.values()
-        }
+    
+    def get_feature(self, name: str) -> Feature:
+        if name not in self.data:
+            raise KeyError(f"No feature found with name '{name}'.")
+        return self.data[name]
 
     def to_dict(self) -> dict:
         return {

@@ -1,4 +1,5 @@
 from src.grammar.classes import Registry
+from src.grammar.registry.feature_values_registry import Feature
 from src.grammar.registry.feature_marker_registry import MarkerList
 from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
 from dataclasses import dataclass, field
@@ -19,6 +20,7 @@ class ContingentMarkers:
         source: Filepath this config was loaded from
     """
 
+    features: list[Feature]
     feature_mappings: dict[frozenset[tuple[str, str]], MarkerList] = field(
         default_factory=dict
     )
@@ -40,6 +42,12 @@ class ContingentMarkers:
             global_markers_config, global_order=global_order
         )
 
+        feature_list = config.get("features", [])
+        feature_list = [
+            feature_orchestrator.get_feature(feature_name)
+            for feature_name in feature_list
+        ]
+
         feature_mappings: dict[frozenset[tuple[str, str]], MarkerList] = {}
         for entry in markers_config:
             features_dict = entry.get("features", {})
@@ -60,6 +68,7 @@ class ContingentMarkers:
             feature_mappings[vector] = realization
 
         return cls(
+            features=feature_list,
             feature_mappings=feature_mappings,
             global_order=global_order,
             global_markers=global_markers,
@@ -77,6 +86,9 @@ class ContingentMarkers:
         global_markers = self.global_markers.to_dict()
         if global_markers:
             doc["global_markers"] = global_markers
+
+        feature_names = [feature.name for feature in self.features]
+        doc["features"] = feature_names
 
         markers_list = []
         for vector, m_list in self.feature_mappings.items():
