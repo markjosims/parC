@@ -7,13 +7,18 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 
 import streamlit as st
-from st_keyup import st_keyup
 from camel_converter import to_snake
 
 from src.config_utils.schema_validation import ConfigKindType
 from src.fst_utils import Acceptor
 from src.grammar import Grammar
 from src.grammar.registry.rule_registry import Rule
+
+try:
+    from st_keyup import st_keyup
+except ImportError:
+    def st_keyup(label: str, value: str = "", key: str | None = None, **kwargs) -> str:
+        return st.text_input(label, value=value, key=key, **kwargs)
 
 if TYPE_CHECKING:
     from src.config_utils.config_walker import ConfigWalker
