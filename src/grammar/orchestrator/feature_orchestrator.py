@@ -15,6 +15,8 @@ from src.grammar.registry.feature_combination_registry import (
 )
 from src.grammar.registry.feature_values_registry import Feature, FeatureValuesRegistry
 from src.grammar.classes import Orchestrator
+from collections.abc import Mapping
+
 
 
 class FeatureOrchestrator(Orchestrator):
@@ -54,19 +56,21 @@ class FeatureOrchestrator(Orchestrator):
         return self.feature_combinations[name]
 
 
-def stringify_features(features: dict[str, str] | frozenset[tuple[str, str]]) -> str:
-    if isinstance(features, dict):
+def stringify_features(features) -> str:
+    if isinstance(features, Mapping):
         feature_iterator = features.items()
+    elif hasattr(features, "to_dict"):
+        feature_iterator = features.to_dict().items()
     else:
-        # features is frozenset of tuples, iterate directly
         feature_iterator = features
+
     feature_strings = [
         f"[{feature_name}={feature_value or 'unmarked'}]"
         for feature_name, feature_value in feature_iterator
     ]
     feature_strings.sort()
-    result_str = "".join(feature_strings)
-    return result_str
+    return "".join(feature_strings)
+
 
 
 def serialize_feature_str(feature_str: str) -> dict[str, str]:

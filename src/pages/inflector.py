@@ -12,6 +12,38 @@ import pandas as pd
 from src.pages.editor_utils import editor_guard, validate_file_reference_str
 
 
+#Look up lexical features already stored on selected root, so users do not
+def get_lexical_features_for_stem(lexicon, stem: str) -> dict[str,str]:
+    if not stem or not hasattr(lexicon, "entries"):
+        return {}
+    matches = lexicon.entries[lexicon.entries["root"] == stem]
+    if matches.empty:
+        return {}
+    
+    row = matches.iloc[0]
+    lexical_features = {}
+
+    for feature in lexicon.lexical_features:
+        value = row.get(feature.name, "")
+        if pd.isna(value) or value == "":
+            value = "unmarked"
+        lexical_features[feature.name] = str(value)
+        
+    return lexical_features
+
+
+def select_active_noun_class_features(feature_values: dict[str, str]) -> dict[str, str]:
+    feature_values = feature_values.copy()
+    number = feature_values.get("number")
+
+    if number == "singular" and "singular_class" in feature_values:
+        feature_values["plural_class"] = "unmarked"
+    elif number == "plural" and "plural_class" in feature_values:
+        feature_values["singular_class"] = "unmarked"
+
+    return feature_values
+
+
 def inflector_page() -> None:
     st.set_page_config(page_title="Inflector", page_icon="🧪", layout="wide")
     st.title("🧪 Inflector")
@@ -117,6 +149,7 @@ def inflector_page() -> None:
         )
 
         stems = []
+        lexical_feature_values = {}
         for i, step in enumerate(stem_steps):
             label = (
                 f"Step {step['index'] + 1}: {step['type']}"
@@ -134,6 +167,14 @@ def inflector_page() -> None:
             else:
                 s = st.text_input(label, key=f"ms-stem-{i}")
                 stems.append(s)
+            lexicon = (
+                step["value"]
+                if step["type"] == "Lexicon"
+                else step["value"].lexicon
+            )
+            lexical_feature_values.update(
+                get_lexical_features_for_stem(lexicon, s)
+            )
 
         # Features
         st.write("#### Feature Values")
@@ -142,9 +183,20 @@ def inflector_page() -> None:
             grammar.feature_orchestrator.feature_values_registry.features_to_values
         )
         feature_values = obj.fixed_features.copy()
-        if all_features:
+        feature_values.update(lexical_feature_values)
+        if lexical_feature_values:
+            st.caption("Lexical features from selected root")
+            st.dataframe(pd.DataFrame([lexical_feature_values]), hide_index=True)
+
+        manual_features = [
+            f_name
+            for f_name in all_features
+            if f_name not in obj.fixed_features
+            and f_name not in lexical_feature_values
+        ]
+        if manual_features:
             cols = st.columns(3)
-            for i, f_name in enumerate(all_features):
+            for i, f_name in enumerate(manual_features):
                 if f_name in obj.fixed_features:
                     continue
                 with cols[i % 3]:
@@ -152,6 +204,8 @@ def inflector_page() -> None:
                     val = st.selectbox(f_name, options=f_vals, key=f"ms-feat-{f_name}")
                     if val:
                         feature_values[f_name] = val
+        feature_values = select_active_noun_class_features(feature_values)
+
 
         if st.button("Run Inflection", type="primary"):
             if any(not s for s in stems):
@@ -171,6 +225,7 @@ def render_stages_table(stages: list[dict]):
 
     st.write("### Inflection Stages")
     df = pd.DataFrame(stages)
+
     # Clean up for display
     if "fst" in df.columns:
         df = df.drop(columns=["fst"])
