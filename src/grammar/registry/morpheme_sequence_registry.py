@@ -13,6 +13,7 @@ from src.grammar.registry.lexicon_registry import LexiconRegistry, Lexicon
 from src.grammar.registry.paradigm_registry import ParadigmRegistry, Paradigm
 from src.grammar.registry.morpheme_set_registry import MorphemeSetRegistry, MorphemeSet
 from src.grammar.registry.rule_registry import Rule
+from src.grammar.registry.feature_values_registry import Feature
 from typing import Any
 
 
@@ -31,7 +32,7 @@ class MorphemeSequence:
         morpheme_set_registry: MorphemeSetRegistry,
         fst_orchestrator: FstOrchestrator,
         source_path: str | None = None,
-        fixed_features: dict[str, str] | None = None,
+        fixed_features: dict[str, Feature] | None = None,
     ):
         self.name = name
         self.sequence_data = sequence_data

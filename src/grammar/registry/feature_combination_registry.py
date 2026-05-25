@@ -122,14 +122,12 @@ class FeatureValueCombinations:
     def from_config(
         cls, config: dict, feature_values_registry: FeatureValuesRegistry
     ) -> "FeatureValueCombinations":
-        combinations = [
-            Combination.from_config(combo_cfg) for combo_cfg in config["combinations"]
-        ]
         feature_names = config["features"]
         features = [
             feature_values_registry.get_feature(feature_name)
             for feature_name in feature_names
         ]
+        combinations = config.get("combinations", [])
         source = config.get("source", None)
         return cls(combinations=combinations, features=features, source=source)
 
