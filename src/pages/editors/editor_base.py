@@ -3,7 +3,7 @@ from __future__ import annotations
 import yaml
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from loguru import logger
 
 import streamlit as st
@@ -40,6 +40,10 @@ MARKER_WIDGET_PREFIXES = [
 ]
 
 MARKER_TYPES = ["suffix", "prefix", "replace", "rule", "suppletion", "principal_part"]
+
+"""
+EditorBase abstract class.
+"""
 
 
 class EditorBase(ABC):
@@ -88,6 +92,16 @@ class EditorBase(ABC):
         """Check if the editor state is valid (no global or field errors)."""
         return not self.errors and not self.field_errors
 
+    """
+    Widget helpers for re-use across editor classes.
+    - render_keyup_input:
+        Used for text input fields that require validation on every keyup
+    - render_marker_list:
+        Render form input widget for a `MarkerList`
+    - render_marker_row:
+        Render form input widget for a single `Marker` within a `MarkerList`
+    """
+
     def render_keyup_input(
         self,
         label: str,
@@ -135,6 +149,141 @@ class EditorBase(ABC):
             st.error(self.field_errors[key], icon="⚠️")
 
         return val
+
+    def render_marker_row(
+        self,
+        marker: "Marker",
+        scope: str,
+        available_rules: list[str],
+        available_principal_parts: list[str],
+    ) -> None:
+        """
+        Reusable component for rendering a single Marker row.
+        Handles selecting marker type and selecting an order stage.
+        Marker type may be a suffix, prefix, unconditioned replace rule,
+        conditioned rule, suppletion, or selection of a principal part.
+        """
+        m_uid = marker.uuid
+        with st.container(border=True):
+            col_type, col_order, col_del = st.columns([1.5, 1.5, 0.4])
+            with col_type:
+                selected_type = st.selectbox(
+                    "Type",
+                    options=MARKER_TYPES,
+                    index=(
+                        MARKER_TYPES.index(marker.type)
+                        if marker.type in MARKER_TYPES
+                        else 0
+                    ),
+                    key=self.get_widget_key(_MARKER_TYPE_PREFIX, scope, suffix=m_uid),
+                    label_visibility="collapsed",
+                )
+                if selected_type != marker.type:
+                    # Reset value fields when type changes to avoid confusion
+                    st.rerun()
+            with col_order:
+                st.text_input(
+                    "Order",
+                    value=marker.order or "",
+                    placeholder="Order stage",
+                    key=self.get_widget_key(_MARKER_ORDER_PREFIX, scope, suffix=m_uid),
+                    label_visibility="collapsed",
+                )
+            with col_del:
+                if st.button(
+                    "✕",
+                    key=self.get_widget_key(_REMOVE_MARKER_PREFIX, scope, suffix=m_uid),
+                    help="Remove marker",
+                ):
+                    st.session_state[f"pending_remove_marker_{scope}"] = m_uid
+                    st.rerun()
+
+            if marker.type == "replace":
+                r_col1, r_col2 = st.columns(2)
+                val_in = marker.value[0] if isinstance(marker.value, tuple) else ""
+                val_out = marker.value[1] if isinstance(marker.value, tuple) else ""
+                with r_col1:
+                    st.text_input(
+                        "Input",
+                        value=val_in,
+                        key=self.get_widget_key(
+                            _MARKER_REPLACE_IN_PREFIX, scope, suffix=m_uid
+                        ),
+                    )
+                with r_col2:
+                    st.text_input(
+                        "Output",
+                        value=val_out,
+                        key=self.get_widget_key(
+                            _MARKER_REPLACE_OUT_PREFIX, scope, suffix=m_uid
+                        ),
+                    )
+            elif marker.type == "rule":
+                st.selectbox(
+                    "Rule",
+                    options=[""] + available_rules,
+                    index=(
+                        available_rules.index(marker.value) + 1
+                        if isinstance(marker.value, str)
+                        and marker.value in available_rules
+                        else 0
+                    ),
+                    key=self.get_widget_key(_MARKER_VALUE_PREFIX, scope, suffix=m_uid),
+                )
+            elif marker.type == "principal_part":
+                st.selectbox(
+                    "Principal Part",
+                    options=[""] + available_principal_parts,
+                    index=(
+                        available_principal_parts.index(marker.value) + 1
+                        if isinstance(marker.value, str)
+                        and marker.value in available_principal_parts
+                        else 0
+                    ),
+                    key=self.get_widget_key(_MARKER_VALUE_PREFIX, scope, suffix=m_uid),
+                )
+            else:
+                st.text_input(
+                    "Value",
+                    value=marker.value if isinstance(marker.value, str) else "",
+                    key=self.get_widget_key(_MARKER_VALUE_PREFIX, scope, suffix=m_uid),
+                    placeholder="e.g. -o, ba-",
+                )
+
+    def render_marker_list(
+        self,
+        markers: list["Marker"],
+        scope: str,
+        available_rules: list[str],
+        available_principal_parts: list[str],
+        label: str = "Markers",
+    ) -> None:
+        """Reusable component for rendering a list of Markers."""
+        st.subheader(label)
+
+        # Check for pending removals
+        pending_rm = st.session_state.pop(f"pending_remove_marker_{scope}", None)
+        if pending_rm:
+            self.remove_marker(markers, pending_rm)
+            st.rerun()
+
+        if not markers:
+            st.info("Zero marking (no markers).")
+        else:
+            for m in markers:
+                self.render_marker_row(
+                    m, scope, available_rules, available_principal_parts
+                )
+
+        if st.button(f"➕ Add marker to {label.lower()}", key=f"add-m-{scope}"):
+            self.add_marker(markers)
+            st.rerun()
+
+    def add_marker(self, markers: list[Marker]) -> None:
+        markers.append(Marker(value="", type="suffix"))
+
+    def remove_marker(self, markers: list[Marker], m_uuid: str) -> None:
+        markers[:] = [m for m in markers if m.uuid != m_uuid]
 
     def validate_pattern(self, value: str, label: str = "Pattern") -> str:
         """
@@ -368,6 +517,20 @@ class EditorBase(ABC):
                 )
 
 
+"""
+Page-level render helpers.
+- render_editor_toolbar:
+    Top toolbar for writing to disk, previewing YAML data,
+    and adding nodes to form data.
+- editor_header:
+    Page header displaying filename.
+- editor_guard:
+    Check session state for editor object (stored in "editor" key)
+    and decide whether to render the editor interface or prompt user
+    to load or create a new file.
+"""
+
+
 def render_editor_toolbar(
     editor: EditorBase, add_label: str = "Add entry", add_callback: callable = None
 ) -> None:
@@ -407,83 +570,29 @@ def render_editor_toolbar(
             st.code(yaml.dump(editor.to_yaml(), allow_unicode=True, sort_keys=False))
 
 
-def validate_file_reference_str(val: str) -> str:
-    """Ensure string starts with $ prefix if not empty."""
-    if val and not val.startswith("$"):
-        return f"${val}"
-    return val
-
-
-def prune_config_dict(data: Any, kind: str) -> Any:
+def editor_header(kind: ConfigKindType, editor: EditorBase) -> None:
     """
-    Recursively remove None values and empty strings from a dictionary,
-    unless they are explicitly allowed ("licit nulls") by the schema.
+    Render the page header, including the file name input field.
+    The file name is stored in session state and used when saving the YAML file.
     """
-    # Define keys that are allowed to be null for specific kinds
-    # Format: {Kind: {ParentKey: {LicitNullKey}}} or just {Kind: {LicitNullKey}}
-    # We use a set of strings for simple path-based matching
-    LICIT_PATHS = {
-        "FeatureMarkers": {"markers"},  # markers is a dict, values can be null
-        "Paradigm": {
-            "feature_markers"
-        },  # feature_markers is a dict, values can be null
-        "Rules": {"input_pattern", "output_pattern"},
-        "MorphemeSet": {"morpheme"},
-    }
-
-    kind_licit = LICIT_PATHS.get(kind, set())
-
-    if isinstance(data, dict):
-        new_dict = {}
-        for k, v in data.items():
-            # If the value is a licit null, keep it
-            if v is None and k in kind_licit:
-                new_dict[k] = v
-                continue
-
-            # Recurse
-            pruned_v = prune_config_dict(v, kind)
-
-            # Pruning logic:
-            # 1. Skip None or empty string
-            # 2. Skip empty dictionaries (unless they are a licit path root)
-            if pruned_v in (None, ""):
-                continue
-
-            # Special case: don't prune empty lists if the schema expects them
-            # (e.g. lexical_features: [])
-            if pruned_v == {} and k not in kind_licit:
-                continue
-
-            new_dict[k] = pruned_v
-        return new_dict
-
-    elif isinstance(data, list):
-        # Recursively prune items in list, but keep the list itself even if empty
-        # (Schemes often distinguish between a missing key and an empty array)
-        return [prune_config_dict(i, kind) for i in data]
-
-    return data
-
-
-def clear_all_editor_widget_keys() -> None:
-    """
-    Clear all Streamlit widget keys that start with the editor prefix.
-    This is used to prevent stale keys from interfering when switching files.
-    """
-    keys_to_clear = [
-        key for key in st.session_state.keys() if key.startswith(EDITOR_WIDGET_PREFIX)
-    ]
-
-    if "file_name" in st.session_state:
-        keys_to_clear.append("file_name")
-
     logger.debug(
-        f"Clearing {len(keys_to_clear)} editor widget keys from Streamlit state: {keys_to_clear}"
+        f"Rendering header for {kind} editor with file: {editor.path}, stem {editor.stem}"
     )
 
-    for key in keys_to_clear:
-        del st.session_state[key]
+    st.header(editor.stem or f"New {kind} file")
+
+    col_name, _ = st.columns([3, 5])
+    with col_name:
+        st.text_input(
+            "File name",
+            key="file_name",
+            placeholder="segments",
+            help=f"Name for this {kind} file (no extension needed).",
+        )
+
+    if editor.errors:
+        for error in editor.errors:
+            st.error(error)
 
 
 def editor_guard(kind: ConfigKindType) -> EditorBase:
@@ -598,157 +707,100 @@ def editor_sidebar(
         st.markdown(help_str)
 
 
-def editor_header(kind: ConfigKindType, editor: EditorBase) -> None:
+"""
+Editor form data lifecycle helpers.
+- prune_config_dict:
+    Remove any null form data, excepting some keys (like a FeatureMarker)
+    which may be stored in YAML backend as `null`. Called before serializing
+    form data to YAML for writing to disk or for previewing.
+- clear_all_editor_widget_keys:
+    Remove any session state keys related to form data. Ensures clean handoff
+    when switching files.
+"""
+
+
+def prune_config_dict(data: Any, kind: str) -> Any:
     """
-    Render the page header, including the file name input field.
-    The file name is stored in session state and used when saving the YAML file.
+    Recursively remove None values and empty strings from a dictionary,
+    unless they are explicitly allowed ("licit nulls") by the schema.
     """
+    # Define keys that are allowed to be null for specific kinds
+    # Format: {Kind: {ParentKey: {LicitNullKey}}} or just {Kind: {LicitNullKey}}
+    # We use a set of strings for simple path-based matching
+    LICIT_PATHS = {
+        "FeatureMarkers": {"markers"},  # markers is a dict, values can be null
+        "Paradigm": {
+            "feature_markers"
+        },  # feature_markers is a dict, values can be null
+        "Rules": {"input_pattern", "output_pattern"},
+        "MorphemeSet": {"morpheme"},
+    }
+
+    kind_licit = LICIT_PATHS.get(kind, set())
+
+    if isinstance(data, dict):
+        new_dict = {}
+        for k, v in data.items():
+            # If the value is a licit null, keep it
+            if v is None and k in kind_licit:
+                new_dict[k] = v
+                continue
+
+            # Recurse
+            pruned_v = prune_config_dict(v, kind)
+
+            # Pruning logic:
+            # 1. Skip None or empty string
+            # 2. Skip empty dictionaries (unless they are a licit path root)
+            if pruned_v in (None, ""):
+                continue
+
+            # Special case: don't prune empty lists if the schema expects them
+            # (e.g. lexical_features: [])
+            if pruned_v == {} and k not in kind_licit:
+                continue
+
+            new_dict[k] = pruned_v
+        return new_dict
+
+    elif isinstance(data, list):
+        # Recursively prune items in list, but keep the list itself even if empty
+        # (Schemes often distinguish between a missing key and an empty array)
+        return [prune_config_dict(i, kind) for i in data]
+
+    return data
+
+
+def clear_all_editor_widget_keys() -> None:
+    """
+    Clear all Streamlit widget keys that start with the editor prefix.
+    This is used to prevent stale keys from interfering when switching files.
+    """
+    keys_to_clear = [
+        key for key in st.session_state.keys() if key.startswith(EDITOR_WIDGET_PREFIX)
+    ]
+
+    if "file_name" in st.session_state:
+        keys_to_clear.append("file_name")
+
     logger.debug(
-        f"Rendering header for {kind} editor with file: {editor.path}, stem {editor.stem}"
+        f"Clearing {len(keys_to_clear)} editor widget keys from Streamlit state: {keys_to_clear}"
     )
 
-    st.header(editor.stem or f"New {kind} file")
-
-    col_name, _ = st.columns([3, 5])
-    with col_name:
-        st.text_input(
-            "File name",
-            key="file_name",
-            placeholder="segments",
-            help=f"Name for this {kind} file (no extension needed).",
-        )
-
-    if editor.errors:
-        for error in editor.errors:
-            st.error(error)
+    for key in keys_to_clear:
+        del st.session_state[key]
 
 
-def render_marker_row(
-    marker: "Marker",
-    scope: str,
-    editor: EditorBase,
-    available_rules: list[str],
-    available_principal_parts: list[str],
-) -> None:
-    """Reusable component for rendering a single Marker row."""
-    m_uid = marker.uuid
-    with st.container(border=True):
-        col_type, col_order, col_del = st.columns([1.5, 1.5, 0.4])
-        with col_type:
-            selected_type = st.selectbox(
-                "Type",
-                options=MARKER_TYPES,
-                index=(
-                    MARKER_TYPES.index(marker.type)
-                    if marker.type in MARKER_TYPES
-                    else 0
-                ),
-                key=editor.get_widget_key(_MARKER_TYPE_PREFIX, scope, suffix=m_uid),
-                label_visibility="collapsed",
-            )
-            if selected_type != marker.type:
-                # Reset value fields when type changes to avoid confusion
-                st.rerun()
-        with col_order:
-            st.text_input(
-                "Order",
-                value=marker.order or "",
-                placeholder="Order stage",
-                key=editor.get_widget_key(_MARKER_ORDER_PREFIX, scope, suffix=m_uid),
-                label_visibility="collapsed",
-            )
-        with col_del:
-            if st.button(
-                "✕",
-                key=editor.get_widget_key(_REMOVE_MARKER_PREFIX, scope, suffix=m_uid),
-                help="Remove marker",
-            ):
-                st.session_state[f"pending_remove_marker_{scope}"] = m_uid
-                st.rerun()
-
-        if marker.type == "replace":
-            r_col1, r_col2 = st.columns(2)
-            val_in = marker.value[0] if isinstance(marker.value, tuple) else ""
-            val_out = marker.value[1] if isinstance(marker.value, tuple) else ""
-            with r_col1:
-                st.text_input(
-                    "Input",
-                    value=val_in,
-                    key=editor.get_widget_key(
-                        _MARKER_REPLACE_IN_PREFIX, scope, suffix=m_uid
-                    ),
-                )
-            with r_col2:
-                st.text_input(
-                    "Output",
-                    value=val_out,
-                    key=editor.get_widget_key(
-                        _MARKER_REPLACE_OUT_PREFIX, scope, suffix=m_uid
-                    ),
-                )
-        elif marker.type == "rule":
-            st.selectbox(
-                "Rule",
-                options=[""] + available_rules,
-                index=(
-                    available_rules.index(marker.value) + 1
-                    if isinstance(marker.value, str) and marker.value in available_rules
-                    else 0
-                ),
-                key=editor.get_widget_key(_MARKER_VALUE_PREFIX, scope, suffix=m_uid),
-            )
-        elif marker.type == "principal_part":
-            st.selectbox(
-                "Principal Part",
-                options=[""] + available_principal_parts,
-                index=(
-                    available_principal_parts.index(marker.value) + 1
-                    if isinstance(marker.value, str)
-                    and marker.value in available_principal_parts
-                    else 0
-                ),
-                key=editor.get_widget_key(_MARKER_VALUE_PREFIX, scope, suffix=m_uid),
-            )
-        else:
-            st.text_input(
-                "Value",
-                value=marker.value if isinstance(marker.value, str) else "",
-                key=editor.get_widget_key(_MARKER_VALUE_PREFIX, scope, suffix=m_uid),
-                placeholder="e.g. -o, ba-",
-            )
+"""
+Widget rendering helpers
+"""
 
 
-def render_marker_list(
-    markers: list["Marker"],
-    scope: str,
-    editor: EditorBase,
-    available_rules: list[str],
-    available_principal_parts: list[str],
-    label: str = "Markers",
-) -> None:
-    """Reusable component for rendering a list of Markers."""
-    st.subheader(label)
-
-    # Check for pending removals
-    pending_rm = st.session_state.pop(f"pending_remove_marker_{scope}", None)
-    if pending_rm:
-        # Subclasses must implement remove_marker(markers, m_uuid)
-        if hasattr(editor, "remove_marker"):
-            editor.remove_marker(markers, pending_rm)
-        st.rerun()
-
-    if not markers:
-        st.info("Zero marking (no markers).")
-    else:
-        for m in markers:
-            render_marker_row(
-                m, scope, editor, available_rules, available_principal_parts
-            )
-
-    if st.button(f"➕ Add marker to {label.lower()}", key=f"add-m-{scope}"):
-        if hasattr(editor, "add_marker"):
-            editor.add_marker(markers)
-        st.rerun()
+def validate_file_reference_str(val: str) -> str:
+    """Ensure string starts with $ prefix if not empty."""
+    if val and not val.startswith("$"):
+        return f"${val}"
+    return val
 
 
 def feature_multiselect(

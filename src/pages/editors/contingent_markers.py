@@ -20,7 +20,6 @@ from src.pages.editors.editor_base import (
     editor_guard,
     editor_header,
     editor_sidebar,
-    render_marker_list,
     render_editor_toolbar,
     feature_multiselect,
     MARKER_WIDGET_PREFIXES,
@@ -215,10 +214,9 @@ def _render_entry(
                 editor.remove_entry(uid)
                 st.rerun()
 
-        render_marker_list(
+        editor.render_marker_list(
             entry["realization"],
             f"entry-{uid}",
-            editor,
             available_rules,
             available_principal_parts,
             label="Realization",
@@ -271,10 +269,9 @@ def contingent_markers_page() -> None:
             placeholder="argument_marking",
         )
 
-        render_marker_list(
+        editor.render_marker_list(
             editor.data["global_markers"],
             "global",
-            editor,
             available_rules,
             available_principal_parts,
             label="Global Markers",

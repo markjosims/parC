@@ -23,7 +23,6 @@ from src.pages.editors.editor_base import (
     editor_guard,
     editor_header,
     editor_sidebar,
-    render_marker_list,
     render_editor_toolbar,
     validate_file_reference_str,
     MARKER_WIDGET_PREFIXES,
@@ -112,7 +111,7 @@ class ParadigmEditor(EditorBase):
                 else:
                     mode = "fixed"
                     val = str(m_str)
-            
+
             feature = feature_orchestrator.get_feature(f_name)
             feature_mappings.append(
                 {
@@ -216,16 +215,16 @@ class ParadigmEditor(EditorBase):
                 lf["feature_value"] = val
 
     def to_yaml(self) -> dict:
-        
+
         grammar: Grammar = st.session_state.grammar
         if grammar is None:
             st.error("Grammar not loaded. Cannot serialize paradigm.")
             st.stop()
-            
+
         marker_orchestrator = grammar.marker_orchestrator
         lexicon_registry = grammar.lexicon_registry
         fst_orchestrator = grammar.fst_orchestrator
-        
+
         # Get actual objects from registry by their source path stem (matched from self.data modes)
         markers = []
         fixed_features = {}
@@ -239,20 +238,24 @@ class ParadigmEditor(EditorBase):
             elif fm["mode"] == "fixed":
                 fixed_features[feature.name] = fm["value"]
             # mode="null" is handled by ContingentMarkers
-            
+
         contingent_markers = []
         for cm in self.data["contingent_markers"]:
             if cm["ref"]:
                 ref_name = cm["ref"].removeprefix("$")
-                contingent_markers.append(marker_orchestrator.get_contingent_markers(ref_name))
-                
+                contingent_markers.append(
+                    marker_orchestrator.get_contingent_markers(ref_name)
+                )
+
         lexicon = lexicon_registry.get_lexicon(self.data["part_of_speech"])
-        
+
         feature_value_combinations = None
         if self.data["feature_value_combinations"]:
             ref_name = self.data["feature_value_combinations"].removeprefix("$")
-            feature_value_combinations = marker_orchestrator.get_feature_combinations(ref_name)
-            
+            feature_value_combinations = marker_orchestrator.get_feature_combinations(
+                ref_name
+            )
+
         fixed_lexical_features = []
         for lf in self.data["lexical_feature_filters"]:
             if lf["feature"] and lf["feature_value"]:
@@ -284,12 +287,6 @@ class ParadigmEditor(EditorBase):
             "pattern_filter": "",
             "lexical_feature_filters": [],
         }
-
-    def add_marker(self, markers: list[Marker]) -> None:
-        markers.append(Marker(value="", type="suffix"))
-
-    def remove_marker(self, markers: list[Marker], m_uuid: str) -> None:
-        markers[:] = [m for m in markers if m.uuid != m_uuid]
 
     def insert_order_stage(self) -> None:
         self.data["order_stages"].append({"uuid": str(uuid.uuid4()), "name": ""})
@@ -342,9 +339,7 @@ class ParadigmEditor(EditorBase):
 def paradigm_page() -> None:
     st.set_page_config(page_title="Paradigm Editor", page_icon="🏗️", layout="wide")
 
-    editor_sidebar(
-        _config_kind, ParadigmEditor, _config_key, _help_str
-    )
+    editor_sidebar(_config_kind, ParadigmEditor, _config_key, _help_str)
     editor = editor_guard(kind=_config_kind)
     editor.read_form_to_state()
     editor_header(kind=_config_kind, editor=editor)
@@ -367,7 +362,9 @@ def paradigm_page() -> None:
                 for f in config_walker.config_filemap["part_of_speech_configs"]
             ]
         )
-        available_features = sorted(list(grammar.feature_orchestrator.features.values()))
+        available_features = sorted(
+            list(grammar.feature_orchestrator.features.values())
+        )
         available_rules = list(grammar.fst_orchestrator.rule_registry.data.keys())
         pp_sets = set()
         for pos_config in grammar.lexicon_registry.config_objects.values():
@@ -475,10 +472,9 @@ def paradigm_page() -> None:
 
     # 3. Global Markers
     with st.expander("Global Markers"):
-        render_marker_list(
+        editor.render_marker_list(
             editor.data["global_markers"],
             "global",
-            editor,
             available_rules,
             available_principal_parts,
             label="",

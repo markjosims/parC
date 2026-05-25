@@ -22,7 +22,6 @@ from src.pages.editors.editor_base import (
     editor_guard,
     editor_header,
     editor_sidebar,
-    render_marker_list,
     render_editor_toolbar,
     validate_file_reference_str,
     MARKER_WIDGET_PREFIXES,
@@ -175,12 +174,6 @@ class FeatureMarkersEditor(EditorBase):
     def remove_entry(self, e_uid: str) -> None:
         self.data["entries"] = [e for e in self.data["entries"] if e["uuid"] != e_uid]
 
-    def add_marker(self, markers: list[Marker]) -> None:
-        markers.append(Marker(value="", type="suffix"))
-
-    def remove_marker(self, markers: list[Marker], m_uuid: str) -> None:
-        markers[:] = [m for m in markers if m.uuid != m_uuid]
-
 
 def feature_markers_page() -> None:
     st.set_page_config(
@@ -255,10 +248,9 @@ def feature_markers_page() -> None:
                 placeholder="suffixation",
             )
 
-        render_marker_list(
+        editor.render_marker_list(
             editor.data["global_markers"],
             "global",
-            editor,
             available_rules,
             available_principal_parts,
             label="Global Markers",
@@ -303,10 +295,9 @@ def feature_markers_page() -> None:
                     editor.remove_entry(e_uid)
                     st.rerun()
 
-            render_marker_list(
+            editor.render_marker_list(
                 entry["markers"],
                 f"entry-{e_uid}",
-                editor,
                 available_rules,
                 available_principal_parts,
             )
@@ -315,6 +306,7 @@ def feature_markers_page() -> None:
         render_editor_toolbar(
             editor, add_label="Add value entry", add_callback=editor.insert_entry
         )
+
 
 if __name__ == "__main__":
     feature_markers_page()
