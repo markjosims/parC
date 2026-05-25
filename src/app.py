@@ -4,17 +4,17 @@ from src.config_utils.config_walker import get_config_dir, ConfigWalker
 from src.grammar import Grammar
 from loguru import logger
 
-from src.pages.inventory import inventory_page
-from src.pages.feature_values import feature_values_page
-from src.pages.feature_combinations import feature_combinations_page
-from src.pages.feature_markers import feature_markers_page
-from src.pages.contingent_markers import contingent_markers_page
-from src.pages.lexicon import lexicon_page
-from src.pages.paradigm import paradigm_page
-from src.pages.morpheme_sequence import morpheme_sequence_page
-from src.pages.morpheme_set import morpheme_set_page
-from src.pages.patterns import patterns_page
-from src.pages.rules import rules_page
+from src.pages.editors.inventory import inventory_page
+from src.pages.editors.feature_values import feature_values_page
+from src.pages.editors.feature_combinations import feature_combinations_page
+from src.pages.editors.feature_markers import feature_markers_page
+from src.pages.editors.contingent_markers import contingent_markers_page
+from src.pages.editors.lexicon import lexicon_page
+from src.pages.editors.paradigm import paradigm_page
+from src.pages.editors.morpheme_sequence import morpheme_sequence_page
+from src.pages.editors.morpheme_set import morpheme_set_page
+from src.pages.editors.patterns import patterns_page
+from src.pages.editors.rules import rules_page
 from src.pages.inflector import inflector_page
 
 _INVALIDATE_KEYS = ["grammar", "config_walker"]

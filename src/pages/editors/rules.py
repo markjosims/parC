@@ -21,7 +21,7 @@ import streamlit as st
 from src.config_utils.config_walker import ConfigWalker
 from src.grammar.registry.rule_registry import Rule, RuleRegistry
 from src.fst_utils import Acceptor
-from src.pages.editor_utils import (
+from src.pages.editors.editor_base import (
     EditorBase,
     editor_guard,
     editor_sidebar,

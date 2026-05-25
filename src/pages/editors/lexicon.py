@@ -22,7 +22,7 @@ from src.grammar.registry.lexicon_registry import PartOfSpeech
 
 from src.config_utils.config_walker import ConfigWalker
 from src.grammar.registry.lexicon_registry import Lexicon, LexiconRegistry
-from src.pages.editor_utils import (
+from src.pages.editors.editor_base import (
     EditorBase,
     editor_guard,
     editor_sidebar,

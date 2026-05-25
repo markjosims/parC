@@ -14,7 +14,7 @@ import yaml
 from src.grammar import Grammar
 from src.grammar.registry.feature_values_registry import Feature
 from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
-from src.pages.editor_utils import (
+from src.pages.editors.editor_base import (
     EditorBase,
     editor_guard,
     editor_header,

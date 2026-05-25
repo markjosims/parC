@@ -22,7 +22,7 @@ from src.config_utils.config_walker import ConfigWalker
 from src.grammar import Grammar
 from src.grammar.registry.pattern_registry import Pattern, PatternRegistry
 from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
-from src.pages.editor_utils import (
+from src.pages.editors.editor_base import (
     EditorBase,
     editor_guard,
     editor_sidebar,

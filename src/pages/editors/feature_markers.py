@@ -17,7 +17,7 @@ from src.grammar.registry.feature_marker_registry import Marker
 from src.grammar.registry.feature_marker_registry import FeatureMarkers, MarkerList
 from src.grammar.registry.feature_values_registry import Feature
 from src.grammar import Grammar
-from src.pages.editor_utils import (
+from src.pages.editors.editor_base import (
     EditorBase,
     editor_guard,
     editor_header,

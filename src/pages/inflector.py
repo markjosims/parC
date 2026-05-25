@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import streamlit as st
 import pandas as pd
-from src.pages.editor_utils import editor_guard, validate_file_reference_str
+from src.pages.editors.editor_base import editor_guard, validate_file_reference_str
 from src.grammar import Grammar
 from src.grammar.registry.paradigm_registry import Paradigm
 from src.grammar.registry.morpheme_sequence_registry import MorphemeSequence

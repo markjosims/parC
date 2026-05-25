@@ -26,7 +26,7 @@ from src.grammar.registry.inventory_registry import (
     InventoryRegistry,
 )
 from src.config_utils.config_walker import ConfigWalker
-from src.pages.editor_utils import (
+from src.pages.editors.editor_base import (
     EditorBase,
     editor_guard,
     editor_sidebar,

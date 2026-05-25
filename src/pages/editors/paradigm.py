@@ -18,7 +18,7 @@ from src.grammar.registry.feature_values_registry import Feature
 from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
 from src.config_utils.config_walker import ConfigWalker
 from src.grammar.registry.feature_marker_registry import Marker
-from src.pages.editor_utils import (
+from src.pages.editors.editor_base import (
     EditorBase,
     editor_guard,
     editor_header,
