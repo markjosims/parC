@@ -7,31 +7,26 @@ A UI for creating and editing Paradigm YAML configs.
 from __future__ import annotations
 
 import uuid
-from typing import Any, Literal, TYPE_CHECKING
-
+from typing import Literal
 import streamlit as st
-import yaml
 from pathlib import Path
 
 from src.grammar import Grammar
 from src.grammar.registry.feature_values_registry import Feature
 from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
-from src.config_utils.config_walker import ConfigWalker
 from src.grammar.registry.feature_marker_registry import Marker
-from src.pages.editors.editor_base import (
-    EditorBase,
-    editor_guard,
-    editor_header,
-    editor_sidebar,
-    render_editor_toolbar,
-    validate_file_reference_str,
-    MARKER_WIDGET_PREFIXES,
-)
+from src.pages.editors.editor_base import EditorBase
 from src.grammar.registry.paradigm_registry import Paradigm
 from src.grammar.registry.feature_marker_registry import MarkerList
-
-if TYPE_CHECKING:
-    from src.grammar.registry.lexicon_registry import Lexicon
+from src.validation import validate_file_reference_str
+from src.widgets import (
+    render_editor_guard,
+    render_editor_header,
+    render_editor_sidebar,
+    render_editor_toolbar,
+    render_marker_list,
+    sync_marker_list,
+)
 
 _config_kind = "Paradigm"
 _config_key = "paradigm_configs"
@@ -51,23 +46,6 @@ _REMOVE_ORDER_PREFIX = "remove-order-"
 _REMOVE_FM_PREFIX = "remove-fm-"
 _REMOVE_CM_PREFIX = "remove-cm-"
 _REMOVE_LF_PREFIX = "remove-lf-"
-
-_WIDGET_PREFIXES: list[str] = [
-    _POS_PREFIX,
-    _ORDER_STAGE_PREFIX,
-    _FEATURE_MAPPING_NAME_PREFIX,
-    _FEATURE_MAPPING_MODE_PREFIX,
-    _FEATURE_MAPPING_VALUE_PREFIX,
-    _COMBO_REF_PREFIX,
-    _CONTINGENT_REF_PREFIX,
-    _LF_FILTER_NAME_PREFIX,
-    _LF_FILTER_VAL_PREFIX,
-    _PATTERN_FILTER_PREFIX,
-    _REMOVE_ORDER_PREFIX,
-    _REMOVE_FM_PREFIX,
-    _REMOVE_CM_PREFIX,
-    _REMOVE_LF_PREFIX,
-] + MARKER_WIDGET_PREFIXES
 
 _help_str = """
 Paradigm files define how multiple features combine to realize inflected forms.
@@ -158,13 +136,17 @@ class ParadigmEditor(EditorBase):
     def read_form_to_state(self) -> None:
         """Sync widget values back to self.data."""
         # Top-level
-        pos = st.session_state.get(self.get_widget_key(_POS_PREFIX, "main"))
-        if pos is not None:
-            self.data["part_of_speech"] = pos
+        part_of_speech = st.session_state.get(self.get_widget_key(_POS_PREFIX, "main"))
+        if part_of_speech is not None:
+            self.data["part_of_speech"] = part_of_speech
 
-        combo = st.session_state.get(self.get_widget_key(_COMBO_REF_PREFIX, "main"))
-        if combo is not None:
-            self.data["feature_value_combinations"] = validate_file_reference_str(combo)
+        feature_combo = st.session_state.get(
+            self.get_widget_key(_COMBO_REF_PREFIX, "main")
+        )
+        if feature_combo is not None:
+            self.data["feature_value_combinations"] = validate_file_reference_str(
+                feature_combo
+            )
 
         pattern = st.session_state.get(
             self.get_widget_key(_PATTERN_FILTER_PREFIX, "main")
@@ -179,42 +161,43 @@ class ParadigmEditor(EditorBase):
                 stage["name"] = name
 
         # Global Markers
-        self._sync_marker_list(self.data["global_markers"], "global")
+        sync_marker_list(self, self.data["global_markers"], "global")
 
         # Feature Mappings
-        for fm in self.data["feature_mappings"]:
-            uid = fm["uuid"]
+        for feature_mappings in self.data["feature_mappings"]:
+            uid = feature_mappings["uuid"]
             feature = self.get_node_widget(_FEATURE_MAPPING_NAME_PREFIX, uid)
             mode = self.get_node_widget(_FEATURE_MAPPING_MODE_PREFIX, uid)
             val = self.get_node_widget(_FEATURE_MAPPING_VALUE_PREFIX, uid)
             if feature is not None:
-                fm["feature"] = feature
+                feature_mappings["feature"] = feature
             if mode is not None:
-                fm["mode"] = mode
+                feature_mappings["mode"] = mode
             if val is not None:
                 if mode == "ref":
                     val = validate_file_reference_str(val)
-                fm["value"] = val
+                feature_mappings["value"] = val
 
         # Contingent refs
-        for cm in self.data["contingent_markers"]:
+        for contingent_markers in self.data["contingent_markers"]:
             ref = st.session_state.get(
-                self.get_widget_key(_CONTINGENT_REF_PREFIX, cm["uuid"])
+                self.get_widget_key(_CONTINGENT_REF_PREFIX, contingent_markers["uuid"])
             )
             if ref is not None:
-                cm["ref"] = validate_file_reference_str(ref)
+                contingent_markers["ref"] = validate_file_reference_str(ref)
 
         # LF Filters
-        for lf in self.data["lexical_feature_filters"]:
-            uid = lf["uuid"]
+        for lexical_feature_filter in self.data["lexical_feature_filters"]:
+            uid = lexical_feature_filter["uuid"]
             feature = self.get_node_widget(_LF_FILTER_NAME_PREFIX, uid)
             val = self.get_node_widget(_LF_FILTER_VAL_PREFIX, uid)
             if feature is not None:
-                lf["feature"] = feature
+                lexical_feature_filter["feature"] = feature
             if val is not None:
-                lf["feature_value"] = val
+                lexical_feature_filter["feature_value"] = val
 
     def to_yaml(self) -> dict:
+        self.read_form_to_state()
 
         grammar: Grammar = st.session_state.grammar
         if grammar is None:
@@ -228,21 +211,21 @@ class ParadigmEditor(EditorBase):
         # Get actual objects from registry by their source path stem (matched from self.data modes)
         markers = []
         fixed_features = {}
-        for fm in self.data["feature_mappings"]:
-            feature: Feature = fm["feature"]
+        for feature_mapping in self.data["feature_mappings"]:
+            feature: Feature = feature_mapping["feature"]
             if not feature:
                 continue
-            if fm["mode"] == "ref":
-                ref_name = fm["value"].removeprefix("$")
+            if feature_mapping["mode"] == "ref":
+                ref_name = feature_mapping["value"].removeprefix("$")
                 markers.append(marker_orchestrator.get_feature_markers(ref_name))
-            elif fm["mode"] == "fixed":
-                fixed_features[feature.name] = fm["value"]
+            elif feature_mapping["mode"] == "fixed":
+                fixed_features[feature.name] = feature_mapping["value"]
             # mode="null" is handled by ContingentMarkers
 
         contingent_markers = []
-        for cm in self.data["contingent_markers"]:
-            if cm["ref"]:
-                ref_name = cm["ref"].removeprefix("$")
+        for contingent_marker in self.data["contingent_markers"]:
+            if contingent_marker["ref"]:
+                ref_name = contingent_marker["ref"].removeprefix("$")
                 contingent_markers.append(
                     marker_orchestrator.get_contingent_markers(ref_name)
                 )
@@ -261,7 +244,7 @@ class ParadigmEditor(EditorBase):
             if lf["feature"] and lf["feature_value"]:
                 fixed_lexical_features.append((lf["feature"], lf["feature_value"]))
 
-        p = Paradigm(
+        paradigm = Paradigm(
             name=self.stem,
             markers=markers,
             contingent_markers=contingent_markers,
@@ -274,7 +257,7 @@ class ParadigmEditor(EditorBase):
             feature_value_combinations=feature_value_combinations,
             global_markers=MarkerList(self.data["global_markers"]),
         )
-        return p.to_dict()
+        return paradigm.to_dict()
 
     def get_default_data(self) -> dict:
         return {
@@ -336,65 +319,18 @@ class ParadigmEditor(EditorBase):
         ]
 
 
-def paradigm_page() -> None:
-    st.set_page_config(page_title="Paradigm Editor", page_icon="🏗️", layout="wide")
-
-    editor_sidebar(_config_kind, ParadigmEditor, _config_key, _help_str)
-    editor = editor_guard(kind=_config_kind)
-    editor.read_form_to_state()
-    editor_header(kind=_config_kind, editor=editor)
-
-    grammar: Grammar = st.session_state.grammar
-    available_pos = []
-    available_features = []
-    available_rules = []
-    available_principal_parts = []
-    available_fm = []
-    available_cm = []
-    available_combos = []
-    available_patterns = []
-
-    if grammar:
-        config_walker = st.session_state.get("config_walker")
-        available_pos = sorted(
-            [
-                validate_file_reference_str(Path(f).stem)
-                for f in config_walker.config_filemap["part_of_speech_configs"]
-            ]
-        )
-        available_features = sorted(
-            list(grammar.feature_orchestrator.features.values())
-        )
-        available_rules = list(grammar.fst_orchestrator.rule_registry.data.keys())
-        pp_sets = set()
-        for pos_config in grammar.lexicon_registry.config_objects.values():
-            for col in pos_config.get("columns", []):
-                pp_sets.add(col)
-        available_principal_parts = sorted(list(pp_sets))
-        available_fm = sorted(
-            [
-                validate_file_reference_str(Path(f).stem)
-                for f in config_walker.config_filemap["feature_marker_configs"]
-            ]
-        )
-        available_cm = sorted(
-            [
-                validate_file_reference_str(Path(f).stem)
-                for f in config_walker.config_filemap[
-                    "contingent_feature_marker_configs"
-                ]
-            ]
-        )
-        available_combos = sorted(
-            [
-                validate_file_reference_str(Path(f).stem)
-                for f in config_walker.config_filemap["feature_combination_configs"]
-            ]
-        )
-        available_patterns = sorted(
-            list(grammar.fst_orchestrator.pattern_registry.data.keys())
-        )
-
+@st.fragment
+def _render_paradigm_config(
+    available_pos: list[str],
+    available_feature_combos: list[str],
+    available_patterns: list[str],
+    available_rules: list[str],
+    available_principal_parts: list[str],
+    available_feature_markers: list[str],
+    available_contingent_markers: list[str],
+    available_features: list[Feature],
+    editor: EditorBase,
+) -> None:
     # 1. Basics & Configuration
     with st.expander("Configuration", expanded=True):
         c1, c2, c3 = st.columns(3)
@@ -412,11 +348,14 @@ def paradigm_page() -> None:
         with c2:
             st.selectbox(
                 "Feature Combinations",
-                options=[""] + available_combos,
+                options=[""] + available_feature_combos,
                 index=(
-                    available_combos.index(editor.data["feature_value_combinations"])
+                    available_feature_combos.index(
+                        editor.data["feature_value_combinations"]
+                    )
                     + 1
-                    if editor.data["feature_value_combinations"] in available_combos
+                    if editor.data["feature_value_combinations"]
+                    in available_feature_combos
                     else 0
                 ),
                 key=editor.get_widget_key(_COMBO_REF_PREFIX, "main"),
@@ -472,7 +411,8 @@ def paradigm_page() -> None:
 
     # 3. Global Markers
     with st.expander("Global Markers"):
-        editor.render_marker_list(
+        render_marker_list(
+            editor,
             editor.data["global_markers"],
             "global",
             available_rules,
@@ -515,10 +455,10 @@ def paradigm_page() -> None:
                     if mode == "ref":
                         st.selectbox(
                             "Value",
-                            options=[""] + available_fm,
+                            options=[""] + available_feature_markers,
                             index=(
-                                available_fm.index(fm["value"]) + 1
-                                if fm["value"] in available_fm
+                                available_feature_markers.index(fm["value"]) + 1
+                                if fm["value"] in available_feature_markers
                                 else 0
                             ),
                             key=editor.get_widget_key(
@@ -550,10 +490,10 @@ def paradigm_page() -> None:
             with cc1:
                 st.selectbox(
                     "Ref",
-                    options=[""] + available_cm,
+                    options=[""] + available_contingent_markers,
                     index=(
-                        available_cm.index(cm["ref"]) + 1
-                        if cm["ref"] in available_cm
+                        available_contingent_markers.index(cm["ref"]) + 1
+                        if cm["ref"] in available_contingent_markers
                         else 0
                     ),
                     key=editor.get_widget_key(_CONTINGENT_REF_PREFIX, cm["uuid"]),
@@ -600,6 +540,77 @@ def paradigm_page() -> None:
                     key=editor.get_widget_key(_LF_FILTER_VAL_PREFIX, uid),
                     label_visibility="collapsed",
                 )
+
+
+def paradigm_page() -> None:
+    st.set_page_config(page_title="Paradigm Editor", page_icon="🏗️", layout="wide")
+
+    render_editor_sidebar(_config_kind, ParadigmEditor, _config_key, _help_str)
+    editor = render_editor_guard(kind=_config_kind)
+    render_editor_header(kind=_config_kind, editor=editor)
+
+    grammar: Grammar = st.session_state.grammar
+    available_pos = []
+    available_features = []
+    available_rules = []
+    available_principal_parts = []
+    available_feature_markers = []
+    available_contingent_markers = []
+    available_feature_combos = []
+    available_patterns = []
+
+    if grammar:
+        config_walker = st.session_state.get("config_walker")
+        available_pos = sorted(
+            [
+                validate_file_reference_str(Path(f).stem)
+                for f in config_walker.config_filemap["part_of_speech_configs"]
+            ]
+        )
+        available_features = sorted(
+            list(grammar.feature_orchestrator.features.values())
+        )
+        available_rules = list(grammar.fst_orchestrator.rule_registry.data.keys())
+        principal_part_sets = set()
+        for pos_config in grammar.lexicon_registry.config_objects.values():
+            for col in pos_config.get("columns", []):
+                principal_part_sets.add(col)
+        available_principal_parts = sorted(list(principal_part_sets))
+        available_feature_markers = sorted(
+            [
+                validate_file_reference_str(Path(f).stem)
+                for f in config_walker.config_filemap["feature_marker_configs"]
+            ]
+        )
+        available_contingent_markers = sorted(
+            [
+                validate_file_reference_str(Path(f).stem)
+                for f in config_walker.config_filemap[
+                    "contingent_feature_marker_configs"
+                ]
+            ]
+        )
+        available_feature_combos = sorted(
+            [
+                validate_file_reference_str(Path(f).stem)
+                for f in config_walker.config_filemap["feature_combination_configs"]
+            ]
+        )
+        available_patterns = sorted(
+            list(grammar.fst_orchestrator.pattern_registry.data.keys())
+        )
+
+    _render_paradigm_config(
+        editor=editor,
+        available_contingent_markers=available_contingent_markers,
+        available_feature_combos=available_feature_markers,
+        available_feature_markers=available_feature_markers,
+        available_principal_parts=available_principal_parts,
+        available_patterns=available_patterns,
+        available_features=available_features,
+        available_rules=available_rules,
+        available_pos=available_pos,
+    )
 
     toolbar_placeholder = st.empty()
     with toolbar_placeholder.container():

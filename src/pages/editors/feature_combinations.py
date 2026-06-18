@@ -7,26 +7,18 @@ A UI for creating and editing feature combination YAML configs.
 from __future__ import annotations
 
 import uuid
-from typing import Any
-
 import streamlit as st
-import yaml
 
-from src.config_utils.config_walker import ConfigWalker
 from src.grammar import Grammar
-from src.grammar.registry.feature_combination_registry import (
-    FeatureCombinationsRegistry,
-    FeatureValueCombinations,
-)
+from src.grammar.registry.feature_combination_registry import FeatureValueCombinations
 from src.grammar.registry.feature_values_registry import Feature
-from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
-from src.pages.editors.editor_base import (
-    EditorBase,
-    editor_guard,
-    editor_header,
-    editor_sidebar,
+from src.pages.editors.editor_base import EditorBase
+from src.widgets import (
+    render_editor_guard,
+    render_editor_header,
+    render_editor_sidebar,
     render_editor_toolbar,
-    feature_multiselect,
+    render_feature_multiselect,
 )
 
 _config_kind = "FeatureCombinations"
@@ -108,7 +100,6 @@ class FeatureCombinationsEditor(EditorBase):
         if grammar is None:
             st.error("Grammar not loaded. Cannot serialize feature combinations.")
             st.stop()
-            
 
         features: list[Feature] = self.data.get("features", [])
         combinations = self.data.get("combinations", [])
@@ -126,7 +117,7 @@ class FeatureCombinationsEditor(EditorBase):
 
         fvc = FeatureValueCombinations(
             combinations=output_combos,
-            features = features,
+            features=features,
         )
         return fvc.to_dict()
 
@@ -188,17 +179,17 @@ def _render_combination(
 
 def feature_combinations_page() -> None:
 
-    editor_sidebar(
+    render_editor_sidebar(
         kind=_config_kind,
         editor_class=FeatureCombinationsEditor,
         config_key=_config_key,
         help_str=_help_str,
     )
 
-    editor = editor_guard(kind=_config_kind)
+    editor = render_editor_guard(kind=_config_kind)
     editor.read_form_to_state()
     # Sync from session state before rendering to catch multiselect changes
-    editor_header(kind=_config_kind, editor=editor)
+    render_editor_header(kind=_config_kind, editor=editor)
 
     # 1. Feature selection section
     grammar: Grammar = st.session_state.grammar
@@ -207,7 +198,7 @@ def feature_combinations_page() -> None:
     with st.expander(
         "Configuration: Participating Features", expanded=not bool(current_features)
     ):
-        feature_multiselect(
+        render_feature_multiselect(
             "Select features to include in this combination set",
             editor,
             _FEATURE_LIST_PREFIX,

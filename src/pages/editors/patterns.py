@@ -13,22 +13,21 @@ Usage:
 """
 
 from __future__ import annotations
-
 from typing import Any
-
 import streamlit as st
 
-from src.config_utils.config_walker import ConfigWalker
 from src.grammar import Grammar
 from src.grammar.registry.pattern_registry import Pattern, PatternRegistry
 from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
-from src.pages.editors.editor_base import (
-    EditorBase,
-    editor_guard,
-    editor_sidebar,
-    editor_header,
+from src.pages.editors.editor_base import EditorBase
+from src.widgets import (
+    render_editor_guard,
+    render_editor_header,
+    render_editor_sidebar,
     render_editor_toolbar,
+    validated_text_input,
 )
+from src.validation import validate_pattern, validate_ref_str
 
 _config_kind = "Patterns"
 _config_key = "pattern_configs"
@@ -95,12 +94,14 @@ class PatternEditor(EditorBase):
         Sync widget values from st.session_state back into Pattern objects.
         Clears cached test results for any pattern whose ref or value changed.
         """
+        if not self.fields_are_valid:
+            return
+
         self.clear_errors()
         id_map: dict[str, Pattern] = self.data.get("id_map", {})
         test_results: dict[str, Any] = self.data.get("test_results", {})
 
         for uid, pattern in id_map.items():
-            old_ref = pattern._ref
             old_value = pattern.value
 
             name_val = self.get_node_widget(_NAME_PREFIX, uid)
@@ -115,7 +116,9 @@ class PatternEditor(EditorBase):
                 pattern._ref = ref_val
             if pattern_val is not None:
                 # Trigger validation of the pattern text; adds to self.errors
-                self.validate_pattern(pattern_val, f"Pattern '{pattern._ref}'")
+                validate_pattern(
+                    self.add_error, pattern_val, f"Pattern '{pattern._ref}'"
+                )
                 pattern.value = pattern_val
 
             if includes_val is not None:
@@ -128,10 +131,11 @@ class PatternEditor(EditorBase):
                 ]
 
             # invalidate cached test results if the pattern definition changed
-            if pattern._ref != old_ref or pattern.value != old_value:
+            if pattern.value != old_value:
                 test_results.pop(uid, None)
 
     def to_yaml(self) -> dict:
+        self.read_form_to_state()
         patterns: list[Pattern] = self.data.get("patterns", [])
         return {
             "kind": self.kind,
@@ -188,15 +192,25 @@ Pattern rendering
 """
 
 
+@st.fragment
 def _render_pattern(uid: str, editor: PatternEditor) -> None:
     """Render a single pattern entry as an expandable card."""
     pattern: Pattern = editor.data["id_map"][uid]
     test_results = editor.data["test_results"].get(uid)
 
-    ref_label = pattern._ref or "(ref not set)"
-    name_label = pattern.name or "(unnamed)"
+    ref_label = editor.get_node_widget(_REF_PREFIX, uid) or pattern._ref
+    ref_label = ref_label or "(ref not set)"
 
-    with st.expander(f"{name_label} `{ref_label}`", expanded=False, key=editor.get_widget_key("expander-", uid)):
+    name_label = editor.get_node_widget(_NAME_PREFIX, uid) or pattern.name
+    name_label = name_label or "(unnamed)"
+
+    message_label = f"Pattern '{pattern._ref}'"
+
+    with st.expander(
+        f"{name_label} `{ref_label}`",
+        expanded=False,
+        key=editor.get_widget_key("expander-", uid),
+    ):
         col_name, col_ref = st.columns(2)
         with col_name:
             st.text_input(
@@ -206,20 +220,27 @@ def _render_pattern(uid: str, editor: PatternEditor) -> None:
                 placeholder="Front vowel",
             )
         with col_ref:
-            st.text_input(
-                "Reference",
-                key=editor.get_widget_key(_REF_PREFIX, uid),
-                value=pattern._ref,
-                placeholder="<V_Front>",
+            validated_text_input(
+                editor=editor,
+                label="Reference",
+                value=ref_label,
+                node_id=uid,
+                prefix=_REF_PREFIX,
+                validation_fn=lambda v, add_error: validate_ref_str(
+                    add_error, v, message_label
+                ),
             )
 
-        editor.render_keyup_input(
+        validated_text_input(
+            editor,
             "Pattern",
             _PATTERN_TEXT_PREFIX,
             uid,
             value=pattern.value,
             placeholder="(<e>|<i>|<ɛ>)",
-            validation_fn=lambda v: editor.validate_pattern(v, f"Pattern '{pattern._ref}'")
+            validation_fn=lambda v, add_error: validate_pattern(
+                add_error, v, message_label
+            ),
         )
 
         col_inc, col_exc = st.columns(2)
@@ -309,15 +330,14 @@ def patterns_page() -> None:
         layout="wide",
     )
 
-    editor_sidebar(
+    render_editor_sidebar(
         kind=_config_kind,
         editor_class=PatternEditor,
         config_key=_config_key,
         help_str=_help_str,
     )
 
-    editor = editor_guard(kind=_config_kind)
-    editor.read_form_to_state()
+    editor = render_editor_guard(kind=_config_kind)
 
     # check if tests need to be run for a pattern (triggered by test button)
     if "do_run_tests" in st.session_state:
@@ -327,7 +347,7 @@ def patterns_page() -> None:
             editor.run_tests(uid, grammar)
             st.rerun()
 
-    editor_header(kind=_config_kind, editor=editor)
+    render_editor_header(kind=_config_kind, editor=editor)
 
     toolbar_placeholder = st.empty()
 

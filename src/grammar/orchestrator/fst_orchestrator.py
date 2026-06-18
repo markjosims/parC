@@ -20,7 +20,14 @@ import pynini
 from pynini.lib import rewrite
 from src.constants import EXAMPLE_CONFIG_DIR
 
-from src.fst_utils import Acceptor, Prefix, ReservedSymbolMixin, Suffix, FsaLike
+from src.fst_utils import (
+    Acceptor,
+    AcceptorLike,
+    Prefix,
+    ReservedSymbolMixin,
+    Suffix,
+    FsaLike,
+)
 from src.grammar.classes import Orchestrator
 from src.grammar.registry.inventory_registry import InventoryItem, InventoryRegistry
 from src.grammar.registry.pattern_registry import Pattern, PatternRegistry
@@ -220,7 +227,8 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             child_values = [
                 pynini.accep(child.value, token_type=self.symbols)
                 for child in children
-                if isinstance(child, InventoryItem)
+                if hasattr(child, "value")
+                and not hasattr(child, "flatten")  # InventoryItem check
             ]
             acceptor = pynini.union(*child_values)
             acceptor.optimize()
@@ -525,7 +533,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         """
         Interprets a pattern string as an FSA.
         """
-        if isinstance(pattern_input, Acceptor):
+        if isinstance(pattern_input, AcceptorLike):
             if pattern_input.acceptor_built:
                 logger.info(
                     f"Redundant call on pattern {pattern_input._ref} with existing acceptor"
@@ -1251,7 +1259,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         fst: pynini.Fst,
         project: Literal["input", "output"] = "output",
         nshortest: int = None,
-        strip_word_edge_symbols: bool = True,
+        strip_word_edge_symbols: bool = False,
         strip_all_flags: bool = False,
     ) -> list[tuple[str, float]]:
 
@@ -1281,7 +1289,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         fst: pynini.Fst,
         project: Literal["input", "output"] = "output",
         nshortest: int = None,
-        strip_word_edge_symbols: bool = True,
+        strip_word_edge_symbols: bool = False,
         strip_all_flags: bool = False,
     ) -> list[str]:
         """
@@ -1302,7 +1310,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         self,
         fst: pynini.Fst,
         project: Literal["input", "output"] = "output",
-        strip_word_edge_symbols: bool = True,
+        strip_word_edge_symbols: bool = False,
         strip_all_flags: bool = False,
     ) -> str:
         """
@@ -1323,7 +1331,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
     def _decode_labels(
         self,
         label_iter,
-        strip_word_edge_symbols: bool = True,
+        strip_word_edge_symbols: bool = False,
         strip_all_flags: bool = False,
     ) -> str:
         """
@@ -1401,11 +1409,3 @@ class Token:
 
     def __repr__(self):
         return self.__str__()
-
-
-if __name__ == "__main__":
-    # test initializing each config
-    inventory_reg = InventoryRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
-    pattern_reg = PatternRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
-    rule_reg = RuleRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
-    fst_reg = FstOrchestrator.from_config_dir(EXAMPLE_CONFIG_DIR)

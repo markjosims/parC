@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import re
+import pandas as pd
 
 from src.grammar.registry.feature_combination_registry import (
     FeatureValueCombinations,
@@ -50,12 +51,18 @@ class FeatureOrchestrator(Orchestrator):
         return self.feature_combinations[name]
 
 
-def stringify_features(features: dict[str, str] | frozenset[tuple[str, str]]) -> str:
-    if isinstance(features, dict):
+def stringify_features(
+    features: dict[str, str] | pd.Series | frozenset[tuple[str, str]],
+) -> str:
+    if len(features) == 0:
+        return ""
+    if isinstance(features, dict) or isinstance(features, pd.Series):
         feature_iterator = features.items()
     else:
-        # features is frozenset of tuples, iterate directly
-        feature_iterator = features
+        # check features is frozenset of tuples, then iterate directly
+        assert type(features) is frozenset, type(features)
+        feature_iterator = tuple(features)
+        assert len(feature_iterator[0]) == 2, feature_iterator[0]
     feature_strings = [
         f"[{feature_name}={feature_value or 'unmarked'}]"
         for feature_name, feature_value in feature_iterator

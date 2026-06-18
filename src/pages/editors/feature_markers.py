@@ -10,21 +10,21 @@ import uuid
 from typing import Any
 
 import streamlit as st
-import yaml
 from pathlib import Path
 
 from src.grammar.registry.feature_marker_registry import Marker
 from src.grammar.registry.feature_marker_registry import FeatureMarkers, MarkerList
 from src.grammar.registry.feature_values_registry import Feature
 from src.grammar import Grammar
-from src.pages.editors.editor_base import (
-    EditorBase,
-    editor_guard,
-    editor_header,
-    editor_sidebar,
+from src.pages.editors.editor_base import EditorBase
+from src.validation import validate_file_reference_str
+from src.widgets import (
+    render_editor_guard,
+    render_editor_header,
+    render_editor_sidebar,
     render_editor_toolbar,
-    validate_file_reference_str,
-    MARKER_WIDGET_PREFIXES,
+    render_marker_list,
+    sync_marker_list,
 )
 
 _config_kind = "FeatureMarkers"
@@ -36,14 +36,6 @@ _FEATURE_PREFIX = "feature-select-"
 _INHERITS_PREFIX = "inherits-select-"
 _ENTRY_VAL_PREFIX = "entry-val-"
 _REMOVE_ENTRY_PREFIX = "remove-entry-"
-
-_WIDGET_PREFIXES: list[str] = [
-    _GLOBAL_ORDER_PREFIX,
-    _FEATURE_PREFIX,
-    _INHERITS_PREFIX,
-    _ENTRY_VAL_PREFIX,
-    _REMOVE_ENTRY_PREFIX,
-] + MARKER_WIDGET_PREFIXES
 
 _help_str = """
 Feature marker files define how specific feature values are realized morphologically.
@@ -123,7 +115,7 @@ class FeatureMarkersEditor(EditorBase):
             self.data["global_order"] = global_order_val
 
         # 2. Global markers
-        self._sync_marker_list(self.data["global_markers"], "global")
+        sync_marker_list(self, self.data["global_markers"], "global")
 
         # 3. Entries
         for entry in self.data["entries"]:
@@ -131,7 +123,7 @@ class FeatureMarkersEditor(EditorBase):
             val = self.get_node_widget(_ENTRY_VAL_PREFIX, e_uid)
             if val is not None:
                 entry["feature_value"] = val
-            self._sync_marker_list(entry["markers"], f"entry-{e_uid}")
+            sync_marker_list(self, entry["markers"], f"entry-{e_uid}")
 
     def to_yaml(self) -> dict:
         grammar = st.session_state.get("grammar")
@@ -182,16 +174,16 @@ def feature_markers_page() -> None:
         layout="wide",
     )
 
-    editor_sidebar(
+    render_editor_sidebar(
         kind=_config_kind,
         editor_class=FeatureMarkersEditor,
         config_key=_config_key,
         help_str=_help_str,
     )
 
-    editor = editor_guard(kind=_config_kind)
+    editor = render_editor_guard(kind=_config_kind)
     editor.read_form_to_state()
-    editor_header(kind=_config_kind, editor=editor)
+    render_editor_header(kind=_config_kind, editor=editor)
 
     # 1. Config section
     config_walker = st.session_state["config_walker"]
@@ -203,7 +195,9 @@ def feature_markers_page() -> None:
     fm_configs = []
 
     if grammar:
-        available_features = grammar.feature_orchestrator.features
+        available_features = sorted(
+            list(grammar.feature_orchestrator.features.values())
+        )
         available_rules = list(grammar.fst_orchestrator.rule_registry.data.keys())
         # Principal parts are columns in PartOfSpeech configs
         pos_reg = grammar.lexicon_registry
@@ -248,7 +242,8 @@ def feature_markers_page() -> None:
                 placeholder="suffixation",
             )
 
-        editor.render_marker_list(
+        render_marker_list(
+            editor,
             editor.data["global_markers"],
             "global",
             available_rules,
@@ -295,7 +290,8 @@ def feature_markers_page() -> None:
                     editor.remove_entry(e_uid)
                     st.rerun()
 
-            editor.render_marker_list(
+            render_marker_list(
+                editor,
                 entry["markers"],
                 f"entry-{e_uid}",
                 available_rules,

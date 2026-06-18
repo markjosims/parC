@@ -5,24 +5,19 @@ A UI for creating and editing MorphemeSequence YAML configs.
 """
 
 from __future__ import annotations
-
 import uuid
-from typing import Any, TYPE_CHECKING
-
 import streamlit as st
-import yaml
-from pathlib import Path
 
 from src.grammar import Grammar
 from src.grammar.registry.feature_values_registry import Feature
 from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
-from src.pages.editors.editor_base import (
-    EditorBase,
-    editor_guard,
-    editor_header,
-    editor_sidebar,
+from src.pages.editors.editor_base import EditorBase
+from src.validation import validate_file_reference_str, validate_pattern
+from src.widgets import (
+    render_editor_guard,
+    render_editor_header,
+    render_editor_sidebar,
     render_editor_toolbar,
-    validate_file_reference_str,
 )
 
 _config_kind = "MorphemeSequence"
@@ -37,17 +32,6 @@ _MOVE_DOWN_PREFIX = "move-down-"
 _FIXED_FEAT_NAME_PREFIX = "fixed-feat-name-"
 _FIXED_FEAT_VAL_PREFIX = "fixed-feat-val-"
 _REMOVE_FIXED_FEAT_PREFIX = "remove-fixed-feat-"
-
-_WIDGET_PREFIXES: list[str] = [
-    _STEP_TYPE_PREFIX,
-    _STEP_VAL_PREFIX,
-    _REMOVE_STEP_PREFIX,
-    _MOVE_UP_PREFIX,
-    _MOVE_DOWN_PREFIX,
-    _FIXED_FEAT_NAME_PREFIX,
-    _FIXED_FEAT_VAL_PREFIX,
-    _REMOVE_FIXED_FEAT_PREFIX,
-]
 
 _MORPHEME_TYPES = ["Lexicon", "Paradigm", "Pattern", "Rule", "MorphemeSet"]
 
@@ -109,7 +93,7 @@ class MorphemeSequenceEditor(EditorBase):
             if s_val is not None:
                 step["value"] = s_val
                 if s_type == "morpheme":
-                    self.validate_pattern(s_val, f"Morpheme '{s_val}'")
+                    validate_pattern(self.add_error, s_val, f"Morpheme '{s_val}'")
 
         for ff in self.data["fixed_features"]:
             uid = ff["uuid"]
@@ -296,16 +280,16 @@ def morpheme_sequence_page() -> None:
         layout="wide",
     )
 
-    editor_sidebar(
+    render_editor_sidebar(
         kind=_config_kind,
         editor_class=MorphemeSequenceEditor,
         config_key=_config_key,
         help_str=_help_str,
     )
 
-    editor = editor_guard(kind=_config_kind)
+    editor = render_editor_guard(kind=_config_kind)
     editor.read_form_to_state()
-    editor_header(kind=_config_kind, editor=editor)
+    render_editor_header(kind=_config_kind, editor=editor)
 
     grammar: Grammar = st.session_state.grammar
     available_lexicons = []
@@ -377,7 +361,9 @@ def morpheme_sequence_page() -> None:
                 # get values for selected feature
                 feat_obj = None
                 if ff.get("feature", None):
-                    feat_obj = grammar.feature_orchestrator.get_feature(ff.get("feature", None))
+                    feat_obj = grammar.feature_orchestrator.get_feature(
+                        ff.get("feature", None)
+                    )
                 f_vals = feat_obj.values if feat_obj else []
                 st.selectbox(
                     "Value",

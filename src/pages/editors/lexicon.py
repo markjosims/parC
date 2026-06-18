@@ -8,31 +8,24 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
 
 import pandas as pd
 import streamlit as st
-import yaml
 
 from src.grammar import Grammar
 from src.grammar.registry.feature_values_registry import Feature
-from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
 from src.grammar.registry.lexicon_registry import PartOfSpeech
-
-
-from src.config_utils.config_walker import ConfigWalker
-from src.grammar.registry.lexicon_registry import Lexicon, LexiconRegistry
-from src.pages.editors.editor_base import (
-    EditorBase,
-    editor_guard,
-    editor_sidebar,
-    editor_header,
+from src.grammar.registry.lexicon_registry import Lexicon
+from src.pages.editors.editor_base import EditorBase
+from src.widgets import (
+    render_editor_guard,
+    render_editor_header,
+    render_editor_sidebar,
     render_editor_toolbar,
-    feature_multiselect,
+    validated_text_input,
+    render_feature_multiselect,
 )
-
-if TYPE_CHECKING:
-    from src.grammar.registry.lexicon_registry import Marker
+from validation import validate_pattern
 
 _config_kind = "PartOfSpeech"
 _config_key = "part_of_speech_configs"
@@ -45,16 +38,6 @@ _ROW_ROOT_PREFIX = "row-root-"
 _ROW_GLOSS_PREFIX = "row-gloss-"
 _ROW_COL_PREFIX = "row-col-"
 _REMOVE_ROW_PREFIX = "remove-row-"
-
-_WIDGET_PREFIXES: list[str] = [
-    _FEATURES_PREFIX,
-    _LEXICAL_FEATURES_PREFIX,
-    _PRINCIPAL_PARTS_PREFIX,
-    _ROW_ROOT_PREFIX,
-    _ROW_GLOSS_PREFIX,
-    _ROW_COL_PREFIX,
-    _REMOVE_ROW_PREFIX,
-]
 
 _help_str = """
 Lexicon files define a Part of Speech (POS) and its associated vocabulary.
@@ -124,7 +107,7 @@ class LexiconEditor(EditorBase):
             gloss = self.get_node_widget(_ROW_GLOSS_PREFIX, uid)
             if root is not None:
                 row["root"] = root
-                self.validate_pattern(root, f"Root '{root}'")
+                validate_pattern(self.add_error, root, f"Root '{root}'")
             if gloss is not None:
                 row["gloss"] = gloss
 
@@ -133,7 +116,11 @@ class LexiconEditor(EditorBase):
                 if val is not None:
                     row[col] = val
                     if col in self.data["principal_parts"] and val:
-                         self.validate_pattern(val, f"Principal Part '{col}' for root '{root}'")
+                        validate_pattern(
+                            self.add_error,
+                            val,
+                            f"Principal Part '{col}' for root '{root}'",
+                        )
 
     def to_yaml(self) -> dict:
 
@@ -208,13 +195,16 @@ def _render_lexicon_row(
     cols = st.columns([1.5, 1.5] + [1.2] * len(dynamic_cols) + [0.4])
 
     with cols[0]:
-        editor.render_keyup_input(
+        validated_text_input(
+            editor,
             "Root",
             _ROW_ROOT_PREFIX,
             uid,
             value=row["root"],
             label_visibility="collapsed",
-            validation_fn=lambda v: editor.validate_pattern(v, f"Root '{v}'")
+            validation_fn=lambda v, add_error: validate_pattern(
+                add_error, v, f"Root '{v}'"
+            ),
         )
     with cols[1]:
         st.text_input(
@@ -263,32 +253,37 @@ def lexicon_page() -> None:
         layout="wide",
     )
 
-    editor_sidebar(
+    render_editor_sidebar(
         kind=_config_kind,
         editor_class=LexiconEditor,
         config_key=_config_key,
         help_str=_help_str,
     )
 
-    editor = editor_guard(kind=_config_kind)
+    editor = render_editor_guard(kind=_config_kind)
     editor.read_form_to_state()
-    editor_header(kind=_config_kind, editor=editor)
+    render_editor_header(kind=_config_kind, editor=editor)
 
     grammar: Grammar = st.session_state.grammar
 
     # 1. Config section
-    with st.expander("POS Configuration", expanded=st.session_state.get(f"expanded-pos-{editor.scope}", True)):
-        st.session_state[f"expanded-pos-{editor.scope}"] = False # default to collapsed after first show
+    with st.expander(
+        "POS Configuration",
+        expanded=st.session_state.get(f"expanded-pos-{editor.scope}", True),
+    ):
+        st.session_state[f"expanded-pos-{editor.scope}"] = (
+            False  # default to collapsed after first show
+        )
         col1, col2 = st.columns(2)
         with col1:
-            feature_multiselect(
+            render_feature_multiselect(
                 "Inflected Features",
                 editor,
                 _FEATURES_PREFIX,
                 data_key="features",
             )
         with col2:
-            feature_multiselect(
+            render_feature_multiselect(
                 "Lexical Features",
                 editor,
                 _LEXICAL_FEATURES_PREFIX,

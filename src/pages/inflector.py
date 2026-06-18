@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import streamlit as st
 import pandas as pd
-from src.pages.editors.editor_base import editor_guard, validate_file_reference_str
 from src.grammar import Grammar
 from src.grammar.registry.paradigm_registry import Paradigm
 from src.grammar.registry.morpheme_sequence_registry import MorphemeSequence
@@ -54,7 +53,6 @@ def inflector_page() -> None:
 
     # 2. Setup Inputs based on selection
     if inflect_type == "Paradigm":
-
         obj: Paradigm = grammar.paradigm_registry.get_paradigm(selected_name)
         if not obj.is_initialized:
             obj.initialize()
@@ -99,7 +97,7 @@ def inflector_page() -> None:
             else:
                 try:
                     stages = obj.get_inflection_stages(stem, feature_values)
-                    render_stages_table(stages)
+                    _render_stages_table(stages)
                 except Exception as e:
                     st.error(f"Error: {e}")
 
@@ -114,10 +112,15 @@ def inflector_page() -> None:
 
         # Determine steps that need stems
         stem_steps = []
-        for i, item in enumerate(obj.morphemes):
+        for i, (item, resolved) in enumerate(zip(obj.sequence_data, obj.morphemes)):
             if item["type"] in ["Lexicon", "Paradigm"]:
                 stem_steps.append(
-                    {"index": i, "type": item["type"], "value": item["value"]}
+                    {
+                        "index": i,
+                        "type": item["type"],
+                        "value": item["value"],
+                        "resolved": resolved,
+                    }
                 )
 
         st.write("#### Stems")
@@ -130,19 +133,19 @@ def inflector_page() -> None:
         for i, step in enumerate(stem_steps):
             label = (
                 f"Step {step['index'] + 1}: {step['type']}"
-                + f"({step['value'].name if hasattr(step['value'], 'name') else step['value']})"
+                + f"({step['resolved'].name if hasattr(step['resolved'], 'name') else step['resolved']})"
             )
             if st_use_lexicon:
                 if step["type"] == "Lexicon":
-                    roots = step["value"].get_roots()
+                    roots = step["resolved"].get_roots()
                     s = st.selectbox(label, roots, key=f"ms-stem-{i}")
-                    lexical_features.update(step["value"].get_features_for_root(s))
+                    lexical_features.update(step["resolved"].get_features_for_root(s))
                     stems.append(s)
                 elif step["type"] == "Paradigm":
-                    roots = step["value"].lexicon.get_roots()
+                    roots = step["resolved"].lexicon.get_roots()
                     s = st.selectbox(label, roots, key=f"ms-stem-{i}")
                     lexical_features.update(
-                        step["value"].lexicon.get_features_for_root(s)
+                        step["resolved"].lexicon.get_features_for_root(s)
                     )
                     stems.append(s)
             else:
@@ -168,7 +171,7 @@ def inflector_page() -> None:
                     continue
 
                 with cols[i % 3]:
-                    val = st.selectbox(
+                    val: str = st.selectbox(
                         feature.name,
                         options=feature.values,
                         key=f"ms-feat-{feature.name}",
@@ -182,12 +185,12 @@ def inflector_page() -> None:
             else:
                 try:
                     stages = obj.get_inflection_stages(stems, feature_values)
-                    render_stages_table(stages)
+                    _render_stages_table(stages)
                 except Exception as e:
                     st.error(f"Error: {e}")
 
 
-def render_stages_table(stages: list[dict]):
+def _render_stages_table(stages: list[dict]):
     if not stages:
         st.warning("No stages returned.")
         return

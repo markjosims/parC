@@ -1,6 +1,7 @@
 import pynini
 from dataclasses import dataclass, field
 from loguru import logger
+from typing import Protocol, runtime_checkable
 
 
 class ReservedSymbolMixin:
@@ -245,4 +246,17 @@ class Suffix(Transducer):
         return super().set_transducer(fst)
 
 
-FsaLike = str | pynini.Fst | Acceptor
+@runtime_checkable
+class AcceptorLike(Protocol):
+    """
+    Structural protocol for Acceptor class.
+    """
+
+    value: str | None
+    fsa: pynini.Fst | None
+    acceptor_built: bool
+
+    def set_acceptor(self, fsa) -> None: ...
+
+
+FsaLike = str | pynini.Fst | AcceptorLike

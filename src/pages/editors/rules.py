@@ -13,23 +13,21 @@ Usage:
 """
 
 from __future__ import annotations
-
 from typing import Any, Literal
-
 import streamlit as st
 
-from src.config_utils.config_walker import ConfigWalker
 from src.grammar.registry.rule_registry import Rule, RuleRegistry
-from src.fst_utils import Acceptor
-from src.pages.editors.editor_base import (
-    EditorBase,
-    editor_guard,
-    editor_sidebar,
-    editor_header,
-    render_editor_toolbar,
-)
+from src.pages.editors.editor_base import EditorBase
 from src.fst_utils import Acceptor
 from src.grammar import Grammar
+from src.widgets import (
+    render_editor_guard,
+    render_editor_header,
+    render_editor_sidebar,
+    render_editor_toolbar,
+    validated_text_input,
+)
+from src.validation import validate_acceptor, validate_rule
 
 _config_kind = "Rules"
 _config_key = "rule_configs"
@@ -42,7 +40,8 @@ _OUTPUT_PREFIX = "output-"
 _LEFT_CTX_PREFIX = "left_ctx-"
 _RIGHT_CTX_PREFIX = "right_ctx-"
 _DIRECTION_PREFIX = "direction-"
-_STRING_MAP_PREFIX = "string_map-"
+_STRING_MAP_IN_PREFIX = "string_map-in-"
+_STRING_MAP_OUT_PREFIX = "string_map-out-"
 _RULE_SEQ_PREFIX = "rule_seq-"
 _TEST_MAPPINGS_PREFIX = "test_mappings-"
 _TEST_BUTTON_PREFIX = "test_button-"
@@ -58,7 +57,8 @@ _WIDGET_PREFIXES: list[str] = [
     _LEFT_CTX_PREFIX,
     _RIGHT_CTX_PREFIX,
     _DIRECTION_PREFIX,
-    _STRING_MAP_PREFIX,
+    _STRING_MAP_OUT_PREFIX,
+    _STRING_MAP_IN_PREFIX,
     _RULE_SEQ_PREFIX,
     _TEST_MAPPINGS_PREFIX,
     _TEST_BUTTON_PREFIX,
@@ -114,6 +114,9 @@ class RulesEditor(EditorBase):
         Sync widget values from st.session_state back into Rule objects.
         Clears cached test results for any rule whose definition changed.
         """
+        if not self.fields_are_valid:
+            return
+
         self.clear_errors()
         id_map: dict[str, Rule] = self.data.get("id_map", {})
         test_results: dict[str, Any] = self.data.get("test_results", {})
@@ -137,16 +140,24 @@ class RulesEditor(EditorBase):
                 right = self.get_node_widget(_RIGHT_CTX_PREFIX, uid)
                 direction = self.get_node_widget(_DIRECTION_PREFIX, uid)
                 if inp is not None:
-                    self.validate_acceptor(inp, f"Input Pattern for '{rule._ref}'")
+                    validate_acceptor(
+                        self.add_error, inp, f"Input Pattern for '{rule._ref}'"
+                    )
                     rule.input_pattern.value = inp
                 if out is not None:
-                    self.validate_acceptor(out, f"Output Pattern for '{rule._ref}'")
+                    validate_acceptor(
+                        self.add_error, out, f"Output Pattern for '{rule._ref}'"
+                    )
                     rule.output_pattern.value = out
                 if left is not None:
-                    self.validate_acceptor(left, f"Left Context for '{rule._ref}'")
+                    validate_acceptor(
+                        self.add_error, left, f"Left Context for '{rule._ref}'"
+                    )
                     rule.left_context.value = left
                 if right is not None:
-                    self.validate_acceptor(right, f"Right Context for '{rule._ref}'")
+                    validate_acceptor(
+                        self.add_error, right, f"Right Context for '{rule._ref}'"
+                    )
                     rule.right_context.value = right
                 if direction is not None:
                     rule.direction = direction
@@ -155,30 +166,46 @@ class RulesEditor(EditorBase):
                 left = self.get_node_widget(_LEFT_CTX_PREFIX, uid)
                 right = self.get_node_widget(_RIGHT_CTX_PREFIX, uid)
                 direction = self.get_node_widget(_DIRECTION_PREFIX, uid)
-                
+
                 pairs = []
                 i = 0
                 while True:
-                    in_key = f"{_STRING_MAP_PREFIX}in-{i}-"
-                    out_key = f"{_STRING_MAP_PREFIX}out-{i}-"
-                    in_val = self.get_node_widget(in_key, uid)
-                    out_val = self.get_node_widget(out_key, uid)
+                    # TODO: refactor to use editor.get_numbered_widgets_for_node
+                    # rather than a `while` loop
+                    in_val = self.get_node_widget(
+                        prefix=_STRING_MAP_IN_PREFIX, suffix=str(i), node_id=uid
+                    )
+                    out_val = self.get_node_widget(
+                        prefix=_STRING_MAP_OUT_PREFIX, suffix=str(i), node_id=uid
+                    )
                     if in_val is None or out_val is None:
                         break
-                    
-                    self.validate_acceptor(in_val, f"String Map Input (Line {i + 1}) for '{rule._ref}'")
-                    self.validate_acceptor(out_val, f"String Map Output (Line {i + 1}) for '{rule._ref}'")
+
+                    validate_acceptor(
+                        self.add_error,
+                        in_val,
+                        f"String Map Input (Line {i + 1}) for '{rule._ref}'",
+                    )
+                    validate_acceptor(
+                        self.add_error,
+                        out_val,
+                        f"String Map Output (Line {i + 1}) for '{rule._ref}'",
+                    )
                     pairs.append((Acceptor(in_val), Acceptor(out_val)))
                     i += 1
-                
+
                 if i > 0 or not rule.string_map:
                     rule.string_map = pairs
 
                 if left is not None:
-                    self.validate_acceptor(left, f"Left Context for '{rule._ref}'")
+                    validate_acceptor(
+                        self.add_error, left, f"Left Context for '{rule._ref}'"
+                    )
                     rule.left_context.value = left
                 if right is not None:
-                    self.validate_acceptor(right, f"Right Context for '{rule._ref}'")
+                    validate_acceptor(
+                        self.add_error, right, f"Right Context for '{rule._ref}'"
+                    )
                     rule.right_context.value = right
                 if direction is not None:
                     rule.direction = direction
@@ -210,16 +237,17 @@ class RulesEditor(EditorBase):
                     break
                 raw_mappings.append([in_val, out_val])
                 i += 1
-            
+
             if i > 0 or not rule.test_mappings:
                 rule.test_mappings = raw_mappings
 
             if rule._ref != old_ref:
                 test_results.pop(uid, None)
 
-            self.validate_rule(rule)
+            validate_rule(self.add_error, rule)
 
     def to_yaml(self) -> dict:
+        self.read_form_to_state()
         rules: list[Rule] = self.data.get("rules", [])
         registry = RuleRegistry(data={r._ref: r for r in rules})
         return registry.to_dict()
@@ -231,9 +259,9 @@ class RulesEditor(EditorBase):
             "test_results": {},
         }
 
-    # ------------------------------------------------------------------
-    # Mutations
-    # ------------------------------------------------------------------
+    """
+    Mutations
+    """
 
     def insert_rule(
         self,
@@ -317,7 +345,8 @@ class RulesEditor(EditorBase):
             _LEFT_CTX_PREFIX,
             _RIGHT_CTX_PREFIX,
             _DIRECTION_PREFIX,
-            _STRING_MAP_PREFIX,
+            _STRING_MAP_IN_PREFIX,
+            _STRING_MAP_OUT_PREFIX,
             _RULE_SEQ_PREFIX,
             _TEST_MAPPINGS_PREFIX,
             _TEST_BUTTON_PREFIX,
@@ -393,34 +422,42 @@ Rule rendering
 """
 
 
+@st.fragment
 def _render_rule(uid: str, editor: RulesEditor) -> None:
     """Render a single rule as an expandable card."""
     rule: Rule = editor.data["id_map"][uid]
     test_results = editor.data["test_results"].get(uid)
 
-    ref_label = rule._ref or "(ref not set)"
-    type_label = rule.type.replace("_", " ").title()
+    ref_label = (
+        editor.get_node_widget(_NAME_PREFIX, uid) or rule._ref or "(ref not set)"
+    )
+    rule_type = editor.get_node_widget(_TYPE_PREFIX, uid) or rule.type
+    type_label = rule_type.replace("_", " ").title()
 
-    with st.expander(f"`{ref_label}` — {type_label}", expanded=False, key=editor.get_widget_key("expander-", uid)):
+    with st.expander(
+        f"`{ref_label}` — {type_label}",
+        expanded=False,
+        key=editor.get_widget_key("expander-", uid),
+    ):
         col_name, col_type = st.columns(2)
         with col_name:
             st.text_input(
                 "Rule name",
                 key=editor.get_widget_key(_NAME_PREFIX, uid),
-                value=rule._ref,
+                value=ref_label,
                 placeholder="coalesce_before_i",
             )
         with col_type:
             new_type = st.selectbox(
                 "Rule type",
                 options=_RULE_TYPES,
-                index=_RULE_TYPES.index(rule.type) if rule.type in _RULE_TYPES else 0,
+                index=_RULE_TYPES.index(rule_type) if rule_type in _RULE_TYPES else 0,
                 format_func=lambda s: s.replace("_", " ").title(),
                 key=editor.get_widget_key(_TYPE_PREFIX, uid),
             )
             st.button(
                 "Change rule type",
-                disabled=(new_type == rule.type),
+                disabled=(new_type == rule_type),
                 key=editor.get_widget_key(_CHANGE_TYPE_PREFIX, uid),
                 on_click=editor.change_rule_type,
                 args=(uid, new_type),
@@ -434,160 +471,14 @@ def _render_rule(uid: str, editor: RulesEditor) -> None:
         )
 
         # Type-specific fields
-        if rule.type == "simple_rule":
-            col_in, col_out = st.columns(2)
-            with col_in:
-                editor.render_keyup_input(
-                    "Input pattern",
-                    _INPUT_PREFIX,
-                    uid,
-                    value=rule.input_pattern.value or "",
-                    placeholder="<V>-?",
-                    validation_fn=lambda v: editor.validate_acceptor(v, f"Input Pattern for '{rule._ref}'")
-                )
-            with col_out:
-                editor.render_keyup_input(
-                    "Output pattern",
-                    _OUTPUT_PREFIX,
-                    uid,
-                    value=rule.output_pattern.value or "",
-                    placeholder="ɛ",
-                    validation_fn=lambda v: editor.validate_acceptor(v, f"Output Pattern for '{rule._ref}'")
-                )
+        if rule_type == "simple_rule":
+            _render_simple_rule(uid, editor, rule)
 
-            col_left, col_right = st.columns(2)
-            with col_left:
-                editor.render_keyup_input(
-                    "Left context",
-                    _LEFT_CTX_PREFIX,
-                    uid,
-                    value=rule.left_context.value or "",
-                    placeholder="(<R>|<N>)",
-                    validation_fn=lambda v: editor.validate_acceptor(v, f"Left Context for '{rule._ref}'")
-                )
-            with col_right:
-                editor.render_keyup_input(
-                    "Right context",
-                    _RIGHT_CTX_PREFIX,
-                    uid,
-                    value=rule.right_context.value or "",
-                    placeholder="<V>",
-                    validation_fn=lambda v: editor.validate_acceptor(v, f"Right Context for '{rule._ref}'")
-                )
+        elif rule_type == "string_map":
+            _render_string_map(uid, editor, rule)
 
-            st.selectbox(
-                "Direction",
-                options=_DIRECTIONS,
-                index=_DIRECTIONS.index(rule.direction)
-                if rule.direction in _DIRECTIONS
-                else 0,
-                key=editor.get_widget_key(_DIRECTION_PREFIX, uid),
-            )
-
-        elif rule.type == "string_map":
-            st.markdown("**String map**")
-            for i, (inp, out) in enumerate(rule.string_map):
-                m_col1, m_col2, m_col3 = st.columns([1, 1, 0.2])
-                with m_col1:
-                    editor.render_keyup_input(
-                        "Input",
-                        f"{_STRING_MAP_PREFIX}in-{i}-",
-                        uid,
-                        value=inp.value or "",
-                        label_visibility="collapsed",
-                        validation_fn=lambda v: editor.validate_acceptor(v, f"String Map Input (Line {i + 1}) for '{rule._ref}'")
-                    )
-                with m_col2:
-                    editor.render_keyup_input(
-                        "Output",
-                        f"{_STRING_MAP_PREFIX}out-{i}-",
-                        uid,
-                        value=out.value or "",
-                        label_visibility="collapsed",
-                        validation_fn=lambda v: editor.validate_acceptor(v, f"String Map Output (Line {i + 1}) for '{rule._ref}'")
-                    )
-                with m_col3:
-                    st.button(
-                        "🗑️",
-                        key=editor.get_widget_key(f"remove_sm-{i}-", uid),
-                        on_click=editor.remove_string_map_pair,
-                        args=(uid, i),
-                    )
-            st.button(
-                "➕ Add pair",
-                key=editor.get_widget_key("add_sm-", uid),
-                on_click=editor.add_string_map_pair,
-                args=(uid,),
-            )
-
-            col_left, col_right = st.columns(2)
-            with col_left:
-                editor.render_keyup_input(
-                    "Left context",
-                    _LEFT_CTX_PREFIX,
-                    uid,
-                    value=rule.left_context.value or "",
-                    placeholder="(<R>|<N>)",
-                    validation_fn=lambda v: editor.validate_acceptor(v, f"Left Context for '{rule._ref}'")
-                )
-            with col_right:
-                editor.render_keyup_input(
-                    "Right context",
-                    _RIGHT_CTX_PREFIX,
-                    uid,
-                    value=rule.right_context.value or "",
-                    placeholder="<V>",
-                    validation_fn=lambda v: editor.validate_acceptor(v, f"Right Context for '{rule._ref}'")
-                )
-
-            st.selectbox(
-                "Direction",
-                options=_DIRECTIONS,
-                index=_DIRECTIONS.index(rule.direction)
-                if rule.direction in _DIRECTIONS
-                else 0,
-                key=editor.get_widget_key(_DIRECTION_PREFIX, uid),
-            )
-
-        elif rule.type == "rule_sequence":
-            id_map: dict[str, Rule] = editor.data["id_map"]
-            available_refs = sorted(
-                [r._ref for r in id_map.values() if r.uuid != uid and r._ref]
-            )
-
-            if not available_refs:
-                st.warning("No other rules available to create a sequence.")
-            else:
-                st.markdown("**Sequence steps**")
-                for i, step_rule in enumerate(rule.rule_sequence):
-                    col_step, col_btn = st.columns([0.8, 0.2])
-                    with col_step:
-                        selected_ref = (
-                            step_rule._ref if hasattr(step_rule, "_ref") else ""
-                        )
-                        st.selectbox(
-                            f"Step {i + 1}",
-                            options=available_refs,
-                            index=available_refs.index(selected_ref)
-                            if selected_ref in available_refs
-                            else 0,
-                            key=editor.get_widget_key(f"{_RULE_SEQ_PREFIX}{i}-", uid),
-                            label_visibility="collapsed",
-                        )
-                    with col_btn:
-                        st.button(
-                            "🗑️",
-                            key=editor.get_widget_key(f"remove_step-{i}-", uid),
-                            on_click=editor.remove_sequence_step,
-                            args=(uid, i),
-                        )
-
-                st.button(
-                    "➕ Add step",
-                    key=editor.get_widget_key("add_step-", uid),
-                    on_click=editor.add_sequence_step,
-                    args=(uid,),
-                )
+        elif rule_type == "rule_sequence":
+            _render_rule_sequence(uid, editor, rule)
 
         # Test mappings (all rule types)
         st.markdown("**Test mappings**")
@@ -666,6 +557,218 @@ def _render_rule(uid: str, editor: RulesEditor) -> None:
                     st.error("Some tests failed")
 
 
+def _render_simple_rule(uid: str, editor: RulesEditor, rule: Rule) -> None:
+    # render text fields for input/output patterns and left/right contexts
+    input_pattern_value = (
+        editor.get_node_widget(_INPUT_PREFIX, uid) or rule.input_pattern.value or ""
+    )
+    output_pattern_value = (
+        editor.get_node_widget(_OUTPUT_PREFIX, uid) or rule.output_pattern.value or ""
+    )
+    left_context_value = (
+        editor.get_node_widget(_LEFT_CTX_PREFIX, uid) or rule.left_context.value or ""
+    )
+    right_context_value = (
+        editor.get_node_widget(_RIGHT_CTX_PREFIX, uid) or rule.right_context.value or ""
+    )
+    rule_direction = (
+        editor.get_node_widget(_DIRECTION_PREFIX, uid) or rule.direction or "rtl"
+    )
+
+    col_in, col_out = st.columns(2)
+    with col_in:
+        validated_text_input(
+            editor,
+            "Input pattern",
+            _INPUT_PREFIX,
+            uid,
+            value=input_pattern_value,
+            placeholder="<V>-?",
+            validation_fn=lambda v, add_error: validate_acceptor(
+                add_error, v, f"Input Pattern for '{rule._ref}'"
+            ),
+        )
+    with col_out:
+        validated_text_input(
+            editor,
+            "Output pattern",
+            _OUTPUT_PREFIX,
+            uid,
+            value=output_pattern_value,
+            placeholder="ɛ",
+            validation_fn=lambda v, add_error: validate_acceptor(
+                add_error, v, f"Output Pattern for '{rule._ref}'"
+            ),
+        )
+
+    col_left, col_right = st.columns(2)
+    with col_left:
+        validated_text_input(
+            editor,
+            "Left context",
+            _LEFT_CTX_PREFIX,
+            uid,
+            value=left_context_value,
+            placeholder="(<R>|<N>)",
+            validation_fn=lambda v, add_error: validate_acceptor(
+                add_error, v, f"Left Context for '{rule._ref}'"
+            ),
+        )
+    with col_right:
+        validated_text_input(
+            editor,
+            "Right context",
+            _RIGHT_CTX_PREFIX,
+            uid,
+            value=right_context_value,
+            placeholder="<V>",
+            validation_fn=lambda v, add_error: validate_acceptor(
+                add_error, v, f"Right Context for '{rule._ref}'"
+            ),
+        )
+
+    st.selectbox(
+        "Direction",
+        options=_DIRECTIONS,
+        index=_DIRECTIONS.index(rule_direction) if rule_direction in _DIRECTIONS else 0,
+        key=editor.get_widget_key(_DIRECTION_PREFIX, uid),
+    )
+
+
+def _render_string_map(uid: str, editor: RulesEditor, rule: Rule) -> None:
+
+    st.markdown("**String map**")
+    string_map_inputs = editor.get_numbered_widgets_for_node(_STRING_MAP_IN_PREFIX, uid)
+    string_map_outputs = editor.get_numbered_widgets_for_node(
+        _STRING_MAP_OUT_PREFIX, uid
+    )
+    if string_map_inputs is None or string_map_outputs is None:
+        string_map_pairs = rule.string_map
+    else:
+        string_map_inputs = [Acceptor(input_value) for input_value in string_map_inputs]
+        string_map_outputs = [
+            Acceptor(output_value) for output_value in string_map_outputs
+        ]
+        string_map_pairs = zip(string_map_inputs, string_map_outputs)
+    for i, (inp, out) in enumerate(string_map_pairs):
+        m_col1, m_col2, m_col3 = st.columns([1, 1, 0.2])
+        with m_col1:
+            validated_text_input(
+                editor=editor,
+                label="Input",
+                prefix=_STRING_MAP_IN_PREFIX,
+                suffix=str(i),
+                node_id=uid,
+                value=inp.value or "",
+                label_visibility="collapsed",
+                validation_fn=lambda v, add_error: validate_acceptor(
+                    add_error,
+                    v,
+                    f"String Map Input (Line {i + 1}) for '{rule._ref}'",
+                ),
+            )
+        with m_col2:
+            validated_text_input(
+                editor=editor,
+                label="Output",
+                prefix=_STRING_MAP_OUT_PREFIX,
+                suffix=str(i),
+                node_id=uid,
+                value=out.value or "",
+                label_visibility="collapsed",
+                validation_fn=lambda v, add_error: validate_acceptor(
+                    add_error,
+                    v,
+                    f"String Map Output (Line {i + 1}) for '{rule._ref}'",
+                ),
+            )
+        with m_col3:
+            st.button(
+                "🗑️",
+                key=editor.get_widget_key(f"remove_sm-{i}-", uid),
+                on_click=editor.remove_string_map_pair,
+                args=(uid, i),
+            )
+    st.button(
+        "➕ Add pair",
+        key=editor.get_widget_key("add_sm-", uid),
+        on_click=editor.add_string_map_pair,
+        args=(uid,),
+    )
+
+    col_left, col_right = st.columns(2)
+    with col_left:
+        validated_text_input(
+            editor,
+            "Left context",
+            _LEFT_CTX_PREFIX,
+            uid,
+            value=rule.left_context.value or "",
+            placeholder="(<R>|<N>)",
+            validation_fn=lambda v, add_error: validate_acceptor(
+                add_error, v, f"Left Context for '{rule._ref}'"
+            ),
+        )
+    with col_right:
+        validated_text_input(
+            editor,
+            "Right context",
+            _RIGHT_CTX_PREFIX,
+            uid,
+            value=rule.right_context.value or "",
+            placeholder="<V>",
+            validation_fn=lambda v, add_error: validate_acceptor(
+                add_error, v, f"Right Context for '{rule._ref}'"
+            ),
+        )
+
+    st.selectbox(
+        "Direction",
+        options=_DIRECTIONS,
+        index=_DIRECTIONS.index(rule.direction) if rule.direction in _DIRECTIONS else 0,
+        key=editor.get_widget_key(_DIRECTION_PREFIX, uid),
+    )
+
+
+def _render_rule_sequence(uid: str, editor: RulesEditor, rule: Rule) -> None:
+    id_map: dict[str, Rule] = editor.data["id_map"]
+    available_refs = sorted(
+        [r._ref for r in id_map.values() if r.uuid != uid and r._ref]
+    )
+
+    if not available_refs:
+        st.warning("No other rules available to create a sequence.")
+    else:
+        st.markdown("**Sequence steps**")
+        for i, step_rule in enumerate(rule.rule_sequence):
+            col_step, col_btn = st.columns([0.8, 0.2])
+            with col_step:
+                selected_ref = step_rule._ref if hasattr(step_rule, "_ref") else ""
+                st.selectbox(
+                    f"Step {i + 1}",
+                    options=available_refs,
+                    index=available_refs.index(selected_ref)
+                    if selected_ref in available_refs
+                    else 0,
+                    key=editor.get_widget_key(f"{_RULE_SEQ_PREFIX}{i}-", uid),
+                    label_visibility="collapsed",
+                )
+            with col_btn:
+                st.button(
+                    "🗑️",
+                    key=editor.get_widget_key(f"remove_step-{i}-", uid),
+                    on_click=editor.remove_sequence_step,
+                    args=(uid, i),
+                )
+
+        st.button(
+            "➕ Add step",
+            key=editor.get_widget_key("add_step-", uid),
+            on_click=editor.add_sequence_step,
+            args=(uid,),
+        )
+
+
 """
 Page components
 """
@@ -696,15 +799,14 @@ def rules_page() -> None:
         layout="wide",
     )
 
-    editor_sidebar(
+    render_editor_sidebar(
         kind=_config_kind,
         editor_class=RulesEditor,
         config_key=_config_key,
         help_str=_help_str,
     )
 
-    editor = editor_guard(kind=_config_kind)
-    editor.read_form_to_state()
+    editor = render_editor_guard(kind=_config_kind)
 
     if "do_run_tests" in st.session_state:
         uid: str = st.session_state.pop("do_run_tests")
@@ -713,7 +815,7 @@ def rules_page() -> None:
             editor.run_tests(uid, grammar)
             st.rerun()
 
-    editor_header(kind=_config_kind, editor=editor)
+    render_editor_header(kind=_config_kind, editor=editor)
 
     toolbar_placeholder = st.empty()
 

@@ -5,23 +5,18 @@ A UI for creating and editing feature definition YAML configs.
 """
 
 from __future__ import annotations
-
-from typing import Any
-
 import streamlit as st
-import yaml
 
-from src.grammar import Grammar
 from src.grammar.registry.feature_values_registry import Feature, FeatureValuesRegistry
-from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
-from src.pages.editors.editor_base import (
-    EditorBase,
-    editor_guard,
-    editor_header,
-    editor_sidebar,
+from src.pages.editors.editor_base import EditorBase
+from src.widgets import (
+    render_editor_guard,
+    render_editor_header,
+    render_editor_sidebar,
     render_editor_toolbar,
+    validated_text_input,
 )
-from loguru import logger
+from src.validation import validate_feature_name, validate_feature_values
 
 _config_kind = "FeatureDefinitions"
 _config_key = "feature_definition_configs"
@@ -53,24 +48,6 @@ class FeatureValuesEditor(EditorBase):
     def __init__(self) -> None:
         super().__init__(kind=_config_kind, config_key=_config_key)
 
-    def validate_feature_name(self, name: str, uid: str) -> None:
-        """Check for empty or duplicate feature names."""
-        name = name.strip()
-        if not name:
-            self.add_error("Feature name cannot be empty.")
-            return
-        
-        id_map = self.data.get("id_map", {})
-        for other_uid, other_feat in id_map.items():
-            if other_uid != uid and other_feat.name == name:
-                self.add_error(f"Duplicate feature name: '{name}'")
-                return
-
-    def validate_feature_values(self, values_str: str, feat_name: str) -> None:
-        """Check for empty values list."""
-        if not values_str.strip():
-            self.add_error(f"Feature '{feat_name}' must have at least one value.")
-
     def build_state_from_config(self, config_object: dict) -> dict:
         filepath = config_object["source_path"]
         registry = FeatureValuesRegistry(config_objects={filepath: config_object})
@@ -91,7 +68,7 @@ class FeatureValuesEditor(EditorBase):
             name_val = self.get_node_widget(_NAME_PREFIX, uid)
             if name_val is not None:
                 name_val = name_val.strip()
-                self.validate_feature_name(name_val, uid)
+                validate_feature_name(self.add_error, name_val, uid, id_map)
                 feature.name = name_val
 
             # Read individual values
@@ -108,11 +85,12 @@ class FeatureValuesEditor(EditorBase):
 
             if idx > 0:
                 if not new_values:
-                    self.add_error(f"Feature '{feature.name}': Must have at least one value.")
+                    self.add_error(
+                        f"Feature '{feature.name}': Must have at least one value."
+                    )
                 if "unmarked" not in new_values:
                     new_values.append("unmarked")
                 feature.values = new_values
-
 
     def to_yaml(self) -> dict:
         """
@@ -179,13 +157,16 @@ def _render_feature(uid: str, editor: FeatureValuesEditor) -> None:
     ):
         col_name, col_remove = st.columns([4, 1])
         with col_name:
-            editor.render_keyup_input(
+            validated_text_input(
+                editor,
                 "Feature Name",
                 _NAME_PREFIX,
                 uid,
                 value=feature.name,
                 placeholder="tam",
-                validation_fn=lambda v: editor.validate_feature_name(v, uid)
+                validation_fn=lambda v, add_error: validate_feature_name(
+                    add_error, v, uid, editor.data.get("id_map", {})
+                ),
             )
         with col_remove:
             st.write("##")  # alignment
@@ -201,17 +182,20 @@ def _render_feature(uid: str, editor: FeatureValuesEditor) -> None:
         for i, val in enumerate(display_values):
             v_col, d_col = st.columns([4, 4])
             with v_col:
-                editor.render_keyup_input(
-                    f"Value {i+1}",
+                validated_text_input(
+                    editor,
+                    f"Value {i + 1}",
                     _VALUE_ITEM_PREFIX,
                     uid,
                     value=val,
                     suffix=str(i),
                     label_visibility="collapsed",
                     validation_fn=(
-                        lambda v: editor.validate_feature_values(v, feature.name)
-                        if i == 0
-                        else None
+                        lambda v, add_error: (
+                            validate_feature_values(add_error, v, feature.name)
+                            if i == 0
+                            else None
+                        )
                     ),
                 )
             with d_col:
@@ -239,16 +223,16 @@ def feature_values_page() -> None:
         layout="wide",
     )
 
-    editor_sidebar(
+    render_editor_sidebar(
         kind=_config_kind,
         editor_class=FeatureValuesEditor,
         config_key=_config_key,
         help_str=_help_str,
     )
 
-    editor = editor_guard(kind=_config_kind)
+    editor = render_editor_guard(kind=_config_kind)
     editor.read_form_to_state()
-    editor_header(kind=_config_kind, editor=editor)
+    render_editor_header(kind=_config_kind, editor=editor)
 
     toolbar_placeholder = st.empty()
     st.divider()

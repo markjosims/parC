@@ -10,30 +10,33 @@ Requires:
 
 Usage:
     CONFIG_DIR=/path/to/configs streamlit run src/streamlit/app.py
-
-BUG: state does not get torn down when switching from one inventory page to another
-resulting in merged data
 """
 
 from __future__ import annotations
-import yaml
 from typing import Literal
-
 import streamlit as st
+from loguru import logger
+
 from src.grammar.registry.inventory_registry import (
     InventoryClass,
     InventoryItem,
     InventoryRegistry,
 )
-from src.config_utils.config_walker import ConfigWalker
 from src.pages.editors.editor_base import (
     EditorBase,
-    editor_guard,
-    editor_sidebar,
-    editor_header,
-    render_editor_toolbar,
 )
-from loguru import logger
+from src.widgets import (
+    render_editor_guard,
+    render_editor_header,
+    render_editor_sidebar,
+    render_editor_toolbar,
+    validated_text_input,
+)
+from src.validation import (
+    validate_ref_str,
+    validate_inventory_item,
+    validate_items_str,
+)
 
 """
 Constants
@@ -95,7 +98,10 @@ def _populate_node_map(
         for node in nodes:
             item_map[node.uuid] = node
             if node.type == "nested_class":
-                _traverse(node.children)
+                for child_node in node.children:
+                    assert type(child_node) is InventoryClass
+                child_nodes: list[InventoryClass] = node.children
+                _traverse(child_nodes)
 
     _traverse(top_items)
     return item_map
@@ -138,16 +144,28 @@ class InventoryEditor(EditorBase):
         objects.  Rebuilds children lists for leaf nodes from the
         comma-separated items text field.
         """
+        if not self.fields_are_valid:
+            # don't update state if fields contain errors
+            return
+
         self.clear_errors()
+        logger.debug("Reading form data from widget keys to state...")
         item_map: dict[str, InventoryClass] = self.data.get("item_map", {})
         for node_id, node in item_map.items():
+            # only update data for dirty nodes
+            if not self.node_is_dirty(node_id):
+                logger.debug(f"Node {node} with uuid {node_id} clean, skipping...")
+                continue
+            logger.debug(f"Node {node} with uuid {node_id} dirty, updating data...")
             name_val = self.get_node_widget(_NODE_NAME_PREFIX, node_id)
             ref_val = self.get_node_widget(_NODE_REF_PREFIX, node_id)
             if name_val is not None:
                 node.name = name_val
             if ref_val is not None:
                 # Synchronize value; validate_inventory_class adds to self.errors
-                self.validate_inventory_class(ref_val, f"Inventory Class '{node.name}'")
+                validate_ref_str(
+                    self.add_error, ref_val, f"Inventory Class '{node.name}'"
+                )
                 node.value = ref_val
 
             kind_val = self.get_node_widget(_NODE_KIND_PREFIX, node_id)
@@ -161,21 +179,21 @@ class InventoryEditor(EditorBase):
                         "phone" if node.type == "phone_class" else "flag"
                     )
                     raw_items = [s.strip() for s in items_val.split(",") if s.strip()]
-                    new_children = []
+                    new_children_strs = []
                     for v in raw_items:
                         # Add errors for keyup/global display
-                        self.validate_inventory_item(v, item_type, f"In '{node.value}'")
-                        try:
-                            new_children.append(
-                                InventoryItem(value=v, parent=node, type=item_type)
-                            )
-                        except ValueError:
-                            # Already handled by validate_inventory_item adding to self.errors
-                            # We just need to prevent the crash
-                            pass
+                        validated_str = validate_inventory_item(
+                            self.add_error, v, item_type, f"In '{node.value}'"
+                        )
+                        new_children_strs.append(validated_str)
+                    new_children = [
+                        InventoryItem(value, type=item_type)
+                        for value in new_children_strs
+                    ]
                     node.children = new_children
 
     def to_yaml(self) -> dict:
+        self.read_form_to_state()
         top_items: list[InventoryClass] = self.data.get("top_items", [])
         return {
             "kind": self.kind,
@@ -187,14 +205,6 @@ class InventoryEditor(EditorBase):
             "top_items": [],
             "item_map": {},
         }
-
-    def validate_items_str(
-        self, value: str, item_type: Literal["phone", "flag"], label: str = "Items"
-    ) -> None:
-        """Validate a comma-separated list of inventory items."""
-        raw_items = [s.strip() for s in value.split(",") if s.strip()]
-        for v in raw_items:
-            self.validate_inventory_item(v, item_type, label)
 
     """
     Tree accessors
@@ -213,6 +223,41 @@ class InventoryEditor(EditorBase):
     """
     Tree mutations
     """
+
+    def node_is_dirty(self, uuid: str) -> bool:
+        """
+        Check node widget data vs. object data (from the `InventoryClass` object),
+        returns False if both are the same, else True.
+        """
+        node = self.get_node(uuid)
+        assert node is not None
+
+        node_widget_name = self.get_node_widget(_NODE_NAME_PREFIX, uuid)
+        if node_widget_name != node.name:
+            return True
+
+        node_widget_ref = self.get_node_widget(_NODE_REF_PREFIX, uuid)
+        if node_widget_ref != node._ref:
+            return True
+
+        node_widget_kind = self.get_node_widget(_NODE_KIND_PREFIX, uuid)
+        assert node_widget_kind is not None
+        if node_widget_kind != node.type:
+            return True
+
+        if node_widget_kind == "nested_class":
+            return False
+
+        node_widget_item_str = self.get_node_widget(_NODE_ITEMS_PREFIX, uuid)
+        assert node_widget_item_str is not None
+        item_type: Literal["phone", "flag"] = (
+            "phone" if node_widget_kind == "phone_class" else "flag"
+        )
+        validated_items = validate_items_str(
+            self.add_error, node_widget_item_str, item_type
+        )
+        node_items = [item.value for item in node.children]
+        return set(validated_items) != set(node_items)
 
     def insert_top_node(self) -> str:
         """Append a new top-level node; return its node_id."""
@@ -246,7 +291,7 @@ class InventoryEditor(EditorBase):
         self.data["item_map"][new_child.uuid] = new_child
         return new_child.uuid
 
-    def pop_node(self, node_id: str) -> InventoryClass:
+    def pop_node(self, node_id: str) -> InventoryClass | None:
         """
         Remove a node from the tree, clear its widget keys, and
         reindex any following siblings whose node_ids would shift.
@@ -273,6 +318,7 @@ class InventoryEditor(EditorBase):
         if popped_node.type == "nested_class":
             # remove children
             for child in popped_node.children:
+                assert isinstance(child, InventoryClass)
                 child_id = child.uuid
                 self.pop_node(child_id)
 
@@ -298,6 +344,7 @@ class InventoryEditor(EditorBase):
         if node.type == "nested_class":
             # Switching from nested_class, remove child nodes
             for child in node.children:
+                assert isinstance(child, InventoryClass)
                 child_id = child.uuid
                 self.pop_node(child_id)
 
@@ -325,44 +372,62 @@ Node rendering (recursive)
 """
 
 
+@st.fragment
 def _render_node(node: InventoryClass, editor: InventoryEditor, depth: int = 0) -> None:
-    """Render a single inventory node and recurse into children."""
+    """
+    Render a single inventory node and recurse into children.
+    For safe lifecycle handling, check state for form data, and fallback
+    to `InventoryClass` data as default.
+    """
 
-    is_nested = node.type == "nested_class"
+    # always fetch node type directly from underlying object to avoid rendering crashes
+    # e.g. trying to render child nodes of a nested class before the phone objects have
+    # been cleaned
+    node_type = node.type
+    is_nested = node_type == "nested_class"
+
+    indent_step_size = 0.035
+    max_indent = 0.25
 
     if depth > 0:
-        indent_ratio = min(depth * 0.035, 0.25)
+        indent_ratio = min(depth * indent_step_size, max_indent)
         _, content_col = st.columns([indent_ratio, 1.0 - indent_ratio])
     else:
         content_col = st
 
-    node_ref = node.value or "(ref not set)"
-    node_caption = f"{node.name} `{node_ref}`"
+    node_name = editor.get_node_widget(_NODE_NAME_PREFIX, node.uuid) or node.name
+    node_ref = editor.get_node_widget(_NODE_REF_PREFIX, node.uuid) or node._ref
+    node_ref = node_ref or "(ref not set)"
+    node_caption = f"{node_name} `{node_ref}`"
 
     if not is_nested:
-        item_str = ", ".join(child.value for child in node.children)
+        item_str = editor.get_node_widget(_NODE_ITEMS_PREFIX, node.uuid)
+        if item_str is None:
+            item_str = ", ".join(child.value for child in node.children)
         node_caption += f": `{item_str}`"
 
     with content_col.popover(
-        node_caption, key=editor.get_widget_key("popover-", node.uuid)
+        node_caption,
+        key=editor.get_widget_key("popover-", node.uuid),
     ):
         col_name, col_ref = st.columns(2)
         with col_name:
             st.text_input(
                 "Node name",
                 key=editor.get_widget_key(_NODE_NAME_PREFIX, node.uuid),
-                value=node.name,
+                value=node_name,
                 placeholder="consonants",
             )
         with col_ref:
-            editor.render_keyup_input(
+            validated_text_input(
+                editor,
                 "Reference",
                 _NODE_REF_PREFIX,
                 node.uuid,
                 value=node_ref,
                 placeholder="<C>",
-                validation_fn=lambda v: editor.validate_inventory_class(
-                    v, f"Inventory Class '{node.name}'"
+                validation_fn=lambda v, add_error: validate_ref_str(
+                    add_error, v, f"Inventory Class '{node_name}'"
                 ),
             )
 
@@ -396,14 +461,15 @@ def _render_node(node: InventoryClass, editor: InventoryEditor, depth: int = 0) 
             item_type: Literal["phone", "flag"] = (
                 "phone" if node.type == "phone_class" else "flag"
             )
-            editor.render_keyup_input(
+            validated_text_input(
+                editor,
                 "Items",
                 _NODE_ITEMS_PREFIX,
                 node.uuid,
                 value=", ".join(node.item_strs()),
                 placeholder="p, t, k",
-                validation_fn=lambda v: editor.validate_items_str(
-                    v, item_type, f"In '{node.value}'"
+                validation_fn=lambda v, add_error: validate_items_str(
+                    add_error, v, item_type, f"In '{node.value}'"
                 ),
             )
 
@@ -470,15 +536,14 @@ def inventory_page() -> None:
         layout="wide",
     )
 
-    editor_sidebar(
+    render_editor_sidebar(
         kind=_config_kind,
         editor_class=InventoryEditor,
         config_key=_config_key,
         help_str=_help_str,
     )
-    editor = editor_guard(kind=_config_kind)
-    editor.read_form_to_state()
-    editor_header(kind=_config_kind, editor=editor)
+    editor = render_editor_guard(kind=_config_kind)
+    render_editor_header(kind=_config_kind, editor=editor)
     toolbar_placeholder = st.empty()
 
     st.divider()

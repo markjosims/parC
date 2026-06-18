@@ -9,20 +9,20 @@ from __future__ import annotations
 import uuid
 
 import streamlit as st
-import yaml
 
 from src.grammar import Grammar
 from src.grammar.registry.feature_values_registry import Feature
-from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
-from src.pages.editors.editor_base import (
-    EditorBase,
-    editor_guard,
-    editor_header,
-    editor_sidebar,
-    render_editor_toolbar,
-    feature_multiselect,
-)
+from src.pages.editors.editor_base import EditorBase
 from src.grammar.registry.morpheme_set_registry import MorphemeSet
+from src.widgets import (
+    render_editor_guard,
+    render_editor_header,
+    render_editor_sidebar,
+    render_editor_toolbar,
+    render_feature_multiselect,
+    validated_text_input,
+)
+from src.validation import validate_pattern
 
 _config_kind = "MorphemeSet"
 _config_key = "morpheme_set_configs"
@@ -47,7 +47,7 @@ Morpheme set files define morphemes mapped to feature vectors.
 """
 
 
-class MorphmeSetEditor(EditorBase):
+class MorphemeSetEditor(EditorBase):
     """
     Editor for MorphemeSet YAML configs.
 
@@ -81,7 +81,9 @@ class MorphmeSetEditor(EditorBase):
         # Also check top-level 'features' if present
         features_set.update(config_object.get("features", []))
 
-        features = [feature_orchestrator.get_feature(f) for f in sorted(list(features_set))]
+        features = [
+            feature_orchestrator.get_feature(f) for f in sorted(list(features_set))
+        ]
 
         return {
             "features": features,
@@ -105,14 +107,18 @@ class MorphmeSetEditor(EditorBase):
             morpheme_val = self.get_node_widget(_MORPHEME_VALUE_PREFIX, uid)
             if morpheme_val is not None:
                 entry["morpheme"] = morpheme_val.strip()
-                self.validate_pattern(entry["morpheme"], f"Morpheme '{entry['morpheme']}'")
+                validate_pattern(
+                    self.add_error,
+                    entry["morpheme"],
+                    f"Morpheme '{entry['morpheme']}'",
+                )
 
     def to_yaml(self) -> dict:
         grammar: Grammar = st.session_state.grammar
         if grammar is None:
             st.error("Grammar not loaded. Cannot serialize morpheme set.")
             st.stop()
-        
+
         feature_mappings = {}
         feature_names = [f.name for f in self.data["features"]]
         for entry in self.data["entries"]:
@@ -129,8 +135,7 @@ class MorphmeSetEditor(EditorBase):
             feature_mappings[vector] = entry["morpheme"]
 
         ms = MorphemeSet(
-            features=set(self.data["features"]),
-            feature_mappings=feature_mappings
+            features=set(self.data["features"]), feature_mappings=feature_mappings
         )
         return ms.to_dict()
 
@@ -152,7 +157,7 @@ class MorphmeSetEditor(EditorBase):
 def _render_entry(
     entry: dict,
     features: list[Feature],
-    editor: MorphmeSetEditor,
+    editor: MorphemeSetEditor,
 ) -> None:
     uid = entry["uuid"]
     with st.container(border=True):
@@ -181,12 +186,15 @@ def _render_entry(
                 editor.remove_entry(uid)
                 st.rerun()
 
-        editor.render_keyup_input(
+        validated_text_input(
+            editor,
             "Morpheme",
             _MORPHEME_VALUE_PREFIX,
             uid,
             value=entry["morpheme"],
-            validation_fn=lambda v: editor.validate_pattern(v, f"Morpheme '{v}'")
+            validation_fn=lambda v, add_error: validate_pattern(
+                add_error, v, f"Morpheme '{v}'"
+            ),
         )
 
 
@@ -197,24 +205,27 @@ def morpheme_set_page() -> None:
         layout="wide",
     )
 
-    editor_sidebar(
+    render_editor_sidebar(
         kind=_config_kind,
-        editor_class=MorphmeSetEditor,
+        editor_class=MorphemeSetEditor,
         config_key=_config_key,
         help_str=_help_str,
     )
 
-    editor = editor_guard(kind=_config_kind)
+    editor = render_editor_guard(kind=_config_kind)
     editor.read_form_to_state()
-    editor_header(kind=_config_kind, editor=editor)
+    render_editor_header(kind=_config_kind, editor=editor)
 
     grammar: Grammar = st.session_state.grammar
 
     # 1. Config section
     current_features = editor.data.get("features", [])
-    with st.expander("Configuration", expanded=st.session_state.get(f"expanded-ms-{editor.scope}", True)):
+    with st.expander(
+        "Configuration",
+        expanded=st.session_state.get(f"expanded-ms-{editor.scope}", True),
+    ):
         st.session_state[f"expanded-ms-{editor.scope}"] = False
-        feature_multiselect(
+        render_feature_multiselect(
             "Participating Features",
             editor,
             _FEATURE_LIST_PREFIX,

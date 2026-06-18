@@ -8,13 +8,14 @@ objects.
 """
 
 from src.grammar.classes import Registry
-from src.fst_utils import Acceptor, ReservedSymbolMixin, TransducerList
-from typing import Literal
+from src.fst_utils import Acceptor, AcceptorLike, ReservedSymbolMixin, TransducerList
+from typing import Literal, Protocol, runtime_checkable
 from dataclasses import dataclass, field
 import os
 from loguru import logger
 from graphlib import TopologicalSorter
 from uuid import uuid4
+
 
 @dataclass
 class Rule(TransducerList):
@@ -44,7 +45,7 @@ class Rule(TransducerList):
     string_map: list[tuple[Acceptor, Acceptor]] = field(default_factory=list)
 
     # attributes for chain of rules
-    rule_sequence: list['Rule'] = field(default_factory=list)
+    rule_sequence: list["Rule"] = field(default_factory=list)
 
     # attributes for simple and string map rules with contexts
     left_context: Acceptor = field(default_factory=Acceptor)
@@ -54,7 +55,7 @@ class Rule(TransducerList):
     direction: Literal["ltr", "rtl", "sim"] = "ltr"
 
     # references to other objects
-    used_by: list['Rule'] = field(default_factory=list)
+    used_by: list["Rule"] = field(default_factory=list)
 
     # metadata
     source: os.PathLike | None = None
@@ -117,7 +118,7 @@ class Rule(TransducerList):
                 raise ValueError("String map rules cannot have a rule sequence")
 
     def set_dependencies(
-        self, used_by: list['Rule'], rule_sequence: list['Rule'] | None = None
+        self, used_by: list["Rule"], rule_sequence: list["Rule"] | None = None
     ):
         self.used_by = used_by
         if rule_sequence is not None and self.type != "rule_sequence":
@@ -137,7 +138,7 @@ class Rule(TransducerList):
     def from_config(
         cls,
         config: dict,
-    ) -> 'Rule':
+    ) -> "Rule":
         """
         Builds a Rule from a config dict, inferring the type
         from the attributes contained. This method is non-destructive
@@ -188,9 +189,9 @@ class Rule(TransducerList):
         return cls(**kwargs)
 
     @staticmethod
-    def _to_acceptor(val: str | Acceptor) -> Acceptor:
+    def _to_acceptor(val: str | AcceptorLike) -> AcceptorLike:
         """Helper to safely wrap string in Acceptor or return existing Acceptor."""
-        if isinstance(val, Acceptor):
+        if isinstance(val, AcceptorLike):
             return val
         return Acceptor(val)
 
@@ -216,8 +217,7 @@ class Rule(TransducerList):
 
         elif self.type == "string_map":
             d["string_map"] = [
-                [inp.value or "", out.value or ""]
-                for inp, out in self.string_map
+                [inp.value or "", out.value or ""] for inp, out in self.string_map
             ]
             if self.left_context.value:
                 d["left_context"] = self.left_context.value
@@ -236,6 +236,7 @@ class Rule(TransducerList):
             d["test_mappings"] = [list(pair) for pair in self.test_mappings]
 
         return d
+
 
 class AnonymousRule(Rule):
     """
@@ -256,11 +257,50 @@ class AnonymousRule(Rule):
         self._ref = f"anonymous_rule_{id(self)}"
         super().__post_init__()
 
+
+@runtime_checkable
+class RuleLike(Protocol):
+    """
+    Structural protocol for Rule class.
+    """
+
+    type: str
+    _ref: str
+
+    # attributes for simple rules
+    input_pattern: object
+    output_pattern: object
+
+    # attributes for string map rules
+    string_map: tuple
+
+    # attributes for chain of rules
+    rule_sequence: list
+
+    # attributes for simple and string map rules with contexts
+    left_context: object
+    right_context: object
+
+    # attributes for all rules
+    direction: Literal["ltr", "rtl", "sim"]
+
+    # references to other objects
+    used_by: list
+
+    # metadata
+    source: os.PathLike | None
+    description: str | None
+    test_mappings: list[tuple[str, str]]
+
+    uuid: str
+
+
 class RuleRegistry(Registry, ReservedSymbolMixin):
     """
     Initialized either with a `data` dict mapping rule names to `Rule` objects
     or a `config_objects` dict mapping filenames for YAML objects.
     """
+
     def __init__(
         self,
         data: dict[str, Rule] | None = None,
@@ -297,10 +337,7 @@ class RuleRegistry(Registry, ReservedSymbolMixin):
             logger.error("No rules found in config")
             return
 
-        rule_list = [
-            Rule.from_config(rule_data)
-            for rule_data in rules
-        ]
+        rule_list = [Rule.from_config(rule_data) for rule_data in rules]
 
         # make dict mapping ref to item
         config_items = {item._ref: item for item in rule_list}
@@ -326,8 +363,15 @@ class RuleRegistry(Registry, ReservedSymbolMixin):
                     used_by.append(other_rule)
 
             if rule.type == "rule_sequence":
-                sub_rules = [self.get_rule(ref) for ref in rule.rule_sequence]
-                sub_rule_refs = [sub_rule._ref for sub_rule in sub_rules]
+                # rule_sequence items may be Rule objects or strings indicating rule refs
+                if not rule.rule_sequence:
+                    continue
+                elif isinstance(rule.rule_sequence[0], RuleLike):
+                    sub_rules = rule.rule_sequence
+                    sub_rule_refs = [sub_rule._ref for sub_rule in sub_rules]
+                else:
+                    sub_rules = [self.get_rule(ref) for ref in rule.rule_sequence]
+                    sub_rule_refs = rule.rule_sequence
                 rule.set_dependencies(
                     used_by=used_by,
                     rule_sequence=sub_rules,

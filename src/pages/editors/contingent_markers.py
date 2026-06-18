@@ -15,17 +15,18 @@ from src.grammar import Grammar
 from src.grammar.registry.feature_values_registry import Feature
 from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
 from src.grammar.registry.feature_marker_registry import Marker
-from src.pages.editors.editor_base import (
-    EditorBase,
-    editor_guard,
-    editor_header,
-    editor_sidebar,
-    render_editor_toolbar,
-    feature_multiselect,
-    MARKER_WIDGET_PREFIXES,
-)
+from src.pages.editors.editor_base import EditorBase
 from src.grammar.registry.contingent_marker_registry import ContingentMarkers
 from src.grammar.registry.feature_marker_registry import MarkerList
+from src.widgets import (
+    render_feature_multiselect,
+    render_editor_guard,
+    render_editor_header,
+    render_editor_sidebar,
+    render_editor_toolbar,
+    render_marker_list,
+    sync_marker_list,
+)
 
 _config_kind = "ContingentFeatureMarkers"
 _config_key = "contingent_feature_marker_configs"
@@ -35,13 +36,6 @@ _GLOBAL_ORDER_PREFIX = "global-order-"
 _FEATURE_LIST_PREFIX = "features-list-"
 _ENTRY_VAL_PREFIX = "entry-val-"
 _REMOVE_ENTRY_PREFIX = "remove-entry-"
-
-_WIDGET_PREFIXES: list[str] = [
-    _GLOBAL_ORDER_PREFIX,
-    _FEATURE_LIST_PREFIX,
-    _ENTRY_VAL_PREFIX,
-    _REMOVE_ENTRY_PREFIX,
-] + MARKER_WIDGET_PREFIXES
 
 _help_str = """
 Contingent marker files define realizations contingent on feature vectors.
@@ -120,7 +114,7 @@ class ContingentMarkersEditor(EditorBase):
             self.data["global_order"] = g_order
 
         # 2. Global markers
-        self._sync_marker_list(self.data["global_markers"], "global")
+        sync_marker_list(self, self.data["global_markers"], "global")
 
         # 3. Entries
         for entry in self.data["entries"]:
@@ -130,7 +124,7 @@ class ContingentMarkersEditor(EditorBase):
                 if val is not None:
                     entry["features"][f.name] = val.strip()
 
-            self._sync_marker_list(entry["realization"], f"entry-{uid}")
+            sync_marker_list(self, entry["realization"], f"entry-{uid}")
 
     def to_yaml(self) -> dict:
         features: list[Feature] = self.data["features"]
@@ -214,7 +208,8 @@ def _render_entry(
                 editor.remove_entry(uid)
                 st.rerun()
 
-        editor.render_marker_list(
+        render_marker_list(
+            editor,
             entry["realization"],
             f"entry-{uid}",
             available_rules,
@@ -230,16 +225,16 @@ def contingent_markers_page() -> None:
         layout="wide",
     )
 
-    editor_sidebar(
+    render_editor_sidebar(
         kind=_config_kind,
         editor_class=ContingentMarkersEditor,
         config_key=_config_key,
         help_str=_help_str,
     )
 
-    editor = editor_guard(kind=_config_kind)
+    editor = render_editor_guard(kind=_config_kind)
     editor.read_form_to_state()
-    editor_header(kind=_config_kind, editor=editor)
+    render_editor_header(kind=_config_kind, editor=editor)
 
     grammar: Grammar = st.session_state.grammar
     available_rules = []
@@ -255,7 +250,7 @@ def contingent_markers_page() -> None:
     # 1. Config section
     current_features = editor.data.get("features", [])
     with st.expander("Configuration", expanded=not bool(current_features)):
-        feature_multiselect(
+        render_feature_multiselect(
             "Participating Features",
             editor,
             _FEATURE_LIST_PREFIX,
@@ -269,7 +264,8 @@ def contingent_markers_page() -> None:
             placeholder="argument_marking",
         )
 
-        editor.render_marker_list(
+        render_marker_list(
+            editor,
             editor.data["global_markers"],
             "global",
             available_rules,
@@ -281,14 +277,14 @@ def contingent_markers_page() -> None:
     st.divider()
 
     # 2. Entries section
-    features = editor.data.get("features", [])
+    features: list[Feature] = editor.data.get("features", [])
     if not features:
         st.warning("Please select at least one participating feature above.")
     else:
         # Table Header
         cols = st.columns([1] * len(features) + [0.4])
-        for i, f in enumerate(features):
-            cols[i].markdown(f"**{f}**")
+        for i, feature in enumerate(features):
+            cols[i].markdown(f"**{feature.name}**")
 
         for entry in editor.data["entries"]:
             _render_entry(
