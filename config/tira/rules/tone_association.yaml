@@ -43,9 +43,9 @@ rules:
   - _ref: add_tbus_clean
     description: Add TBUs to syllable nuclei (only)
     rule_sequence:
-    - add_all_tbus
-    - remove_tbu_before_coda_c
-    - remove_tbu_before_onset_c
+    - $add_all_tbus
+    - $remove_tbu_before_coda_c
+    - $remove_tbu_before_onset_c
     test_mappings:
     - - vəlɛð
       - və[TBU]lɛ[TBU]ð
@@ -66,8 +66,8 @@ rules:
       - r̀
   - _ref: set_all_low_tone
     rule_sequence:
-    - add_tbus_clean
-    - all_low_tone
+    - $add_tbus_clean
+    - $all_low_tone
     test_mappings:
     - - vəlɛð
       - və̀lɛ̀ð
@@ -89,9 +89,9 @@ rules:
       - ŕ
   - _ref: set_hl_melody
     rule_sequence:
-    - add_tbus_clean
-    - first_high
-    - all_low_tone
+    - $add_tbus_clean
+    - $first_high
+    - $all_low_tone
     test_mappings:
     - - vəlɛð
       - və́lɛ̀ð
@@ -104,8 +104,8 @@ rules:
     output_pattern: <H>
   - _ref: set_all_high_tone
     rule_sequence:
-    - add_tbus_clean
-    - all_high_tone
+    - $add_tbus_clean
+    - $all_high_tone
     test_mappings:
     - - vəlɛð
       - və́lɛ́ð

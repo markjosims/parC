@@ -79,7 +79,8 @@
                     "type": "array",
                     "description": "List of rule names or file references (prefixed with $).",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "pattern": "^\\$.*"
                     }
                   }
                 }

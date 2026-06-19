@@ -30,8 +30,8 @@ rules:
       - í
   - _ref: resolve_hiatus
     rule_sequence:
-    - coalesce_before_i
-    - delete_vowel_before_vowel
+    - $coalesce_before_i
+    - $delete_vowel_before_vowel
     test_mappings:
     - - áɛ̀
       - ɛ̀

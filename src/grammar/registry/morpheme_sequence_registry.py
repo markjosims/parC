@@ -76,10 +76,17 @@ class MorphemeSequence:
         )
 
     def to_dict(self) -> dict:
+        data = []
+        for item in self.sequence_data:
+            new_item = item.copy()
+            if new_item["type"] in ["Lexicon", "Paradigm", "Rule", "MorphemeSet"]:
+                new_item["value"] = validate_file_reference_str(new_item["value"])
+            data.append(new_item)
+
         return {
             "kind": "MorphemeSequence",
             "name": self.name,
-            "data": self.sequence_data,
+            "data": data,
             "source_path": self.source_path,
             "fixed_features": self.fixed_features,
         }

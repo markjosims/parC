@@ -3,6 +3,7 @@ from src.fst_utils import TransducerList
 from src.grammar.classes import Registry
 from src.grammar.registry.feature_values_registry import Feature
 from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
+from src.validation import validate_file_reference_str
 from typing import Literal, Union
 from collections import UserList
 from loguru import logger
@@ -96,7 +97,7 @@ class Marker(TransducerList):
         config: dict | None = None,
         global_order: str | None = None,
         feature_value: str | None = None,
-    ) -> Union['Marker', None]:
+    ) -> Union["Marker", None]:
         """
         Build a Marker from a YAML marker dict. Returns None for null (zero-marking).
         """
@@ -457,7 +458,7 @@ class FeatureMarkers:
             "feature": self.feature.name,
         }
         if self.inherits:
-            doc["inherits"] = self.inherits
+            doc["inherits"] = validate_file_reference_str(self.inherits)
         if self.global_order:
             doc["global_order"] = self.global_order
 

@@ -229,7 +229,8 @@ class Rule(TransducerList):
         elif self.type == "rule_sequence":
             # self.rule_sequence can be list[Rule] (resolved) or list[str] (unresolved)
             d["rule_sequence"] = [
-                r._ref if hasattr(r, "_ref") else r for r in self.rule_sequence
+                validate_file_reference_str(r._ref if hasattr(r, "_ref") else r)
+                for r in self.rule_sequence
             ]
 
         if self.test_mappings:
@@ -382,7 +383,7 @@ class RuleRegistry(Registry, ReservedSymbolMixin):
 
         self.dependency_graph = dependency_graph
         rule_refs_sorted = list(TopologicalSorter(dependency_graph).static_order())
-        rules_sorted = [self.data[ref] for ref in rule_refs_sorted]
+        rules_sorted = [self.get_rule(ref) for ref in rule_refs_sorted]
         self.rules_sorted = rules_sorted
 
     def get_rule(self, ref: str) -> Rule:

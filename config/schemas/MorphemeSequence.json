@@ -32,6 +32,12 @@
             "type": "string",
             "description": "Reference (starts with $) or inline value for Pattern."
           }
+        },
+        "if": {
+          "properties": { "type": { "enum": ["Lexicon", "Paradigm", "Rule", "MorphemeSet"] } }
+        },
+        "then": {
+          "properties": { "value": { "pattern": "^\\$.*" } }
         }
       }
     }

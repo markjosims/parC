@@ -197,6 +197,7 @@ class ParadigmEditor(EditorBase):
                 lexical_feature_filter["feature_value"] = val
 
     def to_yaml(self) -> dict:
+        breakpoint()
         self.read_form_to_state()
 
         grammar: Grammar = st.session_state.grammar
@@ -600,10 +601,14 @@ def paradigm_page() -> None:
             list(grammar.fst_orchestrator.pattern_registry.data.keys())
         )
 
+    toolbar_placeholder = st.empty()
+    with toolbar_placeholder.container():
+        render_editor_toolbar(editor)
+
     _render_paradigm_config(
         editor=editor,
         available_contingent_markers=available_contingent_markers,
-        available_feature_combos=available_feature_markers,
+        available_feature_combos=available_feature_combos,
         available_feature_markers=available_feature_markers,
         available_principal_parts=available_principal_parts,
         available_patterns=available_patterns,
@@ -611,10 +616,6 @@ def paradigm_page() -> None:
         available_rules=available_rules,
         available_pos=available_pos,
     )
-
-    toolbar_placeholder = st.empty()
-    with toolbar_placeholder.container():
-        render_editor_toolbar(editor)
 
 
 if __name__ == "__main__":

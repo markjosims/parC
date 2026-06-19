@@ -9,5 +9,5 @@ filter:
   lexical_features: []
 global_markers:
 - type: rule
-  value: resolve_hiatus
+  value: $resolve_hiatus
   order: hiatus_resolution

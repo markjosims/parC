@@ -18,6 +18,7 @@ from src.grammar.registry.feature_marker_registry import (
 )
 from src.grammar.registry.contingent_marker_registry import ContingentMarkers
 from src.grammar.orchestrator.marker_orchestrator import MarkerOrchestrator
+from src.validation import validate_file_reference_str
 from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
 from src.grammar.orchestrator.feature_orchestrator import (
     stringify_features,
@@ -286,7 +287,9 @@ class Paradigm:
         # Feature markers (refs)
         for fm in self.markers:
             if fm.source:
-                fm_dict[fm.feature.name] = "$" + Path(fm.source).stem
+                fm_dict[fm.feature.name] = validate_file_reference_str(
+                    Path(fm.source).stem
+                )
             else:
                 fm_dict[fm.feature.name] = "[UNRESOLVED]"
 
@@ -298,20 +301,20 @@ class Paradigm:
 
         doc = {
             "kind": "Paradigm",
-            "part_of_speech": self.lexicon.name,
+            "part_of_speech": validate_file_reference_str(self.lexicon.name),
             "order": self.marker_order,
             "feature_markers": fm_dict,
             "contingent_markers": [
-                "$" + Path(cm.source).stem
+                validate_file_reference_str(Path(cm.source).stem)
                 for cm in self.contingent_markers
                 if cm.source
             ],
             "filter": filter_doc,
         }
         if self.feature_value_combinations and self.feature_value_combinations.source:
-            doc["feature_value_combinations"] = Path(
-                self.feature_value_combinations.source
-            ).stem
+            doc["feature_value_combinations"] = validate_file_reference_str(
+                Path(self.feature_value_combinations.source).stem
+            )
 
         if self.global_markers:
             gm = self.global_markers.to_dict()
@@ -601,11 +604,19 @@ class Paradigm:
 
         # pattern filter is present
         # test if `filter_strings_by_pattern` returns non-empty output
-        pattern_mask = (
-            entries["root"]
-            .apply(self.fst_orchestrator.filter_strings_by_pattern)
-            .apply(bool)
-        )
+        if self.pattern_filter:
+            self.pattern_filter: str
+            pattern_mask = (
+                entries["root"]
+                .apply(
+                    lambda root: self.fst_orchestrator.filter_strings_by_pattern(
+                        root, self.pattern_filter
+                    )
+                )
+                .apply(bool)
+            )
+        else:
+            pattern_mask = pd.Series([True] * len(entries))
 
         lexical_filter = pattern_mask & feature_mask
         self.lexical_filter = lexical_filter

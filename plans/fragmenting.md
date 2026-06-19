@@ -66,11 +66,11 @@ A better pattern is to isolate each input node so that inputting data does not c
   - [ ] form input validation added
   - [ ] `read_form_to_state` only on disk write or YAML preview
   - [ ] smoke test page
-- [ ] ../src/pages/editors/paradigm.py
-  - [ ] `st.fragment` added
+- [x] ../src/pages/editors/paradigm.py
+  - [x] `st.fragment` added
   - [ ] form input validation added
-  - [ ] `read_form_to_state` only on disk write or YAML preview
-  - [ ] smoke test page
+  - [x] `read_form_to_state` only on disk write or YAML preview
+  - [x] smoke test page
 - [x] ../src/pages/editors/patterns.py
   - [x] `st.fragment` added
   - [x] form input validation added

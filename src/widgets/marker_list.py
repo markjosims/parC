@@ -1,6 +1,9 @@
 import streamlit as st
 from src.grammar.registry.feature_marker_registry import Marker
 from src.pages.editors.editor_base import EditorBase
+from src.widgets.validated_text import validated_text_input
+from src.validation import validate_pattern
+from src.validation import ErrorCallback
 
 # Marker Editor Constants
 _MARKER_TYPE_PREFIX = "marker-type-"
@@ -52,6 +55,7 @@ def render_marker_list(
         st.rerun()
 
 
+@st.fragment
 def render_marker_row(
     editor: EditorBase,
     marker: "Marker",
@@ -65,6 +69,10 @@ def render_marker_row(
     Marker type may be a suffix, prefix, unconditioned replace rule,
     conditioned rule, suppletion, or selection of a principal part.
     """
+
+    def validate_marker_pattern(add_error: ErrorCallback, value: str):
+        return validate_pattern(add_error=add_error, value=value, label="Marker")
+
     m_uid = marker.uuid
     with st.container(border=True):
         col_type, col_order, col_del = st.columns([1.5, 1.5, 0.4])
@@ -84,11 +92,14 @@ def render_marker_row(
                 # Reset value fields when type changes to avoid confusion
                 st.rerun()
         with col_order:
-            st.text_input(
-                "Order",
+            validated_text_input(
+                editor=editor,
+                prefix=_MARKER_ORDER_PREFIX,
+                suffix=m_uid,
+                node_id=scope,
+                label="Order",
                 value=marker.order or "",
                 placeholder="Order stage",
-                key=editor.get_widget_key(_MARKER_ORDER_PREFIX, scope, suffix=m_uid),
                 label_visibility="collapsed",
             )
         with col_del:
@@ -105,20 +116,24 @@ def render_marker_row(
             val_in = marker.value[0] if isinstance(marker.value, tuple) else ""
             val_out = marker.value[1] if isinstance(marker.value, tuple) else ""
             with r_col1:
-                st.text_input(
-                    "Input",
+                validated_text_input(
+                    editor=editor,
+                    label="Input",
                     value=val_in,
-                    key=editor.get_widget_key(
-                        _MARKER_REPLACE_IN_PREFIX, scope, suffix=m_uid
-                    ),
+                    prefix=_MARKER_REPLACE_IN_PREFIX,
+                    node_id=scope,
+                    suffix=m_uid,
+                    validation_fn=validate_marker_pattern,
                 )
             with r_col2:
-                st.text_input(
-                    "Output",
+                validated_text_input(
+                    editor=editor,
+                    label="Output",
                     value=val_out,
-                    key=editor.get_widget_key(
-                        _MARKER_REPLACE_OUT_PREFIX, scope, suffix=m_uid
-                    ),
+                    prefix=_MARKER_REPLACE_OUT_PREFIX,
+                    node_id=scope,
+                    suffix=m_uid,
+                    validation_fn=validate_marker_pattern,
                 )
         elif marker.type == "rule":
             st.selectbox(
@@ -129,7 +144,11 @@ def render_marker_row(
                     if isinstance(marker.value, str) and marker.value in available_rules
                     else 0
                 ),
-                key=editor.get_widget_key(_MARKER_VALUE_PREFIX, scope, suffix=m_uid),
+                key=editor.get_widget_key(
+                    _MARKER_VALUE_PREFIX,
+                    scope,
+                    suffix=m_uid,
+                ),
             )
         elif marker.type == "principal_part":
             st.selectbox(
@@ -141,14 +160,25 @@ def render_marker_row(
                     and marker.value in available_principal_parts
                     else 0
                 ),
-                key=editor.get_widget_key(_MARKER_VALUE_PREFIX, scope, suffix=m_uid),
+                key=editor.get_widget_key(
+                    _MARKER_VALUE_PREFIX,
+                    scope,
+                    suffix=m_uid,
+                ),
             )
         else:
-            st.text_input(
-                "Value",
+            # BUG: "str" is not callable (not sure where function call is happening since no traceback is available)
+            # tested `validate_marker_pattern` is a function
+            # maybe drop breakpoint inside `validate_marker_pattern` or `validate_pattern`
+            validated_text_input(
+                editor=editor,
+                label="Value",
                 value=marker.value if isinstance(marker.value, str) else "",
-                key=editor.get_widget_key(_MARKER_VALUE_PREFIX, scope, suffix=m_uid),
+                prefix=_MARKER_VALUE_PREFIX,
+                node_id=scope,
+                suffix=m_uid,
                 placeholder="e.g. -o, ba-",
+                validation_fn=validate_marker_pattern,
             )
 
 
@@ -188,21 +218,11 @@ def sync_marker_list(editor: EditorBase, markers: list[Marker], scope: str) -> N
             replace_output = editor.get_node_widget(
                 _MARKER_REPLACE_OUT_PREFIX, scope, suffix=marker_uid
             )
-            if replace_input is not None and replace_output is not None:
-                value = [
-                    editor.validate_pattern(
-                        replace_input, label="Replace marker input pattern"
-                    ),
-                    editor.validate_pattern(
-                        replace_output, label="Replace marker output pattern"
-                    ),
-                ]
-                marker.value = tuple(value)
+            if type(replace_input) is str and type(replace_output) is str:
+                marker.value = (replace_input, replace_output)
+
         elif marker.type in ["suffix", "prefix", "suppletion"]:
             val = editor.get_node_widget(_MARKER_VALUE_PREFIX, scope, suffix=marker_uid)
-            val = editor.validate_pattern(
-                val, label=f"{marker.type.capitalize()} marker pattern"
-            )
             marker.value = val or ""
         else:  # marker.type in ["rule", "principal_part"]
             marker.value = (

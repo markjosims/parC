@@ -1,5 +1,5 @@
 kind: Paradigm
-part_of_speech: noun
+part_of_speech: $noun
 order:
   - acc_suffix
   - number_flag
