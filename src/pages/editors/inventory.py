@@ -43,12 +43,12 @@ Constants
 """
 
 DIAC_TOKENS: list[str] = [
-    "<DIAC:á>",
-    "<DIAC:à>",
-    "<DIAC:ā>",
-    "<DIAC:ǎ>",
-    "<DIAC:â>",
-    "<DIAC:ã>",
+    "DIAC:á",
+    "DIAC:à",
+    "DIAC:ā",
+    "DIAC:ǎ",
+    "DIAC:â",
+    "DIAC:ã",
 ]
 
 _NODE_NAME_PREFIX = "name-"

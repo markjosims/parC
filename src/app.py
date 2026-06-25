@@ -58,6 +58,7 @@ def initialize_state():
         grammar = load_grammar(config_walker=config_walker)
         st.session_state["grammar"] = grammar
 
+
 def navbar():
     pages = {
         "Home": [st.Page(home_page, title="Home")],
@@ -79,7 +80,6 @@ def navbar():
         ],
         "Lexicon": [
             st.Page(lexicon_page, title="Lexical Roots"),
-
         ],
         "Inflect": [
             st.Page(inflector_page, title="Inflector"),
@@ -101,5 +101,4 @@ def main():
 
 
 if __name__ == "__main__":
-    st.balloons()
     main()

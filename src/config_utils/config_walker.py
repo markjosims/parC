@@ -8,12 +8,18 @@ from src.constants import PROJECT_ROOT
 from camel_converter import to_snake
 import dotenv
 import os
+from src.directory_picker import pick_directory
 
 # TODO: in the future, desired behavior is for the user to specify the config dir via
 # a GUI and have that persist across sessions
 # for now, loading from environment variable
 dotenv.load_dotenv()
-CONFIG_DIR = os.environ.get("CONFIG_DIR", "./config")
+CONFIG_DIR = os.environ.get("CONFIG_DIR", None)
+
+while CONFIG_DIR is None:
+    pick_directory()
+    dotenv.load_dotenv()
+    CONFIG_DIR = os.environ.get("CONFIG_DIR", None)
 
 
 class ConfigWalker:
@@ -21,7 +27,7 @@ class ConfigWalker:
     Provides logic for reading and validating YAML files.
     """
 
-    def __init__(self, config_dir: str | Path) -> "ConfigWalker":
+    def __init__(self, config_dir: str | Path):
         self.config_dir = Path(config_dir)
         self.config_data = self._get_all_config_data()
         self.config_filemap = self._get_config_filemap()

@@ -18,7 +18,9 @@ def validate_file_reference_str(val: str) -> str:
     return val
 
 
-def validate_pattern(add_error: ErrorCallback, value: str, label: str = "Pattern") -> str:
+def validate_pattern(
+    add_error: ErrorCallback, value: str, label: str = "Pattern"
+) -> str:
     """
     Validate that a string is a valid FST acceptor pattern.
     Adds an error through the callback if invalid.
@@ -29,6 +31,7 @@ def validate_pattern(add_error: ErrorCallback, value: str, label: str = "Pattern
         try:
             grammar.fst_orchestrator.acceptor(value)
         except Exception as e:
+            breakpoint()
             add_error(f"Invalid {label} '{value}': {str(e)}")
     return value
 
@@ -54,14 +57,10 @@ def validate_inventory_item(
     validate_no_reserved_symbols(add_error, value, label)
     if item_type == "flag":
         if not value.startswith("[") or not value.endswith("]"):
-            add_error(
-                f"Flag {label} '{value}' must start with '[' and end with ']'"
-            )
+            add_error(f"Flag {label} '{value}' must start with '[' and end with ']'")
     elif item_type == "phone":
         if any(c in value for c in "[]<>"):
-            add_error(
-                f"Phone {label} '{value}' cannot contain '[', ']', '<', or '>'"
-            )
+            add_error(f"Phone {label} '{value}' cannot contain '[', ']', '<', or '>'")
     return value
 
 

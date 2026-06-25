@@ -70,7 +70,7 @@ def render_marker_row(
     conditioned rule, suppletion, or selection of a principal part.
     """
 
-    def validate_marker_pattern(add_error: ErrorCallback, value: str):
+    def validate_marker_pattern(value: str, add_error: ErrorCallback):
         return validate_pattern(add_error=add_error, value=value, label="Marker")
 
     m_uid = marker.uuid
