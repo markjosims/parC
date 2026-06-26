@@ -123,13 +123,13 @@ class Rule(TransducerList):
         self.used_by = used_by
         if rule_sequence is not None and self.kind != "rule_sequence":
             raise ValueError(
-                f"if `rule_sequence` is passed expect type='rule_sequence' but got type={self.kind}"
+                f"if `rule_sequence` is passed expect kind='rule_sequence' but got kind={self.kind}"
             )
         self.rule_sequence = rule_sequence
         self.dependencies_built = True
 
     def __str__(self):
-        return f"Rule(ref='{self.ref}', type='{self.kind}')"
+        return f"Rule(ref='{self.ref}', kind='{self.kind}')"
 
     def __repr__(self):
         return self.__str__()
@@ -196,7 +196,7 @@ class Rule(TransducerList):
         return Acceptor(val)
 
     def __str__(self):
-        return f"Rule(ref={self.ref}, type={self.kind})"
+        return f"Rule(ref={self.ref}, kind={self.kind})"
 
     def to_dict(self) -> dict:
         """Serialize a Rule to a YAML-serializable dict (config format)."""
@@ -363,7 +363,7 @@ class RuleRegistry(Registry, ReservedSymbolMixin):
                 ):
                     used_by.append(other_rule)
 
-            if rule.type == "rule_sequence":
+            if rule.kind == "rule_sequence":
                 # rule_sequence items may be Rule objects or strings indicating rule refs
                 if not rule.rule_sequence:
                     continue

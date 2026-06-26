@@ -139,7 +139,7 @@ class InventoryClass(InventoryMember):
         data_by_class_kind = {
             "phone_class": ("phones", str),
             "flag_class": ("tags", str),
-            "nested_class": ("_children", dict),
+            "nested_class": ("children", dict),
         }
         field, expected_kind = data_by_class_kind[class_kind]
         if field not in item_dict:
@@ -185,7 +185,7 @@ class InventoryClass(InventoryMember):
         inventory_class = cls(
             name=item_dict.get("name", ""),
             value=item_dict["ref"],
-            type=class_kind,
+            kind=class_kind,
             children=[],
             parent=parent,
             source=source_path,
@@ -227,8 +227,8 @@ class InventoryClass(InventoryMember):
         elif self.kind == "flag_class":
             json["tags"] = [item.value for item in self.children]
         else:
-            # self.type == "nested_class"
-            json["_children"] = [child.to_dict() for child in self.children]
+            # self.kind == "nested_class"
+            json["children"] = [child.to_dict() for child in self.children]
         return json
 
     def flatten(self) -> list[Union["InventoryItem", "InventoryClass"]]:

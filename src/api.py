@@ -48,6 +48,15 @@ def get_grammar() -> Grammar:
         _grammar = Grammar(**ConfigWalker(CONFIG_DIR).config_data)
     return _grammar
 
+@app.get("/grammar-health")
+def grammar_loaded():
+    if get_grammar() is None:
+        return {"status": "unloaded"}
+    return {"status": "loaded"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
 
 def _resolve_path(kind: str, ref: str) -> Path:
     if kind not in CONFIG_KINDS:
@@ -100,6 +109,5 @@ def write_file(kind: str, path: str, body: dict[str, Any]):
         raise HTTPException(status_code=400, detail=e.message)
     with resolved.open("w", encoding="utf-8") as f:
         yaml.safe_dump(body, f, allow_unicode=True)
-
 
 # app.mount("/", StaticFiles(directory="frontend", html=True), name="static")

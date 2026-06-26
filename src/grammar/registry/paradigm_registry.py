@@ -133,6 +133,7 @@ class Paradigm:
             )
 
         # load filters
+        feature_orchestrator = marker_orchestrator.feature_orchestrator
         filter_config = config.get("filter", {})
         pattern_filter = filter_config.get("pattern", None)
         lexical_feature_strs: list[list[str]] = filter_config.get(
@@ -140,7 +141,7 @@ class Paradigm:
         )
         fixed_lexical_features = []
         for feature_name, feature_value in lexical_feature_strs:
-            feature = marker_orchestrator.feature_values_registry.features[feature_name]
+            feature = feature_orchestrator.get_feature(feature_name)
             fixed_lexical_features.append((feature, feature_value))
 
         fixed_features = {}

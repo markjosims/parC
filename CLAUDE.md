@@ -20,10 +20,10 @@ There is no committed git history yet (`main` has no commits); treat the working
 
 ### Config-driven grammar model
 
-The core domain model is built entirely from YAML config files (validated against JSON Schemas in `config/schemas/`) describing a language's grammar. A given language's configs live under `config/<language>/<kind_dir>/*.yaml` (e.g. `config/tira/`, `config/spanish/`, `config/example/`), with one subdirectory per **config kind**: `inventory`, `patterns`, `rules`, `feature_definitions`, `feature_combinations`, `morpheme_set`, `feature_markers`, `contingent_feature_markers` (dir named `contingent_marker`), `part_of_speech`, `morpheme_sequence`, `paradigm`.
+The core domain model is built entirely from YAML config files (validated against JSON Schemas in `schemas//`) describing a language's grammar. A given language's configs live under `config/<language>/<kind_dir>/*.yaml` (e.g. `config/tira/`, `config/spanish/`, `config/example/`), with one subdirectory per **config kind**: `inventory`, `patterns`, `rules`, `feature_definitions`, `feature_combinations`, `morpheme_set`, `feature_markers`, `contingent_feature_markers` (dir named `contingent_marker`), `part_of_speech`, `morpheme_sequence`, `paradigm`.
 
 - `src/config_utils/config_walker.py` (`ConfigWalker`) reads and validates all YAML for a config dir against schemas, normalizes kind names (PascalCase → `snake_case` + `_configs` suffix, e.g. `FeatureMarkers` → `feature_markers_configs`), and resolves `$name` cross-file references (a string starting with `$` is replaced by the referenced YAML file's content, resolved recursively).
-- `src/config_utils/schema_validation.py` loads/validates JSON Schemas from `config/schemas/`, including resolving cross-schema `$ref`s into local definitions (custom resolver, not `jsonref`, to avoid recursion issues).
+- `src/config_utils/schema_validation.py` loads/validates JSON Schemas from `schemas//`, including resolving cross-schema `$ref`s into local definitions (custom resolver, not `jsonref`, to avoid recursion issues).
 - `src/config_utils/watcher.py` watches the config directory for changes and triggers invalidation/reload of cached state.
 
 ### Reading vs. loading
@@ -57,7 +57,7 @@ When extending the grammar model, follow this same dependency order — most reg
 
 ### Pattern strings
 
-Pattern strings (used in inventory classes, the Patterns module, morpheme definitions, and rule contexts) form a small regex-like DSL over phones/symbols using the operators captured in `ReservedSymbolMixin`: `<ClassName>` references an inventory class or named pattern, `|` is disjunction, `{A B}` is union/optionality of literal tokens, `*`/`+`/`?` are the usual closures, and `^` negates inside braces. See `doc/grammar_modules.rst` for the linguistic rationale (phonology vs. exponence vs. morphotactics module split) — this doc is the closest thing to a design doc and is useful background before changing the schemas in `config/schemas/`.
+Pattern strings (used in inventory classes, the Patterns module, morpheme definitions, and rule contexts) form a small regex-like DSL over phones/symbols using the operators captured in `ReservedSymbolMixin`: `<ClassName>` references an inventory class or named pattern, `|` is disjunction, `{A B}` is union/optionality of literal tokens, `*`/`+`/`?` are the usual closures, and `^` negates inside braces. See `doc/grammar_modules.rst` for the linguistic rationale (phonology vs. exponence vs. morphotactics module split) — this doc is the closest thing to a design doc and is useful background before changing the schemas in `schemas//`.
 
 ### Constants
 

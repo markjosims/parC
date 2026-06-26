@@ -6,6 +6,7 @@ Implements `MarkerOrchestrator` which manages following registries:
 """
 
 from __future__ import annotations
+from src.grammar.registry.feature_values_registry import FeatureValuesRegistry
 from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
 from src.grammar.registry.feature_marker_registry import FeatureMarkersRegistry
 from src.grammar.registry.feature_combination_registry import FeatureValueCombinations
@@ -36,6 +37,7 @@ class MarkerOrchestrator:
     ):
         self.is_initialized = False
         self.feature_orchestrator = feature_orchestrator
+        self.feature_values_registry = feature_orchestrator.feature_values_registry
         if not feature_orchestrator:
             logger.warning(
                 "MarkerRegistry requres at minumum a feature registry to initialize. "

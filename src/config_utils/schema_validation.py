@@ -112,7 +112,7 @@ def load_schema(target_kind: str, schema_dir=SCHEMA_DIR):
 
 
 def validate_files_by_kind(
-    target_kind, config_dir="config", schema_dir="config/schemas"
+    target_kind, config_dir="config", schema_dir="schemas/"
 ):
     """
     Iterates through all YAML files and validates only those matching the target_kind.

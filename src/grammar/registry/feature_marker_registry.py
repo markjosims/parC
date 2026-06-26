@@ -119,7 +119,7 @@ class Marker(TransducerList):
         )
 
     def __str__(self):
-        return f"Marker(type={self.kind}, value={self.value})"
+        return f"Marker(kind={self.kind}, value={self.value})"
 
     def __repr__(self):
         return self.__str__()
@@ -144,14 +144,14 @@ class MarkerList(UserList):
 
         # check no more than one 'principal_part' marker, if any
         self.principal_part = None
-        principal_parts = [m for m in self if m.type == "principal_part"]
+        principal_parts = [m for m in self if m.kind == "principal_part"]
         if len(principal_parts) > 1:
             raise ValueError(
                 f"MarkerList may contain at most one 'principal_part' marker, but got {len(principal_parts)}"
             )
         elif principal_parts:
             # If a principal_part marker is present, it must be the first marker in the list
-            if self[0].type != "principal_part":
+            if self[0].kind != "principal_part":
                 raise ValueError(
                     "If a 'principal_part' marker is present, it must be the first marker in the list"
                 )
@@ -210,7 +210,7 @@ class MarkerList(UserList):
                     global_markers, global_order=global_order, feature_value="<global>"
                 )
             for marker in global_markers:
-                if marker.type == "principal_part":
+                if marker.kind == "principal_part":
                     if principal_part_marker is None:
                         principal_part_marker = marker
                     else:
@@ -241,7 +241,7 @@ class MarkerList(UserList):
             return
         if self.principal_part is not None and override:
             # remove existing principal part marker
-            self.data = [m for m in self.data if m.type != "principal_part"]
+            self.data = [m for m in self.data if m.kind != "principal_part"]
         self.data.insert(0, marker)
         self.principal_part = marker.value
 
@@ -251,11 +251,11 @@ class MarkerList(UserList):
         If both lists have a principal_part marker, the one from `other` will override this one's.
         """
         if other.principal_part is not None:
-            other_principal_part = [m for m in other if m.type == "principal_part"][0]
+            other_principal_part = [m for m in other if m.kind == "principal_part"][0]
             self.set_principal_part(other_principal_part, override=True)
 
         for marker in other:
-            if marker.type != "principal_part":
+            if marker.kind != "principal_part":
                 self.append(marker)
 
         for marker in self:
@@ -296,7 +296,7 @@ class MarkerList(UserList):
                 raise ValueError(
                     "MarkerList may contain at most one 'principal_part' marker, but already has one"
                 )
-            if len(self) > 0 and self[0].type != "principal_part":
+            if len(self) > 0 and self[0].kind != "principal_part":
                 raise ValueError(
                     "If a 'principal_part' marker is present, it must be the first marker in the list"
                 )
@@ -439,7 +439,7 @@ class FeatureMarkers:
             self.principal_part = parent_global_markers.principal_part
 
         parent_global_markers = [
-            m for m in parent_global_markers if m.type != "principal_part"
+            m for m in parent_global_markers if m.kind != "principal_part"
         ]
 
         self.global_markers.extend(parent_global_markers)
