@@ -61,7 +61,7 @@ While ordering is optional, we strongly recommend treating it as obligatory to p
 
 The 'filter' attribute allows the paradigm to select certain lexical roots and not others.
 For example, we could create a paradigm that selects only Spanish verbs that exhibit an alternation between *n* and *ng* (e.g. tener/tengo/tienes).
-Assuming this is indicated in the [lexicon](data/lexicon/README.md) with a lexical feature "stem_alternation=n_ng_alternation", we can do this by selecting only verbs with this flag.
+Assuming this is indicated in the [lexicon](data/lexicon/README.md) with a lexical feature "stem_alternation=n_ng_alternation", we can do this by selecting only verbs with this tag.
 ```yaml
 kind: Paradigm
 part_of_speech: verb

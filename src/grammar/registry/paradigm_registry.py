@@ -18,7 +18,7 @@ from src.grammar.registry.feature_marker_registry import (
 )
 from src.grammar.registry.contingent_marker_registry import ContingentMarkers
 from src.grammar.orchestrator.marker_orchestrator import MarkerOrchestrator
-from src.validation import validate_file_reference_str
+from src.config_utils.config_walker import validate_file_reference_str
 from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
 from src.grammar.orchestrator.feature_orchestrator import (
     stringify_features,

@@ -30,7 +30,7 @@
       "type": "object",
       "description": "A node in the inventory tree, can contain phones, flags, ref, or child nodes",
       "properties": {
-        "_ref": {
+        "ref": {
           "type": "string",
           "pattern": "^<[^>]+>$",
           "description": "Representation symbol in angle brackets (e.g., <V>, <C>, <V_Mid>)"
@@ -39,20 +39,20 @@
           "type": "string",
           "description": "Descriptive label for class"
         },
-        "_phones": {
+        "phones": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "description": "Array of phone symbols (IPA characters)"
         },
-        "_flags": {
+        "tags": {
           "type": "array",
           "items": {
             "type": "string",
             "pattern": "^\\[[^\\]]+\\]$"
           },
-          "description": "Array of flag symbols in square brackets"
+          "description": "Array of tag symbols in square brackets"
         },
         "_children": {
           "type": "array",

@@ -1,6 +1,6 @@
 kind: Patterns
 patterns:
-- _ref: <TB_C>
+- ref: <TB_C>
   name: Tone bearing consonant
   pattern: '{rwlj<N>}'
   test_includes:
@@ -13,7 +13,7 @@ patterns:
   - o
   - ɾ
   - ɽ
-- _ref: <TB_Seg>
+- ref: <TB_Seg>
   name: Tone bearing segment
   pattern: <TB_C>|<V>
   test_includes:

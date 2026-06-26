@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "parC"
 version = "0.1.0"
-description = "Toolkit for morphological transduction based on paradigms"
+description = "paradigm Compiler. Toolkit for morphological transduction based on paradigms"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
@@ -28,13 +28,11 @@ dependencies = [
   "levenshtein>=0.25.1",
   "camel-converter>=3.1.2",
   "numba>=0.58.1",
+  "fastapi>=0.124.4",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest", "ipykernel"]
-
-[project.scripts]
-tira = "src.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -42,20 +40,3 @@ include = ["src*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.csv", "*.yaml", "*.yml", "*.json", "*.txt", "*.xlsx"]
-
-[tool.setuptools.data-files]
-"data/lexicon" = ["data/lexicon/*.csv"]
-"data/test_cases" = [
-  "data/test_cases/*.csv",
-  "data/test_cases/*.yaml",
-  "data/test_cases/*.json",
-]
-"data/sentences" = [
-  "data/sentences/*.csv",
-  "data/sentences/*.txt",
-  "data/sentences/*.json",
-]
-"data/paradigms" = ["data/paradigms/*.yaml"]
-"data/excel" = ["data/excel/*.xlsx", "data/excel/*.csv"]
-"data/elan" = ["data/elan/*.csv"]
-"data/rules" = ["data/rules/*"]

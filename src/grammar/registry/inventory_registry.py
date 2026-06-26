@@ -28,10 +28,10 @@ class InventoryMember(Acceptor):
 @dataclass
 class InventoryItem(InventoryMember):
     """
-    Represents a single phone or flag in the inventory.
+    Represents a single phone or tag in the inventory.
     Attributes:
         value: The string value of the item (e.g. "a", "[TBU]",).
-        kind: The kind of the item, either "phone" or "flag"
+        kind: The kind of the item, either "phone" or "tag"
         parent: reference to parent InventoryItem (for upward traversal).
         source: Optional string indicating filepath item originates from.
         acceptor: pynini.Fst accepting the item (or, for classes, any member of the item).
@@ -39,7 +39,7 @@ class InventoryItem(InventoryMember):
             InventoryRegistry class.
     """
 
-    kind: Literal["phone", "flag"] = "phone"
+    kind: Literal["phone", "tag"] = "phone"
 
     def __post_init__(self):
         super().__post_init__()
@@ -49,11 +49,11 @@ class InventoryItem(InventoryMember):
                 f"Inventory item value '{self.value}' is a reserved symbol and cannot be used."
             )
 
-        if (self.kind == "flag") and (
+        if (self.kind == "tag") and (
             not self.value.startswith("[") or not self.value.endswith("]")
         ):
             raise ValueError(
-                "Flag items must have values that start with '[' and end with ']'"
+                "tag items must have values that start with '[' and end with ']'"
             )
         if (self.kind == "phone") and (
             "[" in self.value or "]" in self.value or "<" in self.value or ">" in self.value
@@ -88,7 +88,7 @@ class InventoryClass(InventoryMember):
             InventoryRegistry class.
     """
 
-    _ref: str = field(init=False, default="")  # set _ref to value of `value` field on init
+    ref: str = field(init=False, default="")  # set ref to value of `value` field on init
     # for compatibility with Pattern class and parsing logic in InventoryRegistry
     name: str = ""
     kind: Literal["phone_class", "flag_class", "nested_class"] = "phone_class"
@@ -97,7 +97,7 @@ class InventoryClass(InventoryMember):
 
     def __post_init__(self):
         super().__post_init__()
-        self._ref = self.value
+        self.ref = self.value
 
         if self.value in ReservedSymbolMixin.reserved_symbols:
             error = f"Inventory item value '{self.value}' is a reserved symbol and cannot be used."
@@ -117,9 +117,9 @@ class InventoryClass(InventoryMember):
         cls,
         item_dict: dict,
     ) -> Literal["phone_class", "flag_class", "nested_class"]:
-        if "_phones" in item_dict:
+        if "phones" in item_dict:
             expected_class_kind = "phone_class"
-        elif "_flags" in item_dict:
+        elif "tags" in item_dict:
             expected_class_kind = "flag_class"
         else:
             expected_class_kind = "nested_class"
@@ -137,8 +137,8 @@ class InventoryClass(InventoryMember):
         for the given class type, else raise ValueError.
         """
         data_by_class_kind = {
-            "phone_class": ("_phones", str),
-            "flag_class": ("_flags", str),
+            "phone_class": ("phones", str),
+            "flag_class": ("tags", str),
             "nested_class": ("_children", dict),
         }
         field, expected_kind = data_by_class_kind[class_kind]
@@ -184,7 +184,7 @@ class InventoryClass(InventoryMember):
         # will populate after recursively building children
         inventory_class = cls(
             name=item_dict.get("name", ""),
-            value=item_dict["_ref"],
+            value=item_dict["ref"],
             type=class_kind,
             children=[],
             parent=parent,
@@ -212,7 +212,7 @@ class InventoryClass(InventoryMember):
                     value=child,
                     parent=inventory_class,
                     source=source_path,
-                    kind="flag",
+                    kind="tag",
                 )
                 for child in child_data
             ]
@@ -221,11 +221,11 @@ class InventoryClass(InventoryMember):
         return inventory_class
 
     def to_dict(self) -> dict:
-        json = {"_ref": self.value, "name": self.name}
+        json = {"ref": self.value, "name": self.name}
         if self.kind == "phone_class":
-            json["_phones"] = [item.value for item in self.children]
+            json["phones"] = [item.value for item in self.children]
         elif self.kind == "flag_class":
-            json["_flags"] = [item.value for item in self.children]
+            json["tags"] = [item.value for item in self.children]
         else:
             # self.type == "nested_class"
             json["_children"] = [child.to_dict() for child in self.children]
@@ -286,7 +286,7 @@ class InventoryRegistry(Registry):
         for item in self.data.values():
             if isinstance(item, InventoryItem) and item.kind == "phone":
                 phones[item.value] = item
-            elif isinstance(item, InventoryItem) and item.kind == "flag":
+            elif isinstance(item, InventoryItem) and item.kind == "tag":
                 flags[item.value] = item
             elif isinstance(item, InventoryClass):
                 classes[item.value] = item
@@ -350,7 +350,7 @@ class InventoryRegistry(Registry):
         return top_items, item_dict
 
     def _get_tokens_from_class(self, item: InventoryMember) -> list[str]:
-        """Recursively collect all phone/flag tokens from an InventoryItem subtree."""
+        """Recursively collect all phone/tag tokens from an InventoryItem subtree."""
         tokens = []
         if isinstance(item, InventoryItem):
             tokens.append(item.value)

@@ -89,7 +89,7 @@
           },
           {
             "properties": {
-              "_ref": {
+              "ref": {
                 "type": "string",
                 "description": "Unique identifier for rule"
               },

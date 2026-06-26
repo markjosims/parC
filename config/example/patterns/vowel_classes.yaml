@@ -1,7 +1,7 @@
 kind: Patterns
 patterns:
-- _ref: Front vowel
-  _ref: <V_Front>
+- ref: Front vowel
+  ref: <V_Front>
   pattern: '{eiɛɪ}'
   test_includes:
   - ɛ

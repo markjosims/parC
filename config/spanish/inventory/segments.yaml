@@ -1,43 +1,43 @@
 kind: Inventory
 data:
-- _ref: <C>
+- ref: <C>
   name: Consonant
   _children:
-  - _ref: <Stp>
+  - ref: <Stp>
     name: Stops
-    _phones:
+    phones:
     - p
     - t
     - c
     - b
     - d
     - g
-  - _ref: <Frc>
+  - ref: <Frc>
     name: Fricative
-    _phones:
+    phones:
     - f
     - s
     - z
     - x
     - v
-  - _ref: <Son>
+  - ref: <Son>
     name: Sonorant
-    _phones:
+    phones:
     - r
     - l
     - y
     - m
     - n
     - ñ
-- _ref: <V>
+- ref: <V>
   name: Vowel
-  _phones:
+  phones:
   - a
   - e
   - i
   - o
   - u
-- _ref: <Stress>
+- ref: <Stress>
   name: Stress
-  _phones:
+  phones:
   - DIAC:á

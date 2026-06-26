@@ -6,23 +6,23 @@ Inventory datafiles conform to the following YAML schema:
 kind: Inventory
 data:
     consonant: # name of phone category
-        _ref: "<C>" # shorthand for referring to any element in the set
+        ref: "<C>" # shorthand for referring to any element in the set
         stop: # name of sub-category
-            _ref: "<STOP>"
+            ref: "<STOP>"
             # indicate the kind of inventory set by using the 'phones' key
-            _phones: [p, t, k, b, d, g]
+            phones: [p, t, k, b, d, g]
     slot_flags:
         # indicate the kind of inventory set by using the 'flags' key
-        _flags: ["[CLASS]", "[SUBJ]", "[FV]"]
+        tags: ["[CLASS]", "[SUBJ]", "[FV]"]
     tone_flags:
-        _flags: ["[TBU]", "[FLOAT]"]
+        tags: ["[TBU]", "[FLOAT]"]
 ```
 Flags are automatically cleaned up when an FST is decoded into strings.
 
 Note the following symbols are reserved:
-- `<Phone>`: Any phone (non-flag) in the inventory.
-- `<Flag>`: Any flag in the inventory.
-- `<Sigma>`: Any item in the inventory, phone(me) or flag.
+- `<Phone>`: Any phone (non-tag) in the inventory.
+- `<tag>`: Any tag in the inventory.
+- `<Sigma>`: Any item in the inventory, phone(me) or tag.
 - `<Empty>`: No input or output, useful for deletion and insertion rules.
 - `-`: Morpheme boundary
 - `[BOS]`: Beginning of string

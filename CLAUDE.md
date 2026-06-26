@@ -14,7 +14,7 @@ There is no committed git history yet (`main` has no commits); treat the working
 - Validate config YAML against JSON schemas: `python -m src.config_utils.schema_validation` (runs `validate_files_by_kind` for every `CONFIG_KINDS` entry against `config/` by default).
 - Tests: there is no test suite in the repo currently (`pytest` is a declared dependency but no `test_*.py` files exist yet). When adding tests, `pytest` is already available via the project's dependencies.
 - The `tira` CLI entry point is declared in `pyproject.toml` (`tira = "src.cli:main"`) but `src/cli.py` does not currently exist — don't assume it's runnable until it's (re)added.
-- Required environment: a config directory must be available via `CONFIG_DIR` in `.env` (e.g. `CONFIG_DIR=config/tira` or `config/example`), since `ConfigWalker` reads from it on construction. `TIRA_LOG_LEVEL`/`TIRA_LOG_OUTPUT` env vars control `loguru` logging (see `src/__init__.py`).
+- Required environment: a config directory must be available via `CONFIG_DIR` in `.env` (e.g. `CONFIG_DIR=config/tira` or `config/example`), since `ConfigWalker` reads from it on construction. `PARC_LOG_LEVEL`/`TIRA_LOG_OUTPUT` env vars control `loguru` logging (see `src/__init__.py`).
 
 ## Architecture
 

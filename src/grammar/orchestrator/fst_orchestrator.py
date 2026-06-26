@@ -54,14 +54,14 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         add flags for all feature values to `InventoryRegistry.flags` before
         compiling any FSMs.
     3. `self._build_symbol_table()`: Build a `pynini.symbol_table` object with
-        every phone and flag in the inventory, also including all reserved symbols.
+        every phone and tag in the inventory, also including all reserved symbols.
     4. `self._build_boundary_acceptors()`: Build FSAs for boundary symbols
         (viz. `-` for affix boundaries, `=` for clitic boundaries and `_` for periphrasis)
         as well as the BOW/EOW tokens
     5. `self._build_inventory_acceptors()`: Build FSAs for all inventory items, including
         classes, such that classes map to a union over all child nodes.
     6. `self._build_special_acceptors()`: Build the FSAs self.phone (accepting any phone),
-        self.flag (accepting any flag) and self.sigma (accepting any symbol), as well as
+        self.tag (accepting any tag) and self.sigma (accepting any symbol), as well as
         closures for each of these (accepting 0-inf repetitions)
     7. `self._build_token_map()`: Build a nested dictionary of tokens used internally to
         parse pattern strings.
@@ -146,7 +146,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
     def _add_feature_flags(self):
         """
         Checks if `self.feature_orchestrator` is present and, if so, adds
-        feature flags to flag inventory.
+        feature flags to tag inventory.
         """
         if self.feature_orchestrator is None:
             return
@@ -159,12 +159,12 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         for feature in self.feature_orchestrator.features.values():
             for feature_value in feature.values:
                 feature_str = f"[{feature.name}={feature_value}]"
-                flag = InventoryItem(feature_str, kind="flag", source=feature.source)
-                self.flags[feature_str] = flag
+                tag = InventoryItem(feature_str, kind="tag", source=feature.source)
+                self.flags[feature_str] = tag
 
     def _build_symbol_table(self):
         """
-        Creates a symbol table with a token for each phone and flag
+        Creates a symbol table with a token for each phone and tag
         in the inventory, as well as special symbols.
         """
         symbols = pynini.SymbolTable()
@@ -240,22 +240,22 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         self._inventory_acceptors_built = False
         self._sigmas_built = False
 
-        for flag in flags:
-            self._add_flag(flag)
+        for tag in flags:
+            self._add_flag(tag)
         self._inventory_acceptors_built = True
 
         logger.info("Flags added successfully.")
 
-    def _add_flag(self, flag: InventoryItem) -> int:
-        if flag.value in self.flags:
-            error = f"{flag.value} already found in self.flags"
+    def _add_flag(self, tag: InventoryItem) -> int:
+        if tag.value in self.flags:
+            error = f"{tag.value} already found in self.flags"
             raise KeyError(error)
-        self.flags[flag.value] = flag
+        self.flags[tag.value] = tag
 
-        symbol_index: int = self.symbols.add_symbol(flag.value)
-        fsa = pynini.accep(flag.value, token_kind=self.symbols)
+        symbol_index: int = self.symbols.add_symbol(tag.value)
+        fsa = pynini.accep(tag.value, token_kind=self.symbols)
         fsa.optimize()
-        flag.set_acceptor(fsa)
+        tag.set_acceptor(fsa)
         return symbol_index
 
     def _build_special_acceptors(self):
@@ -274,7 +274,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         # unlike phones, an inventory may have zero flags
         # in which case the flag_fsa is just the empty language
         if self.flags:
-            flag_fsa = pynini.union(*[flag.fsa for flag in self.flags.values()])
+            flag_fsa = pynini.union(*[tag.fsa for tag in self.flags.values()])
         else:
             flag_fsa = pynini.accep("")
         flag_fsa.optimize()
@@ -357,13 +357,13 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             tokens["ref"].append(
                 Token(value=ref, kind="special_ref", acceptor=acceptor)
             )
-        for flag in self.bow_eow_flags:
-            acceptor = self._token_acceptor(flag)
-            tokens["flag"].append(Token(value=flag, kind="bow_eow", acceptor=acceptor))
-        for flag in self.edit_flags:
-            acceptor = self._token_acceptor(flag)
-            tokens["flag"].append(
-                Token(value=flag, kind="edit_flag", acceptor=acceptor)
+        for tag in self.bow_eow_flags:
+            acceptor = self._token_acceptor(tag)
+            tokens["tag"].append(Token(value=tag, kind="bow_eow", acceptor=acceptor))
+        for tag in self.edit_flags:
+            acceptor = self._token_acceptor(tag)
+            tokens["tag"].append(
+                Token(value=tag, kind="edit_flag", acceptor=acceptor)
             )
         for boundary in self.boundary_symbols:
             acceptor = self._token_acceptor(boundary)
@@ -372,8 +372,8 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             )
         for phone, phone_obj in self.phones.items():
             tokens["phone"].append(Token(value=phone, kind="phone", acceptor=phone_obj))
-        for flag, flag_obj in self.flags.items():
-            tokens["flag"].append(Token(value=flag, kind="flag", acceptor=flag_obj))
+        for tag, flag_obj in self.flags.items():
+            tokens["tag"].append(Token(value=tag, kind="tag", acceptor=flag_obj))
         for class_ref, class_obj in self.classes.items():
             tokens["ref"].append(
                 Token(value=class_ref, kind="class_ref", acceptor=class_obj)
@@ -393,7 +393,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
     def _infer_token_kind(self, input_str: str) -> str | None:
         """
         Token type can be inferred from the first character of the token string:
-        - '[' -> flag
+        - '[' -> tag
         - '<' -> ref
         - operators and delimiters are single characters that can be looked up in a set
         """
@@ -407,7 +407,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         if self.phones.get(starting_char):
             return "phone"
         elif starting_char == "[":
-            return "flag"
+            return "tag"
         elif starting_char == "<":
             return "ref"
         elif starting_char in self.unary_operators:
@@ -536,7 +536,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         if isinstance(pattern_input, AcceptorLike):
             if pattern_input.acceptor_built:
                 logger.info(
-                    f"Redundant call on pattern {pattern_input._ref} with existing acceptor"
+                    f"Redundant call on pattern {pattern_input.ref} with existing acceptor"
                 )
                 return pattern_input.fsa
             pattern_input = pattern_input.value
@@ -618,7 +618,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         - Expression* -> Factor Term*
         - Term* -> | Factor Expression*
         - Factor -> (Expression) | Ref | Atom
-        - Atom -> Phone | Flag | Class | Pattern
+        - Atom -> Phone | tag | Class | Pattern
         """
         logger.trace(f"Parsing tokens {tokens}")
         acceptor, current_index = self._parse_expression(tokens, initial_index=0)
@@ -968,7 +968,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
     ) -> Acceptor:
         """
         Creates an FSA accepting any left context where the features specified by `lexical_features`
-        are present preceding the [BOW] flag.
+        are present preceding the [BOW] tag.
         """
         lexical_feature_str = stringify_features(lexical_features)
 
@@ -1074,7 +1074,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
 
         if not rule.transducer_built:
             logger.info(
-                f"Rule '{rule._ref}' has uninitialized transducer, initializing..."
+                f"Rule '{rule.ref}' has uninitialized transducer, initializing..."
             )
             rule_fst = self.compile_rule(rule)
             rule.set_transducer(rule_fst)
@@ -1126,7 +1126,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
                 intersection = pynini.intersect(pattern.fsa, fsa)
                 if intersection.start() == pynini.NO_STATE_ID:
                     raise ValueError(
-                        f"Pattern '{pattern._ref}' failed includes test for string '{test_str}'. "
+                        f"Pattern '{pattern.ref}' failed includes test for string '{test_str}'. "
                         "Check that the pattern is correctly specified and that the test string is correct."
                     )
 
@@ -1141,7 +1141,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
                 intersection = pynini.intersect(pattern.fsa, fsa)
                 if intersection.start() != pynini.NO_STATE_ID:
                     raise ValueError(
-                        f"Pattern '{pattern._ref}' failed excludes test for string '{test_str}'. "
+                        f"Pattern '{pattern.ref}' failed excludes test for string '{test_str}'. "
                         "Check that the pattern is correctly specified and that the test string is correct."
                     )
 
@@ -1155,7 +1155,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         Test explicit include/exclude strings against the compiled FSA for a
         single pattern.
 
-        Returns a dict with per-string results and an overall ``all_pass`` flag::
+        Returns a dict with per-string results and an overall ``all_pass`` tag::
 
             {"ref": "<V>", "results": [...], "all_pass": True}
 
@@ -1200,7 +1200,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         Test explicit input→output mappings against the compiled FST for a
         single rule.
 
-        Returns a dict with per-mapping results and an overall ``all_pass`` flag::
+        Returns a dict with per-mapping results and an overall ``all_pass`` tag::
 
             {"ref": "diphthongization", "results": [...], "all_pass": True}
 
@@ -1234,7 +1234,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             if not passed:
                 all_pass = False
 
-        rule_ref = rule if isinstance(rule, str) else rule._ref
+        rule_ref = rule if isinstance(rule, str) else rule.ref
         return {"ref": rule_ref, "results": results, "all_pass": all_pass}
 
     def test_rule_mappings(self):
@@ -1244,13 +1244,13 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         """
         for rule in self.rules.values():
             for input_str, expected_output_str in rule.test_mappings:
-                output_fsa = self.apply_rule(input_str, rule._ref)
+                output_fsa = self.apply_rule(input_str, rule.ref)
                 output_fsa = pynini.project(output_fsa, project_kind="output")
                 expected_output_fsa = self.word_fsa(expected_output_str)
                 intersection = pynini.intersect(output_fsa, expected_output_fsa)
                 if intersection.start() == pynini.NO_STATE_ID:
                     raise ValueError(
-                        f"Rule '{rule._ref}' failed test mapping for input '{input_str}' and expected output '{expected_output_str}'. "
+                        f"Rule '{rule.ref}' failed test mapping for input '{input_str}' and expected output '{expected_output_str}'. "
                         "Check that the rule is correctly specified and that the test mapping is correct."
                     )
 
@@ -1362,7 +1362,7 @@ class Token:
     value: str
     kind: Literal[
         "phone",
-        "flag",
+        "tag",
         "class_ref",
         "pattern_ref",
         "bow_eow",

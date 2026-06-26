@@ -92,7 +92,7 @@ export const TEMPLATES = {
     { label: "marker", value: { kind: "suffix", value: "" } },
   ],
   Inventory: [
-    { label: "inventory node", value: { name: "", _ref: "<>", _phones: [] } },
+    { label: "inventory node", value: { name: "", ref: "<>", phones: [] } },
     { label: "child node", value: { name: "", _children: [] } },
   ],
 };

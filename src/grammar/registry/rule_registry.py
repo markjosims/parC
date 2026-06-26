@@ -35,7 +35,7 @@ class Rule(TransducerList):
     """
 
     kind: Literal["simple_rule", "string_map", "rule_sequence"] = "simple_rule"
-    _ref: str = ""
+    ref: str = ""
 
     # attributes for simple rules
     input_pattern: Acceptor = field(default_factory=Acceptor)
@@ -67,17 +67,17 @@ class Rule(TransducerList):
     def __post_init__(self):
         super().__post_init__()
 
-        # duplicate `self._ref` to value so parent functions can access
+        # duplicate `self.ref` to value so parent functions can access
         # name when logging errors
-        self.value = self._ref
+        self.value = self.ref
 
         self.dependencies_built = False
 
-        if not self._ref:
-            raise ValueError("_ref key must have a non-empty string.")
+        if not self.ref:
+            raise ValueError("ref key must have a non-empty string.")
 
-        if self._ref in ReservedSymbolMixin.reserved_symbols:
-            error = f"Rule ref '{self._ref}' cannot be a reserved symbol."
+        if self.ref in ReservedSymbolMixin.reserved_symbols:
+            error = f"Rule ref '{self.ref}' cannot be a reserved symbol."
             logger.error(error)
             raise ValueError(error)
 
@@ -98,7 +98,7 @@ class Rule(TransducerList):
             if self.rule_sequence is None:
                 raise ValueError("Rule sequence must have a rule sequence")
             elif not self.rule_sequence:
-                logger.warning(f"Found empty rule sequence: {self._ref}")
+                logger.warning(f"Found empty rule sequence: {self.ref}")
 
             if self.input_pattern.value or self.output_pattern.value:
                 raise ValueError("Rule sequence cannot have input or output patterns")
@@ -129,7 +129,7 @@ class Rule(TransducerList):
         self.dependencies_built = True
 
     def __str__(self):
-        return f"Rule(_ref='{self._ref}', type='{self.kind}')"
+        return f"Rule(ref='{self.ref}', type='{self.kind}')"
 
     def __repr__(self):
         return self.__str__()
@@ -158,7 +158,7 @@ class Rule(TransducerList):
         # Build construction kwargs explicitly to avoid mutating input dict
         kwargs = {
             "kind": rule_kind,
-            "_ref": config.get("_ref", ""),
+            "ref": config.get("ref", ""),
             "description": config.get("description"),
             "source": config.get("source_path"),
             "direction": config.get("direction", "ltr"),
@@ -196,11 +196,11 @@ class Rule(TransducerList):
         return Acceptor(val)
 
     def __str__(self):
-        return f"Rule(_ref={self._ref}, type={self.kind})"
+        return f"Rule(ref={self.ref}, type={self.kind})"
 
     def to_dict(self) -> dict:
         """Serialize a Rule to a YAML-serializable dict (config format)."""
-        d: dict = {"_ref": self._ref}
+        d: dict = {"ref": self.ref}
 
         if self.description:
             d["description"] = self.description
@@ -229,7 +229,7 @@ class Rule(TransducerList):
         elif self.kind == "rule_sequence":
             # self.rule_sequence can be list[Rule] (resolved) or list[str] (unresolved)
             d["rule_sequence"] = [
-                validate_file_reference_str(r._ref if hasattr(r, "_ref") else r)
+                validate_file_reference_str(r.ref if hasattr(r, "ref") else r)
                 for r in self.rule_sequence
             ]
 
@@ -242,20 +242,20 @@ class Rule(TransducerList):
 class AnonymousRule(Rule):
     """
     A subclass of Rule to represent rules that are generated internally by the FstRegistry
-    and not specified directly by the user in a config file. These rules do not have a _ref
+    and not specified directly by the user in a config file. These rules do not have a ref
     string since they are not referenced directly by the user, but instead are used as helper
     rules for implementing replace or suppletion markers.
     """
 
     def __post_init__(self):
-        if self._ref:
+        if self.ref:
             raise ValueError(
-                "AnonymousRule should not have a _ref string since it is not directly referenced by the user."
+                "AnonymousRule should not have a ref string since it is not directly referenced by the user."
             )
 
         # set generic ref string to avoid ValueError
         # on Rule __post_init__
-        self._ref = f"anonymous_rule_{id(self)}"
+        self.ref = f"anonymous_rule_{id(self)}"
         super().__post_init__()
 
 
@@ -266,7 +266,7 @@ class RuleLike(Protocol):
     """
 
     kind: str
-    _ref: str
+    ref: str
 
     # attributes for simple rules
     input_pattern: object
@@ -341,7 +341,7 @@ class RuleRegistry(Registry, ReservedSymbolMixin):
         rule_list = [Rule.from_config(rule_data) for rule_data in rules]
 
         # make dict mapping ref to item
-        config_items = {item._ref: item for item in rule_list}
+        config_items = {item.ref: item for item in rule_list}
         return config_items
 
     def build_dependency_graph(self):
@@ -354,12 +354,12 @@ class RuleRegistry(Registry, ReservedSymbolMixin):
         dependency_graph = {}
 
         for rule in self.data.values():
-            dependency_graph[rule._ref] = set()
+            dependency_graph[rule.ref] = set()
             # get list of rules using this rule in their rule_sequence
             used_by = []
             for other_rule in self.data.values():
                 if (other_rule.rule_sequence) and (
-                    rule._ref in other_rule.rule_sequence
+                    rule.ref in other_rule.rule_sequence
                 ):
                     used_by.append(other_rule)
 
@@ -369,7 +369,7 @@ class RuleRegistry(Registry, ReservedSymbolMixin):
                     continue
                 elif isinstance(rule.rule_sequence[0], RuleLike):
                     sub_rules = rule.rule_sequence
-                    sub_rule_refs = [sub_rule._ref for sub_rule in sub_rules]
+                    sub_rule_refs = [sub_rule.ref for sub_rule in sub_rules]
                 else:
                     sub_rules = [self.get_rule(ref) for ref in rule.rule_sequence]
                     sub_rule_refs = rule.rule_sequence
@@ -377,7 +377,7 @@ class RuleRegistry(Registry, ReservedSymbolMixin):
                     used_by=used_by,
                     rule_sequence=sub_rules,
                 )
-                dependency_graph[rule._ref] = set(sub_rule_refs)
+                dependency_graph[rule.ref] = set(sub_rule_refs)
             else:
                 rule.set_dependencies(used_by=used_by)
 

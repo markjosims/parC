@@ -1,7 +1,7 @@
 kind: Patterns
 patterns:
-- _ref: Syllable
-  _ref: <Syll>
+- ref: Syllable
+  ref: <Syll>
   pattern: <C>?<V><T><C>?<C>?
   test_includes:
   - páŋk
@@ -14,8 +14,8 @@ patterns:
   - a
   - chərt
   - ɪg
-- _ref: Monosyllable word
-  _ref: <MonoSyllWord>
+- ref: Monosyllable word
+  ref: <MonoSyllWord>
   pattern: '#<Syll>#'
   test_includes:
   - páŋk
@@ -27,8 +27,8 @@ patterns:
   - chə̀rtpáŋk
   - ìá
   - ɪ̀gə́
-- _ref: Disyllable word
-  _ref: <DiSyllWord>
+- ref: Disyllable word
+  ref: <DiSyllWord>
   pattern: '#<Syll><Syll>#'
   test_includes:
   - páŋkpáŋk
