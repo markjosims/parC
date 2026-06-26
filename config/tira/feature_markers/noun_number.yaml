@@ -2,12 +2,12 @@ kind: FeatureMarkers
 feature: number
 markers:
   singular:
-    type: suffix
+    kind: suffix
     value: '[sg]'
     order: number_flag
   plural:
-  - type: principal_part
+  - kind: principal_part
     value: plural_stem
-  - type: suffix
+  - kind: suffix
     value: '[pl]'
     order: number_flag

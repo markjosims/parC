@@ -27,7 +27,7 @@ For example, if 'gender' were not a column in `noun.csv`, the compiler would thr
 The possible values for a lexical feature are specified via a `FeatureDefinitions` config, and, outside of the `PartOfSpeech` class, there is no distinction between a lexical or inflectional feature.
 For features like gender, the same feature may be lexical for some parts of speech (e.g. nouns) but inflectional for others (e.g. adjectives).
 There may be cases, however, where it is useful to define a feature which is purely lexical, e.g. to signal that a given verb root has irregular inflection, belongs to a particular inflectional class, or takes a different set of suffixes for a particular tense or mood.
-For example, we may assign the lexical features 'ablaut_pattern' and 'past_suffix_type' to the part of speech 'verb', which describe the particular pattern of ablaut alternations or past suffixes the verb takes.
+For example, we may assign the lexical features 'ablaut_pattern' and 'past_suffix_kind' to the part of speech 'verb', which describe the particular pattern of ablaut alternations or past suffixes the verb takes.
 ```yaml
 kind: PartOfSpeech
 name: verb
@@ -37,7 +37,7 @@ features:
   - mood
 lexical_features:
   - ablaut_pattern
-  - past_suffix_type
+  - past_suffix_kind
 ```
 The possible values would be specified in a `FeatureDefinitions` file like so:
 ```yaml
@@ -48,7 +48,7 @@ features:
   - no_ablaut
   - a_o_ablaut
   - a_e_ablaut
-  past_suffix_type:
+  past_suffix_kind:
   - past_suffixes_A
   - past_suffixes_B
   - past_suffixes_C

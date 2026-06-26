@@ -2,25 +2,25 @@ kind: FeatureMarkers
 feature: person_number
 global_order: outer_suffix
 global_markers:
-- type: rule
+- kind: rule
   value: harmonize_suffix
   order: post_affixation
 markers:
   1sg:
-  - type: suffix
+  - kind: suffix
     value: -a
   2sg:
-  - type: suffix
+  - kind: suffix
     value: -ʊ
   3sg:
-  - type: suffix
+  - kind: suffix
     value: -i
   1pl:
-  - type: suffix
+  - kind: suffix
     value: -ko
-  - type: prefix
+  - kind: prefix
     value: ba-
   2pl: null
   3pl:
-  - type: rule
+  - kind: rule
     value: $final_devoice

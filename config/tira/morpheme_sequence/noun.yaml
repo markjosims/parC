@@ -1,12 +1,12 @@
 kind: MorphemeSequence
 data:
-- type: MorphemeSet
+- kind: MorphemeSet
   value: $noun_prefix_sg
-- type: MorphemeSet
+- kind: MorphemeSet
   value: $noun_prefix_pl
-- type: Paradigm
+- kind: Paradigm
   value: $noun_stem
-- type: Rule
+- kind: Rule
   value: $mark_sg
-- type: Rule
+- kind: Rule
   value: $mark_pl

@@ -42,7 +42,7 @@ src/
 
 ```python
 GET  /schemas/{kind}        # load_schema(kind) -> JSON
-GET  /configs?type={kind}   # ConfigWalker.glob_config_files(kind) -> ["$path", ...]
+GET  /configs?kind={kind}   # ConfigWalker.glob_config_files(kind) -> ["$path", ...]
 GET  /file?path={path}      # yaml.safe_load(path) -> JSON
 PUT  /file?path={path}      # validate JSON body against load_schema(kind), then yaml.safe_dump(path)
 ```
@@ -51,7 +51,7 @@ Implementation notes:
 
 - `CONFIG_DIR` is resolved once at startup the same way `ConfigWalker`/`get_config_dir()` do.
 - `path` query params are file paths; resolve and confirm they stay inside `CONFIG_DIR` before any read/write (basic traversal guard — no other auth).
-- `/configs?type={kind}` reuses `ConfigWalker.glob_config_files(kind)` and returns `$`-prefixed stem names (e.g. `$rules/verbal`), matching the reference convention `ConfigWalker.resolve_ref` already expects.
+- `/configs?kind={kind}` reuses `ConfigWalker.glob_config_files(kind)` and returns `$`-prefixed stem names (e.g. `$rules/verbal`), matching the reference convention `ConfigWalker.resolve_ref` already expects.
 - `/file` GET/PUT convert YAML ↔ JSON at the boundary only — `yaml.safe_load`/`yaml.safe_dump`, never `json.load`/`json.dump`, since the files on disk are YAML.
 - `PUT /file` reads `kind` from the JSON body, calls `load_schema(kind)`, and runs `jsonschema.validate` before writing; on `ValidationError`, return HTTP 400 with the message (don't write the file).
 - Mount `frontend/` as static files at `/` (`StaticFiles(directory="frontend", html=True)`).
@@ -64,7 +64,7 @@ Implementation notes:
 
 ```js
 export const fetchSchema = (kind) => ...   // GET /schemas/{kind}
-export const fetchRefs = (type) => ...     // GET /configs?type=
+export const fetchRefs = (kind) => ...     // GET /configs?kind=
 export const readFile = (path) => ...      // GET /file
 export const writeFile = (path, json) => ... // PUT /file
 ```
@@ -73,7 +73,7 @@ export const writeFile = (path, json) => ... // PUT /file
 
 - `getSchema(kind)` — fetches and caches schemas
 - `patchRefEnums(schema, kind)` — clones schema and injects live filesystem enums into fields that use `$`-prefixed references. Only two cases matter for PoC:
-  - `MorphemeSequence.data[].value` — `oneOf` branch per type (`Rule`, `Paradigm`, etc.), each with `enum` from `fetchRefs(type)`
+  - `MorphemeSequence.data[].value` — `oneOf` branch per kind (`Rule`, `Paradigm`, etc.), each with `enum` from `fetchRefs(kind)`
   - `Paradigm.feature_markers` — `additionalProperties.oneOf[0].enum` from `fetchRefs('FeatureMarkers')`
 - `buildSchemaDefinitions()` — returns `{ './FeatureMarkers.json': schema, ... }` map for cross-file `$ref` resolution (needed because `Paradigm.json` references `./FeatureMarkers.json#/definitions/marker`)
 
@@ -82,14 +82,14 @@ export const writeFile = (path, json) => ... // PUT /file
 ```js
 export const TEMPLATES = {
   MorphemeSequence: [
-    { label: "data item", value: { type: "Rule", value: "" } },
+    { label: "data item", value: { kind: "Rule", value: "" } },
   ],
   Paradigm: [
-    { label: "global marker", value: { type: "suffix", value: "" } },
+    { label: "global marker", value: { kind: "suffix", value: "" } },
     { label: "filter", value: { lexical_features: [], pattern: "" } },
   ],
   FeatureMarkers: [
-    { label: "marker", value: { type: "suffix", value: "" } },
+    { label: "marker", value: { kind: "suffix", value: "" } },
   ],
   Inventory: [
     { label: "inventory node", value: { name: "", _ref: "<>", _phones: [] } },
@@ -144,7 +144,7 @@ saveFile():
 ```
 body
 ├── #sidebar
-│   ├── #file-list      (populated from GET /configs for all types at startup)
+│   ├── #file-list      (populated from GET /configs for all kinds at startup)
 │   └── #template-list  (repopulated on each openFile)
 └── #main
     ├── #toolbar         (Save button)

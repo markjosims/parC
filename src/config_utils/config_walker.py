@@ -43,7 +43,7 @@ class ConfigWalker:
     def _get_all_config_data(self) -> dict[str, dict[str, dict]]:
         """
         Reads all YAML data in the config folder and returns
-        as dict mapping config type to list of objects.
+        as dict mapping config kind to list of objects.
 
         Reformat kind name from PascalCase to snake_case, strip
         plural -s if present, and suffix + '_configs'

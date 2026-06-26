@@ -31,7 +31,7 @@ class InventoryItem(InventoryMember):
     Represents a single phone or flag in the inventory.
     Attributes:
         value: The string value of the item (e.g. "a", "[TBU]",).
-        type: The type of the item, either "phone" or "flag"
+        kind: The kind of the item, either "phone" or "flag"
         parent: reference to parent InventoryItem (for upward traversal).
         source: Optional string indicating filepath item originates from.
         acceptor: pynini.Fst accepting the item (or, for classes, any member of the item).
@@ -39,7 +39,7 @@ class InventoryItem(InventoryMember):
             InventoryRegistry class.
     """
 
-    type: Literal["phone", "flag"] = "phone"
+    kind: Literal["phone", "flag"] = "phone"
 
     def __post_init__(self):
         super().__post_init__()
@@ -49,13 +49,13 @@ class InventoryItem(InventoryMember):
                 f"Inventory item value '{self.value}' is a reserved symbol and cannot be used."
             )
 
-        if (self.type == "flag") and (
+        if (self.kind == "flag") and (
             not self.value.startswith("[") or not self.value.endswith("]")
         ):
             raise ValueError(
                 "Flag items must have values that start with '[' and end with ']'"
             )
-        if (self.type == "phone") and (
+        if (self.kind == "phone") and (
             "[" in self.value or "]" in self.value or "<" in self.value or ">" in self.value
         ):
             raise ValueError(
@@ -79,7 +79,7 @@ class InventoryClass(InventoryMember):
     Attributes:
         name: a descriptive name for the class
         value: The string value of the item (e.g. "<V>", "<Stop>", "<Tone>").
-        type: The type of the item, one of "phone_class", "flag_class", or "nested_class".
+        kind: The kind of the item, one of "phone_class", "flag_class", or "nested_class".
         children: List of child InventoryItems.
         parent: Optional reference to parent InventoryItem (for upward traversal).
         source: Optional string indicating filepath item originates from.
@@ -91,7 +91,7 @@ class InventoryClass(InventoryMember):
     _ref: str = field(init=False, default="")  # set _ref to value of `value` field on init
     # for compatibility with Pattern class and parsing logic in InventoryRegistry
     name: str = ""
-    type: Literal["phone_class", "flag_class", "nested_class"] = "phone_class"
+    kind: Literal["phone_class", "flag_class", "nested_class"] = "phone_class"
     children: list["InventoryMember"] = field(default_factory=list)
     uuid: str = field(default_factory=lambda: str(uuid4()), init=False)
 
@@ -104,7 +104,7 @@ class InventoryClass(InventoryMember):
             logger.error(error)
             raise ValueError(error)
 
-        if self.type == "class" and self.children is None:
+        if self.kind == "class" and self.children is None:
             raise ValueError("Class items must have children")
 
         if not self.value.startswith("<") or not self.value.endswith(">"):
@@ -113,50 +113,50 @@ class InventoryClass(InventoryMember):
             )
 
     @classmethod
-    def infer_class_type(
+    def infer_class_kind(
         cls,
         item_dict: dict,
     ) -> Literal["phone_class", "flag_class", "nested_class"]:
         if "_phones" in item_dict:
-            expected_class_type = "phone_class"
+            expected_class_kind = "phone_class"
         elif "_flags" in item_dict:
-            expected_class_type = "flag_class"
+            expected_class_kind = "flag_class"
         else:
-            expected_class_type = "nested_class"
-        cls.validate_class_type(class_type=expected_class_type, item_dict=item_dict)
-        return expected_class_type
+            expected_class_kind = "nested_class"
+        cls.validate_class_kind(class_kind=expected_class_kind, item_dict=item_dict)
+        return expected_class_kind
 
     @classmethod
-    def validate_class_type(
+    def validate_class_kind(
         cls,
-        class_type: Literal["phone_class", "flag_class", "nested_class"],
+        class_kind: Literal["phone_class", "flag_class", "nested_class"],
         item_dict: dict,
     ) -> list[str | dict]:
         """
         Returns a list of validated items if the data in `item_dict` matches the format expected
         for the given class type, else raise ValueError.
         """
-        data_by_class_type = {
+        data_by_class_kind = {
             "phone_class": ("_phones", str),
             "flag_class": ("_flags", str),
             "nested_class": ("_children", dict),
         }
-        field, expected_type = data_by_class_type[class_type]
+        field, expected_kind = data_by_class_kind[class_kind]
         if field not in item_dict:
-            error = f"Expected field '{field}' not found for class type '{class_type}'"
+            error = f"Expected field '{field}' not found for class type '{class_kind}'"
             logger.error(error)
             raise ValueError(error)
         if not isinstance(item_dict[field], list):
             error = (
-                f"Expected field '{field}' to be a list for class type '{class_type}'"
+                f"Expected field '{field}' to be a list for class type '{class_kind}'"
             )
             logger.error(error)
             raise ValueError(error)
         for item in item_dict[field]:
-            if not isinstance(item, expected_type):
+            if not isinstance(item, expected_kind):
                 error = (
                     f"Expected items in field '{field}' to be of type "
-                    + f"'{expected_type.__name__}' for class type '{class_type}'"
+                    + f"'{expected_kind.__name__}' for class type '{class_kind}'"
                 )
                 logger.error(error)
                 raise ValueError(error)
@@ -177,42 +177,42 @@ class InventoryClass(InventoryMember):
         # get source filepath if specified
         source_path = item_dict.get("source", None)
 
-        class_type = cls.infer_class_type(item_dict=item_dict)
-        child_data = cls.validate_class_type(class_type=class_type, item_dict=item_dict)
+        class_kind = cls.infer_class_kind(item_dict=item_dict)
+        child_data = cls.validate_class_kind(class_kind=class_kind, item_dict=item_dict)
 
         # initialize InventoryClass with empty children
         # will populate after recursively building children
         inventory_class = cls(
             name=item_dict.get("name", ""),
             value=item_dict["_ref"],
-            type=class_type,
+            type=class_kind,
             children=[],
             parent=parent,
             source=source_path,
         )
 
-        if class_type == "nested_class":
+        if class_kind == "nested_class":
             children = [
                 cls.from_config(child_config, parent=inventory_class)
                 for child_config in child_data
             ]
-        elif class_type == "phone_class":
+        elif class_kind == "phone_class":
             children = [
                 InventoryItem(
                     value=child,
                     parent=inventory_class,
                     source=source_path,
-                    type="phone",
+                    kind="phone",
                 )
                 for child in child_data
             ]
-        else:  # class_type=="flag_class"
+        else:  # class_kind=="flag_class"
             children = [
                 InventoryItem(
                     value=child,
                     parent=inventory_class,
                     source=source_path,
-                    type="flag",
+                    kind="flag",
                 )
                 for child in child_data
             ]
@@ -222,9 +222,9 @@ class InventoryClass(InventoryMember):
 
     def to_dict(self) -> dict:
         json = {"_ref": self.value, "name": self.name}
-        if self.type == "phone_class":
+        if self.kind == "phone_class":
             json["_phones"] = [item.value for item in self.children]
-        elif self.type == "flag_class":
+        elif self.kind == "flag_class":
             json["_flags"] = [item.value for item in self.children]
         else:
             # self.type == "nested_class"
@@ -234,7 +234,7 @@ class InventoryClass(InventoryMember):
     def flatten(self) -> list[Union["InventoryItem", "InventoryClass"]]:
         """Recursively InventoryItem into a list including itself and all children."""
         items = [self]
-        if self.type == "nested_class":
+        if self.kind == "nested_class":
             for child in self.children:
                 items.extend(child.flatten())
         else:
@@ -284,15 +284,15 @@ class InventoryRegistry(Registry):
         flags = {}
         classes = {}
         for item in self.data.values():
-            if isinstance(item, InventoryItem) and item.type == "phone":
+            if isinstance(item, InventoryItem) and item.kind == "phone":
                 phones[item.value] = item
-            elif isinstance(item, InventoryItem) and item.type == "flag":
+            elif isinstance(item, InventoryItem) and item.kind == "flag":
                 flags[item.value] = item
             elif isinstance(item, InventoryClass):
                 classes[item.value] = item
             else:
                 raise ValueError(
-                    f"Unrecognized inventory object {type(item)} of type {item.type}"
+                    f"Unrecognized inventory object {type(item)} of type {item.kind}"
                 )
         self.phones = phones
         self.flags = flags

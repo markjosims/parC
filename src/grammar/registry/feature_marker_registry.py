@@ -26,7 +26,7 @@ class Marker(TransducerList):
     features is found.
 
     Attributes:
-        type: Type of formative represented, including:
+        kind: Type of formative represented, including:
         - prefix: prepends value to stem
         - suffix: appends value to stem
         - replace: (input, output) pair for substring replacement
@@ -34,15 +34,15 @@ class Marker(TransducerList):
         - rule: Name(s) of phonological rule(s) to apply ($ reference)
         - principal_part: Selects a principal part for the feature value
         value: String to be interpreted as formative
-        - if self.type == replace, type(self.value) is tuple[str, str]
-        - else type(self.value) is str
+        - if self.kind == replace, kind(self.value) is tuple[str, str]
+        - else kind(self.value) is str
         order: Stage name controlling application order within a paradigm
         lexical_features: Dict indicating feature:value pairs this marker relies on
     """
 
     value: str | tuple[str, str] = ""
     feature_value: str | None = None
-    type: Literal[
+    kind: Literal[
         "prefix", "suffix", "replace", "suppletion", "rule", "principal_part"
     ] = "suffix"
     order: str | None = None
@@ -53,7 +53,7 @@ class Marker(TransducerList):
     def __post_init__(self):
         super().__post_init__()
 
-        if self.type == "replace":
+        if self.kind == "replace":
             if type(self.value) is not tuple:
                 raise ValueError(
                     "Markers of type 'replace' must have a tuple of length 2 "
@@ -68,21 +68,21 @@ class Marker(TransducerList):
         elif type(self.value) is tuple:
             raise ValueError(
                 "Only 'replace' markers may have a tuple value "
-                f"but got tuple for marker type {self.type}"
+                f"but got tuple for marker type {self.kind}"
             )
 
-        elif self.type not in (
+        elif self.kind not in (
             "prefix",
             "suffix",
             "suppletion",
             "rule",
             "principal_part",
         ):
-            raise ValueError(f"Unrecognized marker type {self.type}")
+            raise ValueError(f"Unrecognized marker kind {self.kind}")
 
     def to_dict(self) -> dict:
         """Serialize a Marker to a dict."""
-        d = {"type": self.type, "value": self.value}
+        d = {"kind": self.kind, "value": self.value}
         if self.order:
             d["order"] = self.order
         if self.comment:
@@ -108,18 +108,18 @@ class Marker(TransducerList):
 
         order = config.get("order", global_order)
         value = config["value"]
-        marker_type = config["type"]
+        marker_kind = config["kind"]
 
         # Convert list-form replace to tuple
-        if marker_type == "replace" and isinstance(value, list):
+        if marker_kind == "replace" and isinstance(value, list):
             value = tuple(value)
 
         return Marker(
-            value=value, type=marker_type, order=order, feature_value=feature_value
+            value=value, kind=marker_kind, order=order, feature_value=feature_value
         )
 
     def __str__(self):
-        return f"Marker(type={self.type}, value={self.value})"
+        return f"Marker(type={self.kind}, value={self.value})"
 
     def __repr__(self):
         return self.__str__()
@@ -194,7 +194,7 @@ class MarkerList(UserList):
             )
             if marker is None:
                 continue
-            if marker.type == "principal_part":
+            if marker.kind == "principal_part":
                 if principal_part_marker is not None:
                     raise ValueError(
                         "Multiple 'principal_part' markers found in config. Only one is allowed."
@@ -229,10 +229,10 @@ class MarkerList(UserList):
 
     def set_principal_part(self, marker: Marker | str, override=True):
         if isinstance(marker, str):
-            marker = Marker(type="principal_part", value=marker)
-        if marker.type != "principal_part":
+            marker = Marker(kind="principal_part", value=marker)
+        if marker.kind != "principal_part":
             raise ValueError(
-                f"Can only set principal part marker, but got marker of type {marker.type}"
+                f"Can only set principal part marker, but got marker of type {marker.kind}"
             )
         if self.principal_part is not None and not override:
             logger.info(
@@ -291,7 +291,7 @@ class MarkerList(UserList):
             raise ValueError(
                 f"All items in a MarkerList must be Markers, but got {type(item)}"
             )
-        if item.type == "principal_part":
+        if item.kind == "principal_part":
             if self.principal_part is not None:
                 raise ValueError(
                     "MarkerList may contain at most one 'principal_part' marker, but already has one"
@@ -309,7 +309,7 @@ class MarkerList(UserList):
                 raise ValueError(
                     f"All items in a MarkerList must be Markers, but got {type(item)}"
                 )
-            if item.type == "principal_part":
+            if item.kind == "principal_part":
                 self.set_principal_part(item, override=False)
         return super().extend(other)
 
@@ -318,7 +318,7 @@ class MarkerList(UserList):
             raise ValueError(
                 f"All items in a MarkerList must be Markers, but got {type(item)}"
             )
-        if item.type == "principal_part":
+        if item.kind == "principal_part":
             self.set_principal_part(item, override=False)
         return super().insert(i, item)
 

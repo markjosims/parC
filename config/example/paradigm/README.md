@@ -117,9 +117,9 @@ This may be useful when enforcing a particular stem shape across an entire parad
 kind: Paradigm
 part_of_speech: verb
 global_markers:
-- type: principal_part
+- kind: principal_part
   value: past_stem
-- type: rule
+- kind: rule
   value: $LLH_melody
 feature_markers:
   tense: past

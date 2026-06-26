@@ -8,6 +8,6 @@ contingent_markers:
 filter:
   lexical_features: []
 global_markers:
-- type: rule
+- kind: rule
   value: $resolve_hiatus
   order: hiatus_resolution

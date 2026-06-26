@@ -3,9 +3,9 @@ feature: tense
 markers:
   present: null
   past:
-  - type: principal_part
+  - kind: principal_part
     value: past_stem
   future:
-  - type: rule
+  - kind: rule
     value: initial_mutation
     order: consonant_mutation

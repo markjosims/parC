@@ -4,11 +4,11 @@ global_order: inner_suffix
 markers:
   indicative: null
   subjunctive:
-  - type: suffix
+  - kind: suffix
     value: -ɔ̀k
   imperative:
-  - type: rule
+  - kind: rule
     value: delete_stemfinal_consonant
   infinitive:
-  - type: prefix
+  - kind: prefix
     value: rʊ-

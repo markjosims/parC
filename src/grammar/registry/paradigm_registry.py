@@ -496,31 +496,31 @@ class Paradigm:
                 "Cannot build marker without FstRegistry but `self.FstRegistry` is None"
             )
 
-        elif marker.type == "rule":
+        elif marker.kind == "rule":
             assert isinstance(marker.value, str)
             marker_rule = self.fst_orchestrator.get_rule(marker.value)
-        elif marker.type == "prefix":
+        elif marker.kind == "prefix":
             assert isinstance(marker.value, str)
             marker_rule = self.fst_orchestrator.prefix(marker.value)
-        elif marker.type == "suffix":
+        elif marker.kind == "suffix":
             assert isinstance(marker.value, str)
             marker_rule = self.fst_orchestrator.suffix(marker.value)
-        elif marker.type == "replace":
+        elif marker.kind == "replace":
             assert isinstance(marker.value, tuple)
             marker_rule = self.fst_orchestrator.replace_transducer(
                 marker.value[0], marker.value[1]
             )
-        elif marker.type == "suppletion":
+        elif marker.kind == "suppletion":
             sigma_star = self.fst_orchestrator.sigma_star
             assert isinstance(marker.value, str)
             marker_rule = self.fst_orchestrator.replace_transducer(
                 sigma_star, marker.value
             )
-        elif marker.type == "principal_part":
+        elif marker.kind == "principal_part":
             assert isinstance(marker.value, str)
             marker_rule = self._get_principal_part_transducer(marker.value)
         else:
-            raise ValueError(f"Unrecognized marker type {marker.type}")
+            raise ValueError(f"Unrecognized marker type {marker.kind}")
 
         marker.set_transducer(marker_rule.fst)
 
@@ -832,12 +832,12 @@ class Paradigm:
             stage_data = {}
             if marker is None:
                 stage_data["order"] = "<INITIAL>"
-                stage_data["marker_type"] = None
+                stage_data["marker_kind"] = None
                 stage_data["marker_value"] = None
                 stage_data["feature_value"] = None
             else:
                 stage_data["order"] = marker.order
-                stage_data["marker_type"] = marker.type
+                stage_data["marker_kind"] = marker.kind
                 stage_data["marker_value"] = marker.value
                 stage_data["feature_value"] = marker.feature_value
 
@@ -861,7 +861,7 @@ class Paradigm:
             table_data.append(
                 {
                     "order": "<FINAL>",
-                    "marker_type": None,
+                    "marker_kind": None,
                     "marker_value": None,
                     "feature_value": None,
                     "form": string,

@@ -9,7 +9,7 @@ Grammar Modules
 ===============
 
 Grammar modules are how parC defines the logic for constructing a morphological parser.
-Modules are grouped into the following types: **phonology**, **exponence**, **lexicon**, and **morphotactics**.
+Modules are grouped into the following kinds: **phonology**, **exponence**, **lexicon**, and **morphotactics**.
 
 
 Phonology
@@ -65,7 +65,7 @@ Here we use the term "string" though to be technically precise the input, output
 SPE provides a single-line notation for representing a context-sensitive rule, e.g. (t,d) > ɾ / V_V[-stress], parsed as "the phonemes /t,d/ are transformed into an alveolar tap [ɾ] between two vowels where the following vowel is unstressed."
 Here (t,d) is the input string, ɾ the output string, V is the left context and V[-stress] the right (!TODO verify notation vis-a-vis SPE paper).
 
-Three types of rules are supported in parC: simple rule, string map and rule sequence.
+Three kinds of rules are supported in parC: simple rule, string map and rule sequence.
 A simple rule maps a single input to a single output given some left and right context.
 The input, output and context strings are defined equivalently to patterns, that is a pattern symbol like ``<V_NonHigh>`` may be used in a rule definition as may operators like disjunction, negation or optionality.
 For example, the input string for the intervocalic tapping rule in English could be defined as ``t|d`` or ``{td}``.

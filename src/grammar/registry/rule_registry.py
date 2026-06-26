@@ -34,7 +34,7 @@ class Rule(TransducerList):
     TODO: handle PDT-based rules conditioned on flags
     """
 
-    type: Literal["simple_rule", "string_map", "rule_sequence"] = "simple_rule"
+    kind: Literal["simple_rule", "string_map", "rule_sequence"] = "simple_rule"
     _ref: str = ""
 
     # attributes for simple rules
@@ -86,7 +86,7 @@ class Rule(TransducerList):
                 "used_by should not be passed on init but constructed by a RuleRegistry object."
             )
 
-        if self.type == "simple_rule":
+        if self.kind == "simple_rule":
             if (not self.input_pattern) or (not self.output_pattern):
                 raise ValueError("Simple rules must have input and output patterns")
             if self.string_map:
@@ -94,7 +94,7 @@ class Rule(TransducerList):
             if self.rule_sequence:
                 raise ValueError("Simple rules cannot have a rule sequence")
 
-        if self.type == "rule_sequence":
+        if self.kind == "rule_sequence":
             if self.rule_sequence is None:
                 raise ValueError("Rule sequence must have a rule sequence")
             elif not self.rule_sequence:
@@ -107,7 +107,7 @@ class Rule(TransducerList):
             if self.left_context.value or self.right_context.value:
                 raise ValueError("Rule sequence cannot have left or right context")
 
-        if self.type == "string_map":
+        if self.kind == "string_map":
             if not self.string_map:
                 raise ValueError("String map rules must have a string map")
             if self.input_pattern.value or self.output_pattern.value:
@@ -121,15 +121,15 @@ class Rule(TransducerList):
         self, used_by: list["Rule"], rule_sequence: list["Rule"] | None = None
     ):
         self.used_by = used_by
-        if rule_sequence is not None and self.type != "rule_sequence":
+        if rule_sequence is not None and self.kind != "rule_sequence":
             raise ValueError(
-                f"if `rule_sequence` is passed expect type='rule_sequence' but got type={self.type}"
+                f"if `rule_sequence` is passed expect type='rule_sequence' but got type={self.kind}"
             )
         self.rule_sequence = rule_sequence
         self.dependencies_built = True
 
     def __str__(self):
-        return f"Rule(_ref='{self._ref}', type='{self.type}')"
+        return f"Rule(_ref='{self._ref}', type='{self.kind}')"
 
     def __repr__(self):
         return self.__str__()
@@ -147,32 +147,32 @@ class Rule(TransducerList):
         """
         # infer rule type from attrs
         if ("input_pattern" in config) and ("output_pattern" in config):
-            rule_type = "simple_rule"
+            rule_kind = "simple_rule"
         elif "string_map" in config:
-            rule_type = "string_map"
+            rule_kind = "string_map"
         elif "rule_sequence" in config:
-            rule_type = "rule_sequence"
+            rule_kind = "rule_sequence"
         else:
             raise ValueError(f"Unrecognized rule type for rule {config}, check format")
 
         # Build construction kwargs explicitly to avoid mutating input dict
         kwargs = {
-            "type": rule_type,
+            "kind": rule_kind,
             "_ref": config.get("_ref", ""),
             "description": config.get("description"),
             "source": config.get("source_path"),
             "direction": config.get("direction", "ltr"),
         }
 
-        if rule_type == "simple_rule":
+        if rule_kind == "simple_rule":
             kwargs["input_pattern"] = cls._to_acceptor(config["input_pattern"])
             kwargs["output_pattern"] = cls._to_acceptor(config["output_pattern"])
-        elif rule_type == "string_map":
+        elif rule_kind == "string_map":
             kwargs["string_map"] = [
                 (cls._to_acceptor(inp), cls._to_acceptor(out))
                 for inp, out in config["string_map"]
             ]
-        elif rule_type == "rule_sequence":
+        elif rule_kind == "rule_sequence":
             # Registry handles resolving these refs to Rule objects later
             kwargs["rule_sequence"] = config.get("rule_sequence", [])
 
@@ -196,7 +196,7 @@ class Rule(TransducerList):
         return Acceptor(val)
 
     def __str__(self):
-        return f"Rule(_ref={self._ref}, type={self.type})"
+        return f"Rule(_ref={self._ref}, type={self.kind})"
 
     def to_dict(self) -> dict:
         """Serialize a Rule to a YAML-serializable dict (config format)."""
@@ -205,7 +205,7 @@ class Rule(TransducerList):
         if self.description:
             d["description"] = self.description
 
-        if self.type == "simple_rule":
+        if self.kind == "simple_rule":
             d["input_pattern"] = self.input_pattern.value or ""
             d["output_pattern"] = self.output_pattern.value or ""
             if self.left_context.value:
@@ -215,7 +215,7 @@ class Rule(TransducerList):
             if self.direction != "ltr":
                 d["direction"] = self.direction
 
-        elif self.type == "string_map":
+        elif self.kind == "string_map":
             d["string_map"] = [
                 [inp.value or "", out.value or ""] for inp, out in self.string_map
             ]
@@ -226,7 +226,7 @@ class Rule(TransducerList):
             if self.direction != "ltr":
                 d["direction"] = self.direction
 
-        elif self.type == "rule_sequence":
+        elif self.kind == "rule_sequence":
             # self.rule_sequence can be list[Rule] (resolved) or list[str] (unresolved)
             d["rule_sequence"] = [
                 validate_file_reference_str(r._ref if hasattr(r, "_ref") else r)
@@ -265,7 +265,7 @@ class RuleLike(Protocol):
     Structural protocol for Rule class.
     """
 
-    type: str
+    kind: str
     _ref: str
 
     # attributes for simple rules

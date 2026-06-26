@@ -6,7 +6,7 @@ order:
 - outer_suffix
 - post_affixation
 global_markers:
-- type: rule
+- kind: rule
   value: harmonize_suffix
 feature_markers:
   person_number: $present_tense_person_markers

@@ -6,7 +6,6 @@ class, which manages multiple MorphemeSequence configurations.
 
 from loguru import logger
 import os
-from numpy import isin
 import pynini
 from src.fst_utils import FsaLike, Acceptor
 from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
@@ -79,7 +78,7 @@ class MorphemeSequence:
         data = []
         for item in self.sequence_data:
             new_item = item.copy()
-            if new_item["type"] in ["Lexicon", "Paradigm", "Rule", "MorphemeSet"]:
+            if new_item["kind"] in ["Lexicon", "Paradigm", "Rule", "MorphemeSet"]:
                 new_item["value"] = validate_file_reference_str(new_item["value"])
             data.append(new_item)
 
@@ -98,16 +97,16 @@ class MorphemeSequence:
         applicable, adding all features exponed by that morpheme.
         """
         for item in self.sequence_data:
-            morpheme_type = item["type"]
+            morpheme_kind = item["kind"]
             morpheme_value = item["value"]
 
             resolved = None
-            if morpheme_type == "Lexicon":
+            if morpheme_kind == "Lexicon":
                 resolved = self.lexicon_registry.get_lexicon(morpheme_value)
                 if resolved:
                     self.features.update([f for f in resolved.features])
                     self.features.update([f for f in resolved.lexical_features])
-            elif morpheme_type == "Paradigm":
+            elif morpheme_kind == "Paradigm":
                 resolved = self.paradigm_registry.get_paradigm(morpheme_value)
                 if resolved:
                     self.features.update([f for f in resolved.features])
@@ -116,18 +115,18 @@ class MorphemeSequence:
                         self.features.update(
                             [f for f in resolved.lexicon.lexical_features]
                         )
-            elif morpheme_type == "Pattern":
+            elif morpheme_kind == "Pattern":
                 resolved = self.fst_orchestrator.fsa(morpheme_value)
-            elif morpheme_type == "Rule":
+            elif morpheme_kind == "Rule":
                 resolved = self.fst_orchestrator.get_rule(morpheme_value)
-            elif morpheme_type == "MorphemeSet":
+            elif morpheme_kind == "MorphemeSet":
                 resolved = self.morpheme_set_registry.get_morpheme_set(morpheme_value)
                 if resolved:
                     self.features.update([f for f in resolved.features])
 
             if resolved is None:
                 logger.error(
-                    f"Could not resolve {morpheme_type} reference: {morpheme_value}"
+                    f"Could not resolve {morpheme_kind} reference: {morpheme_value}"
                 )
 
             self.morphemes.append(resolved)
@@ -167,14 +166,14 @@ class MorphemeSequence:
         stem_idx = 0
 
         for item, resolved in zip(self.sequence_data, self.morphemes):
-            morpheme_type = item["type"]
+            morpheme_kind = item["kind"]
 
             if resolved is None:
                 continue
 
             step_fst = None
             try:
-                if morpheme_type == "Lexicon":
+                if morpheme_kind == "Lexicon":
                     assert isinstance(resolved, Lexicon)
                     if stems:
                         if stem_idx >= len(stems):
@@ -188,7 +187,7 @@ class MorphemeSequence:
                         )
                     else:
                         step_fst = resolved.analyses_to_roots(features)
-                elif morpheme_type == "Paradigm":
+                elif morpheme_kind == "Paradigm":
                     assert isinstance(resolved, Paradigm)
                     if stems:
                         if stem_idx >= len(stems):
@@ -200,13 +199,13 @@ class MorphemeSequence:
                         step_fst = resolved.inflect(stem, features)
                     else:
                         step_fst = resolved.get_subparadigm_inflect_graph(features)
-                elif morpheme_type == "MorphemeSet":
+                elif morpheme_kind == "MorphemeSet":
                     assert isinstance(resolved, MorphemeSet)
                     step_fst = resolved.analysis_to_morpheme(**features)
-                elif morpheme_type == "Pattern":
+                elif morpheme_kind == "Pattern":
                     # resolved is pynini.Fst from fst_orchestrator.fsa()
                     step_fst = resolved
-                elif morpheme_type == "Rule":
+                elif morpheme_kind == "Rule":
                     # resolved is a Rule instance
                     assert isinstance(resolved, Rule)
                     result_fst = self.fst_orchestrator.apply_rule(result_fst, resolved)
@@ -216,14 +215,14 @@ class MorphemeSequence:
                     # skip if fst is empty (no paths)
                     if step_fst.start() == pynini.NO_STATE_ID:
                         logger.warning(
-                            f"Step {morpheme_type} {resolved} returned empty FST, skipping."
+                            f"Step {morpheme_kind} {resolved} returned empty FST, skipping."
                         )
                         continue
                     result_fst.concat(step_fst)
 
             except KeyError as e:
                 logger.warning(
-                    f"Skipping step {morpheme_type} {resolved} due to KeyError: {e}"
+                    f"Skipping step {morpheme_kind} {resolved} due to KeyError: {e}"
                 )
                 continue
 
@@ -265,7 +264,7 @@ class MorphemeSequence:
         stages.append(
             {
                 "step": 0,
-                "type": "START",
+                "kind": "START",
                 "value": "",
                 "form": "",
                 "fst": current_fst,
@@ -273,30 +272,30 @@ class MorphemeSequence:
         )
 
         for i, (item, resolved) in enumerate(zip(self.sequence_data, self.morphemes)):
-            morpheme_type = item["type"]
+            morpheme_kind = item["kind"]
             morpheme_value = item["value"]
-            step_info = {"step": i + 1, "type": morpheme_type, "value": morpheme_value}
+            step_info = {"step": i + 1, "kind": morpheme_kind, "value": morpheme_value}
 
             step_fst = None
             try:
-                if morpheme_type == "Lexicon":
+                if morpheme_kind == "Lexicon":
                     assert isinstance(resolved, Lexicon)
                     stem = stems[stem_idx]
                     stem_idx += 1
                     step_fst = self.fst_orchestrator._cast_fsalike_to_fsa(
                         stem, is_word=True
                     )
-                elif morpheme_type == "Paradigm":
+                elif morpheme_kind == "Paradigm":
                     assert isinstance(resolved, Paradigm)
                     stem = stems[stem_idx]
                     stem_idx += 1
                     step_fst = resolved.inflect(stem, features)
-                elif morpheme_type == "MorphemeSet":
+                elif morpheme_kind == "MorphemeSet":
                     assert isinstance(resolved, MorphemeSet)
                     step_fst = resolved.analysis_to_morpheme(**features)
-                elif morpheme_type == "Pattern":
+                elif morpheme_kind == "Pattern":
                     step_fst = resolved
-                elif morpheme_type == "Rule":
+                elif morpheme_kind == "Rule":
                     assert isinstance(resolved, Rule)
                     current_fst = self.fst_orchestrator.apply_rule(
                         current_fst, resolved
@@ -305,14 +304,14 @@ class MorphemeSequence:
                 if step_fst is not None:
                     if step_fst.start() == pynini.NO_STATE_ID:
                         logger.warning(
-                            f"Step {morpheme_type} {resolved} returned empty FST, skipping."
+                            f"Step {morpheme_kind} {resolved} returned empty FST, skipping."
                         )
                     else:
                         current_fst = current_fst + step_fst
 
             except KeyError as e:
                 logger.warning(
-                    f"Skipping step {morpheme_type} {resolved} due to KeyError: {e}"
+                    f"Skipping step {morpheme_kind} {resolved} due to KeyError: {e}"
                 )
 
             # Extract form string for the stage
@@ -329,7 +328,7 @@ class MorphemeSequence:
         stages.append(
             {
                 "step": len(self.morphemes) + 1,
-                "type": "FINAL",
+                "kind": "FINAL",
                 "value": "",
                 "form": self.fst_orchestrator.fsm_strings(
                     current_fst, strip_all_flags=True

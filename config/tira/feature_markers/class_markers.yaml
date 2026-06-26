@@ -3,17 +3,17 @@ feature: class_marker
 global_order: class_marking
 markers:
   l:
-  - type: replace
+  - kind: replace
     value:
     - '[CL]'
     - l
   g:
-  - type: replace
+  - kind: replace
     value:
     - '[CL]'
     - k
   ð:
-  - type: replace
+  - kind: replace
     value:
     - '[CL]'
     - ð

@@ -12,13 +12,13 @@ kind: FeatureMarkers
 feature: person
 markers:
   1sg:
-    type: suffix
+    kind: suffix
     value: -o
   2sg:
-    type: suffix
+    kind: suffix
     suffix: -as
   3sg:
-    type: suffix
+    kind: suffix
     suffix: -a
 ```
 
@@ -35,31 +35,31 @@ markers:
 - outer_feature_value: present
     inner_feature_values:
       1sg:
-        type: suffix
+        kind: suffix
         value: -o
       2sg:
-        type: suffix
+        kind: suffix
         value: -as
       3sg:
-        type: suffix
+        kind: suffix
         value: -a
 - outer_feature_value: past
   inner_feature_values:
     1sg:
-      type: suffix
+      kind: suffix
       value: -é
     2sg:
-      type: suffix
+      kind: suffix
       value: -aste
     3sg:
-      type: suffix
+      kind: suffix
       value: -ó
 ```
 
 ## Marker keys
 The marker dictionary corresponds to the `Marker` class in `src/forms/form_constructors.py`.
 This object describes the logic for building an FST describing a morphological formative.
-In the Spanish examples above, the only formative type used is 'suffix,' but several types of string operations are allowed, including:
+In the Spanish examples above, the only formative kind used is 'suffix,' but several kinds of string operations are allowed, including:
 - Suffix: Append suffix string to stem
 - Prefix: Prepend prefix string to stem
 - Replace: List of ["intab", "outtab"]. Replace "intab" with "outtab" across all contexts.
@@ -69,10 +69,10 @@ Note suppletion is not **not** compatible with any of the above operations, and 
 - Principal part: Functionally equivalent to suppletion where the value specifies a column in a given lexicon file and the output string of the process is the value for that column.
 See [Princpal Parts](#principle-parts) for more information.
 
-The type of formative is indicated with the `type` attr and the `value` attr contains string to be interpreted as a formative.
+The kind of formative is indicated with the `kind` attr and the `value` attr contains string to be interpreted as a formative.
 A marker may contain a single formative or multiple formatives stored as a list.
 
-See below for examples of all rule types with a toy language:
+See below for examples of all rule kinds with a toy language:
 ```yaml
 # toy_person_markers.yaml
 kind: FeatureMarkers
@@ -80,31 +80,31 @@ feature: person
 markers:
   # e.g. ket > pe-ket-ap
   1sg:
-  - type: suffix
+  - kind: suffix
     value: -ap
-  - type: prefix
+  - kind: prefix
     value: ke-
   # e.g. ket > gat
   2sg:
-  - type: replace
+  - kind: replace
     value: [e, a]
-  - type: rule
+  - kind: rule
     value: $initial_voicing
   # no change, e.g. ket > ket
   3sg: null
   # e.g. ket > pok
   1pl:
-    type: suppletion
+    kind: suppletion
     value: pok
   # e.g. ket > re-keet
   2pl:
-  - type: rule
+  - kind: rule
     value: $vowel_lengthening
-  - type: prefix
+  - kind: prefix
     value: re-
   # e.g. ket > kets
   3pl:
-    type: rule
+    kind: rule
     value: $affrication
     
 ```
@@ -115,9 +115,9 @@ feature: person
 markers:
   1sg:
   # e.g. ked > ket-te
-  - type: suffix
+  - kind: suffix
     value: -te
-  - type: replace
+  - kind: replace
     value: [dt, tt]
 ```
 Here, the *-te* suffix feeds the assimilation /dt/.
@@ -133,14 +133,14 @@ feature: person
 markers:
   # e.g. ked > ked-ap
   1sg:
-    type: suffix
+    kind: suffix
     value: -ap
   2sg:
   # e.g. ked > ket-te
-  - type: suffix
+  - kind: suffix
     value: -te
     order: suffixation
-  - type: replace
+  - kind: replace
     value: [dt, tt]
     order: stem_assimilation
 ```
@@ -158,7 +158,7 @@ inherits: $person_markers_a_stem_present
 features: person
 markers:
   1sg:
-    type: suffix
+    kind: suffix
     value: -oy
 ```
 This allows easy creation of irregular or sub-regular paradigms where only a few forms differ from some other paradigm specified in the 'inherits' attribute.
@@ -174,17 +174,17 @@ markers:
   tense:
     present:
       1sg:
-        type: suffix
+        kind: suffix
         value: -oy
     past:
       1sg:
-        type: suffix
+        kind: suffix
         value: -uv-e
       2sg:
-        type: suffix
+        kind: suffix
         value: -uv-iste
       3sg:
-        type: suffix
+        kind: suffix
         value: -uv-o  
 ```
 For a verb like *dar*, which takes a-stem suffixes in the present (excepting 1sg *-oy*) and e/i-stem suffixes in the past, we can use inheritance and overriding multiple times in the same file.
@@ -215,10 +215,10 @@ global_order: inner suffixation
 markers:
   present: null
   past:
-    type: suffix
+    kind: suffix
     value: -et
   future:
-    type: suffix
+    kind: suffix
     value: -ol
 ```
 
@@ -228,13 +228,13 @@ feature: person
 global_order: outer suffixation
 markers:
   1sg:
-    type: rule
+    kind: rule
     value: $palatalization
   2sg:
-    type: suffix
+    kind: suffix
     value: -ek
   3sg:
-    type: suffix
+    kind: suffix
     value: -ut
 ```
 If an individual marker specifies the same attribute as a global attribute, the individual marker's specification for that attribute will win.
@@ -244,14 +244,14 @@ feature: person
 global_order: outer suffixation
 markers:
   1sg:
-    type: rule
+    kind: rule
     value: $palatalization
     order: stem_mutation
   2sg:
-    type: suffix
+    kind: suffix
     order: -ek
   3sg:
-    type: suffix
+    kind: suffix
     order: -ut
 ```
 Rather than assgining a single attribute for all markers in the config, we may wish to apply an entire marker to all forms, and then let each feature value add it's own marker if needed.
@@ -260,20 +260,20 @@ For example, let's create a paradigm for the Spanish verb *estar* where we inser
 kind: FeatureMarkers
 feature: person
 global_markers:
-- type: suffix
+- kind: suffix
   order: -uv
   order: "Inner suffix"
 markers:
   1sg:
-    type: suffix
+    kind: suffix
     order: "-e"
     order: "Outer suffix"
   2sg:
-    type: suffix
+    kind: suffix
     order: "-iste"
     order: "Outer suffix"
   3sg:
-    type: suffix
+    kind: suffix
     order: "-o"
     order: "Outer suffix"
 ```
