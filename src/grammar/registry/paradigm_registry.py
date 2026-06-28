@@ -63,7 +63,7 @@ class Paradigm:
         fst_orchestrator: FstOrchestrator,
         name: str | None = None,
         pattern_filter: str | None = None,
-        fixed_lexical_features: list[tuple[Feature, str]] | None = None,
+        fixed_lexical_features: dict[Feature, str] | None = None,
         fixed_features: dict[str, str] | None = None,
         marker_order: list[str] | None = None,
         feature_value_combinations: FeatureValueCombinations | None = None,
@@ -84,7 +84,7 @@ class Paradigm:
         self.part_of_speech = lexicon.part_of_speech
         self.lexicon = lexicon
         self.pattern_filter = pattern_filter
-        self.fixed_lexical_features = fixed_lexical_features or []
+        self.fixed_lexical_features = fixed_lexical_features or {}
         self.lexical_filter = None  # to be initialized later
         self.markers = deepcopy(markers)
         self.contingent_markers = deepcopy(contingent_markers)
@@ -125,12 +125,13 @@ class Paradigm:
         lexicon = lexicon_registry.get_lexicon(part_of_speech_name)
         marker_order = config.get("order", None)
 
-        feature_value_combinations = None
-        feature_value_combination_name = config.get("feature_value_combinations")
-        if feature_value_combination_name:
-            feature_value_combinations = marker_orchestrator.get_feature_combinations(
-                feature_value_combination_name
-            )
+        # TODO: FeatureCombinations is buggy so it is commented out for now
+        # feature_value_combinations = None
+        # feature_value_combination_name = config.get("feature_value_combinations")
+        # if feature_value_combination_name:
+        #     feature_value_combinations = marker_orchestrator.get_feature_combinations(
+        #         feature_value_combination_name
+        #     )
 
         # load filters
         feature_orchestrator = marker_orchestrator.feature_orchestrator
@@ -139,10 +140,10 @@ class Paradigm:
         lexical_feature_strs: list[list[str]] = filter_config.get(
             "lexical_features", []
         )
-        fixed_lexical_features = []
+        fixed_lexical_features = {}
         for feature_name, feature_value in lexical_feature_strs:
             feature = feature_orchestrator.get_feature(feature_name)
-            fixed_lexical_features.append((feature, feature_value))
+            fixed_lexical_features[feature] = feature_value
 
         fixed_features = {}
         markers = []
@@ -295,7 +296,7 @@ class Paradigm:
                 fm_dict[fm.feature.name] = "[UNRESOLVED]"
 
         # Reconstruct filter
-        lf_list = [[f.name, v] for f, v in self.fixed_lexical_features]
+        lf_list = [[f.name, v] for f, v in self.fixed_lexical_features.items()]
         filter_doc = {"lexical_features": lf_list}
         if self.pattern_filter:
             filter_doc["pattern"] = self.pattern_filter
@@ -434,7 +435,7 @@ class Paradigm:
         expected_lexical_feature_names = [
             feature.name for feature in self.lexicon.lexical_features
         ]
-        for feature, _ in self.fixed_lexical_features:
+        for feature, _ in self.fixed_lexical_features.items():
             if feature.name not in expected_lexical_feature_names:
                 raise ValueError(
                     f"Lexical feature '{feature}' in paradigm config not recognized in lexicon. "
@@ -575,20 +576,6 @@ class Paradigm:
 
         return lexical_feature_fst
 
-    def _get_lexical_feature_mask(self) -> pd.Series:
-        """
-        Apply pattern and lexical features to lexicon (if applicable)
-        and return all remaining roots.
-        """
-        entries = self.lexicon.entries
-        feature_mask = pd.Series([True] * len(entries))
-
-        for feature, feature_value in self.fixed_lexical_features:
-            feature_col = entries[feature.name]
-            feature_mask &= feature_col == feature_value
-
-        return feature_mask
-
     def _build_lexical_filter(self):
         """
         Get boolean filter after applying both lexical feature and
@@ -597,7 +584,7 @@ class Paradigm:
         specified.
         """
         entries = self.lexicon.entries
-        feature_mask = self._get_lexical_feature_mask()
+        feature_mask = self.lexicon._get_lexical_feature_mask(self.fixed_lexical_features   )
 
         if not self.pattern_filter:
             self.lexical_filter = feature_mask
@@ -844,7 +831,7 @@ class Paradigm:
 
             stage_strings = self.fst_orchestrator.fsm_strings(
                 stage_fst,
-                strip_all_flags=False,
+                strip_all_tags=False,
                 strip_word_edge_symbols=True,
             )
             for string in stage_strings:
@@ -856,7 +843,7 @@ class Paradigm:
                 )
 
         final_form = self.fst_orchestrator.fsm_strings(
-            stages[-1][0], strip_all_flags=True
+            stages[-1][0], strip_all_tags=True
         )
         for string in final_form:
             table_data.append(
@@ -1040,7 +1027,7 @@ class Paradigm:
 
         self.edit_graphs_built = True
 
-        logger.info(f"Edit g1.raphs built for paradigm {self.name}.")
+        logger.info(f"Edit graphs built for paradigm {self.name}.")
 
     def search_form(
         self, query: FsaLike, nshortest: int = 5

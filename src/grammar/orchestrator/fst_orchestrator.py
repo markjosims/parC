@@ -1074,7 +1074,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
 
         if not rule.transducer_built:
             logger.info(
-                f"Rule '{rule.ref}' has uninitialized transducer, initializing..."
+                f"Rule '{rule.name}' has uninitialized transducer, initializing..."
             )
             rule_fst = self.compile_rule(rule)
             rule.set_transducer(rule_fst)
@@ -1213,12 +1213,12 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             output_strs = []
             try:
                 output_fsa = self.apply_rule(input_str, rule)
-                output_fsa = pynini.project(output_fsa, project_kind="output")
+                output_fsa = pynini.project(output_fsa, project_type="output")
                 expected_output_fsa = self.word_fsa(expected_output_str)
                 intersection = pynini.intersect(output_fsa, expected_output_fsa)
                 passed = intersection.start() != pynini.NO_STATE_ID
 
-                output_strs = self.fsm_strings(output_fsa)
+                output_strs = self.fsm_strings(output_fsa, strip_all_tags=True)
             except Exception as e:
                 logger.exception(e)
                 passed = False
@@ -1234,7 +1234,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             if not passed:
                 all_pass = False
 
-        rule_ref = rule if isinstance(rule, str) else rule.ref
+        rule_ref = rule if isinstance(rule, str) else rule.name
         return {"ref": rule_ref, "results": results, "all_pass": all_pass}
 
     def test_rule_mappings(self):
@@ -1244,13 +1244,13 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         """
         for rule in self.rules.values():
             for input_str, expected_output_str in rule.test_mappings:
-                output_fsa = self.apply_rule(input_str, rule.ref)
-                output_fsa = pynini.project(output_fsa, project_kind="output")
+                output_fsa = self.apply_rule(input_str, rule.name)
+                output_fsa = pynini.project(output_fsa, project_type="output")
                 expected_output_fsa = self.word_fsa(expected_output_str)
                 intersection = pynini.intersect(output_fsa, expected_output_fsa)
                 if intersection.start() == pynini.NO_STATE_ID:
                     raise ValueError(
-                        f"Rule '{rule.ref}' failed test mapping for input '{input_str}' and expected output '{expected_output_str}'. "
+                        f"Rule '{rule.name}' failed test mapping for input '{input_str}' and expected output '{expected_output_str}'. "
                         "Check that the rule is correctly specified and that the test mapping is correct."
                     )
 
@@ -1260,11 +1260,11 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         project: Literal["input", "output"] = "output",
         nshortest: int = None,
         strip_word_edge_symbols: bool = False,
-        strip_all_flags: bool = False,
+        strip_all_tags: bool = False,
     ) -> list[tuple[str, float]]:
 
         decoded_outputs = []
-        fsa = pynini.project(fst, project_kind=project)
+        fsa = pynini.project(fst, project_type=project)
         if nshortest is not None:
             fsa = rewrite.lattice_to_nshortest(fsa, nshortest=nshortest)
 
@@ -1274,7 +1274,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             word = self._decode_labels(
                 label_iter,
                 strip_word_edge_symbols=strip_word_edge_symbols,
-                strip_all_flags=strip_all_flags,
+                strip_all_tags=strip_all_tags,
             )
             weight = float(path_iter.weight())
             if word not in decoded_outputs:
@@ -1290,7 +1290,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         project: Literal["input", "output"] = "output",
         nshortest: int = None,
         strip_word_edge_symbols: bool = False,
-        strip_all_flags: bool = False,
+        strip_all_tags: bool = False,
     ) -> list[str]:
         """
         Return all (or nshortest) strings for an input FSM.
@@ -1301,7 +1301,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             project=project,
             nshortest=nshortest,
             strip_word_edge_symbols=strip_word_edge_symbols,
-            strip_all_flags=strip_all_flags,
+            strip_all_tags=strip_all_tags,
         )
         string_list = [string for string, _ in strs_and_weights]
         return string_list
@@ -1311,7 +1311,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         fst: pynini.Fst,
         project: Literal["input", "output"] = "output",
         strip_word_edge_symbols: bool = False,
-        strip_all_flags: bool = False,
+        strip_all_tags: bool = False,
     ) -> str:
         """
         Wraps `self.fsm_strings` with `nshortest=1` and returns
@@ -1322,7 +1322,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             project,
             nshortest=1,
             strip_word_edge_symbols=strip_word_edge_symbols,
-            strip_all_flags=strip_all_flags,
+            strip_all_tags=strip_all_tags,
         )
         if len(string_list) != 1:
             raise ValueError(f"Expected single string, got {string_list}")
@@ -1332,7 +1332,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         self,
         label_iter,
         strip_word_edge_symbols: bool = False,
-        strip_all_flags: bool = False,
+        strip_all_tags: bool = False,
     ) -> str:
         """
         Arguments:
@@ -1348,7 +1348,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
                 # epsilon, skip
                 continue
             symbol = self.symbols.find(label)
-            if strip_all_flags and symbol[0] == "[":
+            if strip_all_tags and symbol[0] == "[":
                 continue
             elif strip_word_edge_symbols and symbol in self.bow_eow_flags:
                 continue

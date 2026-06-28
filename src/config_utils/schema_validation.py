@@ -7,13 +7,15 @@ from src.constants import SCHEMA_DIR
 from typing import Literal, get_args
 
 ConfigKindType = Literal[
+    # TODO: FeatureCombinations, MorphemeSet and MorphemeSequence are buggy
+    # so they are commented out for now
     "ContingentFeatureMarkers",
-    "FeatureCombinations",
+    # "FeatureCombinations",
     "FeatureDefinitions",
     "FeatureMarkers",
     "Inventory",
-    "MorphemeSequence",
-    "MorphemeSet",
+    # "MorphemeSequence",
+    # "MorphemeSet",
     "Paradigm",
     "PartOfSpeech",
     "Patterns",

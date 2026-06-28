@@ -1,7 +1,9 @@
 # inventory
+
 YAML files for defining phoneme and symbol inventories for the parser.
 The inventory broadly consists *phones* (e.g. consonants and vowels, but also tones, suprasegmentals and diacritics) and *flags* (used only internally for e.g. marking an unfilled TBU or a slot in a morphological template).
 Inventory datafiles conform to the following YAML schema:
+
 ```yaml
 kind: Inventory
 data:
@@ -17,9 +19,11 @@ data:
     tone_flags:
         tags: ["[TBU]", "[FLOAT]"]
 ```
+
 Flags are automatically cleaned up when an FST is decoded into strings.
 
 Note the following symbols are reserved:
+
 - `<Phone>`: Any phone (non-tag) in the inventory.
 - `<tag>`: Any tag in the inventory.
 - `<Sigma>`: Any item in the inventory, phone(me) or tag.

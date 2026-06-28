@@ -45,8 +45,9 @@ class MarkerOrchestrator:
                 "Provide a feature registry to load configs and initialize MarkerRegistry."
             )
             return
-        self.features = feature_orchestrator.features
-        self.feature_combinations = feature_orchestrator.feature_combinations
+        self.features = feature_orchestrator
+        # TODO: FeatureCombinations is buggy so it is commented out for now
+        # self.feature_combinations = feature_orchestrator.feature_combinations
 
         self.feature_markers_registry = FeatureMarkersRegistry(
             feature_orchestrator=self.feature_orchestrator,
@@ -129,9 +130,10 @@ class MarkerOrchestrator:
             raise KeyError(f"No ContingentMarkers found with name '{name}'.")
         return self.contingent_markers[name]
 
-    def get_feature_combinations(self, name: str) -> FeatureValueCombinations:
-        """Look up a feature combinations config via feature_orchestrator."""
-        return self.feature_orchestrator.get_feature_combinations(name)
+    # TODO: FeatureCombinations is buggy so it is commented out for now
+    # def get_feature_combinations(self, name: str) -> FeatureValueCombinations:
+    #     """Look up a feature combinations config via feature_orchestrator."""
+    #     return self.feature_orchestrator.get_feature_combinations(name)
 
 
 if __name__ == "__main__":
