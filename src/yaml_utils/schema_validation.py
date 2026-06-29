@@ -1,4 +1,7 @@
-import yaml
+"""
+Utilities for validating YAML data against JSON schemas.
+"""
+
 import json
 from loguru import logger
 from jsonschema import validate, ValidationError
@@ -34,7 +37,8 @@ CONFIG_KIND_TO_PARDIR = {
     "PartOfSpeech": "Lexicon",
 }
 
-def fix_refs_safe(schema: dict, schema_dir: Path) -> dict:
+
+def fix_refs_safe(schema: dict, SCHEMA_DIR: Path) -> dict:
     """
     Safely resolves external $ref in a JSON schema by copying the
     referenced content directly into the schema definitions and
@@ -55,7 +59,7 @@ def fix_refs_safe(schema: dict, schema_dir: Path) -> dict:
                 if ref_path.startswith("#"):
                     continue  # Local reference, skip
                 rel_path, object_path = ref_path.split("#")
-                ref_file_path = schema_dir / rel_path
+                ref_file_path = SCHEMA_DIR / rel_path
 
                 # get referenced content to be added to schema later
                 content, object_name = get_referenced_content(
@@ -104,10 +108,10 @@ def get_referenced_content(ref_file_path: Path, object_path: str) -> tuple[dict,
     return content, object_name
 
 
-def load_schema(target_kind: str, schema_dir=SCHEMA_DIR):
+def load_schema(target_kind: str):
     # Generate schema filename from kind
     schema_filename = f"{target_kind}.json"
-    schema_path = Path(schema_dir)
+    schema_path = Path(SCHEMA_DIR)
     schema_file_path = schema_path / schema_filename
 
     if not schema_file_path.exists():
@@ -124,80 +128,12 @@ def load_schema(target_kind: str, schema_dir=SCHEMA_DIR):
         return
 
 
-def validate_files_by_kind(
-    target_kind, config_dir="config", schema_dir="schemas/"
-):
-    """
-    Iterates through all YAML files and validates only those matching the target_kind.
-    The schema is expected to be named '{hammer_case_kind}.schema.json'.
-    """
-    config_path = Path(config_dir)
-    schema = load_schema(target_kind, schema_dir)
-    if not schema:
-        logger.error(f"Cannot validate {target_kind} due to missing schema.")
-        return
-
-    # Find all YAML files
-    yaml_files = list(config_path.glob("**/*.yaml")) + list(
-        config_path.glob("**/*.yml")
-    )
-
-    logger.info(f"Searching for files of kind '{target_kind}' in {config_dir}...")
-
-    stats = {"matched": 0, "passed": 0, "failed": 0}
-
-    for file_path in yaml_files:
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-
-            # Skip if file is empty or missing 'kind'
-            if not data or "kind" not in data:
-                continue
-
-            # Filter by the requested kind
-            if data["kind"] != target_kind:
-                continue
-
-            stats["matched"] += 1
-            relative_path = file_path.relative_to(config_path)
-
-            # Validate against the schema
-            validate(instance=data, schema=schema)
-            logger.success(f"PASS: {relative_path}")
-            stats["passed"] += 1
-
-        except ValidationError as ve:
-            stats["failed"] += 1
-            logger.error(f"FAIL: {file_path.relative_to(config_path)}")
-            logger.error(f"      Reason: {ve.message}")
-            if ve.path:
-                logger.error(f"      Path: {' -> '.join([str(p) for p in ve.path])}")
-        except Exception as e:
-            logger.exception(
-                f"ERROR processing {file_path.relative_to(config_path)}: {e}"
-            )
-
-    # Final Summary
-    logger.info(f"--- Summary for {target_kind} ---")
-    logger.info(f"Files Matched: {stats['matched']}")
-
-    if stats["passed"] > 0:
-        logger.success(f"Passed:        {stats['passed']}")
-    else:
-        logger.info(f"Passed:        {stats['passed']}")
-
-    if stats["failed"] > 0:
-        logger.error(f"Failed:        {stats['failed']}")
-    else:
-        logger.info(f"Failed:        {stats['failed']}")
-
-
-def main():
-    for kind in CONFIG_KINDS:
-        print(f"Validating {kind}...")
-        validate_files_by_kind(kind)
-
-
-if __name__ == "__main__":
-    main()
+def validate_yaml(target_kind: str, data: dict) -> dict:
+    schema = load_schema(target_kind)
+    try:
+        validate(data, schema)
+        return data
+    except ValidationError as e:
+        logger.exception(
+            f"Failed to validate YAML data against schema {target_kind}: {e}"
+        )

@@ -153,8 +153,8 @@ class Lexicon:
             )
 
         part_of_speech_dir = os.path.dirname(config_source)
-        config_dir = os.path.dirname(part_of_speech_dir)
-        lexicon_dir = os.path.join(config_dir, "lexicon")
+        YAML_DIR = os.path.dirname(part_of_speech_dir)
+        lexicon_dir = os.path.join(YAML_DIR, "lexicon")
         
         csv_path = os.path.join(lexicon_dir, part_of_speech.name + ".csv")
         xlsx_path = os.path.join(lexicon_dir, part_of_speech.name + ".xlsx")

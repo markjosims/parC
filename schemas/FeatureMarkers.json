@@ -3,7 +3,11 @@
   "title": "FeatureMarkers",
   "description": "Schema for defining morphological formatives for a single feature.",
   "type": "object",
-  "required": ["kind", "feature", "markers"],
+  "required": [
+    "kind",
+    "feature",
+    "markers"
+  ],
   "additionalProperties": false,
   "properties": {
     "source_path": {
@@ -12,7 +16,9 @@
     },
     "kind": {
       "type": "string",
-      "enum": ["FeatureMarkers"]
+      "enum": [
+        "FeatureMarkers"
+      ]
     },
     "feature": {
       "type": "string",
@@ -23,13 +29,15 @@
       "pattern": "^\\$.*",
       "description": "Path to another config to inherit markers from."
     },
-    "global_order": {
+    "global_stage": {
       "type": "string",
-      "description": "Allows specifying a default value for the 'order' attribute."
+      "description": "Allows specifying a default value for the 'stage' attribute."
     },
     "global_markers": {
       "type": "array",
-      "items": { "$ref": "#/definitions/marker" },
+      "items": {
+        "$ref": "#/definitions/marker"
+      },
       "description": "A marker or list of markers applied to all forms in this paradigm."
     },
     "markers": {
@@ -37,11 +45,14 @@
       "description": "Map of feature values to their morphological realizations.",
       "additionalProperties": {
         "oneOf": [
-          { "type": "null" },
-          { "$ref": "#/definitions/marker" },
+          {
+            "type": "null"
+          },
           {
             "type": "array",
-            "items": { "$ref": "#/definitions/marker" }
+            "items": {
+              "$ref": "#/definitions/marker"
+            }
           }
         ]
       }
@@ -51,23 +62,53 @@
     "marker": {
       "type": "object",
       "properties": {
-        "kind": { 
-          "type": "string" ,
-          "enum": ["prefix", "suffix", "infix", "replace", "suppletion", "rule", "principal_part"]
-        },
-        "value": { "oneOf": [
-          { "type": "string" },
-          { "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 2 }
+        "kind": {
+          "type": "string",
+          "enum": [
+            "prefix",
+            "suffix",
+            "infix",
+            "replace",
+            "suppletion",
+            "rule",
+            "principal_part"
           ]
         },
-        "order": { "type": "string" },
-        "comment": { "type": "string" }
+        "value": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          ]
+        },
+        "stage": {
+          "type": "string"
+        },
+        "comment": {
+          "type": "string"
+        }
       },
       "if": {
-        "properties": { "kind": { "const": "rule" } }
+        "properties": {
+          "kind": {
+            "const": "rule"
+          }
+        }
       },
       "then": {
-        "properties": { "value": { "pattern": "^\\$.*" } }
+        "properties": {
+          "value": {
+            "pattern": "^\\$.*"
+          }
+        }
       },
       "additionalProperties": false
     }

@@ -1,0 +1,438 @@
+"""
+Functions for fetching config YAML data.
+Intuitively, this model handles serving any YAML data
+that requires no "interpretation" of grammar (e.g.
+compilation of regex strings or rule definitions to FSAs,
+dependency and inheritance relationships, or filtering of
+lexemes by lexical features).
+
+Includes functions for loading and validating entire YAML files
+and for loading specific objects from YAML files, viz:
+- rules (rules/*.yaml)
+- patterns (patterns/*.yaml)
+- inventory items (inventory/*.yaml)
+- markers (feature_markers/*.yaml, contingent_feature_markers/*.yaml)
+- inflection stages (feature_markers/*.yaml, contingent_feature_markers/*.yaml)
+- features (feature_definitions/*.yaml)
+"""
+
+from functools import wraps
+import os
+
+from loguru import logger
+import yaml
+
+from src.yaml_utils.schema_validation import (
+    validate_yaml,
+    CONFIG_KINDS,
+    CONFIG_KIND_TO_PARDIR,
+)
+from src.launcher import YAML_DIR
+from src.yaml_utils.models import (
+    Inventory,
+    InventoryItemMapType,
+    InventoryItemContents,
+    Marker,
+    resolve_marker,
+    Pattern,
+    Rule,
+    resolve_rule,
+    SimpleRule,
+    StringMapRule,
+    RuleSequence,
+    Feature,
+    FeatureValue,
+)
+
+"""
+## File serving functions
+"""
+
+
+def get_yaml_data_safe(kind: str, yaml_basename: str) -> dict:
+    """
+    Load a single YAML file and validate its contents against the expected schema.
+    Returns None if the config kind is invalid or the YAML data fails validation,
+    else returns the validated YAML data.
+    """
+    if kind not in CONFIG_KINDS:
+        logger.error(f"Invalid config kind: {kind}")
+        return None
+
+    # normalize the YAML basename
+    yaml_basename = yaml_basename.removeprefix("$")
+    if not yaml_basename.endswith(".yaml"):
+        yaml_basename += ".yaml"
+
+    yaml_file_path = os.path.join(
+        YAML_DIR, CONFIG_KIND_TO_PARDIR[kind], kind, yaml_basename
+    )
+    with open(yaml_file_path, "r", encoding="utf-8") as f:
+        yaml_data = yaml.safe_load(f)
+
+    yaml_data = validate_yaml(target_kind=kind, data=yaml_data)
+    if yaml_data is None:
+        logger.error(f"Failed to validate YAML data from path: {yaml_file_path}")
+        return None
+
+    return yaml_data
+
+
+def get_yaml_kind(kind: str) -> dict[str, list[tuple[str, dict] | str]]:
+    """
+    Loads all YAML files for a given config kind and returns a dictionary
+    with shape:
+    {
+        "valid": [(file_basename, yaml_data), ...],
+        "invalid": [file_basename, ...]
+    }
+    """
+    if kind not in CONFIG_KINDS:
+        logger.error(f"Invalid config kind: {kind}")
+        return None
+    yaml_pardir = os.path.join(
+        YAML_DIR, CONFIG_KIND_TO_PARDIR[kind], kind
+    )
+    yaml_files = [f for f in os.listdir(yaml_pardir) if f.endswith(".yaml")]
+    result = {"valid": [], "invalid": []}
+    for yaml_file in yaml_files:
+        yaml_data = get_yaml_data_safe(kind, yaml_file)
+        if yaml_data is not None:
+            result["valid"].append((yaml_file, yaml_data))
+        else:
+            result["invalid"].append(yaml_file)
+    return result
+
+
+"""
+## Inner data fetching functions
+"""
+
+"""
+### Inventory
+"""
+
+
+def get_inventory_items() -> Inventory:
+    """
+    Fetch all inventory items from the YAML files.
+    Returns a dictionary mapping item names to a tuple whose
+    elements are every phone or tag associated with the item.
+
+    Since inventory items are nested, recursively extract all phone
+    and tag information for each node.
+    """
+
+    inventory_yaml_data = get_yaml_kind("Inventory")["valid"]
+    inventory_items: InventoryItemMapType = {}
+    phones = []
+    tags = []
+
+    for file_path, yaml_data in inventory_yaml_data:
+        # Recursively extract phone and tag information
+        def extract_phones_and_tags(item):
+            phones = []
+            tags = []
+            if isinstance(item, dict):
+                phones.extend(item.get("phones", []))
+                tags.extend(item.get("tags", []))
+                for key, value in item.items():
+                    if key not in ["phones", "tags"]:
+                        phones.extend(extract_phones_and_tags(value))
+            return phones, tags
+
+        for item_name, item_data in yaml_data.items():
+            phones, tags = extract_phones_and_tags(item_data)
+            if item_name in inventory_items:
+                logger.exception(f"Duplicate item found: {item_name} in {file_path}")
+                continue
+            inventory_items[item_name] = InventoryItemContents(
+                phones=tuple(phones), tags=tuple(tags)
+            )
+            phones.extend(phones)
+            tags.extend(tags)
+
+    return Inventory(item_map=inventory_items, phones=tuple(phones), tags=tuple(tags))
+
+
+"""
+### Patterns
+"""
+
+
+def get_patterns() -> dict[str, Pattern]:
+    """
+    Fetch all patterns from the YAML files.
+    Returns a dictionary mapping pattern names to their corresponding pattern objects.
+    """
+    patterns_yaml_data = get_yaml_kind("Patterns")["valid"]
+    patterns: dict[str, Pattern] = {}
+
+    for file_path, yaml_data in patterns_yaml_data:
+        for pattern in yaml_data["patterns"]:
+            pattern_ref = pattern.get("ref")
+            if pattern_ref in patterns:
+                logger.exception(
+                    f"Duplicate pattern found: {pattern_ref} in {file_path}"
+                )
+                continue
+            patterns[pattern_ref] = Pattern(
+                pattern=pattern["pattern"],
+                test_includes=tuple(pattern.get("test_includes", [])) or None,
+                test_excludes=tuple(pattern.get("test_excludes", [])) or None,
+                name=pattern.get("name"),
+            )
+
+    return patterns
+
+
+"""
+### Rules
+"""
+
+
+def get_rules() -> dict[str, Rule]:
+    """
+    Fetch all rules from the YAML files.
+    Returns a dictionary mapping rule names to their corresponding rule objects.
+    """
+    rules_yaml_data = get_yaml_kind("Rules")["valid"]
+    rules: dict[str, Rule] = {}
+
+    for file_path, yaml_data in rules_yaml_data:
+        for rule in yaml_data["rules"]:
+            rule_name = rule.pop("name")
+            if rule_name in rules:
+                logger.exception(f"Duplicate rule found: {rule_name} in {file_path}")
+                continue
+            rules[rule_name] = resolve_rule(rule)
+
+    return rules
+
+
+"""
+### Features
+"""
+
+
+def get_feature_map() -> dict[str, Feature]:
+    """
+    Fetch all features from the YAML files.
+    Returns a dictionary mapping feature names to their corresponding feature objects.
+    """
+    features_yaml_data = get_yaml_kind("FeatureDefinitions")["valid"]
+    features: dict[str, Feature] = {}
+
+    for file_path, yaml_data in features_yaml_data:
+        for feature_name, feature_data in yaml_data["features"].items():
+            if feature_name in features:
+                logger.exception(
+                    f"Duplicate feature found: {feature_name} in {file_path}"
+                )
+                continue
+            features[feature_name] = Feature(
+                name=feature_name,
+                values=tuple(feature_data),
+            )
+
+    return features
+
+
+def get_feature_values(feature: str) -> tuple[str]:
+    """
+    Fetch all values for a given feature.
+    """
+    feature_map = get_feature_map()
+    return feature_map[feature].values
+
+
+"""
+# Inflection stages
+Get unique inflection stages from all marker files.
+"""
+
+
+def get_inflection_stages() -> set[str]:
+    infleciton_stages = set()
+
+    feature_marker_yaml = get_yaml_kind("FeatureMarkers")
+    for _, yaml_data in feature_marker_yaml["valid"]:
+        for _, marker_data in yaml_data["markers"].items():
+            if marker_data and "stage" in marker_data:
+                infleciton_stages.add(marker_data["stage"])
+
+    contingent_feature_marker_yaml = get_yaml_kind("ContingentFeatureMarkers")
+    for _, yaml_data in contingent_feature_marker_yaml["valid"]:
+        for _, marker_data in yaml_data["markers"]:
+            if marker_data and "stage" in marker_data:
+                infleciton_stages.add(marker_data["stage"])
+
+    return tuple(infleciton_stages)
+
+
+"""
+### Markers
+Unlike inventory items, patterns and rules, markers are file-specific
+and feature specific.
+"""
+
+
+def validate_requested_marker_files(
+    feature_marker_files: list[str],
+    contingent_feature_marker_files: list[str],
+    requested_features: set[str],
+) -> bool:
+    """
+    Ensure that all files are valid, there are no two (simple)
+    feature marker exponing the same feature, and no markers
+    expone features outside of the requested feature set.
+
+    Does NOT check that all requested features are covered,
+    as some may be null-marked.
+    """
+    feature_marker_yaml = get_yaml_kind("FeatureMarkers")
+    covered_features: set[str] = set()
+
+    for marker_file in feature_marker_files:
+        if marker_file in feature_marker_yaml["invalid"]:
+            logger.exception(
+                f"Cannot perform inflection as source FeatureMarkers file {marker_file} is invalid."
+            )
+            return False
+        resolved_yaml = [
+            data
+            for filename, data in feature_marker_yaml["valid"]
+            if filename == marker_file
+        ]
+        if not resolved_yaml:
+            logger.exception(f"Marker file {marker_file} not found.")
+            return False
+        data = resolved_yaml[0]
+        feature = data["feature"]
+        if feature in covered_features:
+            logger.exception(f"Found duplicate marker files for feature {feature}.")
+            return False
+        if feature not in requested_features:
+            logger.exception(
+                f"Found marker file for feature {feature} outside of requested features."
+            )
+            return False
+        covered_features.add(feature)
+
+    contingent_marker_yaml = get_yaml_kind("ContingentFeatureMarkers")
+    for marker_file in contingent_feature_marker_files:
+        if marker_file in contingent_marker_yaml["invalid"]:
+            logger.exception(
+                f"Cannot perform inflection as source ContingentFeatureMarkers file {marker_file} is invalid."
+            )
+            return False
+        resolved_yaml = [
+            data
+            for filename, data in contingent_marker_yaml["valid"]
+            if filename == marker_file
+        ]
+        if not resolved_yaml:
+            logger.exception(f"Marker file {marker_file} not found.")
+            return False
+        data = resolved_yaml[0]
+        features = data["features"]
+        for feature in features:
+            if feature not in requested_features:
+                logger.exception(
+                    f"Found contingent marker file for feature {feature} outside of requested features."
+                )
+            return False
+
+    return True
+
+
+def get_markers(
+    feature_marker_files: list[str],
+    contingent_feature_marker_files: list[str],
+    feature_values: set[tuple[str, str]],
+) -> list[Marker]:
+    """
+    Query all specified files for markers exponing the requested feature set.
+    Selects contingent feature markers first, then regular feature markers
+    for any features that still need to be exponed.
+
+    Overlap is allowed between different sets of contingent markers (e.g. if
+    one contingent marker set expones number and person and another expones
+    person and gender, then both may be selected) but overlap is NOT allowed between
+    contingent marker sets and regular marker sets, or between different regular marker sets.
+    """
+
+    if not feature_values:
+        return []
+
+    unexponed_features = {feature for feature, _ in feature_values}
+    markers = []
+
+    # iterate through contingent feature markers and attempt
+    # to match any valid markers within
+    # since contingent markers can overlap, order of iteration does not matter
+    for marker_file in contingent_feature_marker_files:
+        data = get_yaml_data_safe("ContingentFeatureMarkers", marker_file)
+        markers_for_file = _get_valid_contingent_markers(data, feature_values)
+        if markers_for_file:
+            unexponed_features -= {feature for feature, _ in feature_values}
+            markers.extend(markers_for_file)
+
+    # attempt to match any remaining features with regular feature markers
+    for marker_file in feature_marker_files:
+        data = get_yaml_data_safe("FeatureMarkers", marker_file)
+        if data["feature"] in unexponed_features:
+            requested_feature_value = [
+                value for feature, value in feature_values if feature == data["feature"]
+            ]
+            markers_for_file = data["markers"].get(requested_feature_value[0], None)
+            if markers_for_file:
+                unexponed_features -= {data["feature"]}
+                markers.extend(markers_for_file)
+
+    markers = [resolve_marker(marker) for marker in markers]
+    return markers
+
+
+def _get_valid_contingent_markers(
+    data: dict, feature_values: set[FeatureValue]
+) -> tuple[tuple[Marker], set[FeatureValue]] | None:
+    """
+    Attempt to find a valid contingent marker which is a subset of the requested features.
+    """
+    for marker in data["markers"]:
+        marker_features = set(marker["features"].items())
+
+        if marker_features.issubset(feature_values):
+            return marker["realization"], marker_features
+    return None
+
+
+def get_markers_for_paradigm(
+    feature_marker_files: list[str],
+    contingent_feature_marker_files: list[str],
+    feature_values: set[tuple[str, str]],
+    paradigm_name: str,
+) -> list[Marker]:
+    """
+    Get all markers for a requested feature set for a given paradigm.
+    """
+    paradigm_data = get_yaml_data_safe("Paradigm", paradigm_name)
+
+    feature_markers = get_markers(
+        feature_marker_files, contingent_feature_marker_files, feature_values
+    )
+
+    if "global_markers" in paradigm_data:
+        feature_markers.extend(
+            resolve_marker(marker) for marker in paradigm_data["global_markers"]
+        )
+
+    # global stage sets order for any non-ordered markers
+    if "global_stage" in paradigm_data:
+        for i, marker in enumerate(feature_markers):
+            if hasattr(marker, "stage") and marker.stage is None:
+                feature_markers[i] = marker._replace(
+                    stage=paradigm_data["global_stage"]
+                )
+    return feature_markers

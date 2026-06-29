@@ -18,7 +18,7 @@ import unicodedata
 from loguru import logger
 import pynini
 from pynini.lib import rewrite
-from src.constants import EXAMPLE_CONFIG_DIR
+from src.constants import EXAMPLE_YAML_DIR
 
 from src.fst_utils import (
     Acceptor,

@@ -1,4 +1,4 @@
-import { fetchGrammarHealth, fetchGrammarStats, recompileGrammar } from './api.js';
+import { fetchGrammarStats } from './api.js';
 
 let lastHealth = null;
 let lastStats = null;
@@ -15,52 +15,44 @@ const CARD_GROUPS = {
   Phonology: {
     inventory: {
       title: 'Inventory',
-      format: (d) => [`${d.files} files`, `${d.phones} phones`, `${d.tags} tags`, `${d.classes} classes`]
+      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`, `${d.phones} phones`, `${d.tags} tags`, `${d.classes} classes`]
     },
     patterns: {
       title: 'Patterns',
-      format: (d) => [`${d.files} files`, `${d.total} patterns`]
+      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`, `${d.total} patterns`]
     },
     rules: {
       title: 'Rules',
-      format: (d) => [`${d.files} files`, `${d.total} rules`]
+      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`, `${d.total} rules`]
     },
   },
   Exponence: {
     feature_definitions: {
       title: 'Feat. Definitions',
-      format: (d) => [`${d.files} files`, `${d.total} features`]
+      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`, `${d.total} features`]
     },
     feature_markers: {
       title: 'Feat. Markers',
-      format: (d) => [`${d.files} files`, `${d.total} markers`]
+      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`, `${d.total} markers`, `${d.inflection_stages} inflection stages`]
     },
     contingent_markers: {
       title: 'Cont. Markers',
-      format: (d) => [`${d.files} files`, `${d.total} markers`]
+      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`, `${d.total} markers`]
     },
   },
   Lexicon: {
     part_of_speech: {
       title: 'Part of Sp.',
-      format: (d) => [`${d.files} files`, `${d.total} lexemes`]
-    },  
+      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`, `${d.total} lexemes`]
+    },
   },
   Morphotactics: {
     paradigms: {
       title: 'Paradigms',
-      format: (d) => [`${d.files} files`, `${d.total} paradigms`]
+      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`, `${d.total} paradigms`]
     },
   },
 };
-
-function updateStatusUI(status) {
-  statusDot.className = 'status-dot ' + status;
-  if (status === 'loaded') statusLabel.textContent = 'Loaded';
-  else if (status === 'unloaded') statusLabel.textContent = 'Not loaded';
-  else if (status === 'error') statusLabel.textContent = 'Load error';
-  else statusLabel.textContent = 'Checking…';
-}
 
 function renderStats(stats, isStale) {
   if (!stats) {
@@ -68,7 +60,7 @@ function renderStats(stats, isStale) {
     return;
   }
   statsSection.removeAttribute('hidden');
-  
+
   if (isStale) {
     statsGrid.classList.add('stale');
   } else {
@@ -113,51 +105,3 @@ function renderStats(stats, isStale) {
     statsGrid.appendChild(groupEl);
   }
 }
-
-async function checkGrammar() {
-  if (isFetching) return;
-  isFetching = true;
-
-  let health = 'checking';
-  let stats = null;
-
-  try {
-    const healthRes = await fetchGrammarHealth();
-    health = healthRes.status;
-  } catch {
-    health = 'unloaded';
-  }
-
-  if (health === 'loaded') {
-    try {
-      stats = await fetchGrammarStats();
-    } catch (err) {
-      health = err.status === 503 ? 'error' : 'unloaded';
-    }
-  }
-
-  lastHealth = health;
-  if (stats) lastStats = stats;
-
-  updateStatusUI(health);
-  renderStats(lastStats, health !== 'loaded');
-  isFetching = false;
-}
-
-recompileBtn.addEventListener('click', async () => {
-  recompileBtn.disabled = true;
-  recompileBtn.textContent = 'Recompiling...';
-  try {
-    await recompileGrammar();
-  } catch (err) {
-    alert(err.message);
-  } finally {
-    recompileBtn.disabled = false;
-    recompileBtn.textContent = 'Recompile';
-    await checkGrammar();
-  }
-});
-
-checkGrammar();
-setInterval(checkGrammar, 5000);
-

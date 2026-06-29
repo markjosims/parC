@@ -16,7 +16,7 @@ from src.grammar_old.registry.feature_marker_registry import (
     MarkerList,
     Marker,
 )
-from src.grammar_old.registry.contingent_marker_registry import ContingentMarkers
+from src.grammar_old.registry.contingent_marker_registry import ContingentFeatureMarkers
 from src.grammar_old.orchestrator.marker_orchestrator import MarkerOrchestrator
 from src.config_utils.config_walker import validate_file_reference_str
 from src.grammar_old.orchestrator.fst_orchestrator import FstOrchestrator
@@ -58,7 +58,7 @@ class Paradigm:
     def __init__(
         self,
         markers: list[FeatureMarkers],
-        contingent_markers: list[ContingentMarkers],
+        contingent_markers: list[ContingentFeatureMarkers],
         lexicon: Lexicon,
         fst_orchestrator: FstOrchestrator,
         name: str | None = None,
@@ -149,7 +149,7 @@ class Paradigm:
         markers = []
         for feature_name, marker_str in config["feature_markers"].items():
             if marker_str is None:
-                # indicates that this feature is marked only with ContingentMarkers
+                # indicates that this feature is marked only with ContingentFeatureMarkers
                 # and should not be included in the standard markers
                 continue
 
@@ -249,7 +249,7 @@ class Paradigm:
             elif not ignore_extra:
                 raise KeyError(
                     f"Cannot find FeatureMarker for  {feature_value_pair} for feature set {feature_values} "
-                    f"where features {assigned_features} are assigned by ContingentMarkers"
+                    f"where features {assigned_features} are assigned by ContingentFeatureMarkers"
                 )
         if self.marker_order:
             applicable_markers.sort(
@@ -388,7 +388,7 @@ class Paradigm:
                             f"Marker {marker} has unrecognized value {feature_value} for lexical feature {feature_name}"
                         )
 
-    def _validate_contingent_marker_set(self, contingent_marker_set: ContingentMarkers):
+    def _validate_contingent_marker_set(self, contingent_marker_set: ContingentFeatureMarkers):
         """
         Validate that all feature values in the contingent marker set are recognized and that all
         order values in the marker set are recognized.
@@ -456,7 +456,7 @@ class Paradigm:
         markers that should be applied for that combination of feature values.
 
         Contingent marker mappings are handled directly within the
-        ContingentMarkers objects.
+        ContingentFeatureMarkers objects.
         """
 
         # build flat mapping for feature markers

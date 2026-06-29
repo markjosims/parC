@@ -27,9 +27,9 @@
       },
       "description": "List of inflectional features this set expones."
     },
-    "global_order": {
+    "global_stage": {
       "type": "string",
-      "description": "Allows specifying a default value for the 'order' attribute."
+      "description": "Allows specifying a default value for the 'stage' attribute."
     },
     "global_markers": {
       "type": "array",
@@ -56,17 +56,10 @@
             "description": "The feature value vector specified for this marker group."
           },
           "realization": {
-            "oneOf": [
-              {
-                "$ref": "./FeatureMarkers.json#/definitions/marker"
-              },
-              {
-                "type": "array",
-                "items": {
-                  "$ref": "./FeatureMarkers.json#/definitions/marker"
-                }
-              }
-            ]
+            "type": "array",
+            "items": {
+              "$ref": "./FeatureMarkers.json#/definitions/marker"
+            }
           }
         }
       }

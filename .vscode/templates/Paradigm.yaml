@@ -20,7 +20,7 @@ feature_markers:
   # mood: indicative
 
 # Optional: ordered stages of morphological rule/marker application
-# order:
+# stage_order:
 #   - stem_change
 #   - suffixation
 # type para-ord to add order stages!

@@ -57,7 +57,7 @@ KIND_TO_DIR = {
     "MorphemeSequence":    "sequences",
     "Inventory":           "inventory",
     "FeatureCombinations": "combinations",
-    "ContingentMarkers":   "markers",  # same dir, filtered by kind if needed
+    "ContingentFeatureMarkers":   "markers",  # same dir, filtered by kind if needed
 }
 ```
 
@@ -76,7 +76,7 @@ Paths should be relative to `configs/` and prefixed with `$`, e.g. `$paradigms/v
 - `Paradigm`:
   - Replace `properties.feature_markers.additionalProperties` with a `oneOf` of `[{type: string, enum: get_refs("FeatureMarkers")}, {type: null}]`.
   - Replace `properties.feature_combinations` with `{type: string, enum: get_refs("FeatureCombinations"), description: "..."}`.
-  - Replace `properties.contingent_markers.items` with `{type: string, enum: get_refs("ContingentMarkers")}`.
+  - Replace `properties.contingent_markers.items` with `{type: string, enum: get_refs("ContingentFeatureMarkers")}`.
 
 - All other kinds: return schema unmodified.
 

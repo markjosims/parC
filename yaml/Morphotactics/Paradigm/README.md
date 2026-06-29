@@ -111,7 +111,7 @@ feature_markers:
   tense: past
 ```
 
-Paradigms may also declare 'global_markers' much like `FeatureMarkers` and `ContingentMarkers`.
+Paradigms may also declare 'global_markers' much like `FeatureMarkers` and `ContingentFeatureMarkers`.
 This may be useful when enforcing a particular stem shape across an entire paradigm, for example.
 ```yaml
 kind: Paradigm

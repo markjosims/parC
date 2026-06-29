@@ -8,7 +8,7 @@ from loguru import logger
 
 
 @dataclass
-class ContingentMarkers:
+class ContingentFeatureMarkers:
     """
     Maps arbitrary feature vectors to Marker lists.
     Corresponds to a ``kind: ContingentFeatureMarkers`` YAML config.
@@ -31,8 +31,8 @@ class ContingentMarkers:
     @classmethod
     def from_config(
         cls, config: dict, feature_orchestrator: FeatureOrchestrator
-    ) -> "ContingentMarkers":
-        """Build a ContingentMarkers from a full YAML config dict."""
+    ) -> "ContingentFeatureMarkers":
+        """Build a ContingentFeatureMarkers from a full YAML config dict."""
         source = config.get("source_path")
         global_order = config.get("global_order", None)
         global_markers_config = config.get("global_markers", [])
@@ -112,7 +112,7 @@ class ContingentMarkers:
 
     def __str__(self):
         return (
-            f"ContingentMarkers(source='{self.source}', "
+            f"ContingentFeatureMarkers(source='{self.source}', "
             f"vectors={len(self.feature_mappings)})"
         )
 
@@ -120,16 +120,16 @@ class ContingentMarkers:
         return self.__str__()
 
 
-class ContingentMarkersRegistry(Registry):
+class ContingentFeatureMarkersRegistry(Registry):
     """
     Registry for ``kind: ContingentFeatureMarkers`` configs.
-    ``data`` maps config filename stems to ContingentMarkers objects.
+    ``data`` maps config filename stems to ContingentFeatureMarkers objects.
     """
 
     def __init__(
         self,
         feature_orchestrator: FeatureOrchestrator,
-        data: dict[str, ContingentMarkers | None] = None,
+        data: dict[str, ContingentFeatureMarkers | None] = None,
         config_objects: dict[str, dict | None] = None,
     ):
         self.feature_orchestrator = feature_orchestrator
@@ -139,14 +139,14 @@ class ContingentMarkersRegistry(Registry):
             config_objects=config_objects,
         )
 
-    def load_all_configs(self) -> dict[str, ContingentMarkers]:
-        config_items: dict[str, ContingentMarkers] = {}
+    def load_all_configs(self) -> dict[str, ContingentFeatureMarkers]:
+        config_items: dict[str, ContingentFeatureMarkers] = {}
         for config in self.config_objects.values():
             config_data = self.load_data_from_config(config)
             for key in config_data:
                 if key in config_items:
                     error = (
-                        f"Duplicate ContingentMarkers '{key}' found in "
+                        f"Duplicate ContingentFeatureMarkers '{key}' found in "
                         f"multiple config files."
                     )
                     logger.error(error)
@@ -154,10 +154,10 @@ class ContingentMarkersRegistry(Registry):
             config_items.update(config_data)
         return config_items
 
-    def load_data_from_config(self, config: dict) -> dict[str, ContingentMarkers]:
+    def load_data_from_config(self, config: dict) -> dict[str, ContingentFeatureMarkers]:
         source_path = config.get("source_path", "")
         name = os.path.splitext(os.path.basename(source_path))[0] if source_path else ""
-        contingent_markers = ContingentMarkers.from_config(
+        contingent_markers = ContingentFeatureMarkers.from_config(
             config, self.feature_orchestrator
         )
         return {name: contingent_markers}

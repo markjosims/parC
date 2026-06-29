@@ -2,7 +2,6 @@ import { fetchInflectionMeta, parse } from './api.js';
 
 let metaData = null;
 
-const typeSelect = document.getElementById('parse-type');
 const targetSelect = document.getElementById('parse-target');
 const formInput = document.getElementById('parse-form');
 const submitBtn = document.getElementById('submit-parse-btn');
@@ -20,7 +19,6 @@ async function loadMeta() {
 
 function updateTargets() {
   if (!metaData) return;
-  const type = typeSelect.value;
   targetSelect.innerHTML = '';
   const items = type === 'paradigm' ? metaData.paradigms : metaData.sequences;
   items.forEach(t => {
@@ -31,10 +29,8 @@ function updateTargets() {
   });
 }
 
-typeSelect.addEventListener('change', updateTargets);
 
 submitBtn.addEventListener('click', async () => {
-  const kind = typeSelect.value;
   const name = targetSelect.value;
   const form = formInput.value.trim();
   if (!form) return;

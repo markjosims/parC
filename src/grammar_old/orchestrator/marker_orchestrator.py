@@ -1,7 +1,7 @@
 """
 Implements `MarkerOrchestrator` which manages following registries:
 - FeatureMarkersRegistry: loads/manages FeatureMarkers configs
-- ContingentMarkersRegistry: loads/manages ContingentFeatureMarkers configs
+- ContingentFeatureMarkersRegistry: loads/manages ContingentFeatureMarkers configs
 - MarkerRegistry: orchestrates both registries, provides unified lookup
 """
 
@@ -11,8 +11,8 @@ from src.grammar_old.orchestrator.feature_orchestrator import FeatureOrchestrato
 from src.grammar_old.registry.feature_marker_registry import FeatureMarkersRegistry
 from src.grammar_old.registry.feature_combination_registry import FeatureValueCombinations
 from src.grammar_old.registry.contingent_marker_registry import (
-    ContingentMarkers,
-    ContingentMarkersRegistry,
+    ContingentFeatureMarkers,
+    ContingentFeatureMarkersRegistry,
 )
 from src.grammar_old.registry.feature_marker_registry import (
     FeatureMarkers,
@@ -24,7 +24,7 @@ from loguru import logger
 
 class MarkerOrchestrator:
     """
-    Orchestrates FeatureMarkersRegistry, ContingentMarkersRegistry,
+    Orchestrates FeatureMarkersRegistry, ContingentFeatureMarkersRegistry,
     and FeatureOrchestrator. Uses FeatureOrchestrator to validate all feature
     combintions and values listed.
     """
@@ -55,11 +55,11 @@ class MarkerOrchestrator:
         )
         self.feature_markers = self.feature_markers_registry.data
 
-        self.contingent_markers_registry = ContingentMarkersRegistry(
+        self.contingent_markers_registry = ContingentFeatureMarkersRegistry(
             feature_orchestrator=self.feature_orchestrator,
             config_objects=contingent_marker_configs,
         )
-        self.contingent_markers: dict[str, ContingentMarkers] = (
+        self.contingent_markers: dict[str, ContingentFeatureMarkers] = (
             self.contingent_markers_registry.data
         )
 
@@ -91,7 +91,7 @@ class MarkerOrchestrator:
 
     def _validate_contingent_features(self):
         """
-        Iterate through every `ContingentMarkers` object and check its features
+        Iterate through every `ContingentFeatureMarkers` object and check its features
         are supported by `self.feature_orchestrator`
         """
         for markers_name, markers in self.contingent_markers.items():
@@ -123,11 +123,11 @@ class MarkerOrchestrator:
             raise KeyError(f"No FeatureMarkers found with name '{name}'.")
         return self.feature_markers[name]
 
-    def get_contingent_markers(self, name: str) -> ContingentMarkers:
+    def get_contingent_markers(self, name: str) -> ContingentFeatureMarkers:
         """Look up a contingent marker config by filename stem."""
         name = name.removeprefix("$")
         if name not in self.contingent_markers:
-            raise KeyError(f"No ContingentMarkers found with name '{name}'.")
+            raise KeyError(f"No ContingentFeatureMarkers found with name '{name}'.")
         return self.contingent_markers[name]
 
     # TODO: FeatureCombinations is buggy so it is commented out for now
@@ -137,11 +137,11 @@ class MarkerOrchestrator:
 
 
 if __name__ == "__main__":
-    from src.constants import EXAMPLE_CONFIG_DIR
+    from src.constants import EXAMPLE_YAML_DIR
 
     # test initializing each config
     # TODO: update since
-    # feature_reg = FeatureMarkersRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
-    # conting_marker_reg = ContingentMarkersRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
-    # marker_reg = MarkerRegistry.from_config_dir(EXAMPLE_CONFIG_DIR)
+    # feature_reg = FeatureMarkersRegistry.from_YAML_DIR(EXAMPLE_YAML_DIR)
+    # conting_marker_reg = ContingentFeatureMarkersRegistry.from_YAML_DIR(EXAMPLE_YAML_DIR)
+    # marker_reg = MarkerRegistry.from_YAML_DIR(EXAMPLE_YAML_DIR)
     breakpoint()

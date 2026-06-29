@@ -2,7 +2,6 @@ import { fetchInflectionMeta, fetchRoots, fetchLexicalFeatures, runInflection } 
 
 let metaData = null;
 
-const typeSelect = document.getElementById('inflect-type');
 const targetSelect = document.getElementById('inflect-target');
 const stemsContainer = document.getElementById('stems-container');
 const featuresContainer = document.getElementById('features-container');
@@ -24,10 +23,9 @@ async function loadMeta() {
 
 function updateTargets() {
   if (!metaData) return;
-  const type = typeSelect.value;
   targetSelect.innerHTML = '';
 
-  const targets = type === 'paradigm' ? metaData.paradigms : metaData.sequences;
+  const targets = metaData.paradigms
   targets.forEach(t => {
     const opt = document.createElement('option');
     opt.value = t.name;
@@ -40,7 +38,6 @@ function updateTargets() {
 
 async function updateFields() {
   if (!metaData) return;
-  const type = typeSelect.value;
   const targetName = targetSelect.value;
 
   stemsContainer.innerHTML = '';
@@ -49,53 +46,22 @@ async function updateFields() {
 
   if (!targetName) return;
 
-  if (type === 'paradigm') {
-    const p = metaData.paradigms.find(x => x.name === targetName);
-    if (!p) return;
+  const p = metaData.paradigms.find(x => x.name === targetName);
+  if (!p) return;
 
-    const select = buildRootSelect(`Select a root…`);
-    try {
-      const roots = await fetchRoots('paradigm', targetName);
-      populateRootSelect(select, roots);
-    } catch (err) {
-      console.warn('Failed to load roots:', err);
-    }
-    select.addEventListener('change', () => onRootChange('paradigm', targetName, select.value));
-    stemsContainer.appendChild(select);
-
-    const allFeatures = [...new Set([...p.features, ...p.lexical_features])];
-    renderFeatureSelectors(allFeatures);
-
-  } else {
-    const seq = metaData.sequences.find(x => x.name === targetName);
-    if (!seq) return;
-
-    for (let i = 0; i < seq.num_stems; i++) {
-      const kind = seq.stem_kinds?.[i];
-      const name = seq.stem_names?.[i];
-
-      if (kind && name) {
-        const apiKind = kind.toLowerCase();
-        const select = buildRootSelect(`Select ${name} root…`);
-        try {
-          const roots = await fetchRoots(apiKind, name);
-          populateRootSelect(select, roots);
-        } catch (err) {
-          console.warn(`Failed to load roots for ${name}:`, err);
-        }
-        select.addEventListener('change', () => onRootChange(apiKind, name, select.value));
-        stemsContainer.appendChild(select);
-      } else {
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.placeholder = `Stem ${i + 1}`;
-        input.className = 'stem-input';
-        stemsContainer.appendChild(input);
-      }
-    }
-
-    renderFeatureSelectors(seq.features);
+  const select = buildRootSelect(`Select a root…`);
+  try {
+    const roots = await fetchRoots('paradigm', targetName);
+    populateRootSelect(select, roots);
+  } catch (err) {
+    console.warn('Failed to load roots:', err);
   }
+  select.addEventListener('change', () => onRootChange('paradigm', targetName, select.value));
+  stemsContainer.appendChild(select);
+
+  const allFeatures = [...new Set([...p.features, ...p.lexical_features])];
+  renderFeatureSelectors(allFeatures);
+
 }
 
 function buildRootSelect(placeholder) {
@@ -173,13 +139,11 @@ function renderFeatureSelectors(featuresList) {
   });
 }
 
-typeSelect.addEventListener('change', updateTargets);
 targetSelect.addEventListener('change', updateFields);
 navInflectBtn.addEventListener('click', loadMeta);
 
 submitBtn.addEventListener('click', async () => {
   if (!metaData) return;
-  const type = typeSelect.value;
   const name = targetSelect.value;
 
   const stemInputs = stemsContainer.querySelectorAll('.stem-input');

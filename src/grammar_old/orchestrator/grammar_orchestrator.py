@@ -110,9 +110,9 @@ class Grammar(Orchestrator):
 
 if __name__ == "__main__":
     import random
-    from src.constants import TIRA_CONFIG_DIR
+    from src.constants import TIRA_YAML_DIR
 
-    reg = Grammar.from_config_dir(TIRA_CONFIG_DIR)
+    reg = Grammar.from_YAML_DIR(TIRA_YAML_DIR)
 
     para = reg.paradigms["verb_no_pronoun"]
     root = random.choice(para.get_filtered_roots())

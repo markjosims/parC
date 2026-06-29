@@ -34,19 +34,19 @@ markers:
 # 1sg:
 # - kind: suffix
 #   value: -ep
-#   order: outer suffix
+#   stage: outer suffix
 # 2sg:
 # - kind: suffix
 #   value: -e
-#   order: outer suffix
+#   stage: outer suffix
 # 3sg: null # Zero-marked
 # 1pl:
 # - kind: prefix
 #   value: ma-
-#   order: outer prefix
+#   stage: outer prefix
 # - kind: suffix
 #   value: -ep
-#   order: outer suffix
+#   stage: outer suffix
 # 2pl:
 # - kind: replace
 #   value: [e, i]  # Replaces 'e' with 'i' (regardless of context)
@@ -56,7 +56,7 @@ markers:
 
 
 # Optional: default order stage for markers in this file
-# global_order: suffixation
+# global_stage: suffixation
 
 # Optional: markers/rules applied to all forms in this paradigm
 # global_markers:
