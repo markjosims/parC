@@ -6,12 +6,12 @@ feature: feature name
 
 markers:
 
-  # type mk-item to add a new feature marker!
-  feature value:
-  - kind: prefix/suffix/replace/suppletion/rule/principal_part
-    value: marker value
-    order: (OPTIONAL) marker order 
-    # type mk-add to add a new marker for the current feature value!
+# type mk-item to add a new feature marker!
+feature value:
+- kind: prefix/suffix/replace/suppletion/rule/principal_part
+  value: marker value
+  order: (OPTIONAL) marker order 
+  # type mk-add to add a new marker for the current feature value!
 
 
 ### HELP FOR MARKERS ###

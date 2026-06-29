@@ -1,0 +1,15 @@
+pandas
+tqdm
+openpyxl
+pynini
+graphviz
+pydot
+pyyaml
+loguru
+pygments
+pytest
+jsonschema
+dotenv
+watchdog
+camel-converter
+fastapi

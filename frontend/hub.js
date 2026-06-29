@@ -11,53 +11,47 @@ const statsGrid = document.getElementById('stats-grid');
 const recompileBtn = document.getElementById('recompile-btn');
 
 
-const CARD_KEYS = {
-  inventory: {
-    title: 'Inventory',
-    format: (d) => [`${d.files} files`, `${d.phones} phones`, `${d.tags} tags`, `${d.classes} classes`]
+const CARD_GROUPS = {
+  Phonology: {
+    inventory: {
+      title: 'Inventory',
+      format: (d) => [`${d.files} files`, `${d.phones} phones`, `${d.tags} tags`, `${d.classes} classes`]
+    },
+    patterns: {
+      title: 'Patterns',
+      format: (d) => [`${d.files} files`, `${d.total} patterns`]
+    },
+    rules: {
+      title: 'Rules',
+      format: (d) => [`${d.files} files`, `${d.total} rules`]
+    },
   },
-  feature_definitions: {
-    title: 'Feat. Definitions',
-    format: (d) => [`${d.files} files`, `${d.total} features`]
+  Exponence: {
+    feature_definitions: {
+      title: 'Feat. Definitions',
+      format: (d) => [`${d.files} files`, `${d.total} features`]
+    },
+    feature_markers: {
+      title: 'Feat. Markers',
+      format: (d) => [`${d.files} files`, `${d.total} markers`]
+    },
+    contingent_markers: {
+      title: 'Cont. Markers',
+      format: (d) => [`${d.files} files`, `${d.total} markers`]
+    },
   },
-  // TODO: FeatureCombinations, MorphemeSet and MorphemeSequence are buggy
-  // so they are commented out for now
-  // feature_combinations: {
-  //   title: 'Feat. Combinations',
-  //   format: (d) => [`${d.files} files`, `${d.total} combinations`]
-  // },
-  patterns: {
-    title: 'Patterns',
-    format: (d) => [`${d.files} files`, `${d.total} patterns`]
+  Lexicon: {
+    part_of_speech: {
+      title: 'Part of Sp.',
+      format: (d) => [`${d.files} files`, `${d.total} lexemes`]
+    },  
   },
-  rules: {
-    title: 'Rules',
-    format: (d) => [`${d.files} files`, `${d.total} rules`]
+  Morphotactics: {
+    paradigms: {
+      title: 'Paradigms',
+      format: (d) => [`${d.files} files`, `${d.total} paradigms`]
+    },
   },
-  feature_markers: {
-    title: 'Feat. Markers',
-    format: (d) => [`${d.files} files`, `${d.total} markers`]
-  },
-  contingent_markers: {
-    title: 'Cont. Markers',
-    format: (d) => [`${d.files} files`, `${d.total} markers`]
-  },
-  paradigms: {
-    title: 'Paradigms',
-    format: (d) => [`${d.files} files`, `${d.total} paradigms`]
-  },
-  part_of_speech: {
-    title: 'Part of Sp.',
-    format: (d) => [`${d.files} files`, `${d.total} lexemes`]
-  },
-  // morpheme_sets: {
-  //   title: 'Morph. Sets',
-  //   format: (d) => [`${d.files} files`, `${d.total} sets`]
-  // },
-  // morpheme_sequences: {
-  //   title: 'Morph. Seqs.',
-  //   format: (d) => [`${d.files} files`, `${d.total} sequences`]
-  // }
 };
 
 function updateStatusUI(status) {
@@ -82,25 +76,41 @@ function renderStats(stats, isStale) {
   }
 
   statsGrid.innerHTML = '';
-  for (const [key, meta] of Object.entries(CARD_KEYS)) {
-    const data = stats[key];
-    if (!data) continue;
+  for (const [groupName, cards] of Object.entries(CARD_GROUPS)) {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'stats-group';
 
-    const card = document.createElement('div');
-    card.className = 'stat-card';
+    const heading = document.createElement('h4');
+    heading.className = 'stats-group-title';
+    heading.textContent = groupName;
+    groupEl.appendChild(heading);
 
-    const title = document.createElement('h4');
-    title.textContent = meta.title;
-    card.appendChild(title);
+    const cardsEl = document.createElement('div');
+    cardsEl.className = 'stats-group-cards';
 
-    const list = document.createElement('ul');
-    meta.format(data).forEach(line => {
-      const li = document.createElement('li');
-      li.textContent = line;
-      list.appendChild(li);
-    });
-    card.appendChild(list);
-    statsGrid.appendChild(card);
+    for (const [key, meta] of Object.entries(cards)) {
+      const data = stats[key];
+      if (!data) continue;
+
+      const card = document.createElement('div');
+      card.className = 'stat-card';
+
+      const title = document.createElement('h5');
+      title.textContent = meta.title;
+      card.appendChild(title);
+
+      const list = document.createElement('ul');
+      meta.format(data).forEach(line => {
+        const li = document.createElement('li');
+        li.textContent = line;
+        list.appendChild(li);
+      });
+      card.appendChild(list);
+      cardsEl.appendChild(card);
+    }
+
+    groupEl.appendChild(cardsEl);
+    statsGrid.appendChild(groupEl);
   }
 }
 

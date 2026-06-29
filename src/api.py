@@ -198,13 +198,13 @@ def write_file(kind: str, path: str, body: dict[str, Any]):
         yaml.safe_dump(body, f, allow_unicode=True)
 
 class InflectRequest(BaseModel):
-    kind: str
+    kind: str = "paradigm"
     name: str
     stems: list[str]
     features: dict[str, str]
 
 class ParseRequest(BaseModel):
-    kind: str
+    kind: str = "paradigm"
     name: str
     form: str
 

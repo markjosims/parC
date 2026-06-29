@@ -5,8 +5,10 @@
 kind: FeatureDefinitions
 features:
   # type fd-feature to add your first feature!
+   feature name:
+     - feature value
 
-## HELP FOR FEATUREDEFINITIONS ##
+## HELP FOR FEATURE DEFINITIONS ##
 # Here we define inflectional and (possibly) derivational or lexical features
 # for a given language.
 

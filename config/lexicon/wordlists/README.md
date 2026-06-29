@@ -1,7 +1,7 @@
-# lexicon
+# wordlists
 CSV files for storing lexical data, where each file gives data for a single part of speech.
 Each CSV must have a corresponding YAML file under config/parts_of_speech specifying metadata.
-E.g. `data/lexicon/noun.csv` must have an associated `config/parts_of_speech/noun.yaml`.
+E.g. `data/wordlists/noun.csv` must have an associated `config/parts_of_speech/noun.yaml`.
 See the [parts of speech documentation](config/parts_of_speech/README.md) for more information.
 
 The CSV file must contain at minimum the columns 'root' and 'gloss', e.g.:

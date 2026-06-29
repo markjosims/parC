@@ -82,22 +82,41 @@ h1 {
 .status-dot.checking { background-color: var(--clr-checking); }
 
 .stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
   max-width: 900px;
+}
+
+.stats-grid.stale {
+  opacity: 0.5;
+}
+
+.stats-group-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b7280;
+}
+
+.stats-group-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
 }
 
 .stat-card {
   border: 1px solid #e5e7eb;
   background: white;
-  padding: 1rem;
+  padding: 0.75rem 1rem;
   border-radius: 6px;
 }
 
-.stat-card h4 {
-  margin-top: 0;
-  margin-bottom: 0.5rem;
+.stat-card h5 {
+  margin: 0 0 0.4rem 0;
+  font-size: 0.9rem;
   border-bottom: 1px solid #f3f4f6;
   padding-bottom: 0.25rem;
 }
@@ -107,15 +126,11 @@ h1 {
   padding: 0;
   margin: 0;
   color: #4b5563;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .stat-card li {
-  margin-bottom: 0.25rem;
-}
-
-.stats-grid.stale {
-  opacity: 0.5;
+  margin-bottom: 0.2rem;
 }
 
 .inflection-container {

@@ -23,6 +23,17 @@ ConfigKindType = Literal[
 ]
 CONFIG_KINDS: tuple[str, ...] = get_args(ConfigKindType)
 
+CONFIG_KIND_TO_PARDIR = {
+    "ContingentFeatureMarkers": "Exponence",
+    "FeatureDefinitions": "Exponence",
+    "FeatureMarkers": "Exponence",
+    "Inventory": "Phonology",
+    "Rules": "Phonology",
+    "Patterns": "Phonology",
+    "Paradigm": "Morphotactics",
+    "PartOfSpeech": "Lexicon",
+}
+
 def fix_refs_safe(schema: dict, schema_dir: Path) -> dict:
     """
     Safely resolves external $ref in a JSON schema by copying the

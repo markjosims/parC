@@ -1,11 +1,13 @@
-
-
 import yaml
 from pathlib import Path
 import unicodedata
 from jsonschema import validate, ValidationError
 from loguru import logger
-from src.config_utils.schema_validation import load_schema, CONFIG_KINDS
+from src.config_utils.schema_validation import (
+    load_schema,
+    CONFIG_KINDS,
+    CONFIG_KIND_TO_PARDIR,
+)
 from src.constants import PROJECT_ROOT
 from camel_converter import to_snake
 import dotenv
@@ -108,8 +110,9 @@ class ConfigWalker:
 
     def glob_config_files(self, kind: str):
         """Glob YAML files in the subdirectory for the given kind."""
+        pardir = CONFIG_KIND_TO_PARDIR.get(kind)
         subdir = to_snake(kind)
-        return (self.config_dir / subdir).glob("*.yaml")
+        return (self.config_dir / pardir / subdir).glob("*.yaml")
 
     def find_config_file(self, name: str, kind: str) -> Path:
         """Search the kind's subdirectory for <name>.yaml."""
@@ -203,6 +206,7 @@ def _normalize_config_dir(config_dir: str) -> Path | None:
     if not resolved.exists() or not resolved.is_dir():
         return None
     return resolved
+
 
 def validate_file_reference_str(ref: str) -> str:
     """
