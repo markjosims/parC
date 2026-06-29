@@ -45,7 +45,7 @@ class MarkerOrchestrator:
                 "Provide a feature registry to load configs and initialize MarkerRegistry."
             )
             return
-        self.features = feature_orchestrator
+        self.features = feature_orchestrator.features
         # TODO: FeatureCombinations is buggy so it is commented out for now
         # self.feature_combinations = feature_orchestrator.feature_combinations
 

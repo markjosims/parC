@@ -52,7 +52,7 @@ When extending the grammar model, follow this same dependency order — most reg
 
 ### FST utilities and parsing/search
 
-- `src/fst_utils.py` defines `ReservedSymbolMixin` (the fixed set of special symbols/operators used across pattern strings, rules, and morpheme definitions — e.g. `[BOW]`/`[EOW]` word-boundary flags, edit-operation flags `[INSERT]`/`[SUBSTITUTE]`/`[DELETE]`, boundary symbols `-`/`=`/`_`, and operators `*`, `+`, `?`, `|`, `^`, parens, braces) plus `Acceptor`/`Transducer`/`TransducerList`/`Prefix`/`Suffix` wrapper dataclasses around `pynini.Fst` objects. These wrappers enforce a "build once" discipline (`set_acceptor`/`set_transducer` raise/warn if called more than once or on the wrong FST type).
+- `src/fst_utils.py` defines `ReservedSymbolMixin` (the fixed set of special symbols/operators used across pattern strings, rules, and morpheme definitions — e.g. `[BOW]`/`[EOW]` word-boundary tags, edit-operation tags `[INSERT]`/`[SUBSTITUTE]`/`[DELETE]`, boundary symbols `-`/`=`/`_`, and operators `*`, `+`, `?`, `|`, `^`, parens, braces) plus `Acceptor`/`Transducer`/`TransducerList`/`Prefix`/`Suffix` wrapper dataclasses around `pynini.Fst` objects. These wrappers enforce a "build once" discipline (`set_acceptor`/`set_transducer` raise/warn if called more than once or on the wrong FST type).
 - `src/search/` implements fuzzy form search and parsing over the compiled FSTs: `beam_search.py` / `beam_search_jit.py` (numba-jitted variant) implement beam search for matching surface forms against the parser despite edits/errors; `edit_graph.py` and `edit_modeling.py` model edit operations for that search. `beam_search_jit_stale.py` is a stale/superseded variant — check before using.
 
 ### Pattern strings

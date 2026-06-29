@@ -19,7 +19,7 @@ class Marker(TransducerList):
     Inherits `value` and `fst` from TransducerList; the FST is built later by a
     compilation step (not at config-load time).
 
-    The 'order' and `lexical_features` are flags for the `Paradigm` object
+    The 'order' and `lexical_features` are tags for the `Paradigm` object
     to control the application of the marker, where `order` is a named stage
     the rule applies in, and `lexical_features` is a mapping of feature names
     to values, where the rule only applies if the specified configuration of

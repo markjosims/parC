@@ -74,7 +74,7 @@ feature_markers:
 contingent_markers:
   - $past_tense_person_markers
 ```
-We can also select for multiple lexical flags at once, for example if we want to target verb roots that under *n~ng* alternation and *o~ue/e~ie* alternation simultaneously in Spanish.
+We can also select for multiple lexical tags at once, for example if we want to target verb roots that under *n~ng* alternation and *o~ue/e~ie* alternation simultaneously in Spanish.
 ```yaml
 kind: Paradigm
 part_of_speech: verb

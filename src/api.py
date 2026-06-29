@@ -95,7 +95,7 @@ def grammar_stats():
         "inventory": {
             "files":   len(inv.config_objects),
             "phones":  len(inv.phones),
-            "tags":    len(inv.flags),
+            "tags":    len(inv.tags),
             "classes": len(inv.classes),
         },
         "feature_definitions": {

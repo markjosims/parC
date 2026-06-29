@@ -47,8 +47,8 @@ class ReservedSymbolMixin:
     pipe_operator = union  # (for now) pipe operator is only binary operator
     caret_operator = caret  # for negation in braced expressions
     reserved_refs = (phone_ref, flag_ref, epsilon_ref, dot, sigma_ref, boundary_ref)
-    bow_eow_flags = (bow, eow)
-    edit_flags = (insert, substitute, delete)
+    bow_eow_tags = (bow, eow)
+    edit_tags = (insert, substitute, delete)
     boundary_symbols = (affix_boundary, clitic_boundary, periphrasis_break)
 
     reserved_symbols = (
@@ -57,8 +57,8 @@ class ReservedSymbolMixin:
         + unary_operators
         + (pipe_operator, caret_operator)
         + reserved_refs
-        + bow_eow_flags
-        + edit_flags
+        + bow_eow_tags
+        + edit_tags
         + boundary_symbols
         + (word_edge,)
     )

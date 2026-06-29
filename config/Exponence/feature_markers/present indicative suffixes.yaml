@@ -2,17 +2,28 @@
 # Define morphological formatives for a single linguistic feature.
 kind: FeatureMarkers
 # Name of the feature, e.g., person , tense, gender
-feature: feature name
+feature: person_number
 
 markers:
 
-# type mk-item to add a new feature marker!
-feature value:
-- kind: prefix/suffix/replace/suppletion/rule/principal_part
-  value: marker value
-  order: (OPTIONAL) marker order 
-  # type mk-add to add a new marker for the current feature value!
-
+  # type mk-item to add a new feature marker!
+  1sg:
+  - kind: suffix
+    value: -o
+    # type mk-add to add a new marker for the current feature value!
+  2sg:
+  - kind: suffix
+    value: -s
+  3sg: null
+  1pl:
+  - kind: suffix
+    value: -mos
+  2pl:
+  - kind: suffix
+    value: -is
+  3pl:
+  - kind: suffix
+    value: -n
 
 ### HELP FOR MARKERS ###
 # Here we define morphological formatives for each feature value.

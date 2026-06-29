@@ -31,7 +31,7 @@ class Rule(TransducerList):
     Note that the actual FST construction logic for rules is not implemented here, but
     is handled by the `FstRegistry` class which compiles patterns and rules into FSTs.
 
-    TODO: handle PDT-based rules conditioned on flags
+    TODO: handle PDT-based rules conditioned on tags
     """
 
     kind: Literal["simple_rule", "string_map", "rule_sequence"] = "simple_rule"

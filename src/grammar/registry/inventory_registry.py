@@ -73,7 +73,7 @@ class InventoryItem(InventoryMember):
 class InventoryClass(InventoryMember):
     """
     Represents an inventory class, which is a node in the inventory tree whose
-    children are phones, flags (i.e. InventoryItem objects) or other InventoryClasses
+    children are phones, tags (i.e. InventoryItem objects) or other InventoryClasses
     (for "nested_class").
 
     Attributes:
@@ -253,7 +253,7 @@ class InventoryClass(InventoryMember):
 
 class InventoryRegistry(Registry):
     """
-    Registry for storing inventory items (phones, flags, classes).
+    Registry for storing inventory items (phones, tags, classes).
     Instantiated directly with a pre-built `data` dict mapping inventory
     item names to `InventoryMember` objects, or a `config_objects` dict mapping
     filenames to YAML config objects.
@@ -281,13 +281,13 @@ class InventoryRegistry(Registry):
 
     def _populate_subdicts(self):
         phones = {}
-        flags = {}
+        tags = {}
         classes = {}
         for item in self.data.values():
             if isinstance(item, InventoryItem) and item.kind == "phone":
                 phones[item.value] = item
             elif isinstance(item, InventoryItem) and item.kind == "tag":
-                flags[item.value] = item
+                tags[item.value] = item
             elif isinstance(item, InventoryClass):
                 classes[item.value] = item
             else:
@@ -295,7 +295,7 @@ class InventoryRegistry(Registry):
                     f"Unrecognized inventory object {type(item)} of type {item.kind}"
                 )
         self.phones = phones
-        self.flags = flags
+        self.tags = tags
         self.classes = classes
 
     def load_all_configs(

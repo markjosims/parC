@@ -32,7 +32,7 @@ Response shape:
 
 | Kind | files source | item count source |
 |------|-------------|-------------------|
-| inventory | `fst_orchestrator.inventory_registry.config_objects` | `len(phones)` + `len(flags)` + `len(classes)` separately |
+| inventory | `fst_orchestrator.inventory_registry.config_objects` | `len(phones)` + `len(tags)` + `len(classes)` separately |
 | patterns | `fst_orchestrator.pattern_registry.config_objects` | `fst_orchestrator.pattern_registry.data` |
 | rules | `fst_orchestrator.rule_registry.config_objects` | `fst_orchestrator.rule_registry.data` |
 | feature_markers | `marker_orchestrator.feature_markers_registry.config_objects` | `marker_orchestrator.feature_markers_registry.data` |

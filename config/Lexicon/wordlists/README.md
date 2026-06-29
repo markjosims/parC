@@ -16,10 +16,10 @@ hombre,man
 More lexical and grammatical information can be specified with the addition of optional columns, as described in the remainder of this document.
 
 ## Lexical classes
-Different from flags because they're used for filtering, not for reference in rules...
+Different from tags because they're used for filtering, not for reference in rules...
 
-## Lexical flags
-Lexical flags control the logic for a particular root.
+## Lexical tags
+Lexical tags control the logic for a particular root.
 Must have angle brackets...
 
 ```csv

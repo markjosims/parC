@@ -184,7 +184,7 @@ class Paradigm:
             fixed_features=fixed_features,
             marker_order=marker_order,
             lexicon=lexicon,
-            feature_value_combinations=feature_value_combinations,
+            # feature_value_combinations=feature_value_combinations,
             fst_orchestrator=fst_orchestrator,
             global_markers=global_markers,
         )

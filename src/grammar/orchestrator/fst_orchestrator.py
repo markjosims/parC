@@ -50,8 +50,8 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
     The FST registry is initialized in the following stages:
     1. `self._init`: Construct all three registry classes
         from YAML data.
-    2. `self._add_feature_flags` (Optional): If a `FeatureValuesRegistry` is provided,
-        add flags for all feature values to `InventoryRegistry.flags` before
+    2. `self._add_feature_tags` (Optional): If a `FeatureValuesRegistry` is provided,
+        add tags for all feature values to `InventoryRegistry.tags` before
         compiling any FSMs.
     3. `self._build_symbol_table()`: Build a `pynini.symbol_table` object with
         every phone and tag in the inventory, also including all reserved symbols.
@@ -98,7 +98,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
 
         self.inventory: dict[str, InventoryItem] = self.inventory_registry.data
         self.phones: dict[str, InventoryItem] = self.inventory_registry.phones
-        self.flags: dict[str, InventoryItem] = self.inventory_registry.flags
+        self.tags: dict[str, InventoryItem] = self.inventory_registry.tags
         self.classes: dict[str, InventoryItem] = self.inventory_registry.classes
         self.patterns: dict[str, Pattern] = self.pattern_registry.data
         self.patterns_sorted: tuple[Pattern, ...] = (
@@ -124,7 +124,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         - Symbol table (mapping strings to token indices used by FSMs)
         - Inventory acceptors (FSAs for each inventory item or class over items)
         - 'Sigmas' (sigma, the acceptor over all symbols, as well as phone_fsa
-            and flag_fsa, acceptors over all phones and flags respectively, and
+            and flag_fsa, acceptors over all phones and tags respectively, and
             their repsective closures.)
         - Tokens (phones, classes, special symbols to encode strings into)
         - Pattern acceptors (FSAs for each pattern config)
@@ -133,7 +133,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         if self.is_initialized:
             logger.warning("FstRegistry already initialized, returning...")
             return
-        self._add_feature_flags()
+        self._add_feature_tags()
         self._build_symbol_table()
         self._build_boundary_acceptors()
         self._build_inventory_acceptors()
@@ -143,24 +143,24 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         self._build_rule_transducers()
         self.is_initialized = True
 
-    def _add_feature_flags(self):
+    def _add_feature_tags(self):
         """
         Checks if `self.feature_orchestrator` is present and, if so, adds
-        feature flags to tag inventory.
+        feature tags to tag inventory.
         """
         if self.feature_orchestrator is None:
             return
 
         if self._inventory_acceptors_built:
             raise ValueError(
-                "Cannot add feature flags if inventory acceptors have already been built."
+                "Cannot add feature tags if inventory acceptors have already been built."
             )
 
         for feature in self.feature_orchestrator.features.values():
             for feature_value in feature.values:
                 feature_str = f"[{feature.name}={feature_value}]"
                 tag = InventoryItem(feature_str, kind="tag", source=feature.source)
-                self.flags[feature_str] = tag
+                self.tags[feature_str] = tag
 
     def _build_symbol_table(self):
         """
@@ -171,13 +171,13 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         symbols.add_symbol(self.epsilon_ref)
         for item in self.phones.values():
             symbols.add_symbol(item.value)
-        for item in self.flags.values():
+        for item in self.tags.values():
             symbols.add_symbol(item.value)
         for item in self.boundary_symbols:
             symbols.add_symbol(item)
-        for item in self.edit_flags:
+        for item in self.edit_tags:
             symbols.add_symbol(item)
-        for item in self.bow_eow_flags:
+        for item in self.bow_eow_tags:
             symbols.add_symbol(item)
 
         self.symbols = symbols
@@ -218,7 +218,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             acceptor = pynini.accep(item.value, token_type=self.symbols)
             acceptor.optimize()
             item.set_acceptor(acceptor)
-        for item in self.flags.values():
+        for item in self.tags.values():
             acceptor = pynini.accep(item.value, token_type=self.symbols)
             acceptor.optimize()
             item.set_acceptor(acceptor)
@@ -235,22 +235,22 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             item.set_acceptor(acceptor)
         self._inventory_acceptors_built = True
 
-    def update_flags(self, flags: list[InventoryItem]):
-        logger.info(f"Adding {len(flags)} flags to inventory...")
+    def update_tags(self, tags: list[InventoryItem]):
+        logger.info(f"Adding {len(tags)} tags to inventory...")
         self._inventory_acceptors_built = False
         self._sigmas_built = False
 
-        for tag in flags:
+        for tag in tags:
             self._add_flag(tag)
         self._inventory_acceptors_built = True
 
-        logger.info("Flags added successfully.")
+        logger.info("tags added successfully.")
 
     def _add_flag(self, tag: InventoryItem) -> int:
-        if tag.value in self.flags:
-            error = f"{tag.value} already found in self.flags"
+        if tag.value in self.tags:
+            error = f"{tag.value} already found in self.tags"
             raise KeyError(error)
-        self.flags[tag.value] = tag
+        self.tags[tag.value] = tag
 
         symbol_index: int = self.symbols.add_symbol(tag.value)
         fsa = pynini.accep(tag.value, token_type=self.symbols)
@@ -271,10 +271,10 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
         phone_fsa = pynini.union(*[phone.fsa for phone in self.phones.values()])
         phone_fsa.optimize()
 
-        # unlike phones, an inventory may have zero flags
+        # unlike phones, an inventory may have zero tags
         # in which case the flag_fsa is just the empty language
-        if self.flags:
-            flag_fsa = pynini.union(*[tag.fsa for tag in self.flags.values()])
+        if self.tags:
+            flag_fsa = pynini.union(*[tag.fsa for tag in self.tags.values()])
         else:
             flag_fsa = pynini.accep("")
         flag_fsa.optimize()
@@ -357,10 +357,10 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             tokens["ref"].append(
                 Token(value=ref, kind="special_ref", acceptor=acceptor)
             )
-        for tag in self.bow_eow_flags:
+        for tag in self.bow_eow_tags:
             acceptor = self._token_acceptor(tag)
             tokens["tag"].append(Token(value=tag, kind="bow_eow", acceptor=acceptor))
-        for tag in self.edit_flags:
+        for tag in self.edit_tags:
             acceptor = self._token_acceptor(tag)
             tokens["tag"].append(
                 Token(value=tag, kind="edit_flag", acceptor=acceptor)
@@ -372,7 +372,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             )
         for phone, phone_obj in self.phones.items():
             tokens["phone"].append(Token(value=phone, kind="phone", acceptor=phone_obj))
-        for tag, flag_obj in self.flags.items():
+        for tag, flag_obj in self.tags.items():
             tokens["tag"].append(Token(value=tag, kind="tag", acceptor=flag_obj))
         for class_ref, class_obj in self.classes.items():
             tokens["ref"].append(
@@ -581,7 +581,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
 
         Uses the token lists built in `_build_token_list` to find the longest
         matching token at each position in the input string, and infers token
-        type from the token string itself (e.g. flags start with '[', refs start with '<', etc.)
+        type from the token string itself (e.g. tags start with '[', refs start with '<', etc.)
         """
         input_str = self._preprocess_str(input_str)
 
@@ -1350,7 +1350,7 @@ class FstOrchestrator(Orchestrator, ReservedSymbolMixin):
             symbol = self.symbols.find(label)
             if strip_all_tags and symbol[0] == "[":
                 continue
-            elif strip_word_edge_symbols and symbol in self.bow_eow_flags:
+            elif strip_word_edge_symbols and symbol in self.bow_eow_tags:
                 continue
             word += symbol
 
