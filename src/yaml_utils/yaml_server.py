@@ -410,14 +410,5 @@ def _get_valid_contingent_markers(
     return None
 
 
-def get_dir_mtime(dir_path: str) -> float:
-    return os.path.getmtime(dir_path)
-
-
-def is_cache_valid(cache_path: str, *source_dirs: str) -> bool:
-    if not os.path.exists(cache_path):
-        return False
-    cache_mtime = os.path.getmtime(cache_path)
-    return all(get_dir_mtime(d) <= cache_mtime for d in source_dirs)
 
 

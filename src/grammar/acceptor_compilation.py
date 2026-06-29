@@ -7,8 +7,9 @@ via recursive descent parsing.
 
 Caches:
   symbol table  → YAML_DIR/.cache/symbol_table.syms  (inv + feat dirs)
-  pattern FSAs  → YAML_DIR/.cache/patterns.far        (inv + feat + pat dirs)
+  pattern FSAs  → in-memory only                      (inv + feat + pat dirs)
   token map     → in-memory only                      (same three dirs)
+  special FSAs  → in-memory only                      (inv + feat dirs)
 """
 
 from __future__ import annotations
@@ -18,14 +19,13 @@ import re
 import unicodedata
 from collections import defaultdict
 from graphlib import TopologicalSorter
-
 from typing import Literal
 
 import pynini
-import pywrapfst
 from loguru import logger
 from pynini.lib import rewrite
 
+from src.cache import is_syms_cache_valid, save_symbol_table, load_symbol_table
 from src.fst_utils import ReservedSymbolMixin as R
 from src.launcher import YAML_DIR
 from src.yaml_utils.models import Feature, Inventory, Pattern, Token
@@ -34,16 +34,7 @@ from src.yaml_utils.yaml_server import (
     get_feature_map,
     get_inventory_items,
     get_patterns,
-    is_cache_valid,
 )
-
-"""
-## Cache paths
-"""
-
-CACHE_DIR = os.path.join(YAML_DIR, ".cache")
-SYMS_PATH = os.path.join(CACHE_DIR, "symbol_table.syms")
-FAR_PATH = os.path.join(CACHE_DIR, "patterns.far")
 
 
 def _kind_dir(kind: str) -> str:
@@ -59,11 +50,11 @@ PATTERNS_DIR = _kind_dir("Patterns")
 """
 
 _symbol_table: pynini.SymbolTable | None = None
+_special_fsas: dict[str, pynini.Fst] | None = None
 _token_map: dict[str, list[Token]] | None = None
 _token_map_mtime: float = 0.0
 _pattern_fsts: dict[str, pynini.Fst] | None = None
 _sigma_star: pynini.Fst | None = None
-
 
 """
 ## Cache invalidation
@@ -76,10 +67,11 @@ def invalidate_symbol_table() -> None:
 
 
 def invalidate_token_map() -> None:
-    global _token_map, _token_map_mtime, _sigma_star
+    global _token_map, _token_map_mtime, _sigma_star, _special_fsas
     _token_map = None
     _token_map_mtime = 0.0
     _sigma_star = None
+    _special_fsas = None
 
 
 def invalidate_pattern_fsts() -> None:
@@ -104,7 +96,7 @@ def build_symbol_table(
 ) -> pynini.SymbolTable:
     syms = pynini.SymbolTable()
     syms.add_symbol(R.epsilon_ref)
-    for phone in dict.fromkeys(inventory.phones):  # dedup, preserve order
+    for phone in dict.fromkeys(inventory.phones):
         syms.add_symbol(phone)
     for tag in dict.fromkeys(inventory.tags):
         syms.add_symbol(tag)
@@ -120,40 +112,28 @@ def build_symbol_table(
     return syms
 
 
-def _save_symbol_table(syms: pynini.SymbolTable) -> None:
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    syms.write_text(SYMS_PATH)
-
-
-def _load_symbol_table() -> pynini.SymbolTable | None:
-    try:
-        return pynini.SymbolTable.read_text(SYMS_PATH)
-    except Exception:
-        return None
-
-
 def get_symbol_table() -> pynini.SymbolTable:
     global _symbol_table
     if _symbol_table is not None:
         return _symbol_table
-    if is_cache_valid(SYMS_PATH, INVENTORY_DIR, FEATURES_DIR):
-        loaded = _load_symbol_table()
+    if is_syms_cache_valid(INVENTORY_DIR, FEATURES_DIR):
+        loaded = load_symbol_table()
         if loaded is not None:
             _symbol_table = loaded
             return _symbol_table
     syms = build_symbol_table(get_inventory_items(), get_feature_map())
-    _save_symbol_table(syms)
+    save_symbol_table(syms)
     _symbol_table = syms
     return _symbol_table
 
 
 """
-## Sigma FSAs
-Derived from symbol table; not cached separately.
+## Special FSAs
+Sigma, phone, flag, boundary etc. — derived from symbol table; cached in-memory.
 """
 
 
-def _build_sigma_fsas(
+def _build_special_fsas(
     syms: pynini.SymbolTable,
     inventory: Inventory,
     features: dict[str, Feature],
@@ -161,9 +141,7 @@ def _build_sigma_fsas(
     phones = list(dict.fromkeys(inventory.phones))
     if not phones:
         raise ValueError("Cannot build sigma FSAs without any phones in inventory.")
-    phone_fsa = pynini.union(
-        *[pynini.accep(p, token_type=syms) for p in phones]
-    ).optimize()
+    phone_fsa = pynini.union(*[pynini.accep(p, token_type=syms) for p in phones]).optimize()
 
     all_tags = list(dict.fromkeys(inventory.tags))
     for feat in features.values():
@@ -202,34 +180,38 @@ def _build_sigma_fsas(
     }
 
 
+def get_special_fsas() -> dict[str, pynini.Fst]:
+    global _special_fsas
+    if _special_fsas is not None:
+        return _special_fsas
+    syms = get_symbol_table()
+    inventory = get_inventory_items()
+    features = get_feature_map()
+    _special_fsas = _build_special_fsas(syms, inventory, features)
+    return _special_fsas
+
+
 """
 ## Token map
+Tokens store (value, kind) only — no embedded FSAs.
 """
 
 
 def _build_token_map(
     syms: pynini.SymbolTable,
-    sigmas: dict[str, pynini.Fst],
     inventory: Inventory,
     features: dict[str, Feature],
     patterns: dict[str, Pattern],
 ) -> dict[str, list[Token]]:
     tokens: dict[str, list[Token]] = defaultdict(list)
 
-    # dot is a sigma alias; stored separately so _infer_token_type can find it
-    tokens["dot"].append(Token(R.dot, "special_ref", sigmas["sigma"]))
+    tokens["dot"].append(Token(R.dot, "special_ref"))
 
-    # special refs (<Phone>, <tag>, <Sigma>, <Empty>, <Boundary>)
-    for ref, fsa in (
-        (R.phone_ref, sigmas["phone"]),
-        (R.flag_ref, sigmas["flag"]),
-        (R.sigma_ref, sigmas["sigma"]),
-        (R.epsilon_ref, pynini.accep("", token_type=syms)),
-        (R.boundary_ref, sigmas["boundary"]),
-    ):
-        tokens["ref"].append(Token(ref, "special_ref", fsa))
+    tokens["ref"].extend(
+        Token(ref, "special_ref")
+        for ref in (R.phone_ref, R.flag_ref, R.sigma_ref, R.epsilon_ref, R.boundary_ref)
+    )
 
-    # delimiters and operators (no FSA)
     for d in R.left_delimiters:
         tokens["left_delimiter"].append(Token(d, "left_delimiter"))
     for d in R.right_delimiters:
@@ -239,43 +221,66 @@ def _build_token_map(
     tokens["pipe_operator"].append(Token(R.pipe_operator, "pipe_operator"))
     tokens["caret_operator"].append(Token(R.caret_operator, "caret_operator"))
 
-    # BOW / EOW
-    tokens["tag"].append(Token(R.bow, "bow_eow", sigmas["bow"]))
-    tokens["tag"].append(Token(R.eow, "bow_eow", sigmas["eow"]))
+    tokens["tag"].append(Token(R.bow, "bow_eow"))
+    tokens["tag"].append(Token(R.eow, "bow_eow"))
 
-    # edit tags
     for tag in R.edit_tags:
-        tokens["tag"].append(
-            Token(tag, "edit_flag", pynini.accep(tag, token_type=syms))
-        )
+        tokens["tag"].append(Token(tag, "edit_flag"))
 
-    # boundary symbols
-    for sym, key in (
-        (R.affix_boundary, "affix_boundary"),
-        (R.clitic_boundary, "clitic_boundary"),
-        (R.periphrasis_break, "periphrasis_break"),
-    ):
-        tokens["boundary"].append(Token(sym, "boundary", sigmas[key]))
+    for sym in (R.affix_boundary, R.clitic_boundary, R.periphrasis_break):
+        tokens["boundary"].append(Token(sym, "boundary"))
 
-    # phones
     phone_set = set(inventory.phones)
     for phone in dict.fromkeys(inventory.phones):
-        tokens["phone"].append(
-            Token(phone, "phone", pynini.accep(phone, token_type=syms))
-        )
+        tokens["phone"].append(Token(phone, "phone"))
 
-    # inventory tags
     tag_set = set(inventory.tags)
     for tag in dict.fromkeys(inventory.tags):
-        tokens["tag"].append(Token(tag, "tag", pynini.accep(tag, token_type=syms)))
+        tokens["tag"].append(Token(tag, "tag"))
 
-    # feature value tags
     for feat in features.values():
         for val in feat.values:
-            tag = f"[{feat.name}={val}]"
-            tokens["tag"].append(Token(tag, "tag", pynini.accep(tag, token_type=syms)))
+            tokens["tag"].append(Token(f"[{feat.name}={val}]", "tag"))
 
-    # inventory classes — item_map entries that are named groupings (not bare phones/tags)
+    # inventory classes — FSAs built separately in _build_class_fsts
+    for name in inventory.item_map:
+        if name in phone_set or name in tag_set:
+            continue
+        tokens["ref"].append(Token(name, "class_ref"))
+
+    for ref in patterns:
+        tokens["ref"].append(Token(ref, "pattern_ref"))
+
+    return {kind: sorted(lst, key=len, reverse=True) for kind, lst in tokens.items()}
+
+
+def get_token_map() -> dict[str, list[Token]]:
+    global _token_map, _token_map_mtime
+    max_mtime = max(os.path.getmtime(d) for d in (INVENTORY_DIR, FEATURES_DIR, PATTERNS_DIR))
+    if _token_map is not None and _token_map_mtime >= max_mtime:
+        return _token_map
+    syms = get_symbol_table()
+    inventory = get_inventory_items()
+    features = get_feature_map()
+    patterns = get_patterns()
+    _token_map = _build_token_map(syms, inventory, features, patterns)
+    _token_map_mtime = max_mtime
+    return _token_map
+
+
+"""
+## Inventory class FSAs
+Built separately from token map; merged into compiled_patterns before parsing.
+"""
+
+
+def _build_class_fsts(
+    syms: pynini.SymbolTable,
+    inventory: Inventory,
+) -> dict[str, pynini.Fst]:
+    phone_set = set(inventory.phones)
+    tag_set = set(inventory.tags)
+    result: dict[str, pynini.Fst] = {}
     for name, contents in inventory.item_map.items():
         if name in phone_set or name in tag_set:
             continue
@@ -283,32 +288,8 @@ def _build_token_map(
         child_fsas += [pynini.accep(t, token_type=syms) for t in contents.tags]
         if not child_fsas:
             continue
-        class_fsa = pynini.union(*child_fsas).optimize()
-        tokens["ref"].append(Token(f"<{name}>", "class_ref", class_fsa))
-
-    # pattern refs — fsa=None; resolved at parse time via compiled_patterns
-    for ref in patterns:
-        tokens["ref"].append(Token(f"<{ref}>", "pattern_ref"))
-
-    # longest match first within each type
-    return {kind: sorted(lst, key=len, reverse=True) for kind, lst in tokens.items()}
-
-
-def get_token_map() -> dict[str, list[Token]]:
-    global _token_map, _token_map_mtime
-    max_mtime = max(
-        os.path.getmtime(d) for d in (INVENTORY_DIR, FEATURES_DIR, PATTERNS_DIR)
-    )
-    if _token_map is not None and _token_map_mtime >= max_mtime:
-        return _token_map
-    syms = get_symbol_table()
-    inventory = get_inventory_items()
-    features = get_feature_map()
-    patterns = get_patterns()
-    sigmas = _build_sigma_fsas(syms, inventory, features)
-    _token_map = _build_token_map(syms, sigmas, inventory, features, patterns)
-    _token_map_mtime = max_mtime
-    return _token_map
+        result[name] = pynini.union(*child_fsas).optimize()
+    return result
 
 
 """
@@ -362,11 +343,7 @@ def _tokenize_str(
     while i < len(s):
         token_type = _infer_token_type(s[i:], phone_starts)
         match = next(
-            (
-                tok
-                for tok in token_map.get(token_type, [])
-                if s.startswith(tok.value, i)
-            ),
+            (tok for tok in token_map.get(token_type, []) if s.startswith(tok.value, i)),
             None,
         )
         if match is None:
@@ -389,10 +366,39 @@ def _interpret_unary_operator(fst: pynini.Fst, op: str) -> pynini.Fst:
     raise ValueError(f"Unknown unary operator: {op!r}")
 
 
+def _atom_to_fst(
+    tok: Token,
+    compiled_patterns: dict[str, pynini.Fst],
+    syms: pynini.SymbolTable,
+    special_fsas: dict[str, pynini.Fst],
+) -> pynini.Fst:
+    if tok.kind in ("phone", "tag", "bow_eow", "edit_flag", "boundary"):
+        return pynini.accep(tok.value, token_type=syms)
+    if tok.kind in ("class_ref", "pattern_ref"):
+        if tok.value not in compiled_patterns:
+            raise ValueError(f"Ref '{tok.value}' not compiled yet")
+        return compiled_patterns[tok.value]
+    if tok.kind in ("special_ref", "dot"):
+        if tok.value == R.phone_ref:
+            return special_fsas["phone"]
+        if tok.value == R.flag_ref:
+            return special_fsas["flag"]
+        if tok.value in (R.sigma_ref, R.dot):
+            return special_fsas["sigma"]
+        if tok.value == R.boundary_ref:
+            return special_fsas["boundary"]
+        if tok.value == R.epsilon_ref:
+            return pynini.accep("", token_type=syms)
+        raise ValueError(f"Unknown special ref: {tok.value!r}")
+    raise ValueError(f"Cannot convert token {tok!r} to FSA")
+
+
 def _parse_factor_sequence(
     tokens: list[Token],
     i: int,
     compiled_patterns: dict[str, pynini.Fst],
+    syms: pynini.SymbolTable,
+    special_fsas: dict[str, pynini.Fst],
     sigma: pynini.Fst,
 ) -> tuple[list[pynini.Fst], int]:
     fsas: list[pynini.Fst] = []
@@ -401,19 +407,11 @@ def _parse_factor_sequence(
         if tok.kind in ("right_delimiter", "pipe_operator", "unary_operator"):
             break
         if tok.kind == "left_delimiter":
-            fsa, i = _parse_delimited_factor(tokens, i, compiled_patterns, sigma)
-            fsas.append(fsa)
-        elif tok.kind == "pattern_ref":
-            ref = tok.value[1:-1]  # strip < >
-            if ref not in compiled_patterns:
-                raise ValueError(f"Pattern ref '<{ref}>' used before compilation")
-            fsas.append(compiled_patterns[ref])
-            i += 1
-        elif tok.fsa is not None:
-            fsas.append(tok.fsa)
-            i += 1
+            f, i = _parse_delimited_factor(tokens, i, compiled_patterns, syms, special_fsas, sigma)
+            fsas.append(f)
         else:
-            raise ValueError(f"Cannot parse token {tok!r} at index {i}")
+            fsas.append(_atom_to_fst(tok, compiled_patterns, syms, special_fsas))
+            i += 1
     return fsas, i
 
 
@@ -421,6 +419,8 @@ def _parse_delimited_factor(
     tokens: list[Token],
     i: int,
     compiled_patterns: dict[str, pynini.Fst],
+    syms: pynini.SymbolTable,
+    special_fsas: dict[str, pynini.Fst],
     sigma: pynini.Fst,
 ) -> tuple[pynini.Fst, int]:
     left = tokens[i].value
@@ -429,13 +429,13 @@ def _parse_delimited_factor(
         negated = i < len(tokens) and tokens[i].kind == "caret_operator"
         if negated:
             i += 1
-        factors, i = _parse_factor_sequence(tokens, i, compiled_patterns, sigma)
+        factors, i = _parse_factor_sequence(tokens, i, compiled_patterns, syms, special_fsas, sigma)
         inner = pynini.union(*factors)
         if negated:
             inner = pynini.difference(sigma, inner)
         expected = "}"
     elif left == "(":
-        inner, i = _parse_expression(tokens, i, compiled_patterns, sigma)
+        inner, i = _parse_expression(tokens, i, compiled_patterns, syms, special_fsas, sigma)
         expected = ")"
     else:
         raise ValueError(f"Unexpected left delimiter: {left!r}")
@@ -448,22 +448,19 @@ def _parse_term(
     tokens: list[Token],
     i: int,
     compiled_patterns: dict[str, pynini.Fst],
+    syms: pynini.SymbolTable,
+    special_fsas: dict[str, pynini.Fst],
     sigma: pynini.Fst,
 ) -> tuple[pynini.Fst, int]:
     if tokens[i].kind in ("right_delimiter", "pipe_operator"):
         raise ValueError(f"Unexpected {tokens[i].kind!r} token at start of term")
     fsas: list[pynini.Fst] = []
-    while i < len(tokens) and tokens[i].kind not in (
-        "right_delimiter",
-        "pipe_operator",
-    ):
-        factor_list, i = _parse_factor_sequence(tokens, i, compiled_patterns, sigma)
+    while i < len(tokens) and tokens[i].kind not in ("right_delimiter", "pipe_operator"):
+        factor_list, i = _parse_factor_sequence(tokens, i, compiled_patterns, syms, special_fsas, sigma)
         if i < len(tokens) and tokens[i].kind == "unary_operator":
             if not factor_list:
                 raise ValueError("Unary operator with no preceding factor")
-            factor_list[-1] = _interpret_unary_operator(
-                factor_list[-1], tokens[i].value
-            )
+            factor_list[-1] = _interpret_unary_operator(factor_list[-1], tokens[i].value)
             i += 1
         fsas.extend(factor_list)
     if not fsas:
@@ -478,13 +475,15 @@ def _parse_expression(
     tokens: list[Token],
     i: int,
     compiled_patterns: dict[str, pynini.Fst],
+    syms: pynini.SymbolTable,
+    special_fsas: dict[str, pynini.Fst],
     sigma: pynini.Fst,
 ) -> tuple[pynini.Fst, int]:
-    term, i = _parse_term(tokens, i, compiled_patterns, sigma)
+    term, i = _parse_term(tokens, i, compiled_patterns, syms, special_fsas, sigma)
     terms = [term]
     while i < len(tokens) and tokens[i].kind == "pipe_operator":
         i += 1
-        t, i = _parse_term(tokens, i, compiled_patterns, sigma)
+        t, i = _parse_term(tokens, i, compiled_patterns, syms, special_fsas, sigma)
         terms.append(t)
         if i >= len(tokens) or tokens[i].kind == "right_delimiter":
             break
@@ -494,9 +493,11 @@ def _parse_expression(
 def _parse_tokens(
     tokens: list[Token],
     compiled_patterns: dict[str, pynini.Fst],
+    syms: pynini.SymbolTable,
+    special_fsas: dict[str, pynini.Fst],
     sigma: pynini.Fst,
 ) -> pynini.Fst:
-    fst, end = _parse_expression(tokens, 0, compiled_patterns, sigma)
+    fst, end = _parse_expression(tokens, 0, compiled_patterns, syms, special_fsas, sigma)
     if end != len(tokens):
         raise ValueError(f"Leftover tokens after parse: {tokens[end:]}")
     return fst
@@ -509,17 +510,18 @@ def _parse_pattern(
     compiled_patterns: dict[str, pynini.Fst],
     syms: pynini.SymbolTable,
     sigma: pynini.Fst,
+    special_fsas: dict[str, pynini.Fst],
 ) -> pynini.Fst:
     if not pattern_str:
         return pynini.accep("", token_type=syms)
     toks = _tokenize_str(pattern_str, token_map, phone_starts)
-    fst = _parse_tokens(toks, compiled_patterns, sigma)
+    fst = _parse_tokens(toks, compiled_patterns, syms, special_fsas, sigma)
     fst.optimize()
     return fst
 
 
 """
-## Pattern compilation + FAR cache
+## Pattern compilation
 """
 
 
@@ -529,6 +531,8 @@ def compile_all_patterns(
     phone_starts: set[str],
     syms: pynini.SymbolTable,
     sigma: pynini.Fst,
+    special_fsas: dict[str, pynini.Fst],
+    class_fsts: dict[str, pynini.Fst],
 ) -> dict[str, pynini.Fst]:
     dep_graph: dict[str, set[str]] = {ref: set() for ref in patterns}
     for ref, pat in patterns.items():
@@ -537,67 +541,36 @@ def compile_all_patterns(
                 dep_graph[ref].add(token)
     order = list(TopologicalSorter(dep_graph).static_order())
 
-    compiled: dict[str, pynini.Fst] = {}
+    compiled: dict[str, pynini.Fst] = dict(class_fsts)
     for ref in order:
         pat = patterns[ref]
         try:
             compiled[ref] = _parse_pattern(
-                pat.pattern, token_map, phone_starts, compiled, syms, sigma
+                pat.pattern, token_map, phone_starts, compiled, syms, sigma, special_fsas
             )
         except Exception as e:
             raise ValueError(f"Error compiling pattern '{ref}': {e}") from e
     return compiled
 
 
-def _save_pattern_fsts(fsts: dict[str, pynini.Fst]) -> None:
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    writer = pywrapfst.FarWriter.create(FAR_PATH)
-    for ref, fst in fsts.items():
-        writer[ref] = fst
-    del writer
-
-
-def _load_pattern_fsts() -> dict[str, pynini.Fst] | None:
-    if not os.path.exists(FAR_PATH):
-        return None
-    try:
-        reader = pywrapfst.FarReader.open(FAR_PATH)
-        result: dict[str, pynini.Fst] = {}
-        while not reader.done():
-            result[reader.get_key()] = reader.get_fst().copy()
-            reader.next()
-        return result
-    except Exception:
-        logger.warning(f"Failed to load pattern FSTs from {FAR_PATH}, will recompile.")
-        return None
-
-
 def get_pattern_fsts() -> dict[str, pynini.Fst]:
+    """Returns compiled_patterns (class FSTs + pattern FSTs). Memory-only cache."""
     global _pattern_fsts, _token_map, _token_map_mtime
     if _pattern_fsts is not None:
         return _pattern_fsts
-    if is_cache_valid(FAR_PATH, INVENTORY_DIR, FEATURES_DIR, PATTERNS_DIR):
-        loaded = _load_pattern_fsts()
-        if loaded is not None:
-            _pattern_fsts = loaded
-            return _pattern_fsts
     syms = get_symbol_table()
     inventory = get_inventory_items()
     features = get_feature_map()
     patterns = get_patterns()
-    sigmas = _build_sigma_fsas(syms, inventory, features)
+    special_fsas = get_special_fsas()
+    class_fsts = _build_class_fsts(syms, inventory)
     phone_starts = {p[0] for p in inventory.phones}
-    token_map = _build_token_map(syms, sigmas, inventory, features, patterns)
-    fsts = compile_all_patterns(
-        patterns, token_map, phone_starts, syms, sigmas["sigma"]
+    token_map = _build_token_map(syms, inventory, features, patterns)
+    _pattern_fsts = compile_all_patterns(
+        patterns, token_map, phone_starts, syms, special_fsas["sigma"], special_fsas, class_fsts
     )
-    _save_pattern_fsts(fsts)
-    _pattern_fsts = fsts
-    # keep token map cache warm
     _token_map = token_map
-    _token_map_mtime = max(
-        os.path.getmtime(d) for d in (INVENTORY_DIR, FEATURES_DIR, PATTERNS_DIR)
-    )
+    _token_map_mtime = max(os.path.getmtime(d) for d in (INVENTORY_DIR, FEATURES_DIR, PATTERNS_DIR))
     return _pattern_fsts
 
 
@@ -610,20 +583,25 @@ def get_sigma_star() -> pynini.Fst:
     global _sigma_star
     if _sigma_star is not None:
         return _sigma_star
-    sigma = get_token_map()["dot"][0].fsa
-    _sigma_star = sigma.star.optimize()
+    _sigma_star = get_special_fsas()["sigma_star"]
     return _sigma_star
 
 
 def _cached_context() -> tuple[
-    dict[str, list[Token]], set[str], dict[str, pynini.Fst], pynini.SymbolTable, pynini.Fst
+    dict[str, list[Token]],
+    set[str],
+    dict[str, pynini.Fst],
+    pynini.SymbolTable,
+    pynini.Fst,
+    dict[str, pynini.Fst],
 ]:
     token_map = get_token_map()
     syms = get_symbol_table()
     compiled = get_pattern_fsts()
+    special_fsas = get_special_fsas()
     phone_starts = {p[0] for p in get_inventory_items().phones}
-    sigma = token_map["dot"][0].fsa  # dot token maps to sigma
-    return token_map, phone_starts, compiled, syms, sigma
+    sigma = special_fsas["sigma"]
+    return token_map, phone_starts, compiled, syms, sigma, special_fsas
 
 
 """
@@ -632,16 +610,16 @@ def _cached_context() -> tuple[
 
 
 def fsa(pattern_str: str) -> pynini.Fst:
-    token_map, phone_starts, compiled, syms, sigma = _cached_context()
-    return _parse_pattern(pattern_str, token_map, phone_starts, compiled, syms, sigma)
+    token_map, phone_starts, compiled, syms, sigma, special_fsas = _cached_context()
+    return _parse_pattern(pattern_str, token_map, phone_starts, compiled, syms, sigma, special_fsas)
 
 
 def word_fsa(word_str: str, prefix: str | None = None) -> pynini.Fst:
     tagged = R.bow + word_str + R.eow
     if prefix:
         tagged = prefix + tagged
-    token_map, phone_starts, compiled, syms, sigma = _cached_context()
-    return _parse_pattern(tagged, token_map, phone_starts, compiled, syms, sigma)
+    token_map, phone_starts, compiled, syms, sigma, special_fsas = _cached_context()
+    return _parse_pattern(tagged, token_map, phone_starts, compiled, syms, sigma, special_fsas)
 
 
 def wordlist_fsa(words: list[str]) -> pynini.Fst:
@@ -679,7 +657,6 @@ def fsm_strings_and_weights(
     strip_word_edge_symbols: bool = False,
     strip_all_tags: bool = False,
 ) -> list[tuple[str, float]]:
-    breakpoint()
     syms = get_symbol_table()
     projected = pynini.project(fst, project_type=project)
     if nshortest is not None:
@@ -689,7 +666,8 @@ def fsm_strings_and_weights(
     path_iter = projected.paths()
     while not path_iter.done():
         word = _decode_labels(
-            path_iter.olabels(), syms,
+            path_iter.olabels(),
+            syms,
             strip_word_edge_symbols=strip_word_edge_symbols,
             strip_all_tags=strip_all_tags,
         )
@@ -708,11 +686,7 @@ def fsm_strings(
     strip_word_edge_symbols: bool = False,
     strip_all_tags: bool = False,
 ) -> list[str]:
-    return [
-        s for s, _ in fsm_strings_and_weights(
-            fst, project, nshortest, strip_word_edge_symbols, strip_all_tags
-        )
-    ]
+    return [s for s, _ in fsm_strings_and_weights(fst, project, nshortest, strip_word_edge_symbols, strip_all_tags)]
 
 
 def fsm_string(

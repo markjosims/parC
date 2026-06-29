@@ -155,7 +155,6 @@ class Token(NamedTuple):
         "special_ref", "unary_operator", "pipe_operator", "caret_operator",
         "boundary", "left_delimiter", "right_delimiter",
     ]
-    fsa: Any = None  # pynini.Fst | None; Any avoids hard pynini dep here
 
     def __len__(self) -> int:
         return len(self.value)

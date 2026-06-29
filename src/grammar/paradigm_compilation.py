@@ -2,7 +2,7 @@
 Paradigm inflect / parse / fuzzy-search graph compilation.
 
 Caches:
-  inflect + parse + search FSTs → YAML_DIR/.cache/paradigms.far
+  inflect + parse + search FSTs → YAML_DIR/.cache/Paradigm/{name}.{kind}.fst
   Invalidated when any of Paradigm, FeatureMarkers, ContingentFeatureMarkers,
   Inventory, FeatureDefinitions, or Rules dirs change.
 """
@@ -13,10 +13,10 @@ import itertools
 import os
 
 import pynini
-import pywrapfst
 from loguru import logger
 from pynini.lib import pynutil
 
+from src.cache import is_fst_cache_valid, save_fst, load_fst
 from src.fst_utils import ReservedSymbolMixin as R
 from src.launcher import YAML_DIR
 from src.lexicon import get_roots
@@ -25,28 +25,19 @@ from src.yaml_utils.yaml_server import (
     get_feature_map,
     get_yaml_kind,
     get_yaml_data_safe,
-    is_cache_valid,
 )
 from src.grammar.acceptor_compilation import (
     fsa,
     word_fsa,
     get_sigma_star,
+    get_special_fsas,
     get_symbol_table,
-    get_token_map,
 )
 from src.grammar.marker_resolution import get_markers_for_paradigm
 from src.grammar.transducer_compilation import get_marker_fst
 
 EDIT_BOUND = 5
 EDIT_COST = 1.0
-
-"""
-## Cache paths
-"""
-
-CACHE_DIR = os.path.join(YAML_DIR, ".cache")
-PARADIGMS_FAR_PATH = os.path.join(CACHE_DIR, "paradigms.far")
-
 
 def _kind_dir(kind: str) -> str:
     return os.path.join(YAML_DIR, CONFIG_KIND_TO_PARDIR[kind], kind)
@@ -71,33 +62,6 @@ _paradigm_fsts: dict[str, pynini.Fst] | None = None
 def invalidate_paradigm_fsts() -> None:
     global _paradigm_fsts
     _paradigm_fsts = None
-
-"""
-## FAR I/O
-"""
-
-
-def _save_far(fsts: dict[str, pynini.Fst], path: str) -> None:
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    writer = pywrapfst.FarWriter.create(path)
-    for key, fst in sorted(fsts.items()):
-        writer[key] = fst
-    del writer
-
-
-def _load_far(path: str) -> dict[str, pynini.Fst] | None:
-    if not os.path.exists(path):
-        return None
-    try:
-        reader = pywrapfst.FarReader.open(path)
-        result: dict[str, pynini.Fst] = {}
-        while not reader.done():
-            result[reader.get_key()] = reader.get_fst().copy()
-            reader.next()
-        return result
-    except Exception:
-        logger.warning(f"Failed to load paradigms FAR from {path}; will recompile.")
-        return None
 
 """
 ## Helpers
@@ -205,7 +169,7 @@ def build_parse_graph(inflect_graph: pynini.Fst) -> pynini.Fst:
 
 def build_search_graph(inflect_graph: pynini.Fst) -> pynini.Fst:
     """Fuzzy-searchable form lattice via edit transducers."""
-    sigma = get_token_map()["dot"][0].fsa
+    sigma = get_special_fsas()["sigma"]
     sigma_star = get_sigma_star()
     syms = get_symbol_table()
 
@@ -243,42 +207,65 @@ def build_search_graph(inflect_graph: pynini.Fst) -> pynini.Fst:
 ## Cache warming and public entry points
 """
 
+_FST_KINDS = ("inflect", "parse", "search")
+
+
+def _paradigm_cache_valid(name: str) -> bool:
+    return all(is_fst_cache_valid("Paradigm", name, k, *_SOURCE_DIRS) for k in _FST_KINDS)
+
+
+def _load_paradigm(name: str) -> tuple[pynini.Fst, pynini.Fst, pynini.Fst] | None:
+    fsts = [load_fst("Paradigm", name, k) for k in _FST_KINDS]
+    return tuple(fsts) if all(f is not None for f in fsts) else None
+
+
+def _save_paradigm(name: str, inflect: pynini.Fst, parse: pynini.Fst, search: pynini.Fst) -> None:
+    for k, f in zip(_FST_KINDS, (inflect, parse, search)):
+        save_fst("Paradigm", name, k, f)
+
+
+def _store(name: str, inflect: pynini.Fst, parse: pynini.Fst, search: pynini.Fst) -> None:
+    _paradigm_fsts[f"{name}:inflect"] = inflect
+    _paradigm_fsts[f"{name}:parse"] = parse
+    _paradigm_fsts[f"{name}:search"] = search
+
 
 def _warm_cache() -> None:
     global _paradigm_fsts
-    if is_cache_valid(PARADIGMS_FAR_PATH, *_SOURCE_DIRS):
-        loaded = _load_far(PARADIGMS_FAR_PATH)
-        if loaded is not None:
-            _paradigm_fsts = loaded
-            return
-    fsts: dict[str, pynini.Fst] = {}
+    _paradigm_fsts = {}
     for basename, _ in get_yaml_kind("Paradigm")["valid"]:
         name = basename.removesuffix(".yaml")
+        if _paradigm_cache_valid(name):
+            loaded = _load_paradigm(name)
+            if loaded is not None:
+                _store(name, *loaded)
+                continue
         try:
             inflect = build_inflect_graph(name)
-            fsts[f"{name}:inflect"] = inflect
-            fsts[f"{name}:parse"] = build_parse_graph(inflect)
-            fsts[f"{name}:search"] = build_search_graph(inflect)
+            parse = build_parse_graph(inflect)
+            search = build_search_graph(inflect)
+            _save_paradigm(name, inflect, parse, search)
+            _store(name, inflect, parse, search)
         except Exception as e:
             logger.warning(f"Failed to build graphs for paradigm '{name}': {e}")
-    _save_far(fsts, PARADIGMS_FAR_PATH)
-    _paradigm_fsts = fsts
-
-
-def _ensure_cache() -> None:
-    global _paradigm_fsts
-    if _paradigm_fsts is None:
-        _warm_cache()
 
 
 def _get_or_build(paradigm_name: str, graph_type: str) -> pynini.Fst:
-    _ensure_cache()
+    global _paradigm_fsts
+    if _paradigm_fsts is None:
+        _warm_cache()
     key = f"{paradigm_name}:{graph_type}"
     if key not in _paradigm_fsts:
+        if _paradigm_cache_valid(paradigm_name):
+            loaded = _load_paradigm(paradigm_name)
+            if loaded is not None:
+                _store(paradigm_name, *loaded)
+                return _paradigm_fsts[key]
         inflect = build_inflect_graph(paradigm_name)
-        _paradigm_fsts[f"{paradigm_name}:inflect"] = inflect
-        _paradigm_fsts[f"{paradigm_name}:parse"] = build_parse_graph(inflect)
-        _paradigm_fsts[f"{paradigm_name}:search"] = build_search_graph(inflect)
+        parse = build_parse_graph(inflect)
+        search = build_search_graph(inflect)
+        _save_paradigm(paradigm_name, inflect, parse, search)
+        _store(paradigm_name, inflect, parse, search)
     return _paradigm_fsts[key]
 
 

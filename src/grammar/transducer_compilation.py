@@ -2,18 +2,18 @@
 Functional FST compilation for Rules and Markers.
 
 Caches:
-  rule FSTs   → YAML_DIR/.cache/rules.far   (rules + inv + feat dirs)
-  marker FSTs → in-memory only              (cleared on source changes)
+  rule FSTs   → in-memory only  (rules + inv + feat dirs)
+  marker FSTs → in-memory only  (cleared on source changes)
 """
 
 from __future__ import annotations
 
 import hashlib
-import os
 
 import pynini
-import pywrapfst
 from loguru import logger
+
+import os
 
 from src.fst_utils import ReservedSymbolMixin as R
 from src.launcher import YAML_DIR
@@ -29,16 +29,8 @@ from src.yaml_utils.models import (
     StringMapMarker,
 )
 from src.yaml_utils.schema_validation import CONFIG_KIND_TO_PARDIR
-from src.yaml_utils.yaml_server import get_rules, is_cache_valid
+from src.yaml_utils.yaml_server import get_rules
 from src.grammar.acceptor_compilation import fsa, word_fsa, get_sigma_star, get_symbol_table
-
-"""
-## Cache paths
-"""
-
-CACHE_DIR = os.path.join(YAML_DIR, ".cache")
-RULES_FAR_PATH = os.path.join(CACHE_DIR, "rules.far")
-
 
 def _kind_dir(kind: str) -> str:
     return os.path.join(YAML_DIR, CONFIG_KIND_TO_PARDIR[kind], kind)
@@ -81,29 +73,6 @@ def invalidate_all() -> None:
 
 def _cache_key(obj) -> str:
     return hashlib.sha256(repr(obj).encode()).hexdigest()[:16]
-
-
-def _save_far(fsts: dict[str, pynini.Fst], path: str) -> None:
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    writer = pywrapfst.FarWriter.create(path)
-    for key, fst in sorted(fsts.items()):
-        writer[key] = fst
-    del writer
-
-
-def _load_far(path: str) -> dict[str, pynini.Fst] | None:
-    if not os.path.exists(path):
-        return None
-    try:
-        reader = pywrapfst.FarReader.open(path)
-        result: dict[str, pynini.Fst] = {}
-        while not reader.done():
-            result[reader.get_key()] = reader.get_fst().copy()
-            reader.next()
-        return result
-    except Exception:
-        logger.warning(f"Failed to load FAR from {path}, will recompile.")
-        return None
 
 """
 ## Rule compilation
@@ -214,23 +183,16 @@ def compile_marker(marker: Marker) -> pynini.Fst:
 
 def _warm_rule_cache() -> None:
     global _rule_fsts
-    if is_cache_valid(RULES_FAR_PATH, RULES_DIR, INVENTORY_DIR, FEATURES_DIR):
-        loaded = _load_far(RULES_FAR_PATH)
-        if loaded is not None:
-            _rule_fsts = loaded
-            return
     rules = get_rules()
-    compiled: dict[str, pynini.Fst] = {}
+    _rule_fsts = {}
     for name, rule in rules.items():
         if isinstance(rule, RuleSequence):
             continue  # assembled at runtime
         key = _cache_key(rule)
         try:
-            compiled[key] = compile_rule(rule)
+            _rule_fsts[key] = compile_rule(rule)
         except Exception as e:
             logger.warning(f"Failed to compile rule '{name}': {e}")
-    _save_far(compiled, RULES_FAR_PATH)
-    _rule_fsts = compiled
 
 
 def get_rule_fst(rule_name: str) -> pynini.Fst | list[pynini.Fst]:
