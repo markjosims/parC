@@ -2,8 +2,8 @@ import os
 import pandas as pd
 from loguru import logger
 from copy import deepcopy
-from src.grammar.classes import Registry
-from src.grammar.registry.feature_values_registry import FeatureValuesRegistry, Feature
+from src.grammar_old.classes import Registry
+from src.grammar_old.registry.feature_values_registry import FeatureValuesRegistry, Feature
 from dataclasses import dataclass, field
 
 

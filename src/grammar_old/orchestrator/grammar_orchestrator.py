@@ -7,13 +7,13 @@ The `Grammar` class orchestrates all registries for a given language.
 
 from loguru import logger
 
-from src.grammar.classes import Orchestrator
-from src.grammar.orchestrator.marker_orchestrator import MarkerOrchestrator
-from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
-from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
-from src.grammar.registry.feature_values_registry import FeatureValuesRegistry
-from src.grammar.registry.lexicon_registry import LexiconRegistry
-from src.grammar.registry.paradigm_registry import ParadigmRegistry
+from src.grammar_old.classes import Orchestrator
+from src.grammar_old.orchestrator.marker_orchestrator import MarkerOrchestrator
+from src.grammar_old.orchestrator.fst_orchestrator import FstOrchestrator
+from src.grammar_old.orchestrator.feature_orchestrator import FeatureOrchestrator
+from src.grammar_old.registry.feature_values_registry import FeatureValuesRegistry
+from src.grammar_old.registry.lexicon_registry import LexiconRegistry
+from src.grammar_old.registry.paradigm_registry import ParadigmRegistry
 # from src.grammar.registry.morpheme_sequence_registry import MorphemeSequenceRegistry
 # from src.grammar.registry.morpheme_set_registry import MorphemeSetRegistry
 

@@ -6,7 +6,7 @@ config files and allows for mapping between `InventoryItems` and their
 string representations.
 """
 
-from src.grammar.classes import Registry
+from src.grammar_old.classes import Registry
 from src.fst_utils import Acceptor, ReservedSymbolMixin
 from typing import Literal, Optional, Union
 from dataclasses import dataclass, field

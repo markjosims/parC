@@ -7,7 +7,7 @@ may be sequences of other rules) and maps rule names to `Rule`
 objects.
 """
 
-from src.grammar.classes import Registry
+from src.grammar_old.classes import Registry
 from src.fst_utils import Acceptor, AcceptorLike, ReservedSymbolMixin, TransducerList
 from typing import Literal, Protocol, runtime_checkable
 from dataclasses import dataclass, field

@@ -4,7 +4,7 @@ from loguru import logger
 from dataclasses import dataclass, field
 import os
 
-from src.grammar.classes import Registry
+from src.grammar_old.classes import Registry
 
 @dataclass
 class Feature:

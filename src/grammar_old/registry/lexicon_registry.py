@@ -8,13 +8,13 @@ from dataclasses import dataclass, field
 import os
 import pynini
 from loguru import logger
-from src.grammar.classes import Registry
-from src.grammar.registry.feature_values_registry import Feature
-from src.grammar.orchestrator.feature_orchestrator import (
+from src.grammar_old.classes import Registry
+from src.grammar_old.registry.feature_values_registry import Feature
+from src.grammar_old.orchestrator.feature_orchestrator import (
     FeatureOrchestrator,
     stringify_features,
 )
-from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
+from src.grammar_old.orchestrator.fst_orchestrator import FstOrchestrator
 import pandas as pd
 import numpy as np
 from typing import Literal

@@ -10,14 +10,14 @@ import pynini
 from pynini.lib import pynutil
 from src.config_utils.config_walker import validate_file_reference_str
 from src.fst_utils import FsaLike, Acceptor
-from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
-from src.grammar.orchestrator.feature_orchestrator import serialize_feature_str, stringify_features
-from src.grammar.classes import Registry
-from src.grammar.registry.lexicon_registry import LexiconRegistry, Lexicon
-from src.grammar.registry.paradigm_registry import EDIT_COST, EDIT_COST, EDIT_BOUND, ParadigmRegistry, Paradigm
-from src.grammar.registry.morpheme_set_registry import MorphemeSetRegistry, MorphemeSet
-from src.grammar.registry.rule_registry import Rule
-from src.grammar.registry.feature_values_registry import Feature
+from src.grammar_old.orchestrator.fst_orchestrator import FstOrchestrator
+from src.grammar_old.orchestrator.feature_orchestrator import serialize_feature_str, stringify_features
+from src.grammar_old.classes import Registry
+from src.grammar_old.registry.lexicon_registry import LexiconRegistry, Lexicon
+from src.grammar_old.registry.paradigm_registry import EDIT_COST, EDIT_COST, EDIT_BOUND, ParadigmRegistry, Paradigm
+from src.grammar_old.registry.morpheme_set_registry import MorphemeSetRegistry, MorphemeSet
+from src.grammar_old.registry.rule_registry import Rule
+from src.grammar_old.registry.feature_values_registry import Feature
 from typing import Any
 from tqdm import tqdm
 from itertools import product

@@ -6,15 +6,15 @@ Implements `MarkerOrchestrator` which manages following registries:
 """
 
 from __future__ import annotations
-from src.grammar.registry.feature_values_registry import FeatureValuesRegistry
-from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
-from src.grammar.registry.feature_marker_registry import FeatureMarkersRegistry
-from src.grammar.registry.feature_combination_registry import FeatureValueCombinations
-from src.grammar.registry.contingent_marker_registry import (
+from src.grammar_old.registry.feature_values_registry import FeatureValuesRegistry
+from src.grammar_old.orchestrator.feature_orchestrator import FeatureOrchestrator
+from src.grammar_old.registry.feature_marker_registry import FeatureMarkersRegistry
+from src.grammar_old.registry.feature_combination_registry import FeatureValueCombinations
+from src.grammar_old.registry.contingent_marker_registry import (
     ContingentMarkers,
     ContingentMarkersRegistry,
 )
-from src.grammar.registry.feature_marker_registry import (
+from src.grammar_old.registry.feature_marker_registry import (
     FeatureMarkers,
     FeatureMarkersRegistry,
 )

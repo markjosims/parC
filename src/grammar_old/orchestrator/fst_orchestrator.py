@@ -28,11 +28,11 @@ from src.fst_utils import (
     Suffix,
     FsaLike,
 )
-from src.grammar.classes import Orchestrator
-from src.grammar.registry.inventory_registry import InventoryItem, InventoryRegistry
-from src.grammar.registry.pattern_registry import Pattern, PatternRegistry
-from src.grammar.registry.rule_registry import Rule, RuleRegistry, AnonymousRule
-from src.grammar.orchestrator.feature_orchestrator import (
+from src.grammar_old.classes import Orchestrator
+from src.grammar_old.registry.inventory_registry import InventoryItem, InventoryRegistry
+from src.grammar_old.registry.pattern_registry import Pattern, PatternRegistry
+from src.grammar_old.registry.rule_registry import Rule, RuleRegistry, AnonymousRule
+from src.grammar_old.orchestrator.feature_orchestrator import (
     stringify_features,
     FeatureOrchestrator,
 )

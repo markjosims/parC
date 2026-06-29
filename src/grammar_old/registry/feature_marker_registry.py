@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from src.fst_utils import TransducerList
-from src.grammar.classes import Registry
-from src.grammar.registry.feature_values_registry import Feature
-from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
+from src.grammar_old.classes import Registry
+from src.grammar_old.registry.feature_values_registry import Feature
+from src.grammar_old.orchestrator.feature_orchestrator import FeatureOrchestrator
 from src.config_utils.config_walker import validate_file_reference_str
 from typing import Literal, Union
 from collections import UserList

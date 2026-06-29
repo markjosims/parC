@@ -1,7 +1,7 @@
-from src.grammar.classes import Registry
-from src.grammar.registry.feature_values_registry import Feature
-from src.grammar.registry.feature_marker_registry import MarkerList
-from src.grammar.orchestrator.feature_orchestrator import FeatureOrchestrator
+from src.grammar_old.classes import Registry
+from src.grammar_old.registry.feature_values_registry import Feature
+from src.grammar_old.registry.feature_marker_registry import MarkerList
+from src.grammar_old.orchestrator.feature_orchestrator import FeatureOrchestrator
 from dataclasses import dataclass, field
 import os
 from loguru import logger

@@ -1,10 +1,10 @@
-from src.grammar.classes import Registry
-from src.grammar.orchestrator.feature_orchestrator import (
+from src.grammar_old.classes import Registry
+from src.grammar_old.orchestrator.feature_orchestrator import (
     FeatureOrchestrator,
     stringify_features,
     Feature,
 )
-from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
+from src.grammar_old.orchestrator.fst_orchestrator import FstOrchestrator
 from dataclasses import dataclass, field
 import os
 import pynini

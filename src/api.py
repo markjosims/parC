@@ -22,10 +22,10 @@ from camel_converter import to_snake
 from src.config_utils.schema_validation import load_schema, CONFIG_KINDS
 from src.config_utils.config_walker import ConfigWalker
 from src.config_utils.watcher import _config_changed, start_watcher
-from src.grammar.orchestrator.grammar_orchestrator import Grammar
+from src.grammar_old.orchestrator.grammar_orchestrator import Grammar
 
-from src.grammar.registry.lexicon_registry import Lexicon
-from src.grammar.registry.paradigm_registry import Paradigm
+from src.grammar_old.registry.lexicon_registry import Lexicon
+from src.grammar_old.registry.paradigm_registry import Paradigm
 
 dotenv.load_dotenv()
 _raw = os.environ.get("CONFIG_DIR")

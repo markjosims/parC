@@ -7,20 +7,20 @@ from the lexicon.
 """
 
 from loguru import logger
-from src.grammar.classes import Registry
-from src.grammar.registry.lexicon_registry import LexiconRegistry, Lexicon
-from src.grammar.registry.feature_values_registry import Feature
-from src.grammar.registry.feature_combination_registry import FeatureValueCombinations
-from src.grammar.registry.feature_marker_registry import (
+from src.grammar_old.classes import Registry
+from src.grammar_old.registry.lexicon_registry import LexiconRegistry, Lexicon
+from src.grammar_old.registry.feature_values_registry import Feature
+from src.grammar_old.registry.feature_combination_registry import FeatureValueCombinations
+from src.grammar_old.registry.feature_marker_registry import (
     FeatureMarkers,
     MarkerList,
     Marker,
 )
-from src.grammar.registry.contingent_marker_registry import ContingentMarkers
-from src.grammar.orchestrator.marker_orchestrator import MarkerOrchestrator
+from src.grammar_old.registry.contingent_marker_registry import ContingentMarkers
+from src.grammar_old.orchestrator.marker_orchestrator import MarkerOrchestrator
 from src.config_utils.config_walker import validate_file_reference_str
-from src.grammar.orchestrator.fst_orchestrator import FstOrchestrator
-from src.grammar.orchestrator.feature_orchestrator import (
+from src.grammar_old.orchestrator.fst_orchestrator import FstOrchestrator
+from src.grammar_old.orchestrator.feature_orchestrator import (
     stringify_features,
     serialize_feature_str,
 )

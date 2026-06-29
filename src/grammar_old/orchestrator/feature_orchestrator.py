@@ -10,12 +10,12 @@ from dataclasses import dataclass
 import re
 import pandas as pd
 
-from src.grammar.registry.feature_combination_registry import (
+from src.grammar_old.registry.feature_combination_registry import (
     FeatureValueCombinations,
     FeatureCombinationsRegistry,
 )
-from src.grammar.registry.feature_values_registry import Feature, FeatureValuesRegistry
-from src.grammar.classes import Orchestrator
+from src.grammar_old.registry.feature_values_registry import Feature, FeatureValuesRegistry
+from src.grammar_old.classes import Orchestrator
 
 
 class FeatureOrchestrator(Orchestrator):
