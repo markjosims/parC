@@ -3,7 +3,7 @@ import { fetchInflectionMeta, fetchRoots, fetchLexicalFeatures, runInflection } 
 let metaData = null;
 
 const targetSelect = document.getElementById('inflect-target');
-const stemsContainer = document.getElementById('stems-container');
+const stemContainer = document.getElementById('stem-container');
 const featuresContainer = document.getElementById('features-container');
 const submitBtn = document.getElementById('submit-inflect-btn');
 const resultsSection = document.getElementById('inflection-results');
@@ -40,7 +40,7 @@ async function updateFields() {
   if (!metaData) return;
   const targetName = targetSelect.value;
 
-  stemsContainer.innerHTML = '';
+  stemContainer.innerHTML = '';
   featuresContainer.innerHTML = '';
   resultsSection.setAttribute('hidden', '');
 
@@ -57,7 +57,7 @@ async function updateFields() {
     console.warn('Failed to load roots:', err);
   }
   select.addEventListener('change', () => onRootChange('paradigm', targetName, select.value));
-  stemsContainer.appendChild(select);
+  stemContainer.appendChild(select);
 
   const allFeatures = [...new Set([...p.features, ...p.lexical_features])];
   renderFeatureSelectors(allFeatures);
@@ -106,7 +106,7 @@ function applyLexicalFeatures(lexFeatures) {
 function renderFeatureSelectors(featuresList) {
   featuresList.forEach(featName => {
     const values = metaData.features[featName] || [];
-    
+
     const fieldWrapper = document.createElement('div');
     fieldWrapper.style.display = 'flex';
     fieldWrapper.style.flexDirection = 'column';
@@ -146,11 +146,11 @@ submitBtn.addEventListener('click', async () => {
   if (!metaData) return;
   const name = targetSelect.value;
 
-  const stemInputs = stemsContainer.querySelectorAll('.stem-input');
-  const stems = Array.from(stemInputs).map(inp => inp.value.trim()).filter(Boolean);
+  const stemInputs = stemContainer.querySelector('.stem-input');
+  const stem = stemInputs.value.trim();
 
-  if (stems.length === 0) {
-    alert('Please enter at least one stem / root.');
+  if (stem.length === 0) {
+    alert('Please enter a stem / root.');
     return;
   }
 
@@ -164,8 +164,8 @@ submitBtn.addEventListener('click', async () => {
   submitBtn.textContent = 'Generating...';
 
   try {
-    const res = await runInflection(type, name, stems, features);
-    displayResults(type, res);
+    const res = await runInflection(name, stem, features);
+    displayResults(res);
   } catch (err) {
     alert(err.message);
   } finally {
@@ -174,9 +174,9 @@ submitBtn.addEventListener('click', async () => {
   }
 });
 
-function displayResults(type, data) {
+function displayResults(data) {
   resultsSection.removeAttribute('hidden');
-  
+
   formsList.innerHTML = '';
   if (data.forms && data.forms.length > 0) {
     data.forms.forEach(f => {
@@ -191,49 +191,27 @@ function displayResults(type, data) {
   stagesTableHead.innerHTML = '';
   stagesTableBody.innerHTML = '';
 
-  if (type === 'paradigm') {
-    stagesTableHead.innerHTML = `
-      <tr>
-        <th>Order</th>
-        <th>Marker Kind</th>
-        <th>Marker Value</th>
-        <th>Feature Value</th>
-        <th>Form</th>
-      </tr>
-    `;
+  stagesTableHead.innerHTML = `
+    <tr>
+      <th>Order</th>
+      <th>Marker Kind</th>
+      <th>Marker Value</th>
+      <th>Feature Value</th>
+      <th>Form</th>
+    </tr>
+  `;
 
-    data.stages.forEach(s => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
+  data.stages.forEach(s => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
         <td>${s.order ?? ''}</td>
         <td>${s.marker_kind ?? ''}</td>
         <td>${s.marker_value ?? ''}</td>
         <td>${s.feature_value ?? ''}</td>
         <td>${s.form ?? ''}</td>
       `;
-      stagesTableBody.appendChild(tr);
-    });
-  } else {
-    stagesTableHead.innerHTML = `
-      <tr>
-        <th>Step</th>
-        <th>Kind</th>
-        <th>Value</th>
-        <th>Form</th>
-      </tr>
-    `;
-
-    data.stages.forEach(s => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${s.step ?? ''}</td>
-        <td>${s.kind ?? ''}</td>
-        <td>${s.value ?? ''}</td>
-        <td>${s.form ?? ''}</td>
-      `;
-      stagesTableBody.appendChild(tr);
-    });
-  }
+    stagesTableBody.appendChild(tr);
+  });
 }
 
 loadMeta();

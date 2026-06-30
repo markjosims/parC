@@ -90,11 +90,11 @@ export async function parse(kind, name, form) {
   return res.json();
 }
 
-export async function runInflection(type, name, stems, features) {
+export async function runInflection(name, stem, features) {
   const res = await fetch("/inflect", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type, name, stems, features })
+    body: JSON.stringify({ name, stem, features })
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

@@ -8,9 +8,9 @@ Provides following endpoints:
 """
 
 import os
-import re
 import pynini
 from fastapi import FastAPI, HTTPException
+from loguru import logger
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pynini.lib import rewrite
@@ -19,16 +19,14 @@ from src.grammar.acceptor_compilation import (
     fsa,
     word_fsa,
     fsm_strings,
-    fsm_strings_and_weights,
     get_symbol_table,
 )
+from src.grammar.paradigm_compilation import parse
+from src.grammar.paradigm_compilation import inflect
+from src.grammar.paradigm_compilation import search
 from src.grammar.transducer_compilation import get_rule_fst
-from src.grammar.paradigm_compilation import (
-    get_inflect_graph,
-    get_parse_graph,
-    get_search_graph,
-)
 from src.yaml_utils.yaml_server import (
+    get_feature_array,
     get_yaml_kind,
     get_inventory_items,
     get_feature_map,
@@ -38,7 +36,6 @@ from src.yaml_utils.yaml_server import (
     get_yaml_data_safe,
 )
 from src.lexicon import (
-    get_gloss_for_root,
     get_roots,
     get_roots_with_lexical_features,
     get_features_for_root,
@@ -128,16 +125,27 @@ def health_check():
 
 
 class InflectRequest(BaseModel):
-    kind: str = "paradigm"
+    kind: str = "Paradigm"
     name: str
-    stems: list[str]
+    root: str
     features: dict[str, str]
 
 
 class ParseRequest(BaseModel):
-    kind: str = "paradigm"
+    kind: str = "Paradigm"
     name: str
     form: str
+
+
+class ParadigmInfo(BaseModel):
+    name: str
+    features: list[str]
+    lexical_features: list[str]
+
+
+class InflectMeta(BaseModel):
+    features: dict[str, tuple[str, ...]]
+    paradigms: list[ParadigmInfo]
 
 
 @app.get("/inflection-meta")
@@ -151,17 +159,14 @@ def inflection_meta():
             yaml_basename=data["part_of_speech"], kind="PartOfSpeech"
         )
         paradigms.append(
-            {
-                "name": os.path.splitext(basename)[0],
-                "features": part_of_speech["features"],
-                "lexical_features": part_of_speech["lexical_features"],
-            }
+            ParadigmInfo(
+                name=os.path.splitext(basename)[0],
+                features=part_of_speech["features"],
+                lexical_features=part_of_speech["lexical_features"],
+            )
         )
 
-    return {
-        "features": feature_map,
-        "paradigms": paradigms,
-    }
+    return InflectMeta(features=feature_map, paradigms=paradigms)
 
 
 @app.get("/roots")
@@ -169,13 +174,14 @@ def get_roots_route(kind: str, name: str):
     """
     Get the roots of a paradigm or lexicon.
     """
-    if kind == "paradigm":
+    if kind == "Paradigm":
         paradigm = get_yaml_data_safe(kind="Paradigm", yaml_basename=name)
         part_of_speech_name = paradigm.get("part_of_speech")
         return get_roots(part_of_speech_name)
-    elif kind == "lexicon":
+    elif kind == "Lexicon":
         return get_roots(name)
     else:
+        logger.exception(f"Invalid kind: {kind}")
         raise HTTPException(status_code=400, detail="Invalid kind")
 
 
@@ -184,13 +190,14 @@ def get_lexical_features(kind: str, name: str, root: str):
     """
     Get the lexical features of a single root in a paradigm or lexicon.
     """
-    if kind == "paradigm":
+    if kind == "Paradigm":
         paradigm = get_yaml_data_safe(kind="Paradigm", yaml_basename=name)
         part_of_speech_name = paradigm.get("part_of_speech")
         return get_features_for_root(part_of_speech_name, root)
-    elif kind == "lexicon":
+    elif kind == "Lexicon":
         return get_features_for_root(name, root)
     else:
+        logger.exception(f"Invalid kind: {kind}")
         raise HTTPException(status_code=400, detail="Invalid kind")
 
 
@@ -238,6 +245,7 @@ def api_test_pattern(req: TestPatternRequest):
                 all_pass = False
         result = {"ref": req.pattern, "results": results, "all_pass": all_pass}
     except Exception as e:
+        logger.exception(f"Error during pattern testing: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     return result
 
@@ -288,12 +296,13 @@ def api_test_rule(req: TestRuleRequest):
                 all_pass = False
         result = {"ref": req.rule, "results": results, "all_pass": all_pass}
     except Exception as e:
+        logger.exception(f"Error during rule testing: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     return result
 
 
 class SearchRequest(BaseModel):
-    kind: str = "paradigm"
+    kind: str = "Paradigm"
     name: str
     form: str
     nshortest: int = 5
@@ -302,43 +311,20 @@ class SearchRequest(BaseModel):
 @app.post("/inflect")
 def api_inflect(req: InflectRequest):
     try:
-        inflect_graph = get_inflect_graph(req.name)
-        forms_per_stem: list[dict] = []
-        for stem in req.stems:
-            feature_str = "".join(f"[{k}={v}]" for k, v in sorted(req.features.items()))
-            input_fsa = (
-                pynini.concat(word_fsa(stem), fsa(feature_str))
-                if feature_str
-                else word_fsa(stem)
-            )
-            output_lattice = pynini.compose(input_fsa, inflect_graph).optimize()
-            output_lattice = pynini.project(output_lattice, project_type="output")
-            surface_forms = fsm_strings(output_lattice, strip_all_tags=True)
-            forms_per_stem.append({"stem": stem, "forms": surface_forms})
+        forms = inflect(req)
     except Exception as e:
+        logger.exception(f"Error during inflection: {e}")
         raise HTTPException(status_code=400, detail=str(e))
-    return {"results": forms_per_stem}
+    # TODO: edit frontend so it expects list of strings
+    return {"results": forms}
 
 
 @app.post("/parse")
 def api_parse(req: ParseRequest):
     try:
-        form_fsa = word_fsa(req.form)
-        parse_graph = get_parse_graph(req.name)
-        paradigm_data = get_yaml_data_safe(yaml_basename=req.name, kind="Paradigm")
-        lexicon_basename = paradigm_data.get("part_of_speech", "")
-            
-        parse_lattice = (form_fsa@parse_graph).optimize()
-        parse_strs = fsm_strings(parse_lattice)
-        parses = []
-        for s in parse_strs:
-            feat_matches = re.findall(r"\[([^=\]]+)=([^\]]+)\]", s)
-            root = re.sub(r"\[[^\]]+\]", "", s).strip()
-            gloss = get_gloss_for_root(lexicon_basename, root)
-            parses.append(
-                {"root": root, "features": dict(feat_matches), "gloss": gloss}
-            )
+        parses = parse(form=req.form, kind=req.kind, name=req.name)
     except Exception as e:
+        logger.exception(f"Error during parsing: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     return {"parses": parses}
 
@@ -346,13 +332,9 @@ def api_parse(req: ParseRequest):
 @app.post("/search")
 def api_search(req: SearchRequest):
     try:
-        search_graph = get_search_graph(req.name)
-        form_fsa = word_fsa(req.form)
-        left_factor_lattice = pynini.compose(form_fsa, search_graph).optimize()
-        hits = fsm_strings_and_weights(
-            left_factor_lattice, strip_all_tags=True, nshortest=req.nshortest
-        )
+        hits = search(name=req.name, form=req.form, nshortest=req.nshortest)
     except Exception as e:
+        logger.exception(f"Error during search: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     return {"hits": [{"form": s, "cost": w} for s, w in hits]}
 

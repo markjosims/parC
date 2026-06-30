@@ -18,7 +18,7 @@ data:
         phones: [p, t, c]
     - name: Fricatives
       ref: <Frc>
-      phones: [f, v, s, z, x, h]
+      phones: [f, v, s, z, x, h, j]
     - name: Sonorants
       ref: <Son>
       phones: [r, l, y]

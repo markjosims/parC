@@ -68,3 +68,9 @@ def is_acceptor(fsa: pynini.Fst) -> bool:
     if not isinstance(fsa, pynini.Fst):
         raise ValueError(f"Expected pynini.Fst but got {fsa} for fsa arg.")
     return fsa.properties(pynini.ACCEPTOR, True)
+
+
+def stringify_features(feature_values: set[tuple[str, str]] | dict[str,str]) -> str:
+    if isinstance(feature_values, dict):
+        feature_values = list(feature_values.items())
+    return "".join(f"[{f}={v}]" for f, v in sorted(feature_values))

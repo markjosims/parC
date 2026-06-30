@@ -4,7 +4,7 @@ kind: Rules
 rules:
 
 # type rule-simple, rule-map or rule-seq to add more rules
-- name: stressed vowel diphthongization
+- name: diphthongization
   description: >
     /e/ becomes [ie] and /o/ becomes [ue] in stressed syllables
     for certain verbs

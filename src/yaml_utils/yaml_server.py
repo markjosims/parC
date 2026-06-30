@@ -91,9 +91,7 @@ def get_yaml_kind(kind: str) -> dict[str, list[tuple[str, dict] | str]]:
     if kind not in CONFIG_KINDS:
         logger.error(f"Invalid config kind: {kind}")
         return None
-    yaml_pardir = os.path.join(
-        YAML_DIR, CONFIG_KIND_TO_PARDIR[kind], kind
-    )
+    yaml_pardir = os.path.join(YAML_DIR, CONFIG_KIND_TO_PARDIR[kind], kind)
     yaml_files = [f for f in os.listdir(yaml_pardir) if f.endswith(".yaml")]
     result = {"valid": [], "invalid": []}
     for yaml_file in yaml_files:
@@ -154,7 +152,9 @@ def get_inventory_items() -> Inventory:
             all_phones.extend(item_phones)
             all_tags.extend(item_tags)
 
-    return Inventory(item_map=inventory_items, phones=tuple(all_phones), tags=tuple(all_tags))
+    return Inventory(
+        item_map=inventory_items, phones=tuple(all_phones), tags=tuple(all_tags)
+    )
 
 
 """
@@ -217,13 +217,14 @@ def get_rules() -> dict[str, Rule]:
 """
 
 
-def get_feature_map() -> dict[str, Feature]:
+def get_feature_map() -> dict[str, tuple[str, ...]]:
     """
     Fetch all features from the YAML files.
-    Returns a dictionary mapping feature names to their corresponding feature objects.
+    Returns a dictionary mapping feature names to their corresponding feature objects
+    (for easy indexing of a particular feature).
     """
     features_yaml_data = get_yaml_kind("FeatureDefinitions")["valid"]
-    features: dict[str, Feature] = {}
+    features: dict[str, tuple[str, ...]] = {}
 
     for file_path, yaml_data in features_yaml_data:
         for feature_name, feature_data in yaml_data["features"].items():
@@ -232,12 +233,28 @@ def get_feature_map() -> dict[str, Feature]:
                     f"Duplicate feature found: {feature_name} in {file_path}"
                 )
                 continue
-            features[feature_name] = Feature(
-                name=feature_name,
-                values=tuple(feature_data),
-            )
+            features[feature_name] = tuple(feature_data)
 
     return features
+
+
+def get_feature_array() -> tuple[Feature]:
+    """
+    Fetch all features from the YAML files.
+    Return a tuple of Feature objects (for easy iteration).
+
+    Unlike `get_feature_map`, don't perform validation of duplicate features.
+    TODO: map out Python-side YAML validation so that it isn't hapharzardly done
+    across the codebase.
+    """
+    features_yaml_data = get_yaml_kind("FeatureDefinitions")["valid"]
+    features: list[Feature] = []
+
+    for _, yaml_data in features_yaml_data:
+        for feature_name, feature_data in yaml_data["features"].items():
+            features.append(Feature(name=feature_name, values=tuple(feature_data)))
+
+    return tuple(features)
 
 
 def get_feature_values(feature: str) -> tuple[str]:
@@ -245,7 +262,7 @@ def get_feature_values(feature: str) -> tuple[str]:
     Fetch all values for a given feature.
     """
     feature_map = get_feature_map()
-    return feature_map[feature].values
+    return feature_map[feature]
 
 
 """
@@ -408,7 +425,3 @@ def _get_valid_contingent_markers(
         if marker_features.issubset(feature_values):
             return marker["realization"], marker_features
     return None
-
-
-
-

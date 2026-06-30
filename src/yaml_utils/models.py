@@ -104,35 +104,35 @@ UnorderedOperation = Literal["principle_part"]
 
 class SingleStringMarker(NamedTuple):
     """
-    A marker for a single string operation.
+    A marker for a single string kind.
     """
 
-    operation: OperationTypeSingleString
+    kind: OperationTypeSingleString
     value: str
     order: str | None = None
 
 
 class StringTupleMarker(NamedTuple):
     """
-    A marker for a string tuple operation.
+    A marker for a string tuple kind.
     """
 
-    operation: OperationTypeStringTuple
+    kind: OperationTypeStringTuple
     value: tuple[str, str]
     order: str | None = None
 
 
 class UnorderedMarker(NamedTuple):
     """
-    A marker for an unordered morphological operation.
+    A marker for an unordered morphological kind.
     """
 
-    operation: UnorderedOperation
+    kind: UnorderedOperation
     value: str
 
 
 class StringMapMarker(NamedTuple):
-    operation: Literal["string_map"]
+    kind: Literal["string_map"]
     value: tuple[tuple[str, str], ...]
     order: str | None = None
 
@@ -145,7 +145,7 @@ def resolve_marker(data: dict) -> Marker:
             return marker_class(**data)
         except:
             pass
-    raise ValueError(f"Could not resolve marker with data {data}")
+    raise ValueError(f"Could not resolve marker with data {data} of type {type(data)}")
 
 
 class Token(NamedTuple):

@@ -96,3 +96,8 @@ def get_gloss_for_root(lexicon_basename: str, root: str) -> str | None:
     if not row.empty:
         return row.iloc[0]["gloss"]
     return None
+
+def get_roots_with_gloss(lexicon_basename: str, gloss: str) -> list[str]:
+    df = load_lexicon_df(lexicon_basename)
+    filtered_df = df[df["gloss"] == gloss]
+    return filtered_df["root"].tolist()

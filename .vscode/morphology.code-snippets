@@ -137,8 +137,8 @@
     "body": [
       "filter: ",
       "  lexical_features: ",
-      "- $1: $2",
-      "  pattern: \"$3\""
+      "   ${1:feature}: ${2:value}",
+      "  pattern: \"${3:pattern}\""
     ]
   },
   "Paradigm: contingent markers": {

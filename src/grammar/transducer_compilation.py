@@ -144,32 +144,33 @@ def _compile_string_map(string_map: tuple[tuple[str, str], ...]) -> pynini.Fst:
 
 def compile_marker(marker: Marker) -> pynini.Fst:
     if isinstance(marker, SingleStringMarker):
-        if marker.operation == "prefix":
+        if marker.kind == "prefix":
             return _compile_prefix(marker.value)
-        if marker.operation == "suffix":
+        if marker.kind == "suffix":
             return _compile_suffix(marker.value)
-        if marker.operation == "suppletion":
+        if marker.kind == "suppletion":
             sigma_star = get_sigma_star()
             tau = pynini.cross(sigma_star, fsa(marker.value))
             return pynini.cdrewrite(tau, "", "", sigma_star)
-        if marker.operation == "rule":
+        if marker.kind == "rule":
             rules = get_rules()
-            if marker.value not in rules:
-                raise KeyError(f"Rule '{marker.value}' not found")
-            result = compile_rule(rules[marker.value])
+            rule_name = marker.value.removeprefix("$")
+            if rule_name not in rules:
+                raise KeyError(f"Rule '{marker.value}' not found in set of rules {list(rules.keys())}")
+            result = compile_rule(rules[rule_name])
             if isinstance(result, list):
                 composed = result[0]
                 for f in result[1:]:
                     composed = pynini.compose(composed, f)
                 return composed
             return result
-    if isinstance(marker, StringTupleMarker) and marker.operation == "replace":
+    if isinstance(marker, StringTupleMarker) and marker.kind == "replace":
         sigma_star = get_sigma_star()
         tau = pynini.cross(fsa(marker.value[0]), fsa(marker.value[1]))
         return pynini.cdrewrite(tau, "", "", sigma_star)
-    if isinstance(marker, StringMapMarker) and marker.operation == "string_map":
+    if isinstance(marker, StringMapMarker) and marker.kind == "string_map":
         return _compile_string_map(marker.value)
-    if isinstance(marker, UnorderedMarker) and marker.operation == "principal_part":
+    if isinstance(marker, UnorderedMarker) and marker.kind == "principal_part":
         raise ValueError(
             "UnorderedMarker(principal_part) must be resolved to StringMapMarker "
             "via get_markers_for_paradigm before compilation"
@@ -196,10 +197,11 @@ def _warm_rule_cache() -> None:
 
 
 def get_rule_fst(rule_name: str) -> pynini.Fst | list[pynini.Fst]:
+    rule_name = rule_name.removeprefix("$")
     global _rule_fsts
     rules = get_rules()
     if rule_name not in rules:
-        raise KeyError(f"Rule '{rule_name}' not found")
+        raise KeyError(f"Rule '{rule_name}' not found in set of rules {list(rules.keys())}")
     rule = rules[rule_name]
 
     if isinstance(rule, RuleSequence):

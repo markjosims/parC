@@ -18,17 +18,21 @@ from src.yaml_utils.yaml_server import get_markers, get_yaml_data_safe
 
 
 def get_markers_for_paradigm(
-    feature_marker_files: list[str],
-    contingent_feature_marker_files: list[str],
-    feature_values: set[tuple[str, str]],
+    feature_values: set[tuple[str, str]] | dict[str, str],
     paradigm_name: str,
 ) -> list[Marker]:
     """
     Get all markers for a requested feature set for a given paradigm.
     Resolves principal_part markers into StringMapMarker using the paradigm's lexicon.
     """
+    if isinstance(feature_values, dict):
+        feature_values = set(feature_values.items())
+
     paradigm_data = get_yaml_data_safe("Paradigm", paradigm_name)
     part_of_speech = paradigm_data["part_of_speech"]
+
+    feature_marker_files = paradigm_data["feature_markers"].values()
+    contingent_feature_marker_files = paradigm_data.get("contingent_markers", [])
 
     feature_markers = get_markers(
         feature_marker_files, contingent_feature_marker_files, feature_values
@@ -47,11 +51,11 @@ def get_markers_for_paradigm(
                 )
 
     for i, marker in enumerate(feature_markers):
-        if isinstance(marker, UnorderedMarker) and marker.operation == "principal_part":
+        if isinstance(marker, UnorderedMarker) and marker.kind == "principal_part":
             roots = get_roots(part_of_speech)
             pps = get_principle_part_for_all_roots(part_of_speech, marker.value)
             feature_markers[i] = StringMapMarker(
-                operation="string_map",
+                kind="string_map",
                 value=tuple(zip(roots, pps)),
             )
 

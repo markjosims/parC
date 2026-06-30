@@ -31,7 +31,7 @@ from src.launcher import YAML_DIR
 from src.yaml_utils.models import Feature, Inventory, Pattern, Token
 from src.yaml_utils.schema_validation import CONFIG_KIND_TO_PARDIR
 from src.yaml_utils.yaml_server import (
-    get_feature_map,
+    get_feature_array,
     get_inventory_items,
     get_patterns,
 )
@@ -92,7 +92,7 @@ def invalidate_all() -> None:
 
 def build_symbol_table(
     inventory: Inventory,
-    features: dict[str, Feature],
+    features: tuple[Feature,...],
 ) -> pynini.SymbolTable:
     syms = pynini.SymbolTable()
     syms.add_symbol(R.epsilon_ref)
@@ -100,7 +100,7 @@ def build_symbol_table(
         syms.add_symbol(phone)
     for tag in dict.fromkeys(inventory.tags):
         syms.add_symbol(tag)
-    for feature in features.values():
+    for feature in features:
         for value in feature.values:
             syms.add_symbol(f"[{feature.name}={value}]")
     for sym in R.boundary_symbols:
@@ -121,7 +121,7 @@ def get_symbol_table() -> pynini.SymbolTable:
         if loaded is not None:
             _symbol_table = loaded
             return _symbol_table
-    syms = build_symbol_table(get_inventory_items(), get_feature_map())
+    syms = build_symbol_table(get_inventory_items(), get_feature_array())
     save_symbol_table(syms)
     _symbol_table = syms
     return _symbol_table
@@ -136,7 +136,7 @@ Sigma, phone, flag, boundary etc. — derived from symbol table; cached in-memor
 def _build_special_fsas(
     syms: pynini.SymbolTable,
     inventory: Inventory,
-    features: dict[str, Feature],
+    features: tuple[Feature,...],
 ) -> dict[str, pynini.Fst]:
     phones = list(dict.fromkeys(inventory.phones))
     if not phones:
@@ -144,7 +144,7 @@ def _build_special_fsas(
     phone_fsa = pynini.union(*[pynini.accep(p, token_type=syms) for p in phones]).optimize()
 
     all_tags = list(dict.fromkeys(inventory.tags))
-    for feat in features.values():
+    for feat in features:
         for val in feat.values:
             all_tags.append(f"[{feat.name}={val}]")
     flag_fsa = (
@@ -186,7 +186,7 @@ def get_special_fsas() -> dict[str, pynini.Fst]:
         return _special_fsas
     syms = get_symbol_table()
     inventory = get_inventory_items()
-    features = get_feature_map()
+    features = get_feature_array()
     _special_fsas = _build_special_fsas(syms, inventory, features)
     return _special_fsas
 
@@ -200,7 +200,7 @@ Tokens store (value, kind) only — no embedded FSAs.
 def _build_token_map(
     syms: pynini.SymbolTable,
     inventory: Inventory,
-    features: dict[str, Feature],
+    features: tuple[Feature,...],
     patterns: dict[str, Pattern],
 ) -> dict[str, list[Token]]:
     tokens: dict[str, list[Token]] = defaultdict(list)
@@ -238,7 +238,7 @@ def _build_token_map(
     for tag in dict.fromkeys(inventory.tags):
         tokens["tag"].append(Token(tag, "tag"))
 
-    for feat in features.values():
+    for feat in features:
         for val in feat.values:
             tokens["tag"].append(Token(f"[{feat.name}={val}]", "tag"))
 
@@ -261,7 +261,7 @@ def get_token_map() -> dict[str, list[Token]]:
         return _token_map
     syms = get_symbol_table()
     inventory = get_inventory_items()
-    features = get_feature_map()
+    features = get_feature_array()
     patterns = get_patterns()
     _token_map = _build_token_map(syms, inventory, features, patterns)
     _token_map_mtime = max_mtime
@@ -560,7 +560,7 @@ def get_pattern_fsts() -> dict[str, pynini.Fst]:
         return _pattern_fsts
     syms = get_symbol_table()
     inventory = get_inventory_items()
-    features = get_feature_map()
+    features = get_feature_array()
     patterns = get_patterns()
     special_fsas = get_special_fsas()
     class_fsts = _build_class_fsts(syms, inventory)
