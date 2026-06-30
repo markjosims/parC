@@ -8,323 +8,215 @@ Provides following endpoints:
 """
 
 import os
-import yaml
-import dotenv
-from pathlib import Path
-from typing import Any
+import pynini
 from fastapi import FastAPI, HTTPException
+from loguru import logger
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from pynini.lib import rewrite
 
-from jsonschema import validate, ValidationError
-from camel_converter import to_snake
-
-from src.config_utils.schema_validation import load_schema, CONFIG_KINDS
-from src.config_utils.config_walker import ConfigWalker
-from src.config_utils.watcher import _config_changed, start_watcher
-from src.grammar.orchestrator.grammar_orchestrator import Grammar
-
-from src.grammar.registry.lexicon_registry import Lexicon
-from src.grammar.registry.paradigm_registry import Paradigm
-
-dotenv.load_dotenv()
-_raw = os.environ.get("CONFIG_DIR")
-if not _raw:
-    raise RuntimeError("CONFIG_DIR env var is not set")
-_path = Path(_raw).expanduser()
-if not _path.is_absolute():
-    from src.constants import PROJECT_ROOT
-    _path = Path(PROJECT_ROOT) / _path
-CONFIG_DIR = _path.resolve()
-if not CONFIG_DIR.is_dir():
-    raise RuntimeError(f"CONFIG_DIR is not a valid directory: {CONFIG_DIR}")
-
-start_watcher(str(CONFIG_DIR))
+from src.grammar.acceptor_compilation import (
+    fsa,
+    word_fsa,
+    fsm_strings,
+    get_symbol_table,
+)
+from src.grammar.paradigm_compilation import parse
+from src.grammar.paradigm_compilation import inflect
+from src.grammar.paradigm_compilation import search
+from src.grammar.transducer_compilation import get_rule_fst
+from src.yaml_utils.yaml_server import (
+    get_feature_array,
+    get_yaml_kind,
+    get_inventory_items,
+    get_feature_map,
+    get_patterns,
+    get_rules,
+    get_inflection_stages,
+    get_yaml_data_safe,
+)
+from src.lexicon import (
+    get_roots,
+    get_roots_with_lexical_features,
+    get_features_for_root,
+)
 
 app = FastAPI()
 
-_grammar: Grammar | None = None
-
-
-def get_grammar() -> Grammar:
-    global _grammar
-    if _grammar is None or _config_changed.is_set():
-        _config_changed.clear()
-        _grammar = Grammar(**ConfigWalker(CONFIG_DIR).config_data)
-    return _grammar
-
-@app.get("/grammar-health")
-def grammar_loaded():
-    if get_grammar() is None:
-        return {"status": "unloaded"}
-    return {"status": "loaded"}
-
-
-@app.post("/grammar-recompile")
-def grammar_recompile():
-    _config_changed.set()
-    try:
-        get_grammar()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to recompile: {e}")
-    return {"status": "success"}
-
-
 
 @app.get("/grammar-stats")
-def grammar_stats():
-    try:
-        g = get_grammar()
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Grammar not loaded: {e}")
-    if g is None:
-        raise HTTPException(status_code=503, detail="Grammar not loaded")
+def grammar_stats() -> dict:
 
-    fst = g.fst_orchestrator
-    inv = fst.inventory_registry
-    pat = fst.pattern_registry
-    rul = fst.rule_registry
-    fm  = g.marker_orchestrator.feature_markers_registry
-    cm  = g.marker_orchestrator.contingent_markers_registry
-    fd  = g.feature_orchestrator.feature_values_registry
-    # TODO: FeatureCombinations, MorphemeSequence and MorphemeSet are buggy
-    # so they are commented out for now
-    # fc  = g.feature_orchestrator.feature_combinations_registry
+    grammar_stats = {}
 
-    return {
-        "inventory": {
-            "files":   len(inv.config_objects),
-            "phones":  len(inv.phones),
-            "tags":    len(inv.flags),
-            "classes": len(inv.classes),
-        },
-        "feature_definitions": {
-            "files": len(fd.config_objects),
-            "total": len(fd.data),
-        },
-        # "feature_combinations": {
-        #     "files": len(fc.config_objects),
-        #     "total": sum(len(c.combinations) for c in fc.data.values()),
-        # },
-        "patterns": {
-            "files": len(pat.config_objects),
-            "total": len(pat.data),
-        },
-        "rules": {
-            "files": len(rul.config_objects),
-            "total": len(rul.data),
-        },
-        "feature_markers": {
-            "files": len(fm.config_objects),
-            "total": len(fm.data),
-        },
-        "contingent_markers": {
-            "files": len(cm.config_objects),
-            "total": len(cm.data),
-        },
-        "paradigms": {
-            "files": len(g.paradigm_registry.config_objects),
-            "total": len(g.paradigm_registry.data),
-        },
-        "part_of_speech": {
-            "files": len(g.lexicon_registry.config_objects),
-            "total": sum(len(lexicon.entries) for lexicon in g.lexicon_registry.data.values()),
-        },
-        # "morpheme_sets": {
-        #     "files": len(g.morpheme_set_registry.config_objects),
-        #     "total": len(g.morpheme_set_registry.data),
-        # },
-        # "morpheme_sequences": {
-        #     "files": len(g.morpheme_sequence_registry.config_objects),
-        #     "total": len(g.morpheme_sequence_registry.data),
-        # },
-    }
+    inventory_stats = {}
+    inventory_items = get_inventory_items()
+    inventory_yaml = get_yaml_kind("Inventory")
+    inventory_stats["files"] = len(inventory_yaml["valid"])
+    inventory_stats["invalid_files"] = len(inventory_yaml["invalid"])
+    inventory_stats["phones"] = len(inventory_items.phones)
+    inventory_stats["tags"] = len(inventory_items.tags)
+    inventory_stats["classes"] = len(inventory_items.item_map)
+    grammar_stats["inventory"] = inventory_stats
+
+    feature_definitions_stats = {}
+    feature_definitions_yaml = get_yaml_kind("FeatureDefinitions")
+    features = get_feature_map()
+    feature_definitions_stats["files"] = len(feature_definitions_yaml["valid"])
+    feature_definitions_stats["invalid_files"] = len(
+        feature_definitions_yaml["invalid"]
+    )
+    feature_definitions_stats["total"] = len(features)
+    grammar_stats["feature_definitions"] = feature_definitions_stats
+
+    feature_markers_stats = {}
+    feature_markers_yaml = get_yaml_kind("FeatureMarkers")
+    feature_markers_stats["files"] = len(feature_markers_yaml["valid"])
+    feature_markers_stats["invalid_files"] = len(feature_markers_yaml["invalid"])
+    feature_markers_stats["total"] = sum(
+        len(file["markers"]) for _, file in feature_markers_yaml["valid"]
+    )
+    feature_markers_stats["inflection_stages"] = len(get_inflection_stages())
+    grammar_stats["feature_markers"] = feature_markers_stats
+
+    contingent_markers_stats = {}
+    contingent_markers_yaml = get_yaml_kind("ContingentFeatureMarkers")
+    contingent_markers_stats["files"] = len(contingent_markers_yaml["valid"])
+    contingent_markers_stats["invalid_files"] = len(contingent_markers_yaml["invalid"])
+    contingent_markers_stats["total"] = sum(
+        len(file["markers"]) for _, file in contingent_markers_yaml["valid"]
+    )
+    grammar_stats["contingent_markers"] = contingent_markers_stats
+
+    patterns_stats = {}
+    patterns_yaml = get_yaml_kind("Patterns")
+    patterns = get_patterns()
+    patterns_stats["files"] = len(patterns_yaml["valid"])
+    patterns_stats["invalid_files"] = len(patterns_yaml["invalid"])
+    patterns_stats["total"] = len(patterns)
+    grammar_stats["patterns"] = patterns_stats
+
+    rules_stats = {}
+    rules_yaml = get_yaml_kind("Rules")
+    rules = get_rules()
+    rules_stats["files"] = len(rules_yaml["valid"])
+    rules_stats["invalid_files"] = len(rules_yaml["invalid"])
+    rules_stats["total"] = len(rules)
+    grammar_stats["rules"] = rules_stats
+
+    paradigm_stats = {}
+    paradigm_yaml = get_yaml_kind("Paradigm")
+    paradigm_stats["files"] = len(paradigm_yaml["valid"])
+    paradigm_stats["invalid_files"] = len(paradigm_yaml["invalid"])
+    grammar_stats["paradigms"] = paradigm_stats
+
+    part_of_speech_stats = {}
+    part_of_speech_yaml = get_yaml_kind("PartOfSpeech")
+    part_of_speech_stats["files"] = len(part_of_speech_yaml["valid"])
+    part_of_speech_stats["invalid_files"] = len(part_of_speech_yaml["invalid"])
+    grammar_stats["part_of_speech"] = part_of_speech_stats
+
+    return grammar_stats
 
 
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
 
-def _resolve_path(kind: str, ref: str) -> Path:
-    if kind not in CONFIG_KINDS:
-        raise HTTPException(status_code=400, detail=f"Unknown kind: {kind!r}")
-    stem = ref.removeprefix("$")
-    resolved = (CONFIG_DIR / to_snake(kind) / stem).with_suffix(".yaml").resolve()
-    if not resolved.is_relative_to(CONFIG_DIR):
-        raise HTTPException(status_code=400, detail="Path traversal not allowed")
-    return resolved
-
-
-@app.get("/schemas/{kind}")
-def get_schema(kind: str):
-    if kind not in CONFIG_KINDS:
-        raise HTTPException(status_code=404, detail=f"Unknown kind: {kind!r}")
-    schema = load_schema(kind)
-    if schema is None:
-        raise HTTPException(status_code=500, detail=f"Schema file missing for kind: {kind!r}")
-    return schema
-
-
-@app.get("/configs")
-def list_configs(kind: str):
-    if kind not in CONFIG_KINDS:
-        raise HTTPException(status_code=400, detail=f"Unknown kind: {kind!r}")
-    kind_dir = CONFIG_DIR / to_snake(kind)
-    if not kind_dir.is_dir():
-        return []
-    return sorted(f"${p.stem}" for p in kind_dir.glob("*.yaml"))
-
-
-@app.get("/file")
-def read_file(kind: str, path: str):
-    resolved = _resolve_path(kind, path)
-    if not resolved.exists():
-        raise HTTPException(status_code=404, detail=f"File not found: {path!r}")
-    with resolved.open(encoding="utf-8") as f:
-        return yaml.safe_load(f)
-
-
-@app.put("/file")
-def write_file(kind: str, path: str, body: dict[str, Any]):
-    resolved = _resolve_path(kind, path)
-    schema = load_schema(kind)
-    if schema is None:
-        raise HTTPException(status_code=500, detail=f"Schema missing for kind: {kind!r}")
-    try:
-        validate(instance=body, schema=schema)
-    except ValidationError as e:
-        raise HTTPException(status_code=400, detail=e.message)
-    with resolved.open("w", encoding="utf-8") as f:
-        yaml.safe_dump(body, f, allow_unicode=True)
 
 class InflectRequest(BaseModel):
-    kind: str
+    kind: str = "Paradigm"
     name: str
-    stems: list[str]
+    root: str
     features: dict[str, str]
 
+
 class ParseRequest(BaseModel):
-    kind: str
+    kind: str = "Paradigm"
     name: str
     form: str
 
 
+class ParadigmInfo(BaseModel):
+    name: str
+    features: list[str]
+    lexical_features: list[str]
+
+
+class InflectMeta(BaseModel):
+    features: dict[str, tuple[str, ...]]
+    paradigms: list[ParadigmInfo]
+
+
 @app.get("/inflection-meta")
 def inflection_meta():
-    try:
-        g = get_grammar()
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Grammar not loaded: {e}")
-    if g is None:
-        raise HTTPException(status_code=503, detail="Grammar not loaded")
-
-    features_meta = {}
-    for feat_name, feat_obj in g.feature_orchestrator.features.items():
-        features_meta[feat_name] = feat_obj.to_dict()
+    feature_map = get_feature_map()
 
     paradigms = []
-    for name, p in g.paradigm_registry.data.items():
-        paradigms.append({
-            "name": name,
-            "features": [f.name for f in p.features],
-            "lexical_features": [lf.name for lf in p.part_of_speech.lexical_features],
-        })
+    paradigm_yaml = get_yaml_kind("Paradigm")
+    for basename, data in paradigm_yaml["valid"]:
+        part_of_speech = get_yaml_data_safe(
+            yaml_basename=data["part_of_speech"], kind="PartOfSpeech"
+        )
+        paradigms.append(
+            ParadigmInfo(
+                name=os.path.splitext(basename)[0],
+                features=part_of_speech["features"],
+                lexical_features=part_of_speech["lexical_features"],
+            )
+        )
 
-    # sequences = []
-    # for name, seq in g.morpheme_sequence_registry.data.items():
-    #     stems_list = [item for item in seq.morphemes if type(item) in [Lexicon, Paradigm]]
-    #     stem_kinds = [type(stem).__name__ for stem in stems_list]
-    #     stem_names = [stem.name for stem in stems_list]
-    #     num_stems = len(stems_list)
-    #     sequences.append({
-    #         "name": name,
-    #         "features": [f.name for f in seq.features],
-    #         "num_stems": num_stems,
-    #         "stem_kinds": stem_kinds,
-    #         "stem_names": stem_names,
-    #     })
+    return InflectMeta(features=feature_map, paradigms=paradigms)
 
-    return {
-        "features": features_meta,
-        "paradigms": paradigms,
-        # "sequences": sequences
-    }
 
 @app.get("/roots")
-def get_roots(kind: str, name: str):
+def get_roots_route(kind: str, name: str):
     """
     Get the roots of a paradigm or lexicon.
     """
-    grammar = get_grammar()
-    if kind == "paradigm":
-        if name not in grammar.paradigm_registry.data:
-            raise HTTPException(status_code=404, detail=f"Paradigm '{name}' not found")
-        paradigm = grammar.paradigm_registry.data[name]
-        return paradigm.lexicon.get_roots() if paradigm.lexicon else []
-    elif kind == "lexicon":
-        if name not in grammar.lexicon_registry.data:
-            raise HTTPException(status_code=404, detail=f"Lexicon '{name}' not found")
-        lexicon = grammar.lexicon_registry.data[name]
-        return lexicon.get_roots()
+    if kind == "Paradigm":
+        paradigm = get_yaml_data_safe(kind="Paradigm", yaml_basename=name)
+        part_of_speech_name = paradigm.get("part_of_speech")
+        return get_roots(part_of_speech_name)
+    elif kind == "Lexicon":
+        return get_roots(name)
     else:
+        logger.exception(f"Invalid kind: {kind}")
         raise HTTPException(status_code=400, detail="Invalid kind")
+
 
 @app.get("/lexical-features")
 def get_lexical_features(kind: str, name: str, root: str):
     """
     Get the lexical features of a single root in a paradigm or lexicon.
     """
-    grammar = get_grammar()
-    if kind == "paradigm":
-        if name not in grammar.paradigm_registry.data:
-            raise HTTPException(status_code=404, detail=f"Paradigm '{name}' not found")
-        paradigm = grammar.paradigm_registry.data[name]
-        lexicon = paradigm.lexicon
-    elif kind == "lexicon":
-        if name not in grammar.lexicon_registry.data:
-            raise HTTPException(status_code=404, detail=f"Lexicon '{name}' not found")
-        lexicon = grammar.lexicon_registry.data[name]
+    if kind == "Paradigm":
+        paradigm = get_yaml_data_safe(kind="Paradigm", yaml_basename=name)
+        part_of_speech_name = paradigm.get("part_of_speech")
+        return get_features_for_root(part_of_speech_name, root)
+    elif kind == "Lexicon":
+        return get_features_for_root(name, root)
     else:
+        logger.exception(f"Invalid kind: {kind}")
         raise HTTPException(status_code=400, detail="Invalid kind")
-    
-    if not lexicon:
-        raise HTTPException(status_code=404, detail=f"Lexicon for '{name}' not found")
 
-    return lexicon.get_features_for_root(root)
 
 @app.get("/patterns")
-def get_patterns():
-    try:
-        g = get_grammar()
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Grammar not loaded: {e}")
-    fst = g.fst_orchestrator
+def get_patterns_route():
     return [
         {
-            "ref": p.ref,
-            "value": p.value,
-            "test_includes": p.test_includes,
-            "test_excludes": p.test_excludes,
+            "ref": ref,
+            "value": pat.pattern,
+            "test_includes": list(pat.test_includes or []),
+            "test_excludes": list(pat.test_excludes or []),
         }
-        for p in fst.patterns.values()
+        for ref, pat in get_patterns().items()
     ]
 
 
 @app.get("/rules")
-def get_rules():
-    try:
-        g = get_grammar()
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Grammar not loaded: {e}")
-    fst = g.fst_orchestrator
-    return [
-        {
-            "name": r.name,
-            "kind": r.kind,
-            "test_mappings": [list(pair) for pair in r.test_mappings],
-        }
-        for r in fst.rules.values()
-    ]
+def get_rules_route():
+    return [{"name": name, **rule._asdict()} for name, rule in get_rules().items()]
 
 
 class TestPatternRequest(BaseModel):
@@ -336,14 +228,24 @@ class TestPatternRequest(BaseModel):
 @app.post("/test-pattern")
 def api_test_pattern(req: TestPatternRequest):
     try:
-        g = get_grammar()
+        pattern_fst = fsa(req.pattern)
+        results = []
+        all_pass = True
+        for test_str in req.test_includes:
+            intersection = pynini.intersect(pattern_fst, fsa(test_str))
+            passed = intersection.start() != pynini.NO_STATE_ID
+            results.append({"string": test_str, "test_kind": "include", "pass": passed})
+            if not passed:
+                all_pass = False
+        for test_str in req.test_excludes:
+            intersection = pynini.intersect(pattern_fst, fsa(test_str))
+            passed = intersection.start() == pynini.NO_STATE_ID
+            results.append({"string": test_str, "test_kind": "exclude", "pass": passed})
+            if not passed:
+                all_pass = False
+        result = {"ref": req.pattern, "results": results, "all_pass": all_pass}
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Grammar not loaded: {e}")
-    try:
-        result = g.fst_orchestrator.test_pattern(
-            req.pattern, req.test_includes, req.test_excludes
-        )
-    except Exception as e:
+        logger.exception(f"Error during pattern testing: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     return result
 
@@ -356,135 +258,85 @@ class TestRuleRequest(BaseModel):
 @app.post("/test-rule")
 def api_test_rule(req: TestRuleRequest):
     try:
-        g = get_grammar()
+        rule_fst = get_rule_fst(req.rule)
+        syms = get_symbol_table()
+        results = []
+        all_pass = True
+        for input_str, expected_output_str in req.test_mappings:
+            input_fsa = word_fsa(input_str)
+            if isinstance(rule_fst, list):
+                output_fst = input_fsa
+                for sub_fst in rule_fst:
+                    output_fst = rewrite.rewrite_lattice(
+                        string=output_fst, rule=sub_fst, token_type=syms
+                    )
+                    output_fst.optimize()
+            else:
+                output_fst = rewrite.rewrite_lattice(
+                    string=input_fsa, rule=rule_fst, token_type=syms
+                )
+                output_fst.optimize()
+            output_projected = pynini.project(output_fst, project_type="output")
+            passed = (
+                pynini.intersect(
+                    output_projected, word_fsa(expected_output_str)
+                ).start()
+                != pynini.NO_STATE_ID
+            )
+            output_strs = fsm_strings(output_projected, strip_all_tags=True)
+            results.append(
+                {
+                    "input": input_str,
+                    "output": output_strs,
+                    "expected_output": expected_output_str,
+                    "pass": passed,
+                }
+            )
+            if not passed:
+                all_pass = False
+        result = {"ref": req.rule, "results": results, "all_pass": all_pass}
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Grammar not loaded: {e}")
-    try:
-        result = g.fst_orchestrator.test_rule(
-            req.rule, [tuple(pair) for pair in req.test_mappings]
-        )
-    except Exception as e:
+        logger.exception(f"Error during rule testing: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     return result
 
 
-class RunYamlTestsRequest(BaseModel):
-    kind: str = "all"
-
-
-@app.post("/run-yaml-tests")
-def api_run_yaml_tests(req: RunYamlTestsRequest):
-    try:
-        g = get_grammar()
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Grammar not loaded: {e}")
-    if req.kind not in ("patterns", "rules", "all"):
-        raise HTTPException(status_code=400, detail="kind must be 'patterns', 'rules', or 'all'")
-
-    fst = g.fst_orchestrator
-    pattern_results = []
-    rule_results = []
-
-    if req.kind in ("patterns", "all"):
-        for p in fst.patterns.values():
-            if not p.test_includes and not p.test_excludes:
-                continue
-            try:
-                result = fst.test_pattern(p.value, p.test_includes, p.test_excludes)
-                result["ref"] = p.ref
-            except Exception as e:
-                result = {"ref": p.ref, "results": [], "all_pass": False, "error": str(e)}
-            pattern_results.append(result)
-
-    if req.kind in ("rules", "all"):
-        for r in fst.rules.values():
-            if not r.test_mappings:
-                continue
-            try:
-                result = fst.test_rule(r, list(r.test_mappings))
-            except Exception as e:
-                result = {"ref": r.name, "results": [], "all_pass": False, "error": str(e)}
-            rule_results.append(result)
-
-    all_pass = all(r["all_pass"] for r in pattern_results + rule_results)
-    return {"patterns": pattern_results, "rules": rule_results, "all_pass": all_pass}
+class SearchRequest(BaseModel):
+    kind: str = "Paradigm"
+    name: str
+    form: str
+    nshortest: int = 5
 
 
 @app.post("/inflect")
 def api_inflect(req: InflectRequest):
     try:
-        g = get_grammar()
+        forms = inflect(req)
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Grammar not loaded: {e}")
-    if g is None:
-        raise HTTPException(status_code=503, detail="Grammar not loaded")
+        logger.exception(f"Error during inflection: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    # TODO: edit frontend so it expects list of strings
+    return {"results": forms}
 
-    if req.kind == "paradigm":
-        if req.name not in g.paradigm_registry.data:
-            raise HTTPException(status_code=404, detail=f"Paradigm '{req.name}' not found")
-        p = g.paradigm_registry.data[req.name]
-        if not req.stems:
-            raise HTTPException(status_code=400, detail="Paradigm inflection requires a stem/root")
-        stem = req.stems[0]
-        try:
-            inflected_fst = p.inflect(stem, req.features)
-            forms = g.fst_orchestrator.fsm_strings(inflected_fst, strip_all_tags=True)
-            stages = p.get_inflection_stages(stem, req.features)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
-    # TODO: MorphemeSequence is buggy so it is commented out for now
-    # elif req.kind == "sequence":
-    #     if req.name not in g.morpheme_sequence_registry.data:
-    #         raise HTTPException(status_code=404, detail=f"Sequence '{req.name}' not found")
-    #     seq = g.morpheme_sequence_registry.data[req.name]
-    #     try:
-    #         inflected_fst = seq.inflect(req.stems, req.features)
-    #         forms = g.fst_orchestrator.fsm_strings(inflected_fst, strip_all_tags=True)
-    #         raw_stages = seq.get_inflection_stages(req.stems, req.features)
-    #         stages = [{k: v for k, v in stage.items() if k != "fst"} for stage in raw_stages]
-    #     except Exception as e:
-    #         raise HTTPException(status_code=400, detail=str(e))
-    else:
-        raise HTTPException(status_code=400, detail="Invalid inflection type")
-
-    return {
-        "forms": forms,
-        "stages": stages
-    }
 
 @app.post("/parse")
 def api_parse(req: ParseRequest):
     try:
-        g = get_grammar()
+        parses = parse(form=req.form, kind=req.kind, name=req.name)
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Grammar not loaded: {e}")
-    if g is None:
-        raise HTTPException(status_code=503, detail="Grammar not loaded")
+        logger.exception(f"Error during parsing: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"parses": parses}
 
-    if req.kind == "paradigm":
-        if req.name not in g.paradigm_registry.data:
-            raise HTTPException(status_code=404, detail=f"Paradigm '{req.name}' not found")
-        p = g.paradigm_registry.data[req.name]
-        try:
-            parses = p.get_parses(req.form)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
-    # TODO: MorphemeSequence is buggy so it is commented out for now
-    # elif req.kind == "sequence":
-    #     if req.name not in g.morpheme_sequence_registry.data:
-    #         raise HTTPException(status_code=404, detail=f"Sequence '{req.name}' not found")
-    #     seq = g.morpheme_sequence_registry.data[req.name]
-    #     try:
-    #         parses = seq.get_parses(req.form)
-    #     except Exception as e:
-    #         raise HTTPException(status_code=400, detail=str(e))
-    else:
-        raise HTTPException(status_code=400, detail="Invalid parse type")
 
-    return {
-        "parses": parses
-    }
+@app.post("/search")
+def api_search(req: SearchRequest):
+    try:
+        hits = search(name=req.name, form=req.form, nshortest=req.nshortest)
+    except Exception as e:
+        logger.exception(f"Error during search: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"hits": [{"form": s, "cost": w} for s, w in hits]}
 
 
 app.mount("/", StaticFiles(directory="frontend", html=True), name="static")
-

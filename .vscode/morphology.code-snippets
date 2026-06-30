@@ -3,19 +3,19 @@
     "scope": "yaml",
     "prefix": "mk-item",
     "body": [
-      "${1:feature value}:",
-      "- kind: prefix/suffix/replace/suppletion/rule/principal_part",
-      "  value: ${2:marker value}",
-      "  order: ${3:(OPTIONAL) marker order}"
+      "  ${1:feature value}:",
+      "  - kind: prefix/suffix/replace/suppletion/rule/principal_part",
+      "    value: ${2:marker value}",
+      "    order: ${3:(OPTIONAL) marker order}"
     ]
   },
   "Marker: additional marker": {
     "scope": "yaml",
     "prefix": "mk-add",
     "body": [
-      "- kind: prefix/suffix/replace/suppletion/rule/principal_part",
-      "  value: ${1:marker value}",
-      "  order: ${2:(OPTIONAL) marker order}"
+      "  - kind: prefix/suffix/replace/suppletion/rule/principal_part",
+      "    value: ${1:marker value}",
+      "    order: ${2:(OPTIONAL) marker order}"
     ]
   },
   "Contingent Feature Markers: item": {
@@ -73,7 +73,8 @@
     "scope": "yaml",
     "prefix": " fd-feature",
     "body": [
-      "  ${1:feature name}: [{$2:feature value}]"
+      "  ${1:feature name}:",
+      "    - ${2:feature value}"
     ]
   },
   "Patterns: pattern": {
@@ -136,8 +137,8 @@
     "body": [
       "filter: ",
       "  lexical_features: ",
-      "- $1: $2",
-      "  pattern: \"$3\""
+      "   ${1:feature}: ${2:value}",
+      "  pattern: \"${3:pattern}\""
     ]
   },
   "Paradigm: contingent markers": {

@@ -1,9 +1,3 @@
-export async function fetchGrammarHealth() {
-  const res = await fetch("/grammar-health");
-  if (!res.ok) throw new Error(`health: ${res.status}`);
-  return res.json();
-}
-
 export async function fetchGrammarStats() {
   const res = await fetch("/grammar-stats");
   if (res.status === 503) {
@@ -11,15 +5,6 @@ export async function fetchGrammarStats() {
     throw Object.assign(new Error(body.detail ?? "Grammar not loaded"), { status: 503 });
   }
   if (!res.ok) throw new Error(`stats: ${res.status}`);
-  return res.json();
-}
-
-export async function recompileGrammar() {
-  const res = await fetch("/grammar-recompile", { method: "POST" });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail ?? `Recompile failed: ${res.status}`);
-  }
   return res.json();
 }
 
@@ -105,11 +90,11 @@ export async function parse(kind, name, form) {
   return res.json();
 }
 
-export async function runInflection(type, name, stems, features) {
+export async function runInflection(name, stem, features) {
   const res = await fetch("/inflect", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type, name, stems, features })
+    body: JSON.stringify({ name, stem, features })
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

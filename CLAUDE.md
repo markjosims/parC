@@ -14,7 +14,7 @@ There is no committed git history yet (`main` has no commits); treat the working
 - Validate config YAML against JSON schemas: `python -m src.config_utils.schema_validation` (runs `validate_files_by_kind` for every `CONFIG_KINDS` entry against `config/` by default).
 - Tests: there is no test suite in the repo currently (`pytest` is a declared dependency but no `test_*.py` files exist yet). When adding tests, `pytest` is already available via the project's dependencies.
 - The `tira` CLI entry point is declared in `pyproject.toml` (`tira = "src.cli:main"`) but `src/cli.py` does not currently exist — don't assume it's runnable until it's (re)added.
-- Required environment: a config directory must be available via `CONFIG_DIR` in `.env` (e.g. `CONFIG_DIR=config/tira` or `config/example`), since `ConfigWalker` reads from it on construction. `PARC_LOG_LEVEL`/`TIRA_LOG_OUTPUT` env vars control `loguru` logging (see `src/__init__.py`).
+- Required environment: a config directory must be available via `YAML_DIR` in `.env` (e.g. `YAML_DIR=config/tira` or `config/example`), since `ConfigWalker` reads from it on construction. `PARC_LOG_LEVEL`/`TIRA_LOG_OUTPUT` env vars control `loguru` logging (see `src/__init__.py`).
 
 ## Architecture
 
@@ -52,7 +52,7 @@ When extending the grammar model, follow this same dependency order — most reg
 
 ### FST utilities and parsing/search
 
-- `src/fst_utils.py` defines `ReservedSymbolMixin` (the fixed set of special symbols/operators used across pattern strings, rules, and morpheme definitions — e.g. `[BOW]`/`[EOW]` word-boundary flags, edit-operation flags `[INSERT]`/`[SUBSTITUTE]`/`[DELETE]`, boundary symbols `-`/`=`/`_`, and operators `*`, `+`, `?`, `|`, `^`, parens, braces) plus `Acceptor`/`Transducer`/`TransducerList`/`Prefix`/`Suffix` wrapper dataclasses around `pynini.Fst` objects. These wrappers enforce a "build once" discipline (`set_acceptor`/`set_transducer` raise/warn if called more than once or on the wrong FST type).
+- `src/fst_utils.py` defines `ReservedSymbolMixin` (the fixed set of special symbols/operators used across pattern strings, rules, and morpheme definitions — e.g. `[BOW]`/`[EOW]` word-boundary tags, edit-operation tags `[INSERT]`/`[SUBSTITUTE]`/`[DELETE]`, boundary symbols `-`/`=`/`_`, and operators `*`, `+`, `?`, `|`, `^`, parens, braces) plus `Acceptor`/`Transducer`/`TransducerList`/`Prefix`/`Suffix` wrapper dataclasses around `pynini.Fst` objects. These wrappers enforce a "build once" discipline (`set_acceptor`/`set_transducer` raise/warn if called more than once or on the wrong FST type).
 - `src/search/` implements fuzzy form search and parsing over the compiled FSTs: `beam_search.py` / `beam_search_jit.py` (numba-jitted variant) implement beam search for matching surface forms against the parser despite edits/errors; `edit_graph.py` and `edit_modeling.py` model edit operations for that search. `beam_search_jit_stale.py` is a stale/superseded variant — check before using.
 
 ### Pattern strings
@@ -61,7 +61,7 @@ Pattern strings (used in inventory classes, the Patterns module, morpheme defini
 
 ### Constants
 
-`src/constants.py` defines path constants (`PROJECT_ROOT`, `CONFIG_ROOT`, `EXAMPLE_CONFIG_DIR`, `TIRA_CONFIG_DIR`, `SCHEMA_DIR`) and two `pynini`-specific symbol-table indices (`BOS_INDEX`, `EOS_INDEX`) copied from upstream `pynini` source — don't change these without checking `pynini`'s `stringcompile.h`.
+`src/constants.py` defines path constants (`PROJECT_ROOT`, `CONFIG_ROOT`, `EXAMPLE_YAML_DIR`, `TIRA_YAML_DIR`, `SCHEMA_DIR`) and two `pynini`-specific symbol-table indices (`BOS_INDEX`, `EOS_INDEX`) copied from upstream `pynini` source — don't change these without checking `pynini`'s `stringcompile.h`.
 
 ### Planned: JSON Config Editor (PoC)
 

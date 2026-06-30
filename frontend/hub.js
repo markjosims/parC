@@ -1,4 +1,4 @@
-import { fetchGrammarHealth, fetchGrammarStats, recompileGrammar } from './api.js';
+import { fetchGrammarStats } from './api.js';
 
 let lastHealth = null;
 let lastStats = null;
@@ -11,62 +11,70 @@ const statsGrid = document.getElementById('stats-grid');
 const recompileBtn = document.getElementById('recompile-btn');
 
 
-const CARD_KEYS = {
-  inventory: {
-    title: 'Inventory',
-    format: (d) => [`${d.files} files`, `${d.phones} phones`, `${d.tags} tags`, `${d.classes} classes`]
+const CARD_GROUPS = {
+  Phonology: {
+    inventory: {
+      title: 'Inventory',
+      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`, `${d.phones} phones`, `${d.tags} tags`, `${d.classes} classes`]
+    },
+    patterns: {
+      title: 'Patterns',
+      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`, `${d.total} patterns`]
+    },
+    rules: {
+      title: 'Rules',
+      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`, `${d.total} rules`]
+    },
   },
-  feature_definitions: {
-    title: 'Feat. Definitions',
-    format: (d) => [`${d.files} files`, `${d.total} features`]
+  Exponence: {
+    feature_definitions: {
+      title: 'Feat. Definitions',
+      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`, `${d.total} features`]
+    },
+    feature_markers: {
+      title: 'Feat. Markers',
+      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`, `${d.total} markers`, `${d.inflection_stages} inflection stages`]
+    },
+    contingent_markers: {
+      title: 'Cont. Markers',
+      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`, `${d.total} markers`]
+    },
   },
-  // TODO: FeatureCombinations, MorphemeSet and MorphemeSequence are buggy
-  // so they are commented out for now
-  // feature_combinations: {
-  //   title: 'Feat. Combinations',
-  //   format: (d) => [`${d.files} files`, `${d.total} combinations`]
-  // },
-  patterns: {
-    title: 'Patterns',
-    format: (d) => [`${d.files} files`, `${d.total} patterns`]
+  Lexicon: {
+    part_of_speech: {
+      title: 'Part of Sp.',
+      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`]
+    },
   },
-  rules: {
-    title: 'Rules',
-    format: (d) => [`${d.files} files`, `${d.total} rules`]
+  Morphotactics: {
+    paradigms: {
+      title: 'Paradigms',
+      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`]
+    },
   },
-  feature_markers: {
-    title: 'Feat. Markers',
-    format: (d) => [`${d.files} files`, `${d.total} markers`]
-  },
-  contingent_markers: {
-    title: 'Cont. Markers',
-    format: (d) => [`${d.files} files`, `${d.total} markers`]
-  },
-  paradigms: {
-    title: 'Paradigms',
-    format: (d) => [`${d.files} files`, `${d.total} paradigms`]
-  },
-  part_of_speech: {
-    title: 'Part of Sp.',
-    format: (d) => [`${d.files} files`, `${d.total} lexemes`]
-  },
-  // morpheme_sets: {
-  //   title: 'Morph. Sets',
-  //   format: (d) => [`${d.files} files`, `${d.total} sets`]
-  // },
-  // morpheme_sequences: {
-  //   title: 'Morph. Seqs.',
-  //   format: (d) => [`${d.files} files`, `${d.total} sequences`]
-  // }
 };
 
-function updateStatusUI(status) {
-  statusDot.className = 'status-dot ' + status;
-  if (status === 'loaded') statusLabel.textContent = 'Loaded';
-  else if (status === 'unloaded') statusLabel.textContent = 'Not loaded';
-  else if (status === 'error') statusLabel.textContent = 'Load error';
-  else statusLabel.textContent = 'Checking…';
+async function poll() {
+  if (isFetching) return;
+  isFetching = true;
+  try {
+    const stats = await fetchGrammarStats();
+    lastStats = stats;
+    renderStats(lastStats, false);
+    statusDot.className = 'status-dot online';
+    statusLabel.textContent = 'Online';
+  } catch (err) {
+    statusDot.className = 'status-dot offline';
+    statusLabel.textContent = 'Offline';
+    renderStats(lastStats, true);
+  } finally {
+    isFetching = false;
+  }
 }
+
+recompileBtn.addEventListener('click', poll);
+setInterval(poll, 5000);
+poll();
 
 function renderStats(stats, isStale) {
   if (!stats) {
@@ -74,7 +82,7 @@ function renderStats(stats, isStale) {
     return;
   }
   statsSection.removeAttribute('hidden');
-  
+
   if (isStale) {
     statsGrid.classList.add('stale');
   } else {
@@ -82,72 +90,40 @@ function renderStats(stats, isStale) {
   }
 
   statsGrid.innerHTML = '';
-  for (const [key, meta] of Object.entries(CARD_KEYS)) {
-    const data = stats[key];
-    if (!data) continue;
+  for (const [groupName, cards] of Object.entries(CARD_GROUPS)) {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'stats-group';
 
-    const card = document.createElement('div');
-    card.className = 'stat-card';
+    const heading = document.createElement('h4');
+    heading.className = 'stats-group-title';
+    heading.textContent = groupName;
+    groupEl.appendChild(heading);
 
-    const title = document.createElement('h4');
-    title.textContent = meta.title;
-    card.appendChild(title);
+    const cardsEl = document.createElement('div');
+    cardsEl.className = 'stats-group-cards';
 
-    const list = document.createElement('ul');
-    meta.format(data).forEach(line => {
-      const li = document.createElement('li');
-      li.textContent = line;
-      list.appendChild(li);
-    });
-    card.appendChild(list);
-    statsGrid.appendChild(card);
-  }
-}
+    for (const [key, meta] of Object.entries(cards)) {
+      const data = stats[key];
+      if (!data) continue;
 
-async function checkGrammar() {
-  if (isFetching) return;
-  isFetching = true;
+      const card = document.createElement('div');
+      card.className = 'stat-card';
 
-  let health = 'checking';
-  let stats = null;
+      const title = document.createElement('h5');
+      title.textContent = meta.title;
+      card.appendChild(title);
 
-  try {
-    const healthRes = await fetchGrammarHealth();
-    health = healthRes.status;
-  } catch {
-    health = 'unloaded';
-  }
-
-  if (health === 'loaded') {
-    try {
-      stats = await fetchGrammarStats();
-    } catch (err) {
-      health = err.status === 503 ? 'error' : 'unloaded';
+      const list = document.createElement('ul');
+      meta.format(data).forEach(line => {
+        const li = document.createElement('li');
+        li.textContent = line;
+        list.appendChild(li);
+      });
+      card.appendChild(list);
+      cardsEl.appendChild(card);
     }
+
+    groupEl.appendChild(cardsEl);
+    statsGrid.appendChild(groupEl);
   }
-
-  lastHealth = health;
-  if (stats) lastStats = stats;
-
-  updateStatusUI(health);
-  renderStats(lastStats, health !== 'loaded');
-  isFetching = false;
 }
-
-recompileBtn.addEventListener('click', async () => {
-  recompileBtn.disabled = true;
-  recompileBtn.textContent = 'Recompiling...';
-  try {
-    await recompileGrammar();
-  } catch (err) {
-    alert(err.message);
-  } finally {
-    recompileBtn.disabled = false;
-    recompileBtn.textContent = 'Recompile';
-    await checkGrammar();
-  }
-});
-
-checkGrammar();
-setInterval(checkGrammar, 5000);
-

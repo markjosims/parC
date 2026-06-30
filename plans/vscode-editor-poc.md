@@ -57,7 +57,7 @@ KIND_TO_DIR = {
     "MorphemeSequence":    "sequences",
     "Inventory":           "inventory",
     "FeatureCombinations": "combinations",
-    "ContingentMarkers":   "markers",  # same dir, filtered by kind if needed
+    "ContingentFeatureMarkers":   "markers",  # same dir, filtered by kind if needed
 }
 ```
 
@@ -76,7 +76,7 @@ Paths should be relative to `configs/` and prefixed with `$`, e.g. `$paradigms/v
 - `Paradigm`:
   - Replace `properties.feature_markers.additionalProperties` with a `oneOf` of `[{type: string, enum: get_refs("FeatureMarkers")}, {type: null}]`.
   - Replace `properties.feature_combinations` with `{type: string, enum: get_refs("FeatureCombinations"), description: "..."}`.
-  - Replace `properties.contingent_markers.items` with `{type: string, enum: get_refs("ContingentMarkers")}`.
+  - Replace `properties.contingent_markers.items` with `{type: string, enum: get_refs("ContingentFeatureMarkers")}`.
 
 - All other kinds: return schema unmodified.
 
@@ -122,7 +122,7 @@ Create `.vscode/templates/` files for use with the `rioj7.vscode-file-template` 
 
 For `FeatureMarkers.yaml`: include commented examples of suffix, suppletion (2-element array value), and multi-marker entries.
 For `Paradigm.yaml`: include commented examples of `filter`, `global_markers`, and `feature_markers` with `null`.
-For `Inventory.yaml`: include commented examples of a phones node, flags node, and nested node with `_children`.
+For `Inventory.yaml`: include commented examples of a phones node, tags node, and nested node with `_children`.
 For `MorphemeSequence.yaml`: include a commented example of one data item of each type.
 
 Use `${feature}` variable substitution in `FeatureMarkers.yaml` for the `feature` field, and `${part_of_speech}` in `Paradigm.yaml`, so the extension prompts for these values on file creation.

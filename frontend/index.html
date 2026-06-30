@@ -10,20 +10,19 @@
   <header>
     <h1>parC</h1>
     <nav class="tab-nav">
-      <button class="active" data-tab="hub">Mission Hub</button>
-      <button data-tab="inflect" id="nav-inflect-btn">Inflection</button>
+      <button class="active" data-tab="hub">Home page</button>
       <button data-tab="tests">Patterns &amp; Rules</button>
+      <button data-tab="inflect" id="nav-inflect-btn">Inflection</button>
       <button data-tab="parse">Parse</button>
     </nav>
   </header>
 
   <main>
     <section id="tab-hub" class="tab-panel">
-      <div class="status-container">
-        <span>Grammar Status:</span>
-        <span class="status-dot checking"></span>
-        <span class="status-label">Checking…</span>
-        <button id="recompile-btn" class="recompile-btn">Recompile</button>
+      <div class="hub-status">
+        <span class="status-dot"></span>
+        <span class="status-label">Connecting…</span>
+        <button id="recompile-btn" class="action-btn">Refresh</button>
       </div>
 
       <div id="stats-section" hidden>
@@ -35,14 +34,15 @@
     <section id="tab-inflect" class="tab-panel" hidden>
       <div class="inflection-container">
         <h2>Inflect Form</h2>
-        
-        <div class="form-group">
+
+        <!-- Commenting out for now since MorphemeSequence is not implemented -->
+        <!-- <div class="form-group">
           <label for="inflect-type">Type</label>
           <select id="inflect-type">
-            <option value="paradigm">Paradigm</option>
-            <option value="sequence">Morpheme Sequence</option>
+            <option value="Paradigm">Paradigm</option>
+            <option value="MorphemeSequence">Morpheme Sequence</option>
           </select>
-        </div>
+        </div> -->
 
         <div class="form-group">
           <label for="inflect-target">Target</label>
@@ -154,13 +154,14 @@
       <div class="parse-container">
         <h2>Parse Form</h2>
 
-        <div class="form-group">
+        <!-- commenting out for now since MorphemeSequence is not implemented -->
+        <!-- <div class="form-group">
           <label for="parse-type">Type</label>
           <select id="parse-type">
-            <option value="paradigm">Paradigm</option>
-            <option value="sequence">Morpheme Sequence</option>
+            <option value="Paradigm">Paradigm</option>
+            <option value="MorphemeSequence">Morpheme Sequence</option>
           </select>
-        </div>
+        </div> -->
 
         <div class="form-group">
           <label for="parse-target">Target</label>
