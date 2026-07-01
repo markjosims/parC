@@ -248,8 +248,10 @@ def _build_token_map(
 
     # inventory classes — FSAs built separately in _build_class_fsts
     for name in inventory.item_map:
-        if name in phone_set or name in tag_set:
-            continue
+        # TODO: this snippet is vibe coded and seems to be breaking the ref resolving
+        # check to ensure proper behavior
+        # if name in phone_set or name in tag_set:
+        #     continue
         tokens["ref"].append(Token(name, "class_ref"))
 
     for ref in patterns:
