@@ -1,7 +1,7 @@
 {
     "name": "parC Demo",
     "image": "mcr.microsoft.com/devcontainers/python:3.10",
-    "postCreateCommand": "uv sync && parC",
+    "postCreateCommand": "uv sync && source .venv/bin/activate && parC",
     "features": {
         "ghcr.io/jsburckhardt/devcontainer-features/uv:1": {}
     },
