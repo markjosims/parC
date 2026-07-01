@@ -27,4 +27,6 @@
             "comments": false
         }
     },
+    "terminal.integrated.hideOnStartup": "always",
+    "git.enabled": false
 }
