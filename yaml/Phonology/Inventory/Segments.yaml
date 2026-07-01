@@ -15,13 +15,13 @@ data:
         phones: [b, d, g]
       - name: Voiceless stops
         ref: <P>
-        phones: [p, t, c]
+        phones: [p, t, c, q]
     - name: Fricatives
       ref: <Frc>
       phones: [f, v, s, z, x, h, j]
     - name: Sonorants
       ref: <Son>
-      phones: [r, l, y]
+      phones: [r, l, y, ü]
     - name: Nasals
       ref: <N>
       phones: [m, n, ñ]
