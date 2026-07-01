@@ -43,7 +43,7 @@ const CARD_GROUPS = {
   Lexicon: {
     part_of_speech: {
       title: 'Part of Sp.',
-      format: (d) => [`${d.files} files`, `${d.invalid_files} invalid files`]
+      format: (d) => [`${d.files} files`, `${d.roots} roots`, `${d.invalid_files} invalid files`]
     },
   },
   Morphotactics: {

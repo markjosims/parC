@@ -30,6 +30,7 @@ from src.grammar.paradigm_compilation import (
     get_roots_for_paradigm,
 )
 from src.grammar.transducer_compilation import get_rule_fst
+from src.grammar.marker_resolution import get_free_features_for_paradigm
 from src.yaml_utils.yaml_server import (
     get_yaml_kind,
     get_inventory_items,
@@ -43,6 +44,7 @@ from src.lexicon import (
     get_roots,
     get_features_for_root,
 )
+from src.constants import YAML_DIR
 
 app = FastAPI()
 
@@ -119,6 +121,11 @@ def grammar_stats() -> dict:
     part_of_speech_stats = {}
     part_of_speech_yaml = get_yaml_kind("PartOfSpeech")
     part_of_speech_stats["files"] = len(part_of_speech_yaml["valid"])
+    num_roots = 0
+    for part_of_speech, _ in part_of_speech_yaml["valid"]:
+        current_roots = get_roots(part_of_speech)
+        num_roots += len(current_roots)
+    part_of_speech_stats["roots"] = num_roots
     part_of_speech_stats["invalid_files"] = len(part_of_speech_yaml["invalid"])
     grammar_stats["part_of_speech"] = part_of_speech_stats
 
@@ -167,7 +174,7 @@ def inflection_meta():
         paradigms.append(
             ParadigmInfo(
                 name=os.path.splitext(basename)[0],
-                features=part_of_speech["features"],
+                features=get_free_features_for_paradigm(basename, "Paradigm"),
                 lexical_features=part_of_speech["lexical_features"],
             )
         )

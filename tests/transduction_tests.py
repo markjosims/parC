@@ -7,7 +7,7 @@ from src.yaml_utils.models import (
     SingleStringMarker,
     StringTupleMarker,
     UnorderedMarker,
-    StringMapMarker,
+    PrincipalPartMarker,
     OperationTypeStringTuple,
     OperationTypeSingleString,
     UnorderedOperation,

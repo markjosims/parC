@@ -35,6 +35,7 @@ CONFIG_KIND_TO_PARDIR = {
     "Patterns": "Phonology",
     "Paradigm": "Morphotactics",
     "PartOfSpeech": "Lexicon",
+    "Wordlists": "Lexicon",
 }
 
 
@@ -96,7 +97,8 @@ def get_referenced_content(ref_file_path: Path, object_path: str) -> tuple[dict,
     definitions_key, object_name = path_parts
 
     if not ref_file_path.exists():
-        raise FileNotFoundError(f"Referenced schema file not found: {ref_file_path}")
+        raise FileNotFoundError(
+            f"Referenced schema file not found: {ref_file_path}")
 
     with open(ref_file_path, "r", encoding="utf-8") as f:
         ref_content = json.load(f)
@@ -136,4 +138,8 @@ def validate_yaml(target_kind: str, data: dict) -> dict:
     except ValidationError as e:
         logger.exception(
             f"Failed to validate YAML data against schema {target_kind}: {e}"
+        )
+    except Exception as e:
+        logger.exception(
+            f"Non-schema related error occur while reading YAML data{target_kind}: {e}"
         )

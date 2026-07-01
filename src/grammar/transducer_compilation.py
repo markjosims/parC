@@ -26,7 +26,7 @@ from src.yaml_utils.models import (
     SingleStringMarker,
     StringTupleMarker,
     UnorderedMarker,
-    StringMapMarker,
+    PrincipalPartMarker,
 )
 from src.yaml_utils.schema_validation import CONFIG_KIND_TO_PARDIR
 from src.yaml_utils.yaml_server import get_rules
@@ -168,7 +168,7 @@ def compile_marker(marker: Marker) -> pynini.Fst:
         sigma_star = get_sigma_star()
         tau = pynini.cross(fsa(marker.value[0]), fsa(marker.value[1]))
         return pynini.cdrewrite(tau, "", "", sigma_star)
-    if isinstance(marker, StringMapMarker) and marker.kind == "string_map":
+    if isinstance(marker, PrincipalPartMarker) and marker.kind == "string_map":
         return _compile_string_map(marker.value)
     if isinstance(marker, UnorderedMarker) and marker.kind == "principal_part":
         raise ValueError(

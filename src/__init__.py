@@ -4,7 +4,7 @@ from loguru import logger
 from dotenv import load_dotenv
 
 # Load environment variables from .env file if it exists
-load_dotenv() 
+load_dotenv("parC.env")
 
 # Configure logging level from environment variable
 # Set PARC_LOG_LEVEL=DEBUG to see debug messages, otherwise defaults to INFO

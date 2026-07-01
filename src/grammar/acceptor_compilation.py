@@ -114,9 +114,13 @@ def build_symbol_table(
 
 def get_symbol_table() -> pynini.SymbolTable:
     global _symbol_table
-    if _symbol_table is not None:
-        return _symbol_table
+
     if is_syms_cache_valid(INVENTORY_DIR, FEATURES_DIR):
+        # moving in-memory cache return to after cache validation check
+        # as there is no watcher to cause an invalidation event
+        # TODO: add invalidation listeners
+        if _symbol_table is not None:
+            return _symbol_table
         loaded = load_symbol_table()
         if loaded is not None:
             _symbol_table = loaded

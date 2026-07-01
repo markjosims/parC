@@ -26,7 +26,7 @@ from src.yaml_utils.schema_validation import (
     CONFIG_KINDS,
     CONFIG_KIND_TO_PARDIR,
 )
-from src.launcher import YAML_DIR
+from src.constants import YAML_DIR
 from src.yaml_utils.models import (
     Inventory,
     InventoryItemMapType,
@@ -42,7 +42,7 @@ from src.yaml_utils.models import (
     Feature,
     FeatureValue,
     UnorderedMarker,
-    StringMapMarker,
+    PrincipalPartMarker,
 )
 
 """

@@ -19,8 +19,8 @@ def load_lexicon_df(lexicon_basename: str) -> pd.DataFrame:
     elif os.path.exists(csv_path):
         return pd.read_csv(csv_path, keep_default_na=False)
     else:
-        init_lexicon(lexicon_basename, xlsx_path)
-        return pd.read_excel(xlsx_path, keep_default_na=False)
+        init_lexicon(lexicon_basename, csv_path)
+        return pd.read_csv(csv_path, keep_default_na=False)
 
 
 def init_lexicon(lexicon_basename: str, lexicon_path: str) -> None:
@@ -31,7 +31,7 @@ def init_lexicon(lexicon_basename: str, lexicon_path: str) -> None:
     principal_parts = part_of_speech.get("principal_parts", [])
     df = pd.DataFrame(columns=["root", "gloss"] + lexical_features + principal_parts)
     os.makedirs(os.path.dirname(lexicon_path), exist_ok=True)
-    df.to_excel(lexicon_path, index=False)
+    df.to_csv(lexicon_path, index=False)
 
 
 def get_roots(lexicon_basename: str) -> list[str]:
@@ -65,7 +65,7 @@ def get_features_for_root(
     return {}
 
 
-def get_principle_part_for_root(
+def get_principal_part_for_root(
     lexicon_basename: str,
     root: str,
     principal_part: str,
@@ -74,15 +74,15 @@ def get_principle_part_for_root(
     df = load_lexicon_df(lexicon_basename)
     row = df[df["root"] == root]
     if not row.empty:
-        principle_part = row.iloc[0][principal_part]
-        if not principle_part and fallback_to_root:
+        principal_part = row.iloc[0][principal_part]
+        if not principal_part and fallback_to_root:
             return root
-        return principle_part
+        return principal_part
     logger.exception(f"Root not found: {root} in lexicon: {lexicon_basename}")
     return None
 
 
-def get_principle_part_for_all_roots(
+def get_principal_part_for_all_roots(
     lexicon_basename: str, principal_part: str, fallback_to_root: bool = True
 ) -> list[str]:
     df = load_lexicon_df(lexicon_basename)

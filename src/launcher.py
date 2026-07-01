@@ -3,7 +3,7 @@ import sys
 import dotenv
 import uvicorn
 
-dotenv.load_dotenv()
+dotenv.load_dotenv("parC.env")
 
 if not os.environ.get("YAML_DIR"):
     from tkinter import filedialog, Tk
@@ -16,7 +16,7 @@ if not os.environ.get("YAML_DIR"):
             f.write(f"YAML_DIR={folder_selected}")
 
     pick_directory()
-    dotenv.load_dotenv()
+    dotenv.load_dotenv("parC.env")
 
 if not os.environ.get("YAML_DIR"):
     sys.exit("No config directory selected.")

@@ -42,6 +42,7 @@ from src.grammar.marker_resolution import (
     get_feature_combos_for_paradigm,
     get_features_for_paradigm,
     get_markers_for_paradigm,
+    get_fixed_features_for_paradigm,
 )
 from src.grammar.transducer_compilation import get_marker_fst
 
@@ -60,6 +61,8 @@ _SOURCE_DIRS = (
     _kind_dir("Inventory"),
     _kind_dir("FeatureDefinitions"),
     _kind_dir("Rules"),
+    _kind_dir("PartOfSpeech"),
+    _kind_dir("Wordlists"),
 )
 
 """
@@ -137,7 +140,8 @@ def build_inflect_graph(paradigm_name: str) -> pynini.Fst:
         root_fsa = word_fsa(root)
         for feature_values in combos:
             try:
-                markers = get_markers_for_paradigm(feature_values, paradigm_name)
+                markers = get_markers_for_paradigm(
+                    feature_values, paradigm_name)
                 inflected_output = pynini.project(
                     _apply_markers(root_fsa, markers), project_type="output"
                 )
@@ -149,7 +153,8 @@ def build_inflect_graph(paradigm_name: str) -> pynini.Fst:
 
             feature_str = stringify_features(feature_values)
             inflect_input = (
-                pynini.concat(root_fsa, fsa(feature_str)) if feature_str else root_fsa
+                pynini.concat(root_fsa, fsa(feature_str)
+                              ) if feature_str else root_fsa
             )
             inflect_fsts.append(
                 pynini.cross(inflect_input, inflected_output).optimize()
@@ -266,10 +271,12 @@ def _warm_cache() -> None:
             search_lexicon, search_left_factor = build_search_lexicon_and_leftfactor(
                 inflect
             )
-            _save_paradigm(name, inflect, parse, search_lexicon, search_left_factor)
+            _save_paradigm(name, inflect, parse,
+                           search_lexicon, search_left_factor)
             _store(name, inflect, parse, search_lexicon, search_left_factor)
         except Exception as e:
-            logger.warning(f"Failed to build graphs for paradigm '{name}': {e}")
+            logger.warning(
+                f"Failed to build graphs for paradigm '{name}': {e}")
 
 
 def _get_or_build(
@@ -279,7 +286,7 @@ def _get_or_build(
     if _paradigm_fsts is None:
         _warm_cache()
     key = f"{paradigm_name}:{graph_type}"
-    if force_rebuild or key not in _paradigm_fsts:
+    if force_rebuild or key not in _paradigm_fsts or not _paradigm_cache_valid(paradigm_name):
         if not force_rebuild and _paradigm_cache_valid(paradigm_name):
             loaded = _load_paradigm(paradigm_name)
             if loaded is not None:
@@ -293,7 +300,8 @@ def _get_or_build(
         _save_paradigm(
             paradigm_name, inflect, parse, search_lexicon, search_left_factor
         )
-        _store(paradigm_name, inflect, parse, search_lexicon, search_left_factor)
+        _store(paradigm_name, inflect, parse,
+               search_lexicon, search_left_factor)
     return _paradigm_fsts[key]
 
 
@@ -330,7 +338,8 @@ def parse(form: str, kind: str = "Paradigm", name: str = "") -> list[dict]:
         feat_matches = re.findall(r"\[([^=\]]+)=([^\]]+)\]", s)
         root = re.sub(r"\[[^\]]+\]", "", s).strip()
         gloss = get_gloss_for_root(lexicon_basename, root)
-        parses.append({"root": root, "features": dict(feat_matches), "gloss": gloss})
+        parses.append({"root": root, "features": dict(
+            feat_matches), "gloss": gloss})
 
     return parses
 
@@ -344,6 +353,9 @@ def inflect(
     if isinstance(feature_values, dict):
         feature_values = set(feature_values.items())
 
+    fixed_features = get_fixed_features_for_paradigm(
+        name=name, kind="Paradigm")
+    feature_values |= fixed_features
     features = set(feature for feature, _ in feature_values)
     expected_features = get_features_for_paradigm(name)
     if not features == expected_features:
@@ -394,6 +406,9 @@ def inflect_stages(
     if isinstance(feature_values, dict):
         feature_values = set(feature_values.items())
 
+    fixed_features = get_fixed_features_for_paradigm(
+        name=name, kind="Paradigm")
+    feature_values |= fixed_features
     features = set(feature for feature, _ in feature_values)
     expected_features = get_features_for_paradigm(name)
     if not features == expected_features:
@@ -417,12 +432,14 @@ def inflect_stages(
         surface_forms = fsm_strings(
             current_fst, nshortest=5, strip_word_edge_symbols=True
         )
+        marker_value = marker.display_value if hasattr(
+            marker, "display_value") else marker.value
         current_stage = InflectStage(
             root=root,
             feature_values=marker_features,
             surface_forms=surface_forms,
             marker_kind=marker.kind,
-            marker_value=marker.value,
+            marker_value=marker_value,
             stage=marker.stage,
         )
         stages.append(current_stage)
@@ -458,13 +475,15 @@ def search(
     form_fsa = word_fsa(form)
     left_factor_lattice = pynini.compose(form_fsa, left_factor).optimize()
     edit_graph = pynini.compose(left_factor_lattice, search_lexicon)
-    hits = fsm_strings_and_weights(edit_graph, strip_all_tags=True, nshortest=nshortest)
+    hits = fsm_strings_and_weights(
+        edit_graph, strip_all_tags=True, nshortest=nshortest)
 
     if do_parse:
         parses = []
         for hit, weight in hits:
             current_parse = parse(hit, kind=kind, name=name)
-            [parse_item.update(edit_distance=weight) for parse_item in current_parse]
+            [parse_item.update(edit_distance=weight)
+             for parse_item in current_parse]
             [parse_item.update(form=hit) for parse_item in current_parse]
             parses.extend(current_parse)
         return parses

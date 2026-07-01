@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 
 # filepaths
 PROJECT_ROOT = os.path.dirname(
@@ -8,6 +9,9 @@ PROJECT_ROOT = os.path.dirname(
 )
 
 SCHEMA_DIR = os.path.join(PROJECT_ROOT, 'schemas')
+
+load_dotenv(os.path.join(PROJECT_ROOT, "parC.env"), override=True)
+YAML_DIR = os.environ.get("YAML_DIR")
 
 # pynini constants
 

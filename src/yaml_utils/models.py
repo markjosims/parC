@@ -99,7 +99,7 @@ class Feature(NamedTuple):
 
 OperationTypeSingleString = Literal["prefix", "suffix", "suppletion", "rule"]
 OperationTypeStringTuple = Literal["replace"]
-UnorderedOperation = Literal["principle_part"]
+UnorderedOperation = Literal["principal_part"]
 
 
 class SingleStringMarker(NamedTuple):
@@ -131,13 +131,14 @@ class UnorderedMarker(NamedTuple):
     value: str
 
 
-class StringMapMarker(NamedTuple):
+class PrincipalPartMarker(NamedTuple):
     kind: Literal["string_map"]
     value: tuple[tuple[str, str], ...]
-    stage: str | None = None
+    display_value: str
+    stage: str = "principal_part"
 
 
-Marker = SingleStringMarker | StringTupleMarker | UnorderedMarker | StringMapMarker
+Marker = SingleStringMarker | StringTupleMarker | UnorderedMarker | PrincipalPartMarker
 
 def resolve_marker(data: dict) -> Marker:
     for marker_class in (SingleStringMarker, StringTupleMarker, UnorderedMarker):

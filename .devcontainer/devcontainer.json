@@ -2,18 +2,16 @@
     "name": "parC Demo",
     "image": "mcr.microsoft.com/devcontainers/python:3.10",
     "postCreateCommand": "uv sync && parC",
-    "containerEnv": {
-        "YAML_DIR": "./yaml"
-    },
     "features": {
         "ghcr.io/jsburckhardt/devcontainer-features/uv:1": {}
     },
     "customizations": {
         "vscode": {
             "extensions": [
-                "redhat.vscode-yaml",
-                "rioj7.vscode-file-template",
-                "sleistner.vscode-fileutils"
+                "redhat.vscode-yaml@1.24.2026063009",
+                "rioj7.vscode-file-templates",
+                "sleistner.vscode-fileutils",
+                "mechatroner.rainbow-csv"
             ]
         }
     },

@@ -9,11 +9,11 @@ from __future__ import annotations
 
 from loguru import logger
 
-from src.lexicon import get_roots, get_principle_part_for_all_roots
+from src.lexicon import get_roots, get_principal_part_for_all_roots
 from src.yaml_utils.models import (
     Marker,
     UnorderedMarker,
-    StringMapMarker,
+    PrincipalPartMarker,
     resolve_marker,
 )
 from src.yaml_utils.yaml_server import get_markers, get_yaml_data_safe, get_feature_map
@@ -61,10 +61,13 @@ def get_markers_for_paradigm(
     )
 
     # any global markers defined in the paradigm should be applied to all feature combinations
+    # check if current feature set has a principal part, if so we don't override
+    has_principal_part = any(marker.kind == "principal_part" for marker, _ in markers)
     if "global_markers" in paradigm_data:
         markers.extend(
             (resolve_marker(marker), "global")
             for marker in paradigm_data["global_markers"]
+            if not (has_principal_part and marker.kind == "principal_part")
         )
 
     # global stage applies to any unstaged marker, but does not override
@@ -82,25 +85,30 @@ def get_markers_for_paradigm(
     part_of_speech = paradigm_data["part_of_speech"]
     for i, marker_tuple in enumerate(markers):
         marker, feature_set = marker_tuple
-        if isinstance(marker, UnorderedMarker) and marker.kind == "principal_part":
+        if marker.kind == "principal_part":
             roots = get_roots(part_of_speech)
-            pps = get_principle_part_for_all_roots(part_of_speech, marker.value)
+            pps = get_principal_part_for_all_roots(part_of_speech, marker.value)
             markers[i] = (
-                StringMapMarker(
+                PrincipalPartMarker(
                     kind="string_map",
+                    display_value=marker.value,
                     value=tuple(zip(roots, pps)),
                 ),
                 feature_set,
             )
 
     # order of application specified by paradigm's stage_order, if present
-    stage_order: list[str] | None = paradigm_data.get("stage_order", None)
-    if stage_order is not None:
-        markers.sort(
-            key=lambda m: (
-                stage_order.index(m[0].stage) if m[0].stage in stage_order else -1
-            )
+    stage_order: list[str] | None = paradigm_data.get("stage_order", [])
+    # principal parts always come first
+    # TODO: need to support suppletion
+    # i.e. suppletion should also be first, and it should be mutually exclusive
+    # with principal part
+    stage_order.insert(0, "principal_part")
+    markers.sort(
+        key=lambda m: (
+            stage_order.index(m[0].stage) if m[0].stage in stage_order else float('inf')
         )
+    )
 
     if not include_features:
         markers = [marker for marker, _ in markers]
@@ -114,10 +122,22 @@ def get_fixed_features_for_paradigm(
     paradigm_data = get_yaml_data_safe(kind=kind, yaml_basename=name)
     fixed_features = set()
     for feature, value in paradigm_data["feature_markers"].items():
-        if isinstance(value, str):
+        if isinstance(value, str) and not value.startswith("$"):
             fixed_features.add((feature, value))
 
     return fixed_features
+
+def get_free_features_for_paradigm(
+    name: str, kind: str = "Paradigm"
+) -> list[str]:
+    paradigm_data = get_yaml_data_safe(kind=kind, yaml_basename=name)
+    free_features = []
+    for feature, value in paradigm_data["feature_markers"].items():
+        if isinstance(value, str) and value.startswith("$"):
+            free_features.append(feature)
+
+    return free_features
+    
 
 
 def get_feature_combos_for_paradigm(
