@@ -30,6 +30,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest", "ipykernel"]
 
+[project.scripts]
+parC:uvicorn src.api:app --reload
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["src*"]

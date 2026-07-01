@@ -1,7 +1,7 @@
 {
     "name": "parC Demo",
     "image": "mcr.microsoft.com/devcontainers/python:3.10",
-    "postCreateCommand": "pip install -e . && python src/launcher.py",
+    "postCreateCommand": "curl -LsSf https://astral.sh/uv/install.sh | sh && uv sync && uvicorn src.api:app",
     "containerEnv": {
         "YAML_DIR": "./yaml"
     },
