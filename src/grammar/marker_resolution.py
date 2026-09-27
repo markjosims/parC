@@ -7,18 +7,19 @@ Separated from yaml_server to avoid a circular import:
 
 from __future__ import annotations
 
+import itertools
+
+from frozendict import frozendict
 from loguru import logger
 
-from src.lexicon import get_roots, get_principal_part_for_all_roots
+from src.lexicon import get_principal_part_for_all_roots, get_roots
 from src.models import (
     Marker,
-    UnorderedMarker,
     PrincipalPartMarker,
+    UnorderedMarker,
     resolve_marker,
 )
-from src.yaml_utils.yaml_server import get_markers, get_yaml_data_safe, get_feature_map
-import itertools
-from frozendict import frozendict
+from src.yaml_utils.yaml_server import get_feature_map, get_markers, get_yaml_data_safe
 
 FeatureComboType = set[tuple[str, str]]
 
@@ -118,7 +119,7 @@ def get_markers_for_paradigm(
 
 
 def get_fixed_features_for_paradigm(
-    name: str, kind: str = "Paradigm"
+    description: str, kind: str = "Paradigm"
 ) -> FeatureComboType:
     paradigm_data = get_yaml_data_safe(kind=kind, yaml_basename=name)
     fixed_features = set()
@@ -129,7 +130,9 @@ def get_fixed_features_for_paradigm(
     return fixed_features
 
 
-def get_free_features_for_paradigm(name: str, kind: str = "Paradigm") -> list[str]:
+def get_free_features_for_paradigm(
+    description: str, kind: str = "Paradigm"
+) -> list[str]:
     paradigm_data = get_yaml_data_safe(kind=kind, yaml_basename=name)
     free_features = []
     for feature, value in paradigm_data["feature_markers"].items():
@@ -140,7 +143,7 @@ def get_free_features_for_paradigm(name: str, kind: str = "Paradigm") -> list[st
 
 
 def get_feature_combos_for_paradigm(
-    name: str,
+    description: str,
     feature_map: dict | None = None,
     kind: str = "Paradigm",
 ) -> tuple[list[FeatureComboType], list[str], list[str]]:
@@ -194,7 +197,7 @@ def get_feature_combos_for_paradigm(
     return combos, marker_files, multifeature_files
 
 
-def get_features_for_paradigm(name: str) -> set[str]:
+def get_features_for_paradigm(description: str) -> set[str]:
     """
     Get the set of inflectional features for a given paradigm.
     """

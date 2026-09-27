@@ -2,13 +2,14 @@
 # This is where you specify phonemes as well as special tags
 # for your language
 kind: Inventory
+id: tags
 data:
   # type inv-phones, inv-tags or inv-nested to add more nodes!
-  - name: Tone flags
-    ref: <ToneFlag>
+  - description: Tone flags
+    id: <ToneFlag>
     tags: ["[TBU]", "[FLOAT]"]
-  - name: Noun class pairs
-    ref: <NounClass>
+  - description: Noun class pairs
+    id: <NounClass>
     tags: ["[g/l]", "[ð/j]", "[ð/r]"]
 
 ## HELP FOR INVENTORY ##
@@ -16,8 +17,8 @@ data:
 # Each node of the tree contains either phones, tags, or other nodes
 # that themeselves may contain phones, tags, or other nodes, etc.
 # Each node must have three attributes:
-#   name: A natural description of the node
-#   ref: A shorthand to refer to the node in parC
+#   description: A natural description of the node
+#   id: A shorthand to refer to the node in parC
 #     must be wrapped in <angle_brackets> and contain no spaces
 #   children OR phones OR tags
 #     children: nested nodes
@@ -32,27 +33,27 @@ data:
 # whereas `stops`, `nasals`, `high vowels` etc. are phone nodes
 # and `tone tags` is a tag node
 
-# - name: consonants
-#   ref: <C>
+# - description: consonants
+#   id: <C>
 #   children:
-#   - name: Stops
-#     ref: <Stp>
+#   - description: Stops
+#     id: <Stp>
 #     phones: [p, t, k, b, d, g]
-#   - name: Nasals
-#     ref: <N>
+#   - description: Nasals
+#     id: <N>
 #     phones: [m, n, ŋ]
-# - name: vowels
-#   ref: <V>
+# - description: vowels
+#   id: <V>
 #   children:
-#   - name: high vowels
-#     ref: <V_High>
+#   - description: high vowels
+#     id: <V_High>
 #     phones: [i, u]
-#   - name: mid vowels
-#     ref: <V_Mid>
+#   - description: mid vowels
+#     id: <V_Mid>
 #     phones: [e, o]
-#   - name: low_vowels
-#     ref: <V_Low>
+#   - description: low_vowels
+#     id: <V_Low>
 #     phones: [a, æ]
-# - name: tone slots
-#   ref: <ToneSlot>
+# - description: tone slots
+#   id: <ToneSlot>
 #   tags: ["[TBU]", "[FLOAT]"]

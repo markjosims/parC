@@ -1,5 +1,0 @@
-kind: Patterns
-patterns:
-- name: word_final_coda
-  pattern: <C>*#
-  ref: <CodaWF>

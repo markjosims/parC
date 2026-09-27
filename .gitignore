@@ -212,3 +212,6 @@ tmp/
 .claude/
 .codex
 .gemini/
+
+# Auto-generated JSON schemas
+schemas/

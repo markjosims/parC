@@ -1,14 +1,19 @@
 # This is a FeatureDefinitions config file
 # Define morphological feature categories and enumerate their possible values here.
-kind: FeatureDefinitions
-features:
+kind: FeatureDefinition
+id: verbs
+data:
 
 # type fd-feature to add your first feature!
 
-  tense: [past, present, future]
-  mood: [subjunctive, indicative, imperative]
-  person_number: [1sg, 2sg, 3sg, 1pl, 2pl, 3pl]
-  conjugation_class: [a_class, e_class, i_class, diphthong, e_to_i]
+  - id: tense
+    values: [past, present, future]
+  - id: mood
+    values: [subjunctive, indicative, imperative]
+  - id: person_number
+    values: [1sg, 2sg, 3sg, 1pl, 2pl, 3pl]
+  - id: conjugation_class
+    values: [a_class, e_class, i_class, diphthong, e_to_i]
 
 
 ## HELP FOR FEATUREDEFINITIONS ##

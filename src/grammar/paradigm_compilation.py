@@ -11,42 +11,42 @@ from __future__ import annotations
 
 import os
 import re
+from typing import NamedTuple
 
 import pynini
+from frozendict import frozendict
 from loguru import logger
 from pynini.lib import pynutil
-from typing import NamedTuple
-from frozendict import frozendict
 
-from src.yaml_utils.cache import is_fst_cache_valid, save_fst, load_fst, observed_cache
+from src.constants import get_yaml_dir
 from src.fst_utils import ReservedSymbolMixin as R
 from src.fst_utils import stringify_features
-from src.constants import get_yaml_dir
-from src.lexicon import get_gloss_for_root, get_roots, get_roots_with_lexical_features
-from src.yaml_utils.schema_validation import CONFIG_KIND_TO_PARDIR
-from src.yaml_utils.yaml_server import (
-    get_feature_map,
-    get_yaml_kind,
-    get_yaml_data_safe,
-    kind_dir,
-)
 from src.grammar.acceptor_compilation import (
+    filter_strings_by_pattern,
     fsa,
     fsm_strings,
     fsm_strings_and_weights,
-    word_fsa,
     get_sigma_star,
     get_special_fsas,
     get_symbol_table,
-    filter_strings_by_pattern,
+    word_fsa,
 )
 from src.grammar.marker_resolution import (
     get_feature_combos_for_paradigm,
     get_features_for_paradigm,
-    get_markers_for_paradigm,
     get_fixed_features_for_paradigm,
+    get_markers_for_paradigm,
 )
 from src.grammar.transducer_compilation import get_marker_fst
+from src.lexicon import get_gloss_for_root, get_roots, get_roots_with_lexical_features
+from src.yaml_utils.cache import is_fst_cache_valid, load_fst, observed_cache, save_fst
+from src.yaml_utils.schema_validation import CONFIG_KIND_TO_PARDIR
+from src.yaml_utils.yaml_server import (
+    get_feature_map,
+    get_yaml_data_safe,
+    get_yaml_kind,
+    kind_dir,
+)
 
 EDIT_BOUND = 5
 EDIT_COST = 1.0
@@ -190,21 +190,21 @@ def build_search_lexicon_and_leftfactor(
 _FST_KINDS = ("inflect", "parse", "search_lexicon", "search_left_factor")
 
 
-def _paradigm_cache_valid(name: str) -> bool:
+def _paradigm_cache_valid(description: str) -> bool:
     return all(
         is_fst_cache_valid("Paradigm", name, k, get_yaml_dir()) for k in _FST_KINDS
     )
 
 
 def _load_paradigm(
-    name: str,
+    description: str,
 ) -> tuple[pynini.Fst, pynini.Fst, pynini.Fst, pynini.Fst] | None:
     fsts = [load_fst("Paradigm", name, k) for k in _FST_KINDS]
     return tuple(fsts) if all(f is not None for f in fsts) else None
 
 
 def _save_paradigm(
-    name: str,
+    description: str,
     inflect: pynini.Fst,
     parse: pynini.Fst,
     search_lexicon: tuple[pynini.Fst, pynini.Fst],
@@ -256,7 +256,7 @@ Public API
 
 
 @observed_cache([get_yaml_dir()])
-def parse(form: str, kind: str = "Paradigm", name: str = "") -> list[dict]:
+def parse(form: str, kind: str = "Paradigm", description: str = "") -> list[dict]:
     form_fsa = word_fsa(form)
     parse_graph = get_parse_graph(name)
     paradigm_data = get_yaml_data_safe(yaml_basename=name, kind=kind)
@@ -278,7 +278,7 @@ def parse(form: str, kind: str = "Paradigm", name: str = "") -> list[dict]:
 def inflect(
     root: str,
     feature_values: set[tuple[str, str]] | dict[str, str],
-    name: str,
+    description: str,
 ) -> list[str]:
 
     if isinstance(feature_values, (dict, frozendict)):
@@ -320,7 +320,7 @@ class InflectStage(NamedTuple):
 def inflect_stages(
     root: str,
     feature_values: tuple[tuple[str, str]],
-    name: str,
+    description: str,
 ) -> list[InflectStage]:
     """
     Inflect word and save table with each successive stage of inflection,
@@ -401,7 +401,7 @@ def inflect_stages(
 
 @observed_cache([get_yaml_dir()])
 def search(
-    kind: str, name: str, form: str, nshortest: int, do_parse: bool = True
+    kind: str, description: str, form: str, nshortest: int, do_parse: bool = True
 ) -> list[tuple[str, float]] | list[dict]:
     search_lexicon, left_factor = get_search_graphs(name)
     form_fsa = word_fsa(form)

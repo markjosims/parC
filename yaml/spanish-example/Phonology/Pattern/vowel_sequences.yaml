@@ -1,0 +1,6 @@
+kind: Pattern
+data:
+- description: diphthong
+  pattern: ie|ue|oy|ay|ai
+  id: <diphthong>
+id: vowel_sequences

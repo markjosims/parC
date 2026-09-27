@@ -26,13 +26,13 @@ from loguru import logger
 from pynini.lib import rewrite
 
 from src.fst_utils import ReservedSymbolMixin as R
+from src.models import Feature, InventoryFile, Pattern, Token
 from src.yaml_utils.cache import (
     is_syms_cache_valid,
     load_symbol_table,
     observed_cache,
     save_symbol_table,
 )
-from src.models import Feature, InventoryFile, Pattern, Token
 from src.yaml_utils.yaml_server import (
     get_feature_array,
     get_inventory_items,
@@ -174,9 +174,9 @@ def _build_token_map(
 
     tokens["dot"].append(Token(R.dot, "special_ref"))
 
-    tokens["ref"].extend(
-        Token(ref, "special_ref")
-        for ref in (R.phone_ref, R.flag_ref, R.sigma_ref, R.epsilon_ref, R.boundary_ref)
+    tokens["id"].extend(
+        Token(id, "special_ref")
+        for id in (R.phone_ref, R.flag_ref, R.sigma_ref, R.epsilon_ref, R.boundary_ref)
     )
 
     for d in R.left_delimiters:
@@ -209,10 +209,10 @@ def _build_token_map(
 
     # inventory classes — FSAs built separately in _build_class_fsts
     for name in inventory.item_map:
-        tokens["ref"].append(Token(name, "class_ref"))
+        tokens["id"].append(Token(name, "class_ref"))
 
-    for ref in patterns:
-        tokens["ref"].append(Token(ref, "pattern_ref"))
+    for id in patterns:
+        tokens["id"].append(Token(id, "pattern_ref"))
 
     return {kind: sorted(lst, key=len, reverse=True) for kind, lst in tokens.items()}
 
@@ -279,7 +279,7 @@ def _infer_token_type(s: str, phone_starts: set[str]) -> str:
     if c == "[":
         return "tag"
     if c == "<":
-        return "ref"
+        return "id"
     if c in R.unary_operators:
         return "unary_operator"
     if c == R.pipe_operator:
@@ -358,7 +358,7 @@ def _atom_to_fst(
             return special_fsas["boundary"]
         if tok.value == R.epsilon_ref:
             return pynini.accep("", token_type=syms)
-        raise ValueError(f"Unknown special ref: {tok.value!r}")
+        raise ValueError(f"Unknown special id: {tok.value!r}")
     raise ValueError(f"Cannot convert token {tok!r} to FSA")
 
 
@@ -522,18 +522,18 @@ def compile_all_patterns(
     First compute the dependency graph across all pattern strings
     for topological sorting.
     """
-    dep_graph: dict[str, set[str]] = {ref: set() for ref in patterns}
-    for ref, pat in patterns.items():
+    dep_graph: dict[str, set[str]] = {id: set() for id in patterns}
+    for id, pat in patterns.items():
         for token in re.findall(r"<([^>]+)>", pat.pattern):
             if token in patterns:
-                dep_graph[ref].add(token)
+                dep_graph[id].add(token)
     order = list(TopologicalSorter(dep_graph).static_order())
 
     compiled: dict[str, pynini.Fst] = dict(class_fsts)
-    for ref in order:
-        pat = patterns[ref]
+    for id in order:
+        pat = patterns[id]
         try:
-            compiled[ref] = _parse_pattern(
+            compiled[id] = _parse_pattern(
                 pat.pattern,
                 token_map,
                 phone_starts,
@@ -543,7 +543,7 @@ def compile_all_patterns(
                 special_fsas,
             )
         except Exception as e:
-            raise ValueError(f"Error compiling pattern '{ref}': {e}") from e
+            raise ValueError(f"Error compiling pattern '{id}': {e}") from e
     return compiled
 
 

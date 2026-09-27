@@ -2,58 +2,59 @@
 # This is where you specify phonemes as well as special tags
 # for your language
 kind: Inventory
+id: segments
 data:
   # type inv-phones, inv-tags or inv-nested to add more nodes!
-  - name: Consonants
-    ref: <C>
+  - description: Consonants
+    id: <C>
     children:
-      - name: stops
-        ref: <Stop>
+      - description: stops
+        id: <Stop>
         children:
-          - name: voiced stops
-            ref: <VoicedStop>
+          - description: voiced stops
+            id: <VoicedStop>
             children:
-              - name: Voiced stops
-                ref: <VoicedStop>
+              - description: Voiced stops
+                id: <VoicedStop>
                 phones: [b, d, ɟ, g]
-          - name: voiceless stops
-            ref: <VoicelessStop>
+          - description: voiceless stops
+            id: <VoicelessStop>
             phones: [p, t, c, k]
-      - name: fricatives
-        ref: <Frc>
+      - description: fricatives
+        id: <Frc>
         children:
-          - name: voiced fricatives
-            ref: <VoicedFrc>
+          - description: voiced fricatives
+            id: <VoicedFrc>
             phones: [v, ð]
-          - name: voiceless fricative
-            ref: <VoicelessFrc>
+          - description: voiceless fricative
+            id: <VoicelessFrc>
             phones: [s]
-      - name: sonorants
-        ref: <Son>
+      - description: sonorants
+        id: <Son>
         children:
-          - name: nasals
-            ref: <N>
+          - description: nasals
+            id: <N>
             phones: [m, n, ɲ, ŋ]
-          - name: liquids
-            ref: <Liq>
+          - description: liquids
+            id: <Liq>
             phones: [r, ɾ, ɽ, l]
-          - name: glides
-            ref: <Glide>
+          - description: glides
+            id: <Glide>
             phones: [j, w]
-  - name: vowels
-    ref: <V>
+  - description: vowels
+    id: <V>
     children:
-      - name: high vowels
-        ref: <Vhi>
+      - description: high vowels
+        id: <Vhi>
         phones: [i, u]
-      - name: mid vowels
-        ref: <Vmid>
+      - description: mid vowels
+        id: <Vmid>
         phones: [e, o, ɛ, ɜ, ɔ]
-      - name: low vowels
-        ref: <Vlo>
+      - description: low vowels
+        id: <Vlo>
         phones: [a]
-      - name: tone
-        ref: <T>
+      - description: tone
+        id: <T>
         # \u0301: combining acute (high tone)
         # \u0300: combining acute (high tone)
         # \u0302: combining grave (falling tone)
@@ -65,8 +66,8 @@ data:
 # Each node of the tree contains either phones, tags, or other nodes
 # that themeselves may contain phones, tags, or other nodes, etc.
 # Each node must have three attributes:
-#   name: A natural description of the node
-#   ref: A shorthand to refer to the node in parC
+#   description: A natural description of the node
+#   id: A shorthand to refer to the node in parC
 #     must be wrapped in <angle_brackets> and contain no spaces
 #   children OR phones OR tags
 #     children: nested nodes
@@ -81,27 +82,27 @@ data:
 # whereas `stops`, `nasals`, `high vowels` etc. are phone nodes
 # and `tone tags` is a tag node
 
-# - name: consonants
-#   ref: <C>
+# - description: consonants
+#   id: <C>
 #   children:
-#   - name: Stops
-#     ref: <Stp>
+#   - description: Stops
+#     id: <Stp>
 #     phones: [p, t, k, b, d, g]
-#   - name: Nasals
-#     ref: <N>
+#   - description: Nasals
+#     id: <N>
 #     phones: [m, n, ŋ]
-# - name: vowels
-#   ref: <V>
+# - description: vowels
+#   id: <V>
 #   children:
-#   - name: high vowels
-#     ref: <V_High>
+#   - description: high vowels
+#     id: <V_High>
 #     phones: [i, u]
-#   - name: mid vowels
-#     ref: <V_Mid>
+#   - description: mid vowels
+#     id: <V_Mid>
 #     phones: [e, o]
-#   - name: low_vowels
-#     ref: <V_Low>
+#   - description: low_vowels
+#     id: <V_Low>
 #     phones: [a, æ]
-# - name: tone slots
-#   ref: <ToneSlot>
+# - description: tone slots
+#   id: <ToneSlot>
 #   tags: ["[TBU]", "[FLOAT]"]

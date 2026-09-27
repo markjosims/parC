@@ -1,52 +1,53 @@
 # This is a Patterns config file
 # Define reusable regular expressions to reference common sequences
 # or natural classes relevant for your language.
-kind: Patterns
-patterns:
+kind: Pattern
+id: ipa_shorthands
+data:
   # type pat-item to add more patterns!
-  - name: Voiced palatal stop
+  - description: Voiced palatal stop
     pattern: ɟ
-    ref: <J>
-  - name: Epsilon 
+    id: <J>
+  - description: Epsilon 
     pattern: ɛ
-    ref: <E>
-  - name: Open O
+    id: <E>
+  - description: Open O
     pattern: ɔ
-    ref: <O>
-  - name: Reverse epsilon
-    ref: <3>
+    id: <O>
+  - description: Reverse epsilon
+    id: <3>
     pattern: ɜ
-  - name: Voiced dental fricative
+  - description: Voiced dental fricative
     pattern: ð
-    ref: <D>
-  - name: Palatal nasal
+    id: <D>
+  - description: Palatal nasal
     pattern: ɲ
-    ref: <Ny>
-  - name: Velar nasal
+    id: <Ny>
+  - description: Velar nasal
     pattern: ŋ
-    ref: <Ng>
-  - name: High tone
-    ref: <H>
+    id: <Ng>
+  - description: High tone
+    id: <H>
     pattern: "\u0301"
-  - name: Low tone
-    ref: <L>
+  - description: Low tone
+    id: <L>
     pattern: "\u0300"
-  - name: Rising tone
-    ref: <LH>
+  - description: Rising tone
+    id: <LH>
     pattern: "\u030C"
-  - name: Falling tone
-    ref: <HL>
+  - description: Falling tone
+    id: <HL>
     pattern: "\u0302"
 
 ## HELP FOR PATTERNS ##
 # List of pattern definitions.
-# - ref: Unique identifier enclosed in angle braces.
+# - id: Unique identifier enclosed in angle braces.
 # - pattern: String or list of strings defining the regex-like shape.
 
 # Example:
-# - name: High Vowels
+# - description: High Vowels
 #   pattern: "{iuɪʊ}"
-#   ref: "<V_High>"
+#   id: "<V_High>"
 #   test_includes: [i, u]
 #   test_excludes: [a, e, o]
 

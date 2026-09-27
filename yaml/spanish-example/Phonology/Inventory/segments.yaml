@@ -1,69 +1,82 @@
 data:
+- kind: nested
+  data:
+  - kind: nested
+    data:
+    - description: Voiced stops
+      kind: phones
+      data:
+        - b
+        - d
+        - g
+      id: <B>
+    - description: Voiceless stops
+      kind: phones
+      data:
+        - p
+        - t
+        - c
+        - q
+      id: <P>
+    description: Stops
+    id: <Stp>
+  - description: Fricatives
+    kind: phones
+    data:
+      - f
+      - v
+      - s
+      - z
+      - x
+      - h
+      - j
+    id: <Frc>
+  - description: Sonorants
+    kind: phones
+    data:
+      - r
+      - l
+      - y
+      - "u\u0308"
+    id: <Son>
+  - description: Nasals
+    kind: phones
+    data:
+      - m
+      - n
+      - "\xF1"
+    id: <N>
+  description: Consonants
+  id: <C>
 - children:
-  - children:
-    - name: Voiced stops
-      phones:
-      - b
-      - d
-      - g
-      ref: <B>
-    - name: Voiceless stops
-      phones:
-      - p
-      - t
-      - c
-      - q
-      ref: <P>
-    name: Stops
-    ref: <Stp>
-  - name: Fricatives
-    phones:
-    - f
-    - v
-    - s
-    - z
-    - x
-    - h
-    - j
-    ref: <Frc>
-  - name: Sonorants
-    phones:
-    - r
-    - l
-    - y
-    - "u\u0308"
-    ref: <Son>
-  - name: Nasals
-    phones:
-    - m
-    - n
-    - "\xF1"
-    ref: <N>
-  name: Consonants
-  ref: <C>
-- children:
-  - name: High vowels
-    phones:
-    - i
-    - u
-    ref: <V_High>
-  - name: Mid vowels
-    phones:
-    - e
-    - o
-    ref: <V_Mid>
-  - name: Low vowels
-    phones:
-    - a
-    ref: <V_Low>
-  name: Vowels
-  ref: <V>
-- name: Stress marker
-  phones:
-  - "\u0301"
-  ref: <Stress>
-- name: Phonology tags
-  ref: <PhonologyTags>
-  tags:
-  - '[BlockVowelAlternation]'
+  - description: High vowels
+    kind: phones
+    data:
+      - i
+      - u
+    id: <V_High>
+  - description: Mid vowels
+    kind: phones
+    data:
+      - e
+      - o
+    id: <V_Mid>
+  - description: Low vowels
+    kind: phones
+    data:
+      - a
+    id: <V_Low>
+  description: Vowels
+  id: <V>
+- description: Stress marker
+  kind: phones
+  data:
+    - "\u0301"
+  id: <Stress>
+- description: Phonology tags
+  id: <PhonologyTags>
+  kind: tags
+  data:
+    - '[BlockVowelAlternation]'
 kind: Inventory
+id: segments

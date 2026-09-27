@@ -1,8 +1,8 @@
 # This is a PartOfSpeech config file
 # Define the metadata, features, and attributes for a specific part of speech.
 kind: PartOfSpeech
-name: verb # Name of the part of speech, e.g., verb
-features:
+id: verb
+inflectional_features:
 - tense
 - person_number
 - mood
@@ -32,7 +32,7 @@ principal_parts:
 # E.g.
 
 # kind: PartOfSpeech
-# name: adjective
+# description: adjective
 # features:
 #   - number
 #   - gender
@@ -44,7 +44,7 @@ principal_parts:
 # but not associated with any morphological formative in inflection.
 
 # kind: PartOfSpeech
-# name: noun
+# description: noun
 # features:
 #   - number
 # lexical_features:
@@ -69,7 +69,7 @@ principal_parts:
 # or past suffixes the verb takes.
 
 # kind: PartOfSpeech
-# name: verb
+# description: verb
 # features:
 #   - tense
 #   - person
@@ -97,7 +97,7 @@ principal_parts:
 # See Paradigm, FeatureMarker, and Lexicon for more information.
 
 # kind: PartOfSpeech
-# name: verb
+# description: verb
 # features:
 #   - tense
 #   - person

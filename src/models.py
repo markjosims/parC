@@ -8,39 +8,42 @@ is comprised of structs for data objects defined by the file
 
 from __future__ import annotations
 
-from typing import Annotated, Literal, NamedTuple, get_args
+import re
+from typing import Annotated, Literal, NamedTuple
 
 import msgspec
-
-
 
 """
 Shared models
 """
 
-ObjectId = Annotated[
+TokenId = Annotated[
     str,
     msgspec.Meta(
         pattern=r"^<[^>]+>$",
-        description="A unique identifier for an object, circumfixed with angle brackets.",
+        description="A unique identifier for a token (i.e. inventory item or pattern), circumfixed with angle brackets.",
     ),
 ]
 
-ObjectRef = Annotated[
+
+TokenRegex = re.compile("<[^>]+>")
+
+ObjectId = Annotated[
     str,
     msgspec.Meta(
-        pattern=r"^\$.+$",
-        description="A reference to an object defined in another file, prefixed with a dollar sign.",
+        description="A unique identifier for an object (grammar file or some data contained within a grammar file).",
     ),
 ]
 
-NonObjectRef = Annotated[
-    str,
-    msgspec.Meta(
-        pattern=r"^[^\$].*$",
-        description="A string that is not an object reference (does not start with a dollar sign).",
-    ),
+PatternStr = Annotated[
+    str, msgspec.Meta(description="A parC-flavored regex string indicating an FSA")
 ]
+
+
+class TransitiveRelation(msgspec.Struct, kw_only=True, frozen=True):
+    input_pattern: PatternStr
+    output_pattern: PatternStr
+
 
 """
 ## Phonology modules
@@ -68,6 +71,10 @@ Phone = Annotated[
 ]
 
 
+class InventoryNode(msgspec.Struct, kw_only=True, frozen=True):
+    id: TokenId
+
+
 class PhonesNode(
     msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="phones"
 ):
@@ -77,9 +84,9 @@ class PhonesNode(
     the reserved symbols: .+*?{}[]()<>.
     """
 
-    id: ObjectId
-    name: str | None = None
+    id: TokenId
     data: tuple[Phone, ...]
+    description: str | None = None
 
 
 class TagsNode(msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="tags"):
@@ -89,34 +96,34 @@ class TagsNode(msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag=
     No other reserved symbols are allowed inside the square brackets.
     """
 
-    id: ObjectId
-    name: str | None = None
+    id: TokenId
     data: tuple[Tag, ...]
+    description: str | None = None
 
 
-class NestedNode(
-    msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="nested"
-):
+class NestedNode(InventoryNode, tag_field="kind", tag="nested"):
     """
     A single inventory node containing an array of nested
     inventory nodes.
     """
 
-    id: ObjectId
-    name: str | None = None
+    id: TokenId
     data: tuple[InventoryNode, ...]
+    description: str | None = None
 
 
-InventoryNode = PhonesNode | TagsNode | NestedNode
+Node = PhonesNode | TagsNode | NestedNode
 
 
-class InventoryFile(msgspec.Struct, kw_only=True, tag_field="kind", tag="Inventory"):
+class InventoryFile(
+    msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="Inventory"
+):
     """
     A file containing an inventory of phones, tags, and nested nodes.
     """
 
+    id: ObjectId
     data: tuple[InventoryNode, ...]
-    source_path: str | None = None
 
 
 class Pattern(msgspec.Struct, kw_only=True, frozen=True):
@@ -132,19 +139,21 @@ class Pattern(msgspec.Struct, kw_only=True, frozen=True):
     `acceptor_compilation.py`.
     """
 
-    pattern: str
+    pattern: PatternStr
     test_includes: tuple[str] | None = None
     test_excludes: tuple[str] | None = None
-    name: str | None = None
+    id: ObjectId
 
 
-class PatternFile(msgspec.Struct, kw_only=True, tag_field="kind", tag="Pattern"):
+class PatternFile(
+    msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="Pattern"
+):
     """
     A file containing a list of patterns.
     """
 
+    id: ObjectId
     data: tuple[Pattern, ...]
-    source_path: str | None = None
 
 
 class Token(NamedTuple):
@@ -181,9 +190,9 @@ class SimpleRule(
     A context-sensitive rewrite rule.
     """
 
-    name: str
-    input_pattern: str | None
-    output_pattern: str | None
+    id: ObjectId
+    input_pattern: PatternStr = ""
+    output_pattern: PatternStr = ""
     description: str = ""
     left_context: str = ""
     right_context: str = ""
@@ -196,8 +205,8 @@ class StringMapRule(
     A rule for mapping strings.
     """
 
-    name: str
-    string_map: tuple[tuple[str, str], ...]
+    id: ObjectId
+    string_map: tuple[TransitiveRelation, ...]
     description: str = ""
     left_context: str = ""
     right_context: str = ""
@@ -212,24 +221,23 @@ class RuleSequence(
     which are resolved to rule data up in `fst_compilation.compile_rule`
     """
 
-    name: str
-    rules: tuple[ObjectRef, ...]
+    id: ObjectId
+    rules: tuple[str, ...]
     description: str = ""
 
 
-# A mapping of rule names to their corresponding rule objects.
-# `kind` (declared via tag_field/tag above) discriminates the union on decode
 Rule = SimpleRule | StringMapRule | RuleSequence
 
 
-class RulesFile(msgspec.Struct, kw_only=True, tag_field="kind", tag="Rules"):
-    rules: tuple[Rule, ...]
-    source_path: str | None = None
+class RuleFile(msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="Rule"):
+    id: ObjectId
+    data: tuple[Rule, ...]
 
 
 """
 ## Exponence modules
 
+    id: ObjectId
 Contains the following submodules:
 - FeatureDefinitions
 - FeatureMarkers
@@ -242,19 +250,19 @@ class Feature(msgspec.Struct, kw_only=True, frozen=True):
     A feature with a name and a list of possible values.
     """
 
-    name: str
+    id: ObjectId
     values: tuple[str, ...]
 
 
-class FeatureDefinitionsFile(
-    msgspec.Struct, kw_only=True, tag_field="kind", tag="FeatureDefinitions"
+class FeatureDefinitionFile(
+    msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="FeatureDefinition"
 ):
     """
     A file containing a list of feature definitions.
     """
 
+    id: ObjectId
     data: tuple[Feature, ...]
-    source_path: str | None = None
 
 
 class PrefixMarker(
@@ -264,7 +272,7 @@ class PrefixMarker(
     A marker for a prefix operation.
     """
 
-    value: str
+    form: PatternStr
     stage: str | None = None
 
 
@@ -275,7 +283,7 @@ class SuffixMarker(
     A marker for a suffix operation.
     """
 
-    value: str
+    form: PatternStr
     stage: str | None = None
 
 
@@ -286,7 +294,7 @@ class SuppletionMarker(
     A marker for a suppletion operation.
     """
 
-    value: str
+    form: PatternStr
     stage: str | None = None
 
 
@@ -297,7 +305,7 @@ class RuleMarker(
     A marker that applies a contextual rule.
     """
 
-    value: str
+    rule: str
     stage: str | None = None
 
 
@@ -308,7 +316,7 @@ class ReplaceMarker(
     A marker that applies a context-insensitive A->B replace rule.
     """
 
-    value: tuple[str, str]
+    relation: TransitiveRelation
     stage: str | None = None
 
 
@@ -319,17 +327,10 @@ class PrincipalPartMarker(
     A marker that selects a principal part for the given lexeme.
     """
 
-    value: str
+    principal_part_value: str
 
 
-Marker = (
-    PrefixMarker
-    | SuffixMarker
-    | SuppletionMarker
-    | PrincipalPartMarker
-    | RuleMarker
-    | ReplaceMarker
-)
+Marker = PrefixMarker | SuffixMarker | ReplaceMarker | PrincipalPartMarker | RuleMarker
 
 
 class FeatureMarker(msgspec.Struct, kw_only=True, frozen=True):
@@ -351,26 +352,32 @@ class MultiFeatureMarker(msgspec.Struct, kw_only=True, frozen=True):
 
 
 class FeatureMarkerFile(
-    msgspec.Struct, kw_only=True, tag_field="kind", tag="FeatureMarkers"
+    msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="FeatureMarker"
 ):
     """
     A file containing a list of feature markers.
     """
 
+    id: ObjectId
     data: tuple[FeatureMarker, ...]
     feature: str
-    source_path: str | None = None
+    inherits: str | None = None
 
 
 class MultiFeatureMarkerFile(
-    msgspec.Struct, kw_only=True, tag_field="kind", tag="MultiFeatureMarkers"
+    msgspec.Struct,
+    kw_only=True,
+    frozen=True,
+    tag_field="kind",
+    tag="MultiFeatureMarker",
 ):
     """
     A file containing a list of multi-feature markers.
     """
 
+    id: ObjectId
     data: tuple[MultiFeatureMarker, ...]
-    source_path: str | None = None
+    inherits: str | None = None
 
 
 """
@@ -381,30 +388,33 @@ Contains the following submodules:
 - Paradigm
 """
 
-FeatureCombination = Annotated[
-    dict[str, tuple[str] | Literal["*", "undefined"]],
-    msgspec.Meta(
-        description="Object mapping feature values to an array of strings indicating "
-        + "possible values that feature may take on in the given combination, or a wildcard "
-        + '"*" to indicate the feature may take on any value, or "undefined" to indicate '
-        + "the feature must be undefined in this combination."
-    ),
-]
+
+class FeatureCombination(msgspec.Struct, kw_only=True, frozen=True):
+    """
+    Object mapping feature values to an array of strings indicating "
+    possible values that feature may take on in the given combination, or a wildcard
+    "*" to indicate the feature may take on any value, or "undefined" to indicate
+    the feature must be undefined in this combination.
+    """
+
+    feature_vector: dict[str, tuple[str] | Literal["*", "undefined"]]
+    description: str | None = None
 
 
-class FeatureCombinationsFile(
+class FeatureCombinationFile(
     msgspec.Struct,
     kw_only=True,
     frozen=True,
     tag_field="kind",
-    tag="FeatureCombinations",
+    tag="FeatureCombination",
 ):
     """
     A file specifying a set of licit feature vectors for a given
     feature set.
     """
 
-    part_of_speech: ObjectRef
+    id: ObjectId
+    part_of_speech: str
     data: tuple[FeatureCombination, ...]
 
 
@@ -414,11 +424,48 @@ class ParadigmFilter(msgspec.Struct, kw_only=True, frozen=True):
     certain lexical features or whether they match a given regex pattern.
     """
 
-    lexical_features: dict[str, str] | None = None
-    pattern: str | None = None
+    lexical_feature_values: dict[str, str] | None = None
+    pattern: PatternStr | None = None
 
 
-class ParadigmFile(msgspec.Struct, kw_only=True, tag_field="kind", tag="Paradigm"):
+class FeatureMarkerReference(
+    msgspec.Struct,
+    kw_only=True,
+    frozen=True,
+    tag_field="kind",
+    tag="feature_marker_file",
+):
+    """A reference to a FeatureMarker file that expones the given feature"""
+
+    feature: str
+    feature_marker: str
+
+
+class FixedFeatureValue(
+    msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="fixed_value"
+):
+    """A single feature value the current feature is fixed to for this paradigm"""
+
+    feature: str
+    feature_value: str
+
+
+class MultiFeatureOnly(
+    msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="multi_only"
+):
+    """Indicates the given feature is only exponed by MultiFeatureMarker files"""
+
+    feature: str
+
+
+InflectionalFeatureSpecification = (
+    FeatureMarkerReference | FixedFeatureValue | MultiFeatureOnly
+)
+
+
+class ParadigmFile(
+    msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="Paradigm"
+):
     """
     A file defining a paradigm (or partial paradigm) for a given part of speech.
     The `part_of_speech` and `feature_markers` fields are obligatory. `part_of_speech`
@@ -441,15 +488,16 @@ class ParadigmFile(msgspec.Struct, kw_only=True, tag_field="kind", tag="Paradigm
                                     features for the current paradigm.
     """
 
-    part_of_speech: ObjectRef
+    id: ObjectId
+    part_of_speech: str
+    feature_markers: list[InflectionalFeatureSpecification]
     filter: ParadigmFilter | None = None
-    feature_markers: dict[str, str | None] | None = None
     stage_order: tuple[str, ...] | None = None
     global_markers: tuple[Marker, ...] | None = None
-    feature_value_combinations: ObjectRef | None = None
-    multifeature_markers: tuple[ObjectRef, ...] | None = None
+    feature_value_combinations: str | None = None
+    multifeature_markers: tuple[str, ...] | None = None
 
-    source_path: str | None = None
+    inherits: str | None = None
 
 
 """
@@ -462,11 +510,11 @@ Contains the following submodules:
 
 
 class PartOfSpeechFile(
-    msgspec.Struct, kw_only=True, tag_field="kind", tag="PartOfSpeech"
+    msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="PartOfSpeech"
 ):
     """
     A file defining a part of speech and its associated inflectional features.
-    The `name` and `inflectional_features` fields are obligatory.
+    The `id` and `inflectional_features` fields are obligatory.
     Contains the following optional attributes:
     - `lexical_features`:   An array of strings indicating the lexical features
                             associated with the part of speech.
@@ -474,11 +522,10 @@ class PartOfSpeechFile(
                             for a root (e.g., present_stem, past_stem)
     """
 
-    name: str
+    id: ObjectId
     inflectional_features: tuple[str, ...]
     lexical_features: tuple[str, ...] | None = None
     principal_parts: tuple[str, ...] | None = None
-    source_path: str | None = None
 
 
 """
@@ -489,44 +536,77 @@ GrammarFile = (
     InventoryFile
     | PatternFile
     | PartOfSpeechFile
-    | RulesFile
-    | FeatureDefinitionsFile
+    | RuleFile
+    | FeatureDefinitionFile
     | FeatureMarkerFile
     | MultiFeatureMarkerFile
-    | FeatureCombinationsFile
+    | FeatureCombinationFile
     | ParadigmFile
 )
 
-ConfigKindType = Literal[
-    # TODO: FeatureCombinations, MorphemeSet and MorphemeSequence are buggy
-    # so they are commented out for now
-    "ContingentFeatureMarkers",
-    "FeatureCombinations",
-    "FeatureDefinitions",
-    "FeatureMarkers",
-    "Inventory",
-    # "MorphemeSet",
-    "Paradigm",
-    "PartOfSpeech",
-    "Patterns",
-    "Rules",
-]
-CONFIG_KINDS: tuple[str, ...] = get_args(ConfigKindType)
 
 CONFIG_KIND_TO_STRUCT: dict[str, msgspec.Struct] = {
-# TODO
+    "MultiFeatureMarker": MultiFeatureMarkerFile,
+    "FeatureCombination": FeatureCombinationFile,
+    "FeatureDefinition": FeatureDefinitionFile,
+    "FeatureMarker": FeatureMarkerFile,
+    "Inventory": InventoryFile,
+    "Paradigm": ParadigmFile,
+    "PartOfSpeech": PartOfSpeechFile,
+    "Pattern": PatternFile,
+    "Rule": RuleFile,
 }
 
+CONFIG_KIND_TYPE = Literal[
+    "MultiFeatureMarker",
+    "FeatureCombination",
+    "FeatureDefinition",
+    "FeatureMarker",
+    "Inventory",
+    "Paradigm",
+    "PartOfSpeech",
+    "Pattern",
+    "Rule",
+]
+
+# order to load configs so that later kinds
+# depend on previous
+CONFIG_KINDS_ORDERED = [
+    "Inventory",
+    "Pattern",
+    "Rule",
+    "FeatureDefinition",
+    "PartOfSpeech",
+    "FeatureMarker",
+    "MultiFeatureMarker",
+    "FeatureCombination",
+    "Paradigm",
+]
 
 CONFIG_KIND_TO_PARDIR = {
-    "ContingentFeatureMarkers": "Exponence",
-    "FeatureDefinitions": "Exponence",
-    "FeatureMarkers": "Exponence",
+    "ContingentFeatureMarker": "Exponence",
+    "FeatureDefinition": "Exponence",
+    "FeatureMarker": "Exponence",
+    "MultiFeatureMarker": "Exponence",
     "Inventory": "Phonology",
-    "Rules": "Phonology",
-    "Patterns": "Phonology",
+    "Rule": "Phonology",
+    "Pattern": "Phonology",
     "Paradigm": "Morphotactics",
-    "FeatureCombinations": "Morphotactics",
+    "FeatureCombination": "Morphotactics",
     "PartOfSpeech": "Lexicon",
-    "Wordlists": "Lexicon",
+    "Wordlist": "Lexicon",
 }
+
+"""
+# Internal models
+Data models and structs not directly related to
+YAML config objects.
+"""
+
+StructIdType = tuple[str, str]
+DependencyGraphType = dict[StructIdType, set[StructIdType]]
+StructRegistryType = dict[type[msgspec.Struct], str]
+SourcefileGraphType = dict[StructIdType, str]
+StructErrorGraphType = dict[str, str]
+MtimeGraphType = dict[StructIdType, float]
+StructRegistryType = dict[StructIdType, msgspec.Struct]

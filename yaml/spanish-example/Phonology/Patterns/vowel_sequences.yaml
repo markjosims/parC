@@ -1,5 +1,0 @@
-kind: Patterns
-patterns:
-- name: diphthong
-  pattern: ie|ue|oy|ay|ai
-  ref: <diphthong>

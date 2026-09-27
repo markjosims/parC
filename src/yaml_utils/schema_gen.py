@@ -16,17 +16,16 @@ from pathlib import Path
 import msgspec
 
 from src.constants import SCHEMA_DIR
-from src.models import Rule, RulesFile
-
-
-def generate_rules_schema() -> dict:
-    return msgspec.json.schema(RulesFile)
+from src.models import CONFIG_KIND_TO_PARDIR, CONFIG_KIND_TO_STRUCT
 
 
 def main() -> None:
-    schema = generate_rules_schema()
-    out_path = Path(SCHEMA_DIR) / "Rules.json"
-    out_path.write_text(json.dumps(schema, indent=2) + "\n")
+    for kind, struct in CONFIG_KIND_TO_STRUCT.items():
+        pardir = Path(SCHEMA_DIR) / CONFIG_KIND_TO_PARDIR[kind]
+        pardir.mkdir(exist_ok=True)
+        schema = msgspec.json.schema(struct)
+        out_path = pardir / f"{kind}.json"
+        out_path.write_text(json.dumps(schema, indent=2) + "\n")
     print(f"Wrote {out_path}")
 
 

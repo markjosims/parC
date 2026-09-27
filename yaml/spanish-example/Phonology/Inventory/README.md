@@ -8,9 +8,9 @@ Inventory datafiles conform to the following YAML schema:
 kind: Inventory
 data:
     consonant: # name of phone category
-        ref: "<C>" # shorthand for referring to any element in the set
+        id: "<C>" # shorthand for referring to any element in the set
         stop: # name of sub-category
-            ref: "<STOP>"
+            id: "<STOP>"
             # indicate the kind of inventory set by using the 'phones' key
             phones: [p, t, k, b, d, g]
     slot_tags:

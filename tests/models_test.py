@@ -1,41 +1,47 @@
+import json
+
+import msgspec
+from pytest import raises
+
 from src.models import (
-    PhonesNode,
-    StringMapRule,
-    TagsNode,
-    NestedNode,
-    InventoryNode,
+    Feature,
+    FeatureCombinationFile,
+    FeatureCombinationFileRef,
+    FeatureDefinitionFile,
+    FeatureMarker,
+    FeatureMarkerFile,
+    FeatureMarkerFileRef,
+    GrammarFile,
     InventoryFile,
-    _reserved_symbols,
+    InventoryNode,
+    Marker,
+    MultiFeatureMarker,
+    MultiFeatureMarkerFile,
+    MultiFeatureMarkerFileRef,
+    NestedNode,
+    ParadigmFile,
+    ParadigmFilter,
+    PartOfSpeechFile,
+    PartOfSpeechFileRef,
     Pattern,
     PatternFile,
-    RulesFile,
-    SimpleRule,
-    RuleSequence,
-    Feature,
-    FeatureDefinitionsFile,
-    Rule,
-    SuffixMarker,
+    PhonesNode,
     PrefixMarker,
-    ReplaceMarker,
-    RuleMarker,
-    Marker,
     PrincipalPartMarker,
+    ReplaceMarker,
+    Rule,
+    RuleFile,
+    RuleMarker,
+    RuleRef,
+    RuleSequence,
+    SimpleRule,
+    StringMapRule,
+    SuffixMarker,
     SuppletionMarker,
-    FeatureMarker,
-    MultiFeatureMarker,
-    FeatureMarkerFile,
-    MultiFeatureMarkerFile,
-    FeatureCombinationsFile,
-    ParadigmFilter,
-    ParadigmFile,
-    PartOfSpeechFile,
+    TagsNode,
     Token,
-    GrammarFile,
+    _reserved_symbols,
 )
-from pytest import raises
-import json
-import msgspec
-
 
 """
 ## Phonology module tests
@@ -57,7 +63,7 @@ def test_inventory_node_construction():
     phones_node_json = json.loads(phones_node_json_bytes.decode("utf-8"))
     phones_node_json_expected = {
         "id": "<T>",
-        "name": "Test Phones Node",
+        "id": "Test Phones Node",
         "kind": "phones",
         "data": ["p", "t", "k"],
     }
@@ -96,7 +102,7 @@ def test_inventory_node_construction():
 
     inventory_file = InventoryFile(
         data=(phones_node, tags_node, nested_node),
-        source_path="/path/to/inventory.yaml",
+        id="inventory",
     )
     inventory_file_json_bytes = msgspec.json.encode(inventory_file)
     inventory_file_json = json.loads(inventory_file_json_bytes.decode("utf-8"))
@@ -107,7 +113,7 @@ def test_inventory_node_construction():
             tags_node_json_expected,
             nested_node_json_expected,
         ],
-        "source_path": "/path/to/inventory.yaml",
+        "id": "inventory",
     }
     assert inventory_file_json == inventory_file_json_expected
 
@@ -161,7 +167,7 @@ def test_inventory_node_union_construction():
 
     inventory_file = InventoryFile(
         data=(phones_node, tags_node, nested_node),
-        source_path="/path/to/inventory.yaml",
+        id="inventory",
     )
     inventory_file_json = {
         "kind": "Inventory",
@@ -170,7 +176,7 @@ def test_inventory_node_union_construction():
             tags_node_json,
             nested_node_json,
         ],
-        "source_path": "/path/to/inventory.yaml",
+        "id": "inventory",
     }
     inventory_file_from_union = msgspec.convert(inventory_file_json, GrammarFile)
     assert inventory_file == inventory_file_from_union
@@ -289,12 +295,12 @@ def test_pattern_file_construction():
     """
     Test that the pattern file can be instantiated and serialized/deserialized
     """
-    pattern1 = Pattern(pattern="<C><V><C>?", name="Syllable")
-    pattern2 = Pattern(pattern="<V><TBU><N>o", name="Some suffix")
-    pattern3 = Pattern(pattern="(<C>|s{^<Fricative>})", name="Onset")
+    pattern1 = Pattern(pattern="<C><V><C>?", id="Syllable")
+    pattern2 = Pattern(pattern="<V><TBU><N>o", id="Some suffix")
+    pattern3 = Pattern(pattern="(<C>|s{^<Fricative>})", id="Onset")
     pattern_file = PatternFile(
         data=(pattern1, pattern2, pattern3),
-        source_path="/path/to/patterns.yaml",
+        id="patterns",
     )
     pattern_file_json_bytes = msgspec.json.encode(pattern_file)
     pattern_file_json = json.loads(pattern_file_json_bytes.decode("utf-8"))
@@ -303,24 +309,24 @@ def test_pattern_file_construction():
         "data": [
             {
                 "pattern": "<C><V><C>?",
-                "name": "Syllable",
+                "id": "Syllable",
                 "test_includes": None,
                 "test_excludes": None,
             },
             {
                 "pattern": "<V><TBU><N>o",
-                "name": "Some suffix",
+                "id": "Some suffix",
                 "test_includes": None,
                 "test_excludes": None,
             },
             {
                 "pattern": "(<C>|s{^<Fricative>})",
-                "name": "Onset",
+                "id": "Onset",
                 "test_includes": None,
                 "test_excludes": None,
             },
         ],
-        "source_path": "/path/to/patterns.yaml",
+        "id": "patterns",
     }
     assert pattern_file_json == pattern_file_json_expected
 
@@ -332,7 +338,7 @@ def test_pattern_doesnt_reject_ungrammatical_strings():
     """
 
     for symbol in _reserved_symbols:
-        pattern = Pattern(pattern=symbol, name="Symbol")
+        pattern = Pattern(pattern=symbol, id="Symbol")
 
     nonsense_braces_pattern = Pattern(pattern="}]{)")
 
@@ -347,7 +353,7 @@ def test_rule_construction():
     Test that the rules can be instantiated and serialized/deserialized
     """
     simple_rule = SimpleRule(
-        name="Test Simple Rule",
+        id="Test Simple Rule",
         input_pattern="<C><V>",
         output_pattern="<V><C>",
         description="A simple rule that swaps consonants and vowels.",
@@ -358,7 +364,7 @@ def test_rule_construction():
     simple_rule_json = json.loads(simple_rule_json_bytes.decode("utf-8"))
     simple_rule_json_expected = {
         "kind": "simple",
-        "name": "Test Simple Rule",
+        "id": "Test Simple Rule",
         "input_pattern": "<C><V>",
         "output_pattern": "<V><C>",
         "description": "A simple rule that swaps consonants and vowels.",
@@ -368,7 +374,7 @@ def test_rule_construction():
     assert simple_rule_json == simple_rule_json_expected
 
     string_map_rule = StringMapRule(
-        name="Test String Map Rule",
+        id="Test String Map Rule",
         string_map=(("a", "b"), ("c", "d")),
         description="A rule that maps strings.",
         left_context="<S>",
@@ -378,7 +384,7 @@ def test_rule_construction():
     string_map_rule_json = json.loads(string_map_rule_json_bytes.decode("utf-8"))
     string_map_rule_json_expected = {
         "kind": "string_map",
-        "name": "Test String Map Rule",
+        "id": "Test String Map Rule",
         "string_map": [["a", "b"], ["c", "d"]],
         "description": "A rule that maps strings.",
         "left_context": "<S>",
@@ -387,16 +393,16 @@ def test_rule_construction():
     assert string_map_rule_json == string_map_rule_json_expected
 
     rule_sequence = RuleSequence(
-        name="Test Rule Sequence",
-        rules=("$rule1", "$rule2", "$rule3"),
+        id="Test Rule Sequence",
+        rules=("rule1", "rule2", "rule3"),
         description="A sequence of rules.",
     )
     rule_sequence_json_bytes = msgspec.json.encode(rule_sequence)
     rule_sequence_json = json.loads(rule_sequence_json_bytes.decode("utf-8"))
     rule_sequence_json_expected = {
         "kind": "rule_sequence",
-        "name": "Test Rule Sequence",
-        "rules": ["$rule1", "$rule2", "$rule3"],
+        "id": "Test Rule Sequence",
+        "rules": ["rule1", "rule2", "rule3"],
         "description": "A sequence of rules.",
     }
     assert rule_sequence_json == rule_sequence_json_expected
@@ -407,7 +413,7 @@ def test_rule_union_constructor():
     Test that the generic Rule class can construct various Rule kinds.
     """
     simple_rule = SimpleRule(
-        name="Test Simple Rule",
+        id="Test Simple Rule",
         input_pattern="<C><V>",
         output_pattern="<V><C>",
         description="A simple rule that swaps consonants and vowels.",
@@ -416,7 +422,7 @@ def test_rule_union_constructor():
     )
     simple_rule_json = {
         "kind": "simple",
-        "name": "Test Simple Rule",
+        "id": "Test Simple Rule",
         "input_pattern": "<C><V>",
         "output_pattern": "<V><C>",
         "description": "A simple rule that swaps consonants and vowels.",
@@ -427,7 +433,7 @@ def test_rule_union_constructor():
     assert simple_rule == simple_rule_from_union
 
     string_map_rule = StringMapRule(
-        name="Test String Map Rule",
+        id="Test String Map Rule",
         string_map=(("a", "b"), ("c", "d")),
         description="A rule that maps strings.",
         left_context="<S>",
@@ -435,7 +441,7 @@ def test_rule_union_constructor():
     )
     string_map_rule_json = {
         "kind": "string_map",
-        "name": "Test String Map Rule",
+        "id": "Test String Map Rule",
         "string_map": [["a", "b"], ["c", "d"]],
         "description": "A rule that maps strings.",
         "left_context": "<S>",
@@ -444,15 +450,23 @@ def test_rule_union_constructor():
     string_map_rule_from_union = msgspec.convert(string_map_rule_json, Rule)
     assert string_map_rule == string_map_rule_from_union
 
+    rule1_ref = RuleRef(ref="rule1")
+    rule2_ref = RuleRef(ref="rule2")
+    rule3_ref = RuleRef(ref="rule3")
     rule_sequence = RuleSequence(
-        name="Test Rule Sequence",
-        rules=("$rule1", "$rule2", "$rule3"),
+        id="Test Rule Sequence",
+        rules=(rule1_ref, rule2_ref, rule3_ref),
         description="A sequence of rules.",
     )
+
     rule_sequence_json = {
         "kind": "rule_sequence",
-        "name": "Test Rule Sequence",
-        "rules": ["$rule1", "$rule2", "$rule3"],
+        "id": "Test Rule Sequence",
+        "rules": [
+            {"kind": "Rule", "ref": "rule1"},
+            {"kind": "Rule", "ref": "rule2"},
+            {"kind": "Rule", "ref": "rule3"},
+        ],
         "description": "A sequence of rules.",
     }
     rule_sequence_from_union = msgspec.convert(rule_sequence_json, Rule)
@@ -461,18 +475,18 @@ def test_rule_union_constructor():
 
 def test_rule_sequence_rejects_malformed_string():
     """
-    Test that the RuleSequence rejects strings missing the '$' prefix
+    Test that the RuleSequence rejects strings missing the '' prefix
     """
     with raises(msgspec.ValidationError):
         msgspec.convert(
             {
                 "kind": "rule_sequence",
-                "name": "Test Rule Sequence",
+                "id": "Test Rule Sequence",
                 "rules": (
                     "rule1",
-                    "$rule2",
-                    "$rule3",
-                ),  # Invalid: "rule1" is missing the '$' prefix
+                    "rule2",
+                    "rule3",
+                ),  # Invalid: "rule1" is missing the '' prefix
                 "description": "A sequence of rules.",
             },
             RuleSequence,
@@ -486,32 +500,32 @@ Morphology tests
 
 def test_feature_construction():
     tense_feature = Feature(
-        name="Tense",
+        id="Tense",
         values=("past", "present", "future"),
     )
     tense_feature_json_bytes = msgspec.json.encode(tense_feature)
     tense_feature_json = json.loads(tense_feature_json_bytes.decode("utf-8"))
     tense_feature_json_expected = {
-        "name": "Tense",
+        "id": "Tense",
         "values": ["past", "present", "future"],
     }
     assert tense_feature_json == tense_feature_json_expected
 
     mood_feature = Feature(
-        name="Mood",
+        id="Mood",
         values=("indicative", "subjunctive", "imperative"),
     )
     mood_feature_json_bytes = msgspec.json.encode(mood_feature)
     mood_feature_json = json.loads(mood_feature_json_bytes.decode("utf-8"))
     mood_feature_json_expected = {
-        "name": "Mood",
+        "id": "Mood",
         "values": ["indicative", "subjunctive", "imperative"],
     }
     assert mood_feature_json == mood_feature_json_expected
 
-    feature_definitions_file = FeatureDefinitionsFile(
+    feature_definitions_file = FeatureDefinitionFile(
         data=(tense_feature, mood_feature),
-        source_path="/path/to/feature_definitions.yaml",
+        id="verb_features",
     )
     feature_definitions_file_json_bytes = msgspec.json.encode(feature_definitions_file)
     feature_definitions_file_json = json.loads(
@@ -523,7 +537,7 @@ def test_feature_construction():
             tense_feature_json_expected,
             mood_feature_json_expected,
         ],
-        "source_path": "/path/to/feature_definitions.yaml",
+        "id": "verb_features",
     }
     assert feature_definitions_file_json == feature_definitions_file_json_expected
 
@@ -614,14 +628,14 @@ def test_feature_marker_construction():
     }
     assert fm_json == fm_json_expected
 
-    fm_file = FeatureMarkerFile(data=(fm,), feature="Tense", source_path="/path/to/fm.yaml")
+    fm_file = FeatureMarkerFile(data=(fm,), feature="Tense", id="tense_markers")
     fm_file_json_bytes = msgspec.json.encode(fm_file)
     fm_file_json = json.loads(fm_file_json_bytes.decode("utf-8"))
     fm_file_json_expected = {
         "kind": "FeatureMarkers",
         "data": [fm_json_expected],
         "feature": "Tense",
-        "source_path": "/path/to/fm.yaml",
+        "id": "tense_markers",
     }
     assert fm_file_json == fm_file_json_expected
 
@@ -642,36 +656,38 @@ def test_multifeature_marker_construction():
     }
     assert mfm_json == mfm_json_expected
 
-    mfm_file = MultiFeatureMarkerFile(data=(mfm,), source_path="/path/to/mfm.yaml")
+    mfm_file = MultiFeatureMarkerFile(data=(mfm,), id="mf_markers")
     mfm_file_json_bytes = msgspec.json.encode(mfm_file)
     mfm_file_json = json.loads(mfm_file_json_bytes.decode("utf-8"))
     mfm_file_json_expected = {
         "kind": "MultiFeatureMarkers",
         "data": [mfm_json_expected],
-        "source_path": "/path/to/mfm.yaml",
+        "id": "mf_markers",
     }
     assert mfm_file_json == mfm_file_json_expected
 
 
 def test_feature_combinations_file_and_validation():
     """
-    Test FeatureCombinationsFile serialization and validation for ObjectRef
+    Test FeatureCombinationFile serialization and validation for ObjectRef
     """
     fc1 = {"Tense": ("past", "present")}
     fc2 = {"Mood": "*"}
-    fc_file = FeatureCombinationsFile(part_of_speech="$pos", data=(fc1, fc2))
+    fc_file = FeatureCombinationFile(
+        part_of_speech=PartOfSpeechFileRef(ref="pos"), data=(fc1, fc2)
+    )
     fc_file_json_bytes = msgspec.json.encode(fc_file)
     fc_file_json = json.loads(fc_file_json_bytes.decode("utf-8"))
     fc_file_json_expected = {
         "kind": "FeatureCombinations",
-        "part_of_speech": "$pos",
+        "part_of_speech": {"kind": "PartOfSpeech", "ref": "pos"},
         "data": [{"Tense": ["past", "present"]}, {"Mood": "*"}],
     }
     assert fc_file_json == fc_file_json_expected
 
-    # Validation: part_of_speech must be an ObjectRef (start with $)
+    # Validation: part_of_speech must be an ObjectRef (start with )
     with raises(msgspec.ValidationError):
-        msgspec.convert({"part_of_speech": "pos", "data": []}, FeatureCombinationsFile)
+        msgspec.convert({"part_of_speech": "pos", "data": []}, FeatureCombinationFile)
 
 
 def test_paradigm_and_part_of_speech_file_construction_and_union():
@@ -680,46 +696,59 @@ def test_paradigm_and_part_of_speech_file_construction_and_union():
     """
     pfilt = ParadigmFilter(lexical_features={"lemma": "run"}, pattern="^r")
     paradigm = ParadigmFile(
-        part_of_speech="$pos",
+        part_of_speech=PartOfSpeechFileRef(ref="pos"),
         filter=pfilt,
-        feature_markers={"Tense": "$tense_markers", "Mood": "present", "X": None},
+        feature_markers={
+            "Tense": FeatureMarkerFileRef(ref="tense_markers"),
+            "Mood": "present",
+            "X": None,
+        },
         stage_order=("stage1", "stage2"),
         global_markers=(PrefixMarker(value="pre-", stage=None),),
-        feature_value_combinations="$fvc",
-        multifeature_markers=("$m1",),
-        source_path="/path/to/paradigm.yaml",
+        feature_value_combinations=FeatureCombinationFileRef(ref="verb_features"),
+        multifeature_markers=(
+            MultiFeatureMarkerFileRef(
+                ref="m1",
+            ),
+        ),
+        id="paradigm",
     )
     paradigm_json_bytes = msgspec.json.encode(paradigm)
     paradigm_json = json.loads(paradigm_json_bytes.decode("utf-8"))
     paradigm_json_expected = {
         "kind": "Paradigm",
-        "part_of_speech": "$pos",
+        "part_of_speech": {"kind": "PartOfSpeech", "ref": "pos"},
         "filter": {"lexical_features": {"lemma": "run"}, "pattern": "^r"},
-        "feature_markers": {"Tense": "$tense_markers", "Mood": "present", "X": None},
+        "feature_markers": {
+            "Tense": {"kind": "FeatureMarkers", "ref": "tense_markers"},
+            "Mood": "present",
+            "X": None,
+        },
         "stage_order": ["stage1", "stage2"],
         "global_markers": [{"kind": "prefix", "value": "pre-", "stage": None}],
-        "feature_value_combinations": "$fvc",
-        "multifeature_markers": ["$m1"],
-        "source_path": "/path/to/paradigm.yaml",
+        "feature_value_combinations": {
+            "kind": "FeatureCombinations",
+            "ref": "verb_features",
+        },
+        "multifeature_markers": [{"kind": "MultiFeatureMarkers", "ref": "m1"}],
+        "id": "paradigm",
     }
     assert paradigm_json == paradigm_json_expected
 
     pos = PartOfSpeechFile(
-        name="Verb",
         inflectional_features=("Tense", "Mood"),
         lexical_features=("lemma",),
         principal_parts=("present_stem", "past_stem"),
-        source_path="/path/to/pos.yaml",
+        id="verb",
     )
     pos_json_bytes = msgspec.json.encode(pos)
     pos_json = json.loads(pos_json_bytes.decode("utf-8"))
     pos_json_expected = {
         "kind": "PartOfSpeech",
-        "name": "Verb",
         "inflectional_features": ["Tense", "Mood"],
         "lexical_features": ["lemma"],
         "principal_parts": ["present_stem", "past_stem"],
-        "source_path": "/path/to/pos.yaml",
+        "id": "verb",
     }
     assert pos_json == pos_json_expected
 

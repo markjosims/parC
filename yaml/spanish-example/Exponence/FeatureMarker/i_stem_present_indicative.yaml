@@ -1,33 +1,40 @@
 # This is a FeatureMarkers config file
 # Define morphological formatives for a single linguistic feature.
-kind: FeatureMarkers
+kind: FeatureMarker
+id: i_stem_present_indicative
 # Name of the feature, e.g., person , tense, gender
 feature: person_number
 
-markers:
+data:
 
   # type mk-item to add a new feature marker!
-  1sg:
+- feature_value: 1sg
+  markers:
   - kind: suffix
-    value: -o
+    form: -o
   - kind: principal_part
-    value: first_singular
+    principal_part_value: first_singular
     # type mk-add to add a new marker for the current feature value!
-  2sg:
+- feature_value: 2sg
+  markers:
   - kind: suffix
-    value: -es
-  3sg:
+    form: -es
+- feature_value: 3sg
+  markers:
   - kind: suffix
-    value: -e
-  1pl:
+    form: -e
+- feature_value: 1pl
+  markers:
   - kind: suffix
-    value: -imos
-  2pl:
+    form: -imos
+- feature_value: 2pl
+  markers:
   - kind: suffix
-    value: -ís
-  3pl:
+    form: -ís
+- feature_value: 3pl
+  markers:
   - kind: suffix
-    value: -en
+    form: -en
 
 ### HELP FOR MARKERS ###
 # Here we define morphological formatives for each feature value.
@@ -65,4 +72,4 @@ markers:
 # Optional: markers/rules applied to all forms in this paradigm
 # global_markers:
 #   - kind: prefix
-#     value: ge-
+#     value: ge-i_stem_present_indicative

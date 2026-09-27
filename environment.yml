@@ -1,4 +1,4 @@
-name: parC
+description: parC
 channels:
   - conda-forge
   - defaults

@@ -1,14 +1,15 @@
+import os
+
+import numpy as np
+import pandas as pd
+from frozendict import frozendict
 from loguru import logger
 
 from src.constants import get_yaml_dir
 from src.yaml_utils.yaml_server import get_yaml_data_safe
-import pandas as pd
-import os
-import numpy as np
-from frozendict import frozendict
 
 
-def load_lexicon_df(lexicon_basename: str) -> pd.DataFrame:
+def load_lexicon_df(lexicon_basedescription: str) -> pd.DataFrame:
     lexicon_dir = os.path.join(get_yaml_dir(), "Lexicon", "Wordlists")
     lexicon_stem = os.path.splitext(lexicon_basename.removeprefix("$"))[0]
 
@@ -24,7 +25,7 @@ def load_lexicon_df(lexicon_basename: str) -> pd.DataFrame:
         return pd.read_csv(csv_path, keep_default_na=False)
 
 
-def init_lexicon(lexicon_basename: str, lexicon_path: str) -> None:
+def init_lexicon(lexicon_basedescription: str, lexicon_path: str) -> None:
     part_of_speech = get_yaml_data_safe(
         yaml_basename=lexicon_basename, kind="PartOfSpeech"
     )
@@ -35,13 +36,14 @@ def init_lexicon(lexicon_basename: str, lexicon_path: str) -> None:
     df.to_csv(lexicon_path, index=False)
 
 
-def get_roots(lexicon_basename: str) -> list[str]:
+def get_roots(lexicon_basedescription: str) -> list[str]:
     lexicon_df = load_lexicon_df(lexicon_basename)
     return lexicon_df["root"].tolist()
 
 
 def get_roots_with_lexical_features(
-    lexicon_basename: str, lexical_features: set[tuple[str, str]] | dict[str, str]
+    lexicon_basedescription: str,
+    lexical_features: set[tuple[str, str]] | dict[str, str],
 ) -> list[str]:
     if isinstance(lexical_features, (dict, frozendict)):
         lexical_features = set(lexical_features.items())
@@ -55,7 +57,7 @@ def get_roots_with_lexical_features(
 
 
 def get_features_for_root(
-    lexicon_basename: str, root: str
+    lexicon_basedescription: str, root: str
 ) -> tuple[tuple[str, str], ...]:
     df = load_lexicon_df(lexicon_basename)
     part_of_speech = get_yaml_data_safe(
@@ -69,7 +71,7 @@ def get_features_for_root(
 
 
 def get_principal_part_for_root(
-    lexicon_basename: str,
+    lexicon_basedescription: str,
     root: str,
     principal_part: str,
     fallback_to_root: bool = True,
@@ -86,7 +88,7 @@ def get_principal_part_for_root(
 
 
 def get_principal_part_for_all_roots(
-    lexicon_basename: str, principal_part: str, fallback_to_root: bool = True
+    lexicon_basedescription: str, principal_part: str, fallback_to_root: bool = True
 ) -> list[str]:
     df = load_lexicon_df(lexicon_basename)
     if fallback_to_root:
@@ -94,7 +96,7 @@ def get_principal_part_for_all_roots(
     return df[principal_part].tolist()
 
 
-def get_gloss_for_root(lexicon_basename: str, root: str) -> str | None:
+def get_gloss_for_root(lexicon_basedescription: str, root: str) -> str | None:
     df = load_lexicon_df(lexicon_basename)
     row = df[df["root"] == root]
     if not row.empty:
@@ -102,7 +104,7 @@ def get_gloss_for_root(lexicon_basename: str, root: str) -> str | None:
     return None
 
 
-def get_roots_with_gloss(lexicon_basename: str, gloss: str) -> list[str]:
+def get_roots_with_gloss(lexicon_basedescription: str, gloss: str) -> list[str]:
     df = load_lexicon_df(lexicon_basename)
     filtered_df = df[df["gloss"] == gloss]
     return filtered_df["root"].tolist()

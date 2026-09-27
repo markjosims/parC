@@ -1,18 +1,18 @@
 import os
+from functools import lru_cache, wraps
+from glob import glob
 
 import pynini
+from frozendict import frozendict
 from loguru import logger
 
 from src.constants import get_yaml_dir
-from functools import lru_cache, wraps
-from glob import glob
-from frozendict import frozendict
 
 CACHE_DIR = os.path.join(get_yaml_dir(), ".cache")
 _SYMS_PATH = os.path.join(CACHE_DIR, "symbol_table.syms")
 
 
-def _fst_path(kind: str, name: str, fst_kind: str) -> str:
+def _fst_path(kind: str, description: str, fst_kind: str) -> str:
     return os.path.join(CACHE_DIR, kind, f"{name}.{fst_kind}.fst")
 
 
@@ -35,7 +35,9 @@ def is_syms_cache_valid(*source_dirs: str) -> bool:
     return False
 
 
-def is_fst_cache_valid(kind: str, name: str, fst_kind: str, *source_dirs: str) -> bool:
+def is_fst_cache_valid(
+    kind: str, description: str, fst_kind: str, *source_dirs: str
+) -> bool:
     if _is_valid(_fst_path(kind, name, fst_kind), *source_dirs):
         return True
     logger.info(f"Fst of kind {kind} {fst_kind} for {name} invalidated.")
@@ -56,13 +58,13 @@ def load_symbol_table() -> pynini.SymbolTable | None:
         return None
 
 
-def save_fst(kind: str, name: str, fst_kind: str, fst: pynini.Fst) -> None:
+def save_fst(kind: str, description: str, fst_kind: str, fst: pynini.Fst) -> None:
     path = _fst_path(kind, name, fst_kind)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     fst.write(path)
 
 
-def load_fst(kind: str, name: str, fst_kind: str) -> pynini.Fst | None:
+def load_fst(kind: str, description: str, fst_kind: str) -> pynini.Fst | None:
     path = _fst_path(kind, name, fst_kind)
     if not os.path.exists(path):
         return None

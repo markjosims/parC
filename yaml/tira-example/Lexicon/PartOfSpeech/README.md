@@ -5,7 +5,7 @@ A part of speech config must correspond to a CSV file in the `data/lexicon` fold
 A sample `PartOfSpeech` config is given below.
 ```yaml
 kind: PartOfSpeech
-name: adjective
+description: adjective
 features:
   - number
   - gender
@@ -15,7 +15,7 @@ This describes morphological features which are inherent to the word, like e.g. 
 This allows features to be listed in the gloss for a word (e.g. perro `dog<m,sg>`) but not associated with any morphological formative in inflection.
 ```yaml
 kind: PartOfSpeech
-name: noun
+description: noun
 features:
   - number
 lexical_features:
@@ -30,7 +30,7 @@ There may be cases, however, where it is useful to define a feature which is pur
 For example, we may assign the lexical features 'ablaut_pattern' and 'past_suffix_kind' to the part of speech 'verb', which describe the particular pattern of ablaut alternations or past suffixes the verb takes.
 ```yaml
 kind: PartOfSpeech
-name: verb
+description: verb
 features:
   - tense
   - person
@@ -58,7 +58,7 @@ This allows specifying a number of alternate stems for a particular root which c
 See the [paradigm documentation](config/paradigms/README.md) and [lexicon documentation](config/lexicon/README.md) for more information.
 ```yaml
 kind: PartOfSpeech
-name: verb
+description: verb
 features:
   - tense
   - person

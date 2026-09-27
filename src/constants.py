@@ -1,17 +1,17 @@
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 # filepaths
-PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
+PROJECT_ROOT = Path(__file__).parent.parent
 
-SCHEMA_DIR = os.path.join(PROJECT_ROOT, "schemas")
+SCHEMA_DIR = PROJECT_ROOT / "schemas"
 
 
-def get_yaml_dir():
-    load_dotenv(os.path.join(PROJECT_ROOT, "parC.env"))
-    return os.environ.get("YAML_DIR") or os.path.join(
-        PROJECT_ROOT, "yaml", "spanish-example"
-    )
+def get_yaml_dir() -> Path:
+    load_dotenv(PROJECT_ROOT / "parC.env")
+    return Path(os.environ.get("YAML_DIR")) or PROJECT_ROOT / "yaml" / "spanish-example"
 
 
 def set_yaml_dir(path: str):

@@ -1,13 +1,20 @@
 # This is a Paradigm config file
 # Define an inflectional paradigm or sub-paradigm for a specific part of speech.
 kind: Paradigm
-part_of_speech: $verb # Part of speech reference, e.g., $verb
+part_of_speech: verb # Part of speech reference, e.g., $verb
 
+id: verb_a_stem
 feature_markers:
   # add feature markers here! See below for examples.
-  person_number: $a_stem_present_indicative
-  tense: present
-  mood: indicative
+- kind: feature_marker_file
+  feature: person_number
+  feature_marker: a_stem_present_indicative
+- kind: fixed_value
+  feature: tense
+  feature_value: present
+- kind: fixed_value
+  feature: mood
+  feature_value: indicative
   # Map features to marker file references (start with $)
   # to indicate which markers expone that feature.
   # If the paradigm is for a fixed feature value (e.g.

@@ -144,19 +144,19 @@ def health_check():
 
 class InflectRequest(BaseModel):
     kind: str = "Paradigm"
-    name: str
+    description: str
     root: str
     features: dict[str, str]
 
 
 class ParseRequest(BaseModel):
     kind: str = "Paradigm"
-    name: str
+    description: str
     form: str
 
 
 class ParadigmInfo(BaseModel):
-    name: str
+    description: str
     features: list[str]
     lexical_features: list[str]
 
@@ -188,7 +188,7 @@ def inflection_meta():
 
 
 @app.get("/roots")
-def get_roots_route(kind: str, name: str):
+def get_roots_route(kind: str, description: str):
     """
     Get the roots of a paradigm or lexicon.
     """
@@ -202,7 +202,7 @@ def get_roots_route(kind: str, name: str):
 
 
 @app.get("/lexical-features")
-def get_lexical_features(kind: str, name: str, root: str):
+def get_lexical_features(kind: str, description: str, root: str):
     """
     Get the lexical features of a single root in a paradigm or lexicon.
     """
@@ -319,7 +319,7 @@ def api_test_rule(req: TestRuleRequest):
 
 class SearchRequest(BaseModel):
     kind: str = "Paradigm"
-    name: str
+    description: str
     form: str
     nshortest: int = 10
 

@@ -1,0 +1,7 @@
+kind: FeatureDefinition
+data:
+  - id: gender
+    values: [masculine, feminine]
+  - id: number
+    values: [sg, pl]
+id: nominals_and_adnominals
