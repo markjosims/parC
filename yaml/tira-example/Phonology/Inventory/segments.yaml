@@ -7,59 +7,76 @@ data:
   # type inv-phones, inv-tags or inv-nested to add more nodes!
   - description: Consonants
     id: <C>
-    children:
+    kind: nested
+    data:
       - description: stops
         id: <Stop>
-        children:
+        kind: nested
+        data:
           - description: voiced stops
             id: <VoicedStop>
-            children:
+            kind: nested
+            data:
               - description: Voiced stops
                 id: <VoicedStop>
-                phones: [b, d, ɟ, g]
+                kind: phones
+                data: [b, d, ɟ, g]
           - description: voiceless stops
             id: <VoicelessStop>
-            phones: [p, t, c, k]
+            kind: phones
+            data: [p, t, c, k]
       - description: fricatives
         id: <Frc>
-        children:
+        kind: nested
+        data:
           - description: voiced fricatives
             id: <VoicedFrc>
-            phones: [v, ð]
+            kind: phones
+            data: [v, ð]
           - description: voiceless fricative
             id: <VoicelessFrc>
-            phones: [s]
+            kind: phones
+            data: [s]
       - description: sonorants
         id: <Son>
-        children:
+        kind: nested
+        data:
           - description: nasals
             id: <N>
-            phones: [m, n, ɲ, ŋ]
+            kind: phones
+            data: [m, n, ɲ, ŋ]
           - description: liquids
             id: <Liq>
-            phones: [r, ɾ, ɽ, l]
+            kind: phones
+            data: [r, ɾ, ɽ, l]
           - description: glides
             id: <Glide>
-            phones: [j, w]
+            kind: phones
+            data: [j, w]
   - description: vowels
     id: <V>
-    children:
+    kind: nested
+    data:
       - description: high vowels
         id: <Vhi>
-        phones: [i, u]
+        kind: phones
+        data: [i, u]
       - description: mid vowels
         id: <Vmid>
-        phones: [e, o, ɛ, ɜ, ɔ]
+        kind: phones
+        data: [e, o, ɛ, ɜ, ɔ]
       - description: low vowels
         id: <Vlo>
-        phones: [a]
+        kind: phones
+        data: [a]
       - description: tone
         id: <T>
         # \u0301: combining acute (high tone)
         # \u0300: combining acute (high tone)
         # \u0302: combining grave (falling tone)
         # \u030C: combining caron (rising tone)
-        phones: ["\u0301", "\u0300", "\u0302", "\u030C"]
+        kind: phones
+        data: ["\u0301", "\u0300", "\u0302", "\u030C"]
 
 ## HELP FOR INVENTORY ##
 # The inventory is built as a nested tree
@@ -69,8 +86,8 @@ data:
 #   description: A natural description of the node
 #   id: A shorthand to refer to the node in parC
 #     must be wrapped in <angle_brackets> and contain no spaces
-#   children OR phones OR tags
-#     children: nested nodes
+#   nested OR phones OR tags
+#     nested: nested nodes
 #     phones: list of phones, each phone may be a single letter or multiple,
 #       separated by commas e.g. [p, t, tʃ, k]
 #       optionally wrapped in quotes e.g. ["p", "t", "tʃ", "k"]
@@ -84,7 +101,7 @@ data:
 
 # - description: consonants
 #   id: <C>
-#   children:
+#   nested:
 #   - description: Stops
 #     id: <Stp>
 #     phones: [p, t, k, b, d, g]
@@ -93,7 +110,7 @@ data:
 #     phones: [m, n, ŋ]
 # - description: vowels
 #   id: <V>
-#   children:
+#   nested:
 #   - description: high vowels
 #     id: <V_High>
 #     phones: [i, u]

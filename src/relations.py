@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, NamedTuple, TypedDict
+from typing import Literal, NamedTuple
 from venv import logger
 
 import msgspec
@@ -11,7 +11,9 @@ from src.models import (
     ParadigmFile,
     PartOfSpeechFile,
     Rule,
+    StructIdType,
     StructRegistryType,
+    resolve_struct_name_from_type,
 )
 
 """
@@ -149,31 +151,62 @@ _relations: dict[str, RelationType | tuple[RelationType, ...]] = {
 _validated_fields = set(_relations.keys())
 
 
-def validate_relation(
+def resolve_reference(
     struct: msgspec.Struct,
     field: str,
     registry: StructRegistryType,
     relation: RelationType,
-):
+) -> StructIdType | list[StructIdType] | None:
+    target_struct_name = resolve_struct_name_from_type(relation.target)
     field_value = getattr(struct, field)
-    if type(relation) is Reference:
-        target_struct_name = relation.target.__name__
-        if relation.many:
-            for id_str in field_value:
-                try:
-                    target = registry[(id_str, target_struct_name)]
-                except Exception as e:
-                    logger.exception(e)
-        else:
+    if relation.many:
+        for id_str in field_value:
+            relation_list = []
             try:
-                target = registry[(field_value, target_struct_name)]
+                target_id = (id_str, target_struct_name)
+                target = registry[target_id]
+                relation_list.append(target_id)
             except Exception as e:
                 logger.exception(e)
+            logger.debug(
+                f"Loaded reference to {relation_list} from field {field} in struct {struct}"
+            )
+            return relation_list or None
+    else:
+        target_id = (field_value, target_struct_name)
+        registry[target_id]
+        try:
+            target_id = (field_value, target_struct_name)
+            target = registry[target_id]
+            logger.debug(
+                f"Loaded reference to {relation} from field {field} in struct {struct}"
+            )
+            return target_id
+        except Exception as e:
+            logger.exception(e)
 
 
-def validate_struct_relations(struct: msgspec.Struct, registry: StructRegistryType):
+def validate_relation(
+    struct: msgspec.Struct,
+    parent: msgspec.Struct,
+    field: str,
+    registry: StructRegistryType,
+    relation: RelationType,
+) -> StructIdType | list[StructIdType] | None:
+    if type(relation) is Reference:
+        return resolve_reference(struct, field, registry, relation)
+    elif type(relation) is Constraint:
+        ...
+
+
+def validate_struct_relations(
+    struct: msgspec.Struct,
+    registry: StructRegistryType,
+    parent: msgspec.Struct | None = None,
+):
     fields_to_validate = _validated_fields & set(struct.__struct_fields__)
     relations = []
+    target_ids = []
     for field in fields_to_validate:
         field_value = getattr(struct, field)
         if field_value is None:
@@ -186,15 +219,17 @@ def validate_struct_relations(struct: msgspec.Struct, registry: StructRegistryTy
             relations.append((field, field_relation))
     if relations:
         for field, relation in relations:
-            validate_relation(
+            target = validate_relation(
                 struct,
+                parent,
                 field,
                 registry,
                 relation,
             )
-        breakpoint()
-
-
-def validate_all_struct_relations(struct_registry: StructRegistryType):
-    for struct_id, struct in struct_registry.items():
-        validate_struct_relations(struct, struct_registry)
+            if type(target) is list:
+                target_ids.extend(target)
+            elif target is None:
+                pass
+            else:
+                target_ids.append(target)
+    return target_ids

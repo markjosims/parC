@@ -71,10 +71,6 @@ Phone = Annotated[
 ]
 
 
-class InventoryNode(msgspec.Struct, kw_only=True, frozen=True):
-    id: TokenId
-
-
 class PhonesNode(
     msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="phones"
 ):
@@ -101,14 +97,16 @@ class TagsNode(msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag=
     description: str | None = None
 
 
-class NestedNode(InventoryNode, tag_field="kind", tag="nested"):
+class NestedNode(
+    msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="nested"
+):
     """
     A single inventory node containing an array of nested
     inventory nodes.
     """
 
     id: TokenId
-    data: tuple[InventoryNode, ...]
+    data: tuple[Node, ...]
     description: str | None = None
 
 
@@ -123,7 +121,7 @@ class InventoryFile(
     """
 
     id: ObjectId
-    data: tuple[InventoryNode, ...]
+    data: tuple[Node, ...]
 
 
 class Pattern(msgspec.Struct, kw_only=True, frozen=True):
@@ -490,7 +488,7 @@ class ParadigmFile(
 
     id: ObjectId
     part_of_speech: str
-    feature_markers: list[InflectionalFeatureSpecification]
+    feature_markers: tuple[InflectionalFeatureSpecification, ...]
     filter: ParadigmFilter | None = None
     stage_order: tuple[str, ...] | None = None
     global_markers: tuple[Marker, ...] | None = None
@@ -544,6 +542,17 @@ GrammarFile = (
     | ParadigmFile
 )
 
+"""
+## Map structs to names and directory locations
+"""
+
+UNION_TO_NAME = {
+    Rule: "Rule",
+    Marker: "Marker",
+    Node: "Node",
+    InflectionalFeatureSpecification: "InflectionalFeatureSpecification",
+}
+
 
 CONFIG_KIND_TO_STRUCT: dict[str, msgspec.Struct] = {
     "MultiFeatureMarker": MultiFeatureMarkerFile,
@@ -596,6 +605,26 @@ CONFIG_KIND_TO_PARDIR = {
     "PartOfSpeech": "Lexicon",
     "Wordlist": "Lexicon",
 }
+
+
+def resolve_struct_name_from_instance(struct: msgspec.Struct) -> str:
+    for union_struct, name in UNION_TO_NAME.items():
+        if isinstance(struct, union_struct):
+            return name
+    if hasattr(type(struct), "__name__"):
+        return type(struct).__name__
+
+    raise ValueError(f"Unnamed struct types must be registered as a union type.")
+
+
+def resolve_struct_name_from_type(struct_type: type[msgspec.Struct]) -> str:
+    for union_struct, name in UNION_TO_NAME.items():
+        if struct_type == union_struct or struct_type in union_struct.__args__:
+            return name
+    if hasattr(struct_type, "__name__"):
+        return struct_type.__name__
+    raise ValueError(f"Unnamed struct types must be registered as a union type.")
+
 
 """
 # Internal models

@@ -48,7 +48,8 @@ data:
     id: <N>
   description: Consonants
   id: <C>
-- children:
+- kind: nested
+  data:
   - description: High vowels
     kind: phones
     data:
