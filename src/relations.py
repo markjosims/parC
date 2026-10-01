@@ -13,6 +13,7 @@ from src.models import (
     Rule,
     StructIdType,
     StructRegistryType,
+    resolve_struct_name_from_instance,
     resolve_struct_name_from_type,
 )
 
@@ -40,6 +41,9 @@ StructFieldPair = tuple[type[msgspec.Struct], str]
 
 
 class Constraint(NamedTuple):
+    # TODO: may wish to specify for some constraints that at least one of a set is covered
+    # either by specifying multiple scopes w/in single constraint
+    # or defining some logic over multiple constraints
     """
     A constraint on the values a struct field may take,
     where the constrained set of allowed values is defined
@@ -53,7 +57,7 @@ class Constraint(NamedTuple):
       struct bears the id of the foreign struct to validate against.
     - If `scope` is a tuple of struct type and str, the first element
       type of struct and the second indicates the field of that struct
-      to pull the foreign id from. The validation functio will then
+      to pull the foreign id from. The validation function will then
       search the current structs parents for a struct of the expected
       type in order to retrieve the foreign id.
     - If `scope` is `None`, then the list of allowed values is the
@@ -107,6 +111,7 @@ _relations: dict[str, RelationType | tuple[RelationType, ...]] = {
         Constraint(
             scope=(ParadigmFile, "part_of_speech"),
             allowed=(PartOfSpeechFile, "inflectional_features"),
+            skip_if_no_scope=True,
         ),
         # feature references in general must match an existing Feature struct
         Reference(
@@ -155,11 +160,11 @@ def resolve_reference(
     struct: msgspec.Struct,
     field: str,
     registry: StructRegistryType,
-    relation: RelationType,
+    reference: Reference,
 ) -> StructIdType | list[StructIdType] | None:
-    target_struct_name = resolve_struct_name_from_type(relation.target)
+    target_struct_name = resolve_struct_name_from_type(reference.target)
     field_value = getattr(struct, field)
-    if relation.many:
+    if reference.many:
         for id_str in field_value:
             relation_list = []
             try:
@@ -179,30 +184,96 @@ def resolve_reference(
             target_id = (field_value, target_struct_name)
             target = registry[target_id]
             logger.debug(
-                f"Loaded reference to {relation} from field {field} in struct {struct}"
+                f"Loaded reference to {reference} from field {field} in struct {struct}"
             )
             return target_id
         except Exception as e:
             logger.exception(e)
 
 
+def resolve_constraint(
+    struct: msgspec.Struct,
+    upstream: list[msgspec.Struct],
+    registry: StructRegistryType,
+    constraint: Constraint,
+) -> tuple[StructIdType | list[StructIdType], list] | None:
+    foreign_id = None
+    if type(constraint.scope) is str:
+        foreign_id = getattr(struct, constraint.scope, None)
+    elif type(constraint.scope) is tuple:
+        parent_type, parent_field = constraint.allowed
+        for parent in upstream:
+            current_parent_type = resolve_struct_name_from_instance(parent)
+            if current_parent_type == parent_type:
+                foreign_id = getattr(parent, parent_field)
+
+    if foreign_id is None:
+        if constraint.skip_if_no_scope:
+            return
+        elif constraint.scope is None:
+            pass
+        else:
+            raise ValueError(
+                f"Could not satisfy scope {constraint.scope} for struct {struct} with upstream {upstream}"
+            )
+    foreign_type, foreign_field = constraint.allowed
+    if foreign_id is None:
+        foreign_struct_list = [
+            struct_id for struct_id in registry.keys() if struct_id[1] == foreign_type
+        ]
+        allowed_values = []
+        for foreign_struct_id in foreign_struct_list:
+            foreign_struct = registry[foreign_struct_id]
+            foreign_value = getattr(foreign_struct, foreign_field)
+            if type(foreign_value) is tuple:
+                allowed_values.extend(foreign_value)
+            else:
+                allowed_values.append(foreign_value)
+
+        return foreign_struct_list, allowed_values
+
+    foreign_struct = registry[(foreign_id, foreign_type)]
+    allowed_values = getattr(foreign_struct, foreign_field)
+    allowed_values = list(allowed_values)
+    return foreign_id, allowed_values
+
+
 def validate_relation(
     struct: msgspec.Struct,
-    parent: msgspec.Struct,
+    upstream: list[msgspec.Struct],
     field: str,
     registry: StructRegistryType,
     relation: RelationType,
 ) -> StructIdType | list[StructIdType] | None:
     if type(relation) is Reference:
-        return resolve_reference(struct, field, registry, relation)
+        return resolve_reference(
+            struct,
+            field,
+            registry,
+            relation,
+        )
     elif type(relation) is Constraint:
-        ...
+        resolved = resolve_constraint(
+            struct,
+            upstream,
+            registry,
+            relation,
+        )
+        if resolved is None:
+            return
+        foreign_id, allowed_values = resolved
+        struct_field_value = getattr(struct, field)
+        if not struct_field_value in allowed_values:
+            raise ValueError(
+                f"Struct with value {struct_field_value} at field {field} not in allowed values {allowed_values}"
+            )
+        return foreign_id
 
 
 def validate_struct_relations(
     struct: msgspec.Struct,
     registry: StructRegistryType,
-    parent: msgspec.Struct | None = None,
+    upstream: list[msgspec.Struct],
 ):
     fields_to_validate = _validated_fields & set(struct.__struct_fields__)
     relations = []
@@ -221,7 +292,7 @@ def validate_struct_relations(
         for field, relation in relations:
             target = validate_relation(
                 struct,
-                parent,
+                upstream,
                 field,
                 registry,
                 relation,

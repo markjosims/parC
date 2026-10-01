@@ -149,10 +149,9 @@ def try_set_dependencies(
     If the current struct is anonymous, add its dependencies
     to the nearest upstream named struct.
     """
-    parent = upstream[0] if upstream else None
     referenced = validate_struct_relations(
         struct=struct,
-        parent=parent,
+        upstream=upstream,
         registry=struct_registry,
     )
     if hasattr(struct, "id"):
@@ -164,10 +163,9 @@ def try_set_dependencies(
     else:
         upstream_ids = try_get_struct_ids(upstream) + referenced
         struct_id = upstream_ids.pop(0)
-        if struct_id[1] == "Paradigm":
-            breakpoint()
 
-    dependency_graph[struct_id] = set(upstream_ids)
+    existing_upstream = dependency_graph.get(struct_id, set())
+    dependency_graph[struct_id] = existing_upstream | set(upstream_ids)
     return dependency_graph
 
 
@@ -189,7 +187,12 @@ def walk_config(
     Recursively add downstream structs to `dependency_graph`
     for current struct and
     """
-    try_set_dependencies(struct, upstream, struct_registry, dependency_graph)
+    dependency_graph = try_set_dependencies(
+        struct,
+        upstream,
+        struct_registry,
+        dependency_graph,
+    )
     upstream.append(struct)
     children: list[msgspec.Struct] = []
 
