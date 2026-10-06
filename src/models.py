@@ -12,6 +12,7 @@ import re
 from typing import Annotated, Iterable, Literal, NamedTuple
 
 import msgspec
+import pynini
 
 from src.diagnostics import Diagnostic, build_diagnostic_error
 
@@ -665,12 +666,24 @@ MtimeGraphType = dict[StructId, float]
 StructRegistryType = dict[StructId, msgspec.Struct]
 
 
+class FstContext(NamedTuple):
+    token_map: dict[str, Token]
+    phone_starts: set[str]
+    sym_table: pynini.SymbolTable
+    sigma: pynini.Fst
+    special_fsas: dict[str, pynini.Fst]
+    compiled_patterns: dict[str, pynini.Fst] | None = None
+    compiled_rules: dict[str, pynini.Fst] | None = None
+    compiled_markers: dict[str, pynini.Fst] | None = None
+
+
 class Project(NamedTuple):
     sourcefile_graph: SourcefileGraphType
     dependency_graph: DependencyGraphType
     struct_registry: StructRegistryType
     mtime_graph: MtimeGraphType
     diagnostic_errors: tuple[Diagnostic, ...]
+    fst_context: FstContext | None = None
 
 
 """

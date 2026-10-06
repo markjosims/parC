@@ -12,6 +12,7 @@ import pynini
 
 from src.fst_utils import ReservedSymbols as ReservedSymbols
 from src.grammar.acceptor_compilation import (
+    FstContext,
     fsa,
     get_sigma_star,
     get_symbol_table,
@@ -20,6 +21,7 @@ from src.grammar.acceptor_compilation import (
 from src.models import (
     Marker,
     PrincipalPartMarker,
+    Project,
     Rule,
     RuleSequence,
     SimpleRule,
@@ -37,34 +39,54 @@ RULES_DIR = kind_dir("Rules")
 """
 
 
-def _compile_simple_rule(rule: SimpleRule) -> pynini.Fst:
-    sigma_star = get_sigma_star()
-    tau = pynini.cross(fsa(rule.input_pattern), fsa(rule.output_pattern)).optimize()
-    l = fsa(rule.left_context) if rule.left_context else ""
-    r = fsa(rule.right_context) if rule.right_context else ""
-    return pynini.cdrewrite(tau, l, r, sigma_star)
+def _compile_simple_rule(rule: SimpleRule, fst_context: FstContext) -> pynini.Fst:
+    tau = pynini.cross(
+        fsa(rule.input_pattern, fst_context),
+        fsa(rule.output_pattern, fst_context),
+    ).optimize()
+    l = fsa(rule.left_context, fst_context) if rule.left_context else ""
+    r = fsa(rule.right_context, fst_context) if rule.right_context else ""
+    return pynini.cdrewrite(tau, l, r, fst_context.special_fsas["sigma_star"])
 
 
-def _compile_string_map_rule(rule: StringMapRule) -> pynini.Fst:
-    sigma_star = get_sigma_star()
+def _compile_string_map_rule(
+    rule: StringMapRule,
+    fst_context: FstContext,
+) -> pynini.Fst:
     tau = pynini.union(
-        *[pynini.cross(fsa(i), fsa(o)) for i, o in rule.string_map]
+        *[
+            pynini.cross(
+                fsa(i, fst_context),
+                fsa(o, fst_context),
+            )
+            for i, o in rule.string_map
+        ]
     ).optimize()
     l = fsa(rule.left_context) if rule.left_context else ""
     r = fsa(rule.right_context) if rule.right_context else ""
-    return pynini.cdrewrite(tau, l, r, sigma_star)
+    return pynini.cdrewrite(
+        tau,
+        l,
+        r,
+        fst_context.special_fsas["sigma_star"],
+    )
 
 
-def compile_rule(rule: Rule) -> pynini.Fst | list[pynini.Fst]:
+def compile_rule(
+    rule: Rule,
+    project: Project,
+) -> pynini.Fst | list[pynini.Fst]:
+    if rule.id in project.fst_context.compiled_rules:
+        return project.fst_context.compiled_rules[rule.id]
     if isinstance(rule, SimpleRule):
-        return _compile_simple_rule(rule)
+        return _compile_simple_rule(rule, project.fst_context)
     if isinstance(rule, StringMapRule):
-        return _compile_string_map_rule(rule)
+        return _compile_string_map_rule(rule, project.fst_context)
     if isinstance(rule, RuleSequence):
-        rules = get_rules()
+        rules = project.struct_registry["Rule"]
         result: list[pynini.Fst] = []
-        for name in rule.rules:
-            sub_fst = compile_rule(rules[name])
+        for rule_id in rule.rules:
+            sub_fst = compile_rule(rules[rule_id], project)
             if isinstance(sub_fst, list):
                 result.extend(sub_fst)
             else:
