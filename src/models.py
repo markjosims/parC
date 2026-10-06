@@ -239,7 +239,7 @@ class RuleFile(msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag=
 
     id: ObjectId
 Contains the following submodules:
-- FeatureDefinitions
+- FeatureDefinition
 - InflectionStages
 - FeatureMarkers
 - MultiFeatureMarkers

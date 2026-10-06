@@ -199,7 +199,7 @@ def build_token_map(
             tokens["tag"].append(Token(f"[{feature.id}={val}]", "tag"))
 
     for pattern_id in struct_registry["Pattern"].keys():
-        tokens["id"].append(Token(pattern_id, "pattern_id"))
+        tokens["id"].append(Token(pattern_id, "id"))
 
     return {
         kind: sorted(token_list, key=len, reverse=True)
@@ -555,7 +555,7 @@ def build_fst_context_for_project(project: Project) -> Project:
 def fsa(pattern_str: str, fst_context: FstContext) -> pynini.Fst:
     return _parse_pattern(
         pattern_str,
-        *fst_context,
+        fst_context,
     )
 
 
@@ -565,7 +565,7 @@ def word_fsa(
     tagged = ReservedSymbols.bow + word_str + ReservedSymbols.eow
     if prefix:
         tagged = prefix + tagged
-    return _parse_pattern(tagged, *fst_context)
+    return _parse_pattern(tagged, fst_context)
 
 
 def wordlist_fsa(words: list[str]) -> pynini.Fst:

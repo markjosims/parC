@@ -55,7 +55,7 @@ principal_parts:
 # For example, if 'gender' were not a column in `noun.csv`, parC would throw an
 # error upon reading `noun.yaml`.
 
-# The possible values for a lexical feature are specified via a `FeatureDefinitions` config,
+# The possible values for a lexical feature are specified via a `FeatureDefinition` config,
 # and, outside of the `PartOfSpeech` class, there is no distinction between a lexical or
 # inflectional feature.
 
@@ -79,9 +79,9 @@ principal_parts:
 #   - ablaut_pattern
 #   - past_suffix_kind
 
-# The possible values would be specified in a `FeatureDefinitions` file like so:
+# The possible values would be specified in a `FeatureDefinition` file like so:
 
-# kind: FeatureDefinitions
+# kind: FeatureDefinition
 # features:
 #   ablaut_pattern:
 #   - no_ablaut

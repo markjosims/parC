@@ -13,9 +13,8 @@ import pynini
 from src.fst_utils import ReservedSymbols as ReservedSymbols
 from src.grammar.acceptor_compilation import (
     FstContext,
+    build_fst_context_for_project,
     fsa,
-    get_sigma_star,
-    get_symbol_table,
     word_fsa,
 )
 from src.models import (
@@ -28,11 +27,7 @@ from src.models import (
     StringMapRule,
     StructRegistryType,
 )
-from src.yaml.yaml_server import kind_dir
-
-INVENTORY_DIR = kind_dir("Inventory")
-FEATURES_DIR = kind_dir("FeatureDefinitions")
-RULES_DIR = kind_dir("Rules")
+from src.yaml.yaml_server import kind_dir, load_project
 
 """
 ## Rule compilation
@@ -56,14 +51,14 @@ def _compile_string_map_rule(
     tau = pynini.union(
         *[
             pynini.cross(
-                fsa(i, fst_context),
-                fsa(o, fst_context),
+                fsa(relation.input_pattern, fst_context),
+                fsa(relation.output_pattern, fst_context),
             )
-            for i, o in rule.string_map
+            for relation in rule.string_map
         ]
     ).optimize()
-    l = fsa(rule.left_context) if rule.left_context else ""
-    r = fsa(rule.right_context) if rule.right_context else ""
+    l = fsa(rule.left_context, fst_context) if rule.left_context else ""
+    r = fsa(rule.right_context, fst_context) if rule.right_context else ""
     return pynini.cdrewrite(
         tau,
         l,
@@ -75,14 +70,14 @@ def _compile_string_map_rule(
 def compile_rule(
     rule: Rule,
     project: Project,
-) -> pynini.Fst | list[pynini.Fst]:
+) -> Project:
     if rule.id in project.fst_context.compiled_rules:
-        return project.fst_context.compiled_rules[rule.id]
+        return
     if isinstance(rule, SimpleRule):
-        return _compile_simple_rule(rule, project.fst_context)
-    if isinstance(rule, StringMapRule):
-        return _compile_string_map_rule(rule, project.fst_context)
-    if isinstance(rule, RuleSequence):
+        result = _compile_simple_rule(rule, project.fst_context)
+    elif isinstance(rule, StringMapRule):
+        result = _compile_string_map_rule(rule, project.fst_context)
+    elif isinstance(rule, RuleSequence):
         rules = project.struct_registry["Rule"]
         result: list[pynini.Fst] = []
         for rule_id in rule.rules:
@@ -91,8 +86,19 @@ def compile_rule(
                 result.extend(sub_fst)
             else:
                 result.append(sub_fst)
-        return result
-    raise ValueError(f"Unknown rule type: {type(rule)!r}")
+    else:
+        raise ValueError(f"Unknown rule type: {type(rule)!r}")
+    project.fst_context.compiled_rules[rule.id] = result
+    return project
+
+
+def compile_rules_for_project(project: Project) -> Project:
+    compiled_rules: dict[str, pynini.Fst | list[pynini.Fst]]
+    new_fst_context = project.fst_context._replace(compiled_rules={})
+    new_project = project._replace(fst_context=new_fst_context)
+    for rule in new_project.struct_registry["Rule"].values():
+        new_project = compile_rule(rule, new_project)
+    return new_project
 
 
 """
@@ -100,38 +106,48 @@ def compile_rule(
 """
 
 
-def _compile_prefix(value: str) -> pynini.Fst:
-    sigma_star = get_sigma_star()
-    syms = get_symbol_table()
-    bow = pynini.accep(ReservedSymbols.bow, token_type=syms)
+def _compile_prefix(value: str, fst_context: FstContext) -> pynini.Fst:
+    sigma_star = fst_context.special_fsas["sigma_star"]
+    bow = pynini.accep(
+        ReservedSymbols.bow,
+        token_type=fst_context.sym_table,
+    )
     tau = pynini.cross(bow, pynini.concat(bow, fsa(value)))
     return pynini.cdrewrite(tau, "", "", sigma_star)
 
 
-def _compile_suffix(value: str) -> pynini.Fst:
-    sigma_star = get_sigma_star()
-    syms = get_symbol_table()
-    eow = pynini.accep(ReservedSymbols.eow, token_type=syms)
-    tau = pynini.cross(eow, pynini.concat(fsa(value), eow))
+def _compile_suffix(value: str, fst_context: FstContext) -> pynini.Fst:
+    sigma_star = fst_context.special_fsas["sigma_star"]
+    eow = pynini.accep(ReservedSymbols.eow, token_type=fst_context.sym_table)
+    tau = pynini.cross(eow, pynini.concat(fsa(value, fst_context), eow))
     return pynini.cdrewrite(tau, "", "", sigma_star)
 
 
-def _compile_string_map(string_map: tuple[tuple[str, str], ...]) -> pynini.Fst:
+def _compile_string_map(
+    string_map: tuple[tuple[str, str], ...],
+    fst_context: FstContext,
+) -> pynini.Fst:
     # word-level substitution: cross(word_fsa(root), word_fsa(pp)) per entry
     return pynini.union(
-        *[pynini.cross(word_fsa(i), word_fsa(o)) for i, o in string_map]
+        *[
+            pynini.cross(
+                word_fsa(i, fst_context),
+                word_fsa(o, fst_context),
+            )
+            for i, o in string_map
+        ]
     ).optimize()
 
 
-def compile_marker(marker: Marker) -> pynini.Fst:
+def compile_marker(marker: Marker, project: Project) -> pynini.Fst:
     if isinstance(marker, SingleStringMarker):
         if marker.kind == "prefix":
-            return _compile_prefix(marker.value)
+            return _compile_prefix(marker.value, project.fst_context)
         if marker.kind == "suffix":
-            return _compile_suffix(marker.value)
+            return _compile_suffix(marker.value, project.fst_context)
         if marker.kind == "suppletion":
-            sigma_star = get_sigma_star()
-            tau = pynini.cross(sigma_star, fsa(marker.value))
+            sigma_star = project.special_fsas["sigma_star"]
+            tau = pynini.cross(sigma_star, fsa(marker.value, fst_context))
             return pynini.cdrewrite(tau, "", "", sigma_star)
         if marker.kind == "rule":
             rules = get_rules()
@@ -148,8 +164,11 @@ def compile_marker(marker: Marker) -> pynini.Fst:
                 return composed
             return result
     if isinstance(marker, StringTupleMarker) and marker.kind == "replace":
-        sigma_star = get_sigma_star()
-        tau = pynini.cross(fsa(marker.value[0]), fsa(marker.value[1]))
+        sigma_star = project.special_fsas["sigma_star"]
+        tau = pynini.cross(
+            fsa(marker.value[0], fst_context),
+            fsa(marker.value[1], fst_context),
+        )
         return pynini.cdrewrite(tau, "", "", sigma_star)
     if isinstance(marker, PrincipalPartMarker) and marker.kind == "string_map":
         return _compile_string_map(marker.value)
@@ -183,3 +202,10 @@ def get_rule_fst(rule_name: str) -> pynini.Fst | list[pynini.Fst]:
 
 def get_marker_fst(marker: Marker) -> pynini.Fst:
     return compile_marker(marker)
+
+
+if __name__ == "__main__":
+    project = load_project()
+    project = build_fst_context_for_project(project)
+    project = compile_rules_for_project(project)
+    breakpoint()

@@ -532,7 +532,7 @@ def test_feature_construction():
         feature_definitions_file_json_bytes.decode("utf-8")
     )
     feature_definitions_file_json_expected = {
-        "kind": "FeatureDefinitions",
+        "kind": "FeatureDefinition",
         "data": [
             tense_feature_json_expected,
             mood_feature_json_expected,

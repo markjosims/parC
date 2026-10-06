@@ -1,4 +1,4 @@
-# This is a FeatureDefinitions config file
+# This is a FeatureDefinition config file
 # Define morphological feature categories and enumerate their possible values here.
 kind: FeatureDefinition
 id: verbs

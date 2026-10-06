@@ -71,7 +71,7 @@ def grammar_stats() -> dict:
     grammar_stats["inventory"] = inventory_stats
 
     feature_definitions_stats = {}
-    feature_definitions_yaml = get_yaml_kind("FeatureDefinitions")
+    feature_definitions_yaml = get_yaml_kind("FeatureDefinition")
     features = get_feature_map()
     feature_definitions_stats["files"] = len(feature_definitions_yaml["valid"])
     feature_definitions_stats["invalid_files"] = len(

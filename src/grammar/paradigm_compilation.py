@@ -4,7 +4,7 @@ Paradigm inflect / parse / fuzzy-search graph compilation.
 Caches:
   inflect + parse + search FSTs → get_yaml_dir()/.cache/Paradigm/{name}.{kind}.fst
   Invalidated when any of Paradigm, FeatureMarkers, ContingentFeatureMarkers,
-  Inventory, FeatureDefinitions, or Rules dirs change.
+  Inventory, FeatureDefinition, or Rules dirs change.
 """
 
 from __future__ import annotations
@@ -26,7 +26,6 @@ from src.grammar.acceptor_compilation import (
     fsa,
     fsm_strings,
     fsm_strings_and_weights,
-    get_sigma_star,
     get_special_fsas,
     get_symbol_table,
     word_fsa,
@@ -148,7 +147,7 @@ def build_search_lexicon_and_leftfactor(
 ) -> tuple[pynini.Fst, pynini.Fst]:
     """Fuzzy-searchable form lattice via edit transducers."""
     sigma = get_special_fsas()["sigma"]
-    sigma_star = get_sigma_star()
+    sigma_star = project.special_fsas["sigma_star"]
     syms = get_symbol_table()
 
     insert_fst = pynutil.insert(
