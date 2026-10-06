@@ -17,7 +17,7 @@ data:
   output_pattern: i
   right_context: <CodaWF>
 - description: '"zc" is written "c" before e, i'
-  input_pattern: <zc>
+  input_pattern: "zc"
   kind: simple
   id: zc_c_alternation
   output_pattern: c

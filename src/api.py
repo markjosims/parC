@@ -38,7 +38,7 @@ from src.lexicon import (
     get_features_for_root,
     get_roots,
 )
-from src.yaml_utils.yaml_server import (
+from src.yaml.yaml_server import (
     get_feature_map,
     get_inflection_stages,
     get_inventory_items,

@@ -31,7 +31,7 @@ from src.models import (
     UnorderedMarker,
     UnorderedOperation,
 )
-from src.yaml_utils.yaml_server import get_yaml_data_safe, get_yaml_path
+from src.yaml.yaml_server import get_yaml_data_safe, get_yaml_path
 
 
 @pytest.fixture

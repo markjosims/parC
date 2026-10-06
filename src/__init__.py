@@ -1,5 +1,6 @@
 import os
 import sys
+
 from loguru import logger
 
 # Configure logging level from environment variable
@@ -15,3 +16,4 @@ elif _log_output == "stdout":
 # Remove default handler and add one with the configured level
 logger.remove()
 logger.add(_log_output, level=_log_level)
+logger.info(f"Logging at level {_log_level}")

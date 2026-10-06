@@ -1,10 +1,8 @@
 import pynini
-from dataclasses import dataclass, field
-from loguru import logger
 from frozendict import frozendict
 
 
-class ReservedSymbolMixin:
+class ReservedSymbols:
     """
     Mixin class for registries to define reserved symbols that cannot be used as
     inventory item values. This is to prevent collisions between user-defined

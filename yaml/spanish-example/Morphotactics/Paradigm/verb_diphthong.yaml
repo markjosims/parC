@@ -41,7 +41,7 @@ feature_markers:
 #   pattern: "<C>+<V>+"  # Phonological filter pattern reference or shape
 # type para-flt to add filter!
 filter:
-  lexical_features:
+  lexical_feature_values:
     conjugation_class: diphthong
 
 # Optional: markers or rules applied to every form in this paradigm

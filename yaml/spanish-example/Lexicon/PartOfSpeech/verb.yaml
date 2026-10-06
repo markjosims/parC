@@ -20,6 +20,7 @@ lexical_features:
 # type pos-pp to add any principal parts
 principal_parts: 
 - first_singular
+- preterite
 
 ## HELP FOR PART OF SPEECH ##
 # Here we define the parts of speech in a language along with the features relevant to them.

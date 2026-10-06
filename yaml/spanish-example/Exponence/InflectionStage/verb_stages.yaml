@@ -1,0 +1,7 @@
+kind: InflectionStage
+id: verb_stages
+data:
+  - id: suffix
+    description: "Person+TAM suffix"
+  - id: vowel_alternation
+    description: "Stem vowel alternations"

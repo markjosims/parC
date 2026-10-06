@@ -10,26 +10,23 @@ from __future__ import annotations
 
 import pynini
 
-from src.fst_utils import ReservedSymbolMixin as R
-from src.models import (
-    Marker,
-    Rule,
-    SimpleRule,
-    StringMapRule,
-    RuleSequence,
-    SingleStringMarker,
-    StringTupleMarker,
-    UnorderedMarker,
-    PrincipalPartMarker,
-)
-from src.yaml_utils.yaml_server import get_rules, kind_dir
+from src.fst_utils import ReservedSymbols as ReservedSymbols
 from src.grammar.acceptor_compilation import (
     fsa,
-    word_fsa,
     get_sigma_star,
     get_symbol_table,
+    word_fsa,
 )
-from src.yaml_utils.cache import observed_cache
+from src.models import (
+    Marker,
+    PrincipalPartMarker,
+    Rule,
+    RuleSequence,
+    SimpleRule,
+    StringMapRule,
+    StructRegistryType,
+)
+from src.yaml.yaml_server import kind_dir
 
 INVENTORY_DIR = kind_dir("Inventory")
 FEATURES_DIR = kind_dir("FeatureDefinitions")
@@ -84,7 +81,7 @@ def compile_rule(rule: Rule) -> pynini.Fst | list[pynini.Fst]:
 def _compile_prefix(value: str) -> pynini.Fst:
     sigma_star = get_sigma_star()
     syms = get_symbol_table()
-    bow = pynini.accep(R.bow, token_type=syms)
+    bow = pynini.accep(ReservedSymbols.bow, token_type=syms)
     tau = pynini.cross(bow, pynini.concat(bow, fsa(value)))
     return pynini.cdrewrite(tau, "", "", sigma_star)
 
@@ -92,7 +89,7 @@ def _compile_prefix(value: str) -> pynini.Fst:
 def _compile_suffix(value: str) -> pynini.Fst:
     sigma_star = get_sigma_star()
     syms = get_symbol_table()
-    eow = pynini.accep(R.eow, token_type=syms)
+    eow = pynini.accep(ReservedSymbols.eow, token_type=syms)
     tau = pynini.cross(eow, pynini.concat(fsa(value), eow))
     return pynini.cdrewrite(tau, "", "", sigma_star)
 
@@ -147,14 +144,6 @@ Public API
 """
 
 
-@observed_cache(
-    [
-        kind_dir("Rules"),
-        kind_dir("Patterns"),
-        kind_dir("Inventory"),
-        kind_dir("FeatureDefinitions"),
-    ]
-)
 def get_rule_fst(rule_name: str) -> pynini.Fst | list[pynini.Fst]:
     rule_name = rule_name.removeprefix("$")
     rules = get_rules()
@@ -170,14 +159,5 @@ def get_rule_fst(rule_name: str) -> pynini.Fst | list[pynini.Fst]:
     return compile_rule(rule)
 
 
-@observed_cache(
-    [
-        kind_dir("Rules"),
-        kind_dir("Patterns"),
-        kind_dir("Inventory"),
-        kind_dir("FeatureDefinitions"),
-        kind_dir("FeatureMarkers"),
-    ]
-)
 def get_marker_fst(marker: Marker) -> pynini.Fst:
     return compile_marker(marker)

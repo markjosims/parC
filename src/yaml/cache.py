@@ -12,8 +12,8 @@ CACHE_DIR = os.path.join(get_yaml_dir(), ".cache")
 _SYMS_PATH = os.path.join(CACHE_DIR, "symbol_table.syms")
 
 
-def _fst_path(kind: str, description: str, fst_kind: str) -> str:
-    return os.path.join(CACHE_DIR, kind, f"{name}.{fst_kind}.fst")
+def _fst_path(name: str, description: str, fst_kind: str) -> str:
+    return os.path.join(CACHE_DIR, name, f"{name}.{fst_kind}.fst")
 
 
 def _is_valid(path: str, *source_dirs: str) -> bool:
@@ -36,11 +36,11 @@ def is_syms_cache_valid(*source_dirs: str) -> bool:
 
 
 def is_fst_cache_valid(
-    kind: str, description: str, fst_kind: str, *source_dirs: str
+    name: str, description: str, fst_kind: str, *source_dirs: str
 ) -> bool:
-    if _is_valid(_fst_path(kind, name, fst_kind), *source_dirs):
+    if _is_valid(_fst_path(name, name, fst_kind), *source_dirs):
         return True
-    logger.info(f"Fst of kind {kind} {fst_kind} for {name} invalidated.")
+    logger.info(f"Fst of kind {fst_kind} for {name} invalidated.")
 
 
 def save_symbol_table(syms: pynini.SymbolTable) -> None:
@@ -58,14 +58,14 @@ def load_symbol_table() -> pynini.SymbolTable | None:
         return None
 
 
-def save_fst(kind: str, description: str, fst_kind: str, fst: pynini.Fst) -> None:
-    path = _fst_path(kind, name, fst_kind)
+def save_fst(name: str, description: str, fst_kind: str, fst: pynini.Fst) -> None:
+    path = _fst_path(name, description, fst_kind)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     fst.write(path)
 
 
-def load_fst(kind: str, description: str, fst_kind: str) -> pynini.Fst | None:
-    path = _fst_path(kind, name, fst_kind)
+def load_fst(name: str, description: str, fst_kind: str) -> pynini.Fst | None:
+    path = _fst_path(name, description, fst_kind)
     if not os.path.exists(path):
         return None
     try:
@@ -92,7 +92,7 @@ def get_hashable_args_and_kwargs(args, kwargs):
         try:
             hash(hashable_arg)
         except Exception as e:
-            raise ValueError(f"Could not hash kwarg {value} with key {key}: {e}")
+            raise ValueError(f"Could not hash arg {arg}: {e}")
 
         hashable_args.append(hashable_arg)
 

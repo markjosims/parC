@@ -9,9 +9,11 @@ is comprised of structs for data objects defined by the file
 from __future__ import annotations
 
 import re
-from typing import Annotated, Literal, NamedTuple
+from typing import Annotated, Iterable, Literal, NamedTuple
 
 import msgspec
+
+from src.diagnostics import Diagnostic, build_diagnostic_error
 
 """
 Shared models
@@ -159,8 +161,7 @@ class Token(NamedTuple):
     kind: Literal[
         "phone",
         "tag",
-        "class_ref",
-        "pattern_ref",
+        "id",
         "bow_eow",
         "edit_flag",
         "special_ref",
@@ -238,6 +239,7 @@ class RuleFile(msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag=
     id: ObjectId
 Contains the following submodules:
 - FeatureDefinitions
+- InflectionStages
 - FeatureMarkers
 - MultiFeatureMarkers
 """
@@ -261,6 +263,26 @@ class FeatureDefinitionFile(
 
     id: ObjectId
     data: tuple[Feature, ...]
+
+
+class InflectionStage(msgspec.Struct, kw_only=True, frozen=True):
+    """
+    A named stage for ordering inflectional operations.
+    """
+
+    id: ObjectId
+    description: str | None = None
+
+
+class InflectionStageFile(
+    msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="InflectionStage"
+):
+    """
+    A file containing a list of inflection stages.
+    """
+
+    id: ObjectId
+    data: tuple[InflectionStage, ...]
 
 
 class PrefixMarker(
@@ -328,7 +350,14 @@ class PrincipalPartMarker(
     principal_part_value: str
 
 
-Marker = PrefixMarker | SuffixMarker | ReplaceMarker | PrincipalPartMarker | RuleMarker
+Marker = (
+    PrefixMarker
+    | SuffixMarker
+    | ReplaceMarker
+    | PrincipalPartMarker
+    | RuleMarker
+    | SuppletionMarker
+)
 
 
 class FeatureMarker(msgspec.Struct, kw_only=True, frozen=True):
@@ -536,6 +565,7 @@ GrammarFile = (
     | PartOfSpeechFile
     | RuleFile
     | FeatureDefinitionFile
+    | InflectionStageFile
     | FeatureMarkerFile
     | MultiFeatureMarkerFile
     | FeatureCombinationFile
@@ -564,6 +594,7 @@ CONFIG_KIND_TO_STRUCT: dict[str, msgspec.Struct] = {
     "PartOfSpeech": PartOfSpeechFile,
     "Pattern": PatternFile,
     "Rule": RuleFile,
+    "InflectionStage": InflectionStageFile,
 }
 
 CONFIG_KIND_TYPE = Literal[
@@ -584,6 +615,7 @@ CONFIG_KINDS_ORDERED = [
     "Inventory",
     "Pattern",
     "Rule",
+    "InflectionStage",
     "FeatureDefinition",
     "PartOfSpeech",
     "FeatureMarker",
@@ -596,6 +628,7 @@ CONFIG_KIND_TO_PARDIR = {
     "ContingentFeatureMarker": "Exponence",
     "FeatureDefinition": "Exponence",
     "FeatureMarker": "Exponence",
+    "InflectionStage": "Exponence",
     "MultiFeatureMarker": "Exponence",
     "Inventory": "Phonology",
     "Rule": "Phonology",
@@ -605,6 +638,44 @@ CONFIG_KIND_TO_PARDIR = {
     "PartOfSpeech": "Lexicon",
     "Wordlist": "Lexicon",
 }
+
+
+"""
+# Internal models
+Data models and structs not directly related to
+YAML config objects.
+"""
+
+
+class StructId(NamedTuple):
+    id: str
+    kind: str
+
+    def __str__(self):
+        return f"{self.kind}:{self.id}"
+
+    def __repr__(self):
+        return str(self)
+
+
+DependencyGraphType = dict[StructId, set[StructId]]
+StructRegistryType = dict[str, dict[str, msgspec.Struct]]
+SourcefileGraphType = dict[StructId, str]
+MtimeGraphType = dict[StructId, float]
+StructRegistryType = dict[StructId, msgspec.Struct]
+
+
+class Project(NamedTuple):
+    sourcefile_graph: SourcefileGraphType
+    dependency_graph: DependencyGraphType
+    struct_registry: StructRegistryType
+    mtime_graph: MtimeGraphType
+    diagnostic_errors: tuple[Diagnostic, ...]
+
+
+"""
+## Struct registry helpers
+"""
 
 
 def resolve_struct_name_from_instance(struct: msgspec.Struct) -> str:
@@ -626,16 +697,63 @@ def resolve_struct_name_from_type(struct_type: type[msgspec.Struct]) -> str:
     raise ValueError(f"Unnamed struct types must be registered as a union type.")
 
 
-"""
-# Internal models
-Data models and structs not directly related to
-YAML config objects.
-"""
+def get_struct_id(struct: msgspec.Struct, allow_anonymous: bool = False) -> StructId:
+    if not allow_anonymous:
+        struct_id = getattr(struct, "id")
+    else:
+        struct_id = getattr(struct, "id", "[ANONYMOUS]")
+    return StructId(
+        kind=resolve_struct_name_from_instance(struct),
+        id=struct_id,
+    )
 
-StructIdType = tuple[str, str]
-DependencyGraphType = dict[StructIdType, set[StructIdType]]
-StructRegistryType = dict[type[msgspec.Struct], str]
-SourcefileGraphType = dict[StructIdType, str]
-StructErrorGraphType = dict[str, str]
-MtimeGraphType = dict[StructIdType, float]
-StructRegistryType = dict[StructIdType, msgspec.Struct]
+
+def iter_registry(struct_registry: StructRegistryType) -> Iterable[StructId]:
+    for struct_kind, kind_registry in struct_registry.items():
+        for struct_id, struct in kind_registry.items():
+            yield StructId(id=struct_id, kind=struct_kind), struct
+
+
+def registry_ids(
+    struct_registry: StructRegistryType, kind: str | None = None
+) -> Iterable[StructId]:
+    if kind:
+        for struct_id in struct_registry.get(kind, {}).keys():
+            yield StructId(id=struct_id, kind=kind)
+    else:
+        for struct_kind, kind_registry in struct_registry.items():
+            for struct_id, struct in kind_registry.items():
+                yield StructId(id=struct_id, kind=struct_kind)
+
+
+def get_struct(
+    struct_registry: StructRegistryType,
+    id: str | None = None,
+    kind: str | type(msgspec.Struct) | None = None,
+    id_tuple: StructId = None,
+) -> msgspec.Struct:
+    if id_tuple is not None:
+        return struct_registry[id_tuple.kind][id_tuple.id]
+    if id is None or kind is None:
+        raise ValueError("Must pass either id_tuple or id and kind kwargs")
+    if type(kind) is not str:
+        kind = resolve_struct_name_from_type(kind)
+    return struct_registry[kind][id]
+
+
+def set_struct(
+    struct_id: StructId,
+    struct: msgspec.Struct,
+    struct_registry: StructRegistryType,
+    allow_overwrite: bool = False,
+):
+    if (
+        not allow_overwrite
+        and struct_id.kind in struct_registry
+        and struct_id.id in struct_registry[struct_id.kind]
+    ):
+        raise build_diagnostic_error(
+            message=f"Duplicate struct {struct_id} found in registry",
+            struct=str(struct_id),
+        )
+    struct_registry.setdefault(struct_id.kind, {})[struct_id.id] = struct

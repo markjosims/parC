@@ -19,7 +19,7 @@ from src.models import (
     UnorderedMarker,
     resolve_marker,
 )
-from src.yaml_utils.yaml_server import get_feature_map, get_markers, get_yaml_data_safe
+from src.yaml.yaml_server import get_feature_map, get_markers, get_yaml_data_safe
 
 FeatureComboType = set[tuple[str, str]]
 

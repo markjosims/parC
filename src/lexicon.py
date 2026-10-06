@@ -6,7 +6,7 @@ from frozendict import frozendict
 from loguru import logger
 
 from src.constants import get_yaml_dir
-from src.yaml_utils.yaml_server import get_yaml_data_safe
+from src.yaml.yaml_server import get_yaml_data_safe
 
 
 def load_lexicon_df(lexicon_basedescription: str) -> pd.DataFrame:

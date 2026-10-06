@@ -3,11 +3,11 @@ Generates schemas/<Kind>.json files from msgspec type definitions.
 
 Prototype: only the Rules kind is migrated to this approach so far. The
 generated schema is the same source of truth used to decode/validate Rule
-data at runtime (`src.yaml_utils.models.resolve_rule`), so the two can no
+data at runtime (`src.yaml.models.resolve_rule`), so the two can no
 longer drift apart the way a hand-authored schema.json can from its
 NamedTuple counterpart.
 
-Run with: `uv run python -m src.yaml_utils.schema_gen`
+Run with: `uv run python -m src.yaml.schema_gen`
 """
 
 import json

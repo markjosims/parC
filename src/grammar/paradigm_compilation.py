@@ -19,7 +19,7 @@ from loguru import logger
 from pynini.lib import pynutil
 
 from src.constants import get_yaml_dir
-from src.fst_utils import ReservedSymbolMixin as R
+from src.fst_utils import ReservedSymbols as ReservedSymbols
 from src.fst_utils import stringify_features
 from src.grammar.acceptor_compilation import (
     filter_strings_by_pattern,
@@ -39,9 +39,9 @@ from src.grammar.marker_resolution import (
 )
 from src.grammar.transducer_compilation import get_marker_fst
 from src.lexicon import get_gloss_for_root, get_roots, get_roots_with_lexical_features
-from src.yaml_utils.cache import is_fst_cache_valid, load_fst, observed_cache, save_fst
-from src.yaml_utils.schema_validation import CONFIG_KIND_TO_PARDIR
-from src.yaml_utils.yaml_server import (
+from src.yaml.cache import is_fst_cache_valid, load_fst, observed_cache, save_fst
+from src.yaml.schema_validation import CONFIG_KIND_TO_PARDIR
+from src.yaml.yaml_server import (
     get_feature_map,
     get_yaml_data_safe,
     get_yaml_kind,
@@ -152,15 +152,15 @@ def build_search_lexicon_and_leftfactor(
     syms = get_symbol_table()
 
     insert_fst = pynutil.insert(
-        pynini.accep(R.insert, weight=EDIT_COST / 2, token_type=syms)
+        pynini.accep(ReservedSymbols.insert, weight=EDIT_COST / 2, token_type=syms)
     )
     delete_fst = pynini.cross(
         sigma,
-        pynini.accep(R.delete, weight=EDIT_COST / 2, token_type=syms),
+        pynini.accep(ReservedSymbols.delete, weight=EDIT_COST / 2, token_type=syms),
     )
     substitute_fst = pynini.cross(
         sigma,
-        pynini.accep(R.substitute, weight=EDIT_COST / 2, token_type=syms),
+        pynini.accep(ReservedSymbols.substitute, weight=EDIT_COST / 2, token_type=syms),
     )
     edit_fst = pynini.union(insert_fst, delete_fst, substitute_fst).optimize()
 
@@ -172,8 +172,8 @@ def build_search_lexicon_and_leftfactor(
     left_factor.optimize()
 
     right_factor = pynini.invert(left_factor)
-    insert_label = syms.find(R.insert)
-    delete_label = syms.find(R.delete)
+    insert_label = syms.find(ReservedSymbols.insert)
+    delete_label = syms.find(ReservedSymbols.delete)
     right_factor = right_factor.relabel_pairs(
         ipairs=[(insert_label, delete_label), (delete_label, insert_label)]
     )

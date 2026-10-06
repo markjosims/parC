@@ -1,34 +1,34 @@
-from src.models import (
-    Marker,
-    Rule,
-    SimpleRule,
-    StringMapRule,
-    RuleSequence,
-    SingleStringMarker,
-    StringTupleMarker,
-    UnorderedMarker,
-    PrincipalPartMarker,
-    OperationTypeStringTuple,
-    OperationTypeSingleString,
-    UnorderedOperation,
-)
-from src.grammar.transducer_compilation import compile_marker
-from src.grammar.acceptor_compilation import (
-    fsa,
-    word_fsa,
-    fsm_strings,
-    filter_strings_by_pattern,
-)
-from src.grammar.marker_resolution import get_markers_for_paradigm
-from src.lexicon import get_roots_with_gloss
-import pynini
+import os
 
-from src.yaml_utils.yaml_server import get_yaml_data_safe
-from src.grammar.paradigm_compilation import inflect, parse, search, _get_or_build
+import pynini
+import pytest
 
 from src.constants import PROJECT_ROOT
-import os
-import pytest
+from src.grammar.acceptor_compilation import (
+    filter_strings_by_pattern,
+    fsa,
+    fsm_strings,
+    word_fsa,
+)
+from src.grammar.marker_resolution import get_markers_for_paradigm
+from src.grammar.paradigm_compilation import _get_or_build, inflect, parse, search
+from src.grammar.transducer_compilation import compile_marker
+from src.lexicon import get_roots_with_gloss
+from src.models import (
+    Marker,
+    OperationTypeSingleString,
+    OperationTypeStringTuple,
+    PrincipalPartMarker,
+    Rule,
+    RuleSequence,
+    SimpleRule,
+    SingleStringMarker,
+    StringMapRule,
+    StringTupleMarker,
+    UnorderedMarker,
+    UnorderedOperation,
+)
+from src.yaml.yaml_server import get_yaml_data_safe
 
 
 def test_suffix():
