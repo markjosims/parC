@@ -68,7 +68,9 @@ def is_acceptor(fsa: pynini.Fst) -> bool:
     return fsa.properties(pynini.ACCEPTOR, True)
 
 
-def stringify_features(feature_values: set[tuple[str, str]] | dict[str, str]) -> str:
+def stringify_features(
+    feature_values: set[tuple[str, str]] | dict[str, str] | frozendict[str, str],
+) -> str:
     if isinstance(feature_values, (dict, frozendict)):
         feature_values = list(feature_values.items())
     return "".join(f"[{f}={v}]" for f, v in sorted(feature_values))

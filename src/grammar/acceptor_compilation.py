@@ -24,7 +24,7 @@ from graphlib import TopologicalSorter
 from loguru import logger
 from pynini.lib import rewrite
 
-from src.fst_utils import ReservedSymbols
+from src.grammar.fst_utils import ReservedSymbols
 from src.models import (
     FstContext,
     NestedNode,

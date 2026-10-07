@@ -19,8 +19,6 @@ from loguru import logger
 from pynini.lib import pynutil
 
 from src.constants import get_yaml_dir
-from src.fst_utils import ReservedSymbols as ReservedSymbols
-from src.fst_utils import stringify_features
 from src.grammar.acceptor_compilation import (
     filter_strings_by_pattern,
     fsa,
@@ -30,6 +28,8 @@ from src.grammar.acceptor_compilation import (
     get_symbol_table,
     word_fsa,
 )
+from src.grammar.fst_utils import ReservedSymbols as ReservedSymbols
+from src.grammar.fst_utils import stringify_features
 from src.grammar.marker_resolution import (
     get_feature_combos_for_paradigm,
     get_features_for_paradigm,

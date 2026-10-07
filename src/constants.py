@@ -19,6 +19,9 @@ def set_yaml_dir(path: str):
     os.environ["YAML_DIR"] = path
 
 
+MAX_HOMOPHONE_COUNT = 10
+
+
 # pynini constants
 
 

@@ -326,7 +326,7 @@ class RuleMarker(
     A marker that applies a contextual rule.
     """
 
-    rule: str
+    rule: ObjectId
     stage: str | None = None
 
 

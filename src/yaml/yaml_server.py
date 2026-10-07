@@ -17,8 +17,7 @@ and for loading specific objects from YAML files, viz:
 """
 
 from copy import deepcopy
-from re import L
-from typing import Iterable, Literal
+from typing import Literal
 
 import msgspec
 from frozendict import frozendict

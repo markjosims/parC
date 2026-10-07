@@ -10,22 +10,26 @@ from __future__ import annotations
 
 import pynini
 
-from src.fst_utils import ReservedSymbols as ReservedSymbols
 from src.grammar.acceptor_compilation import (
     FstContext,
     build_fst_context_for_project,
     fsa,
     word_fsa,
 )
+from src.grammar.fst_utils import ReservedSymbols as ReservedSymbols
 from src.models import (
     Marker,
+    PrefixMarker,
     PrincipalPartMarker,
     Project,
+    ReplaceMarker,
     Rule,
+    RuleMarker,
     RuleSequence,
     SimpleRule,
     StringMapRule,
-    StructRegistryType,
+    SuffixMarker,
+    SuppletionMarker,
 )
 from src.yaml.yaml_server import kind_dir, load_project
 
@@ -106,20 +110,20 @@ def compile_rules_for_project(project: Project) -> Project:
 """
 
 
-def _compile_prefix(value: str, fst_context: FstContext) -> pynini.Fst:
+def _compile_prefix(form: str, fst_context: FstContext) -> pynini.Fst:
     sigma_star = fst_context.special_fsas["sigma_star"]
     bow = pynini.accep(
         ReservedSymbols.bow,
         token_type=fst_context.sym_table,
     )
-    tau = pynini.cross(bow, pynini.concat(bow, fsa(value)))
+    tau = pynini.cross(bow, pynini.concat(bow, fsa(form, fst_context)))
     return pynini.cdrewrite(tau, "", "", sigma_star)
 
 
-def _compile_suffix(value: str, fst_context: FstContext) -> pynini.Fst:
+def _compile_suffix(form: str, fst_context: FstContext) -> pynini.Fst:
     sigma_star = fst_context.special_fsas["sigma_star"]
     eow = pynini.accep(ReservedSymbols.eow, token_type=fst_context.sym_table)
-    tau = pynini.cross(eow, pynini.concat(fsa(value, fst_context), eow))
+    tau = pynini.cross(eow, pynini.concat(fsa(form, fst_context), eow))
     return pynini.cdrewrite(tau, "", "", sigma_star)
 
 
@@ -140,68 +144,42 @@ def _compile_string_map(
 
 
 def compile_marker(marker: Marker, project: Project) -> pynini.Fst:
-    if isinstance(marker, SingleStringMarker):
-        if marker.kind == "prefix":
-            return _compile_prefix(marker.value, project.fst_context)
-        if marker.kind == "suffix":
-            return _compile_suffix(marker.value, project.fst_context)
-        if marker.kind == "suppletion":
-            sigma_star = project.special_fsas["sigma_star"]
-            tau = pynini.cross(sigma_star, fsa(marker.value, fst_context))
-            return pynini.cdrewrite(tau, "", "", sigma_star)
-        if marker.kind == "rule":
-            rules = get_rules()
-            rule_name = marker.value.removeprefix("$")
-            if rule_name not in rules:
-                raise KeyError(
-                    f"Rule '{marker.value}' not found in set of rules {list(rules.keys())}"
-                )
-            result = compile_rule(rules[rule_name])
-            if isinstance(result, list):
-                composed = result[0]
-                for f in result[1:]:
-                    composed = pynini.compose(composed, f)
-                return composed
-            return result
-    if isinstance(marker, StringTupleMarker) and marker.kind == "replace":
+    if isinstance(marker, PrefixMarker):
+        return _compile_prefix(marker.form, project.fst_context)
+    if isinstance(marker, SuffixMarker):
+        return _compile_suffix(marker.form, project.fst_context)
+    if isinstance(marker, SuppletionMarker):
         sigma_star = project.special_fsas["sigma_star"]
         tau = pynini.cross(
-            fsa(marker.value[0], fst_context),
-            fsa(marker.value[1], fst_context),
+            sigma_star,
+            fsa(marker.form, project.fst_context),
         )
         return pynini.cdrewrite(tau, "", "", sigma_star)
-    if isinstance(marker, PrincipalPartMarker) and marker.kind == "string_map":
-        return _compile_string_map(marker.value)
-    if isinstance(marker, UnorderedMarker) and marker.kind == "principal_part":
-        raise ValueError(
-            "UnorderedMarker(principal_part) must be resolved to StringMapMarker "
-            "via get_markers_for_paradigm before compilation"
+    if isinstance(marker, RuleMarker):
+        rule_id = marker.rule
+        rules = project.fst_context.compiled_rules
+        if rule_id not in rules:
+            raise KeyError(
+                f"Rule '{marker.rule}' not found in set of compiled rules {list(rules.keys())}"
+            )
+        rule_fst = rules[rule_id]
+        if isinstance(rule_fst, list):
+            composed = rule_fst[0]
+            for f in rule_fst[1:]:
+                composed = pynini.compose(composed, f)
+            return composed
+        return rule_fst
+    if isinstance(marker, ReplaceMarker):
+        sigma_star = project.special_fsas["sigma_star"]
+        tau = pynini.cross(
+            fsa(marker.relation.input_pattern, project.fst_context),
+            fsa(marker.relation.output_pattern, project.fst_context),
         )
+        return pynini.cdrewrite(tau, "", "", sigma_star)
+    if isinstance(marker, PrincipalPartMarker):
+        # PrincipalPartMarkers are compiled lazily by the Paradigm
+        pass
     raise ValueError(f"Unknown marker: {marker!r}")
-
-
-"""
-Public API
-"""
-
-
-def get_rule_fst(rule_name: str) -> pynini.Fst | list[pynini.Fst]:
-    rule_name = rule_name.removeprefix("$")
-    rules = get_rules()
-    if rule_name not in rules:
-        raise KeyError(
-            f"Rule '{rule_name}' not found in set of rules {list(rules.keys())}"
-        )
-    rule = rules[rule_name]
-
-    if isinstance(rule, RuleSequence):
-        return [get_rule_fst(name) for name in rule.rules]
-
-    return compile_rule(rule)
-
-
-def get_marker_fst(marker: Marker) -> pynini.Fst:
-    return compile_marker(marker)
 
 
 if __name__ == "__main__":
