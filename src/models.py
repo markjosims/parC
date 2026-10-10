@@ -686,6 +686,11 @@ class Project(NamedTuple):
     fst_context: FstContext | None = None
 
 
+class FeatureSet(NamedTuple):
+    feature_name: str
+    feature_values: dict[str, FeatureSet | pynini.Fst | None]
+
+
 """
 ## Struct registry helpers
 """

@@ -12,16 +12,35 @@ import itertools
 from frozendict import frozendict
 from loguru import logger
 
-from src.lexicon import get_principal_part_for_all_roots, get_roots
+from src.lexicon import stringify_lexemes
 from src.models import (
+    FeatureSet,
+    FixedFeatureValue,
     Marker,
-    PrincipalPartMarker,
-    UnorderedMarker,
-    resolve_marker,
+    ParadigmFile,
+    PartOfSpeechFile,
 )
-from src.yaml.yaml_server import get_feature_map, get_markers, get_yaml_data_safe
 
-FeatureComboType = set[tuple[str, str]]
+
+def get_paradigm_feature_space(paradigm_id: str, project: Project) -> FeatureSet:
+    paradigm: ParadigmFile = project.struct_registry["Paradigm"][paradigm_id]
+    part_of_speech: PartOfSpeechFile = project.struct_registry["PartOfSpeech"][
+        paradigm.part_of_speech
+    ]
+    inflectional_features = sorted(
+        [
+            project.struct_registry["Feature"].get(feature)
+            for feature in part_of_speech.inflectional_features
+        ],
+        key=lambda f: f.id,
+    )
+    feature_value_combo = paradigm.feature_value_combinations
+    if feature_value_combo is None:
+        for feature in inflectional_features:
+            ...
+
+def _walk_feature_set():
+    # TODO...
 
 
 def get_markers_for_paradigm(
@@ -119,13 +138,13 @@ def get_markers_for_paradigm(
 
 
 def get_fixed_features_for_paradigm(
-    description: str, kind: str = "Paradigm"
-) -> FeatureComboType:
-    paradigm_data = get_yaml_data_safe(kind=kind, yaml_basename=name)
-    fixed_features = set()
-    for feature, value in paradigm_data["feature_markers"].items():
-        if isinstance(value, str) and not value.startswith("$"):
-            fixed_features.add((feature, value))
+    paradigm: ParadigmFile,
+) -> set[FixedFeatureValue]:
+    fixed_features = set(
+        feature_spec
+        for feature_spec in paradigm.feature_markers
+        if isinstance(feature_spec, FixedFeatureValue)
+    )
 
     return fixed_features
 
@@ -195,15 +214,3 @@ def get_feature_combos_for_paradigm(
             for combo_tuples in itertools.product(*free_value_lists)
         ]
     return combos, marker_files, multifeature_files
-
-
-def get_features_for_paradigm(description: str) -> set[str]:
-    """
-    Get the set of inflectional features for a given paradigm.
-    """
-    paradigm_data = get_yaml_data_safe("Paradigm", name)
-    part_of_speech = paradigm_data["part_of_speech"]
-    features = get_yaml_data_safe(
-        yaml_basename=part_of_speech, kind="PartOfSpeech"
-    ).get("features", [])
-    return set(features)

@@ -7,6 +7,7 @@ from frozendict import frozendict
 
 from src.constants import MAX_HOMOPHONE_COUNT
 from src.fst_utils import stringify_features
+from src.grammar.fst_utils import pad_with_word_edge_tags
 from src.models import PartOfSpeechFile, Project
 from src.yaml.yaml_server import kind_dir
 
@@ -71,7 +72,9 @@ def filter_lexicon_by_features(
 
 
 def get_principal_part_for_all_roots(
-    lexicon_basename: str, principal_part: str, fallback_to_root: bool = True
+    lexicon_basename: str,
+    principal_part: str,
+    fallback_to_root: bool = True,
 ) -> list[str]:
     df = load_lexicon_df(lexicon_basename)
     if fallback_to_root:
@@ -90,10 +93,15 @@ def get_principal_part_for_all_roots(
 def stringify_lexicon_row(
     row: dict[str, str | int] or pd.Series,
     feature_cols: list[str],
+    lexeme_col: str = "root",
+    fallback_to_root: bool = True,
 ) -> str:
-    features = {k: v for k, v in row.items() if k != "root"}
-    root = row["root"]
-    lexeme_str = f"{root}{stringify_features(features)}"
+    features = {k: v for k, v in row.items() if k in feature_cols}
+    stem = row[lexeme_col]
+    if not stem and fallback_to_root:
+        stem = row["root"]
+    padded_stem = pad_with_word_edge_tags(stem)
+    lexeme_str = f"{padded_stem}{stringify_features(features)}"
     return lexeme_str
 
 
@@ -101,14 +109,21 @@ def stringify_lexemes(
     lexemes: pd.DataFrame | list[dict[str, str | int]],
     part_of_speech_id: str,
     project: Project,
-) -> tuple[str, ...]:
+    lexeme_col: str = "root",
+    fallback_to_root: bool = True,
+) -> pd.Series[str]:
     if type(lexemes) is not pd.DataFrame:
         lexemes = pd.DataFrame(lexemes)
     part_of_speech = project.struct_registry["PartOfSpeech"][part_of_speech_id]
     lexical_features = part_of_speech.lexical_features
     lexical_features += "homophone_index"
     lexeme_strs = lexemes.apply(
-        lambda row: stringify_lexicon_row(row, feature_cols=lexical_features),
+        lambda row: stringify_lexicon_row(
+            row,
+            feature_cols=lexical_features,
+            lexeme_col=lexeme_col,
+            fallback_to_root=fallback_to_root,
+        ),
         axis=1,
-    ).tolist()
+    )
     return lexeme_strs

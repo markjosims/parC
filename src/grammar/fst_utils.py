@@ -74,3 +74,7 @@ def stringify_features(
     if isinstance(feature_values, (dict, frozendict)):
         feature_values = list(feature_values.items())
     return "".join(f"[{f}={v}]" for f, v in sorted(feature_values))
+
+
+def pad_with_word_edge_tags(word: str) -> str:
+    return ReservedSymbols.bow + word + ReservedSymbols.eow

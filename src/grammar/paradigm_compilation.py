@@ -9,7 +9,6 @@ Caches:
 
 from __future__ import annotations
 
-import os
 import re
 from typing import NamedTuple
 
@@ -24,8 +23,6 @@ from src.grammar.acceptor_compilation import (
     fsa,
     fsm_strings,
     fsm_strings_and_weights,
-    get_special_fsas,
-    get_symbol_table,
     word_fsa,
 )
 from src.grammar.fst_utils import ReservedSymbols as ReservedSymbols
