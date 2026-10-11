@@ -6,8 +6,7 @@ import pandas as pd
 from frozendict import frozendict
 
 from src.constants import MAX_HOMOPHONE_COUNT
-from src.fst_utils import stringify_features
-from src.grammar.fst_utils import pad_with_word_edge_tags
+from src.grammar.fst_utils import pad_with_word_edge_tags, stringify_features
 from src.models import PartOfSpeechFile, Project
 from src.yaml.yaml_server import kind_dir
 
@@ -45,7 +44,7 @@ def init_lexicon(
     df.to_csv(lexicon_path, index=False)
 
 
-def get_homophone_indices(df: pd.DataFrame) -> pd.Series[int]:
+def get_homophone_indices(df: pd.DataFrame) -> pd.Series:
     homophone_counter = Counter()
     homophone_indices = []
     for root in df["root"].tolist():
@@ -90,7 +89,7 @@ def get_principal_part_for_all_roots(
     return df[principal_part].tolist()
 
 
-def stringify_lexicon_row(
+def _stringify_lexicon_row(
     row: dict[str, str | int] or pd.Series,
     feature_cols: list[str],
     lexeme_col: str = "root",
@@ -111,14 +110,14 @@ def stringify_lexemes(
     project: Project,
     lexeme_col: str = "root",
     fallback_to_root: bool = True,
-) -> pd.Series[str]:
+) -> pd.Series:
     if type(lexemes) is not pd.DataFrame:
         lexemes = pd.DataFrame(lexemes)
     part_of_speech = project.struct_registry["PartOfSpeech"][part_of_speech_id]
     lexical_features = part_of_speech.lexical_features
     lexical_features += "homophone_index"
     lexeme_strs = lexemes.apply(
-        lambda row: stringify_lexicon_row(
+        lambda row: _stringify_lexicon_row(
             row,
             feature_cols=lexical_features,
             lexeme_col=lexeme_col,

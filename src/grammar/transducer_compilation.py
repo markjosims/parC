@@ -17,8 +17,10 @@ from src.grammar.acceptor_compilation import (
     word_fsa,
 )
 from src.grammar.fst_utils import ReservedSymbols as ReservedSymbols
+from src.grammar.lexicon import load_lexicon_df, stringify_lexemes
 from src.models import (
     Marker,
+    ParadigmFile,
     PrefixMarker,
     PrincipalPartMarker,
     Project,
@@ -30,6 +32,7 @@ from src.models import (
     StringMapRule,
     SuffixMarker,
     SuppletionMarker,
+    TransitiveRelation,
 )
 from src.yaml.yaml_server import kind_dir, load_project
 
@@ -127,59 +130,97 @@ def _compile_suffix(form: str, fst_context: FstContext) -> pynini.Fst:
     return pynini.cdrewrite(tau, "", "", sigma_star)
 
 
-def _compile_string_map(
-    string_map: tuple[tuple[str, str], ...],
+def _compile_rule_marker(
+    rule_id: str, fst_context: FstContext
+) -> pynini.Fst | tuple[pynini.Fst, ...]:
+    rules = fst_context.compiled_rules
+    if rule_id not in rules:
+        raise KeyError(
+            f"Rule '{marker.rule}' not found in set of compiled rules {list(rules.keys())}"
+        )
+    rule_fst = rules[rule_id]
+    return rule_fst
+
+
+def _compile_suppletion_marker(form: str, fst_context: FstContext) -> pynini.Fst:
+    sigma_star = fst_context.special_fsas["sigma_star"]
+    tau = pynini.cross(
+        sigma_star,
+        fsa(marker.form, fst_context),
+    )
+    return pynini.cdrewrite(tau, "", "", sigma_star)
+
+
+def _compile_replace_marker(
+    relation: TransitiveRelation,
     fst_context: FstContext,
 ) -> pynini.Fst:
-    # word-level substitution: cross(word_fsa(root), word_fsa(pp)) per entry
+    sigma_star = fst_context.special_fsas["sigma_star"]
+    tau = pynini.cross(
+        fsa(relation.input_pattern, project.fst_context),
+        fsa(relation.output_pattern, project.fst_context),
+    )
+    return pynini.cdrewrite(tau, "", "", sigma_star)
+
+
+def _compile_principal_part_marker(
+    principal_part: str,
+    paradigm: ParadigmFile,
+    project: Project,
+) -> pynini.Fst:
+    lexemes = load_lexicon_df(paradigm.part_of_speech)
+    part_of_speech = project.struct_registry["PartOfSpeechFile"][
+        paradigm.part_of_speech
+    ]
+    root_lexemes = stringify_lexemes(
+        lexemes=lexemes,
+        part_of_speech=project.part_of_speech,
+        project=project,
+    )
+    principal_part_strs = stringify_lexemes(
+        lexemes=lexemes,
+        part_of_speech=project.part_of_speech,
+        project=project,
+        lexeme_col=principal_part,
+    )
     return pynini.union(
-        *[
+        [
             pynini.cross(
-                word_fsa(i, fst_context),
-                word_fsa(o, fst_context),
+                fsa(root, project.fsa_context),
+                fsa(part, project.fsa_context),
             )
-            for i, o in string_map
+            for root, part in zip(root_lexemes.tolist(), principal_part_strs.tolist())
         ]
     ).optimize()
 
 
-def compile_marker(marker: Marker, project: Project) -> pynini.Fst:
+def compile_marker(
+    marker: Marker,
+    paradigm: ParadigmFile,
+    project: Project,
+) -> tuple[pynini.Fst, ...]:
     if isinstance(marker, PrefixMarker):
-        return _compile_prefix(marker.form, project.fst_context)
-    if isinstance(marker, SuffixMarker):
-        return _compile_suffix(marker.form, project.fst_context)
-    if isinstance(marker, SuppletionMarker):
-        sigma_star = project.special_fsas["sigma_star"]
-        tau = pynini.cross(
-            sigma_star,
-            fsa(marker.form, project.fst_context),
+        fst = _compile_prefix(marker.form, project.fst_context)
+    elif isinstance(marker, SuffixMarker):
+        fst = _compile_suffix(marker.form, project.fst_context)
+    elif isinstance(marker, SuppletionMarker):
+        fst = _compile_suppletion_marker(marker.form, project.fst_context)
+    elif isinstance(marker, RuleMarker):
+        fst = _compile_rule_marker(marker.rule, project.fst_context)
+    elif isinstance(marker, ReplaceMarker):
+        fst = _compile_replace_marker(marker.relation, project.fst_context)
+    elif isinstance(marker, PrincipalPartMarker):
+        fst = _compile_principal_part_marker(
+            principal_part=marker.principal_part_value,
+            project=project,
+            paradigm=paradigm,
         )
-        return pynini.cdrewrite(tau, "", "", sigma_star)
-    if isinstance(marker, RuleMarker):
-        rule_id = marker.rule
-        rules = project.fst_context.compiled_rules
-        if rule_id not in rules:
-            raise KeyError(
-                f"Rule '{marker.rule}' not found in set of compiled rules {list(rules.keys())}"
-            )
-        rule_fst = rules[rule_id]
-        if isinstance(rule_fst, list):
-            composed = rule_fst[0]
-            for f in rule_fst[1:]:
-                composed = pynini.compose(composed, f)
-            return composed
-        return rule_fst
-    if isinstance(marker, ReplaceMarker):
-        sigma_star = project.special_fsas["sigma_star"]
-        tau = pynini.cross(
-            fsa(marker.relation.input_pattern, project.fst_context),
-            fsa(marker.relation.output_pattern, project.fst_context),
-        )
-        return pynini.cdrewrite(tau, "", "", sigma_star)
-    if isinstance(marker, PrincipalPartMarker):
-        # PrincipalPartMarkers are compiled lazily by the Paradigm
-        pass
-    raise ValueError(f"Unknown marker: {marker!r}")
+    else:
+        raise ValueError(f"Unrecognized marker type {type(marker)}")
+
+    if isinstance(fst, tuple):
+        return fst
+    return (fst,)
 
 
 if __name__ == "__main__":

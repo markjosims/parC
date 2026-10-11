@@ -404,6 +404,7 @@ class MultiFeatureMarkerFile(
     """
 
     id: ObjectId
+    features: tuple[ObjectId, ...]
     data: tuple[MultiFeatureMarker, ...]
     inherits: str | None = None
 
@@ -416,6 +417,8 @@ Contains the following submodules:
 - Paradigm
 """
 
+FeatureVectorType = dict[str, tuple[str] | Literal["*", "undefined"]]
+
 
 class FeatureCombination(msgspec.Struct, kw_only=True, frozen=True):
     """
@@ -425,7 +428,7 @@ class FeatureCombination(msgspec.Struct, kw_only=True, frozen=True):
     the feature must be undefined in this combination.
     """
 
-    feature_vector: dict[str, tuple[str] | Literal["*", "undefined"]]
+    feature_vector: FeatureVectorType
     description: str | None = None
 
 
@@ -467,6 +470,9 @@ class FeatureMarkerReference(
 
     feature: str
     feature_marker: str
+    multifeature_behavior: Literal["multifeature_overrides", "both_marked"] = (
+        "multifeature_overrides"
+    )
 
 
 class FixedFeatureValue(
@@ -522,7 +528,7 @@ class ParadigmFile(
     filter: ParadigmFilter | None = None
     stage_order: tuple[str, ...] | None = None
     global_markers: tuple[Marker, ...] | None = None
-    feature_value_combinations: str | None = None
+    feature_value_combinations: ObjectId | None = None
     multifeature_markers: tuple[str, ...] | None = None
 
     inherits: str | None = None
@@ -686,9 +692,37 @@ class Project(NamedTuple):
     fst_context: FstContext | None = None
 
 
-class FeatureSet(NamedTuple):
-    feature_name: str
-    feature_values: dict[str, FeatureSet | pynini.Fst | None]
+# A list of FSTs denoting the morphological operations
+# for a given feature vector and the string value
+class CompiledMarker(NamedTuple):
+    """
+    A struct containing the interpreted FST for a marker
+    list alongside metadata indicating provenance and
+    features exponed.
+    """
+
+    marker: Marker
+    feature_set: tuple[tuple[str, str], ...]
+    fst: pynini.Fst
+    sourcefile_kind: Literal[
+        "FeatureMarkerFile",
+        "MultiFeatureMarkerFile",
+    ]
+    sourcefile_id: ObjectId
+
+
+class FeatureTrie(NamedTuple):
+    """
+    A trie mapping values for the current features to subtrees
+    denoting other features, with None marking leaf nodes.
+
+    After compilation, each node is decorated with an array of
+    `CompiledMarker` objects.
+    """
+
+    feature_id: str
+    feature_values: dict[str, FeatureTrie | None]
+    markers: tuple[CompiledMarker, ...] | None = None
 
 
 """
