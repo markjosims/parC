@@ -24,7 +24,9 @@ from graphlib import TopologicalSorter
 from loguru import logger
 from pynini.lib import rewrite
 
+from src.constants import MAX_HOMOPHONE_COUNT
 from src.grammar.fst_utils import ReservedSymbols
+from src.grammar.lexicon import HOMOPHONE_INDEX_FEATURE
 from src.models import (
     FstContext,
     NestedNode,
@@ -52,6 +54,9 @@ def build_symbol_table(struct_registry: StructRegistryType) -> pynini.SymbolTabl
     for feature in struct_registry["Feature"].values():
         for value in feature.values:
             sym_table.add_symbol(f"[{feature.id}={value}]")
+    for i in range(MAX_HOMOPHONE_COUNT):
+        sym_table.add_symbol(f"[{HOMOPHONE_INDEX_FEATURE}={i}]")
+
     for sym in ReservedSymbols.boundary_symbols:
         sym_table.add_symbol(sym)
     for sym in ReservedSymbols.edit_tags:
@@ -88,7 +93,9 @@ def build_special_fsas(
     for feature in struct_registry["Feature"].values():
         for value in feature.values:
             tags.append(f"[{feature.id}={value}]")
-    flag_fsa = (
+    for i in range(MAX_HOMOPHONE_COUNT):
+        tags.append(f"[{HOMOPHONE_INDEX_FEATURE}={i}]")
+    tag_fsa = (
         pynini.union(*[pynini.accep(t, token_type=sym_table) for t in tags]).optimize()
         if tags
         else pynini.accep("", token_type=sym_table)
@@ -116,12 +123,12 @@ def build_special_fsas(
     eow_fsa = pynini.accep(ReservedSymbols.eow, token_type=sym_table)
     word_edge_fsa = pynini.union(bow_fsa, eow_fsa)
 
-    sigma = pynini.union(phone_fsa, flag_fsa, boundary_fsa, word_edge_fsa).optimize()
+    sigma = pynini.union(phone_fsa, tag_fsa, boundary_fsa, word_edge_fsa).optimize()
     sigma_star = sigma.star.optimize()
 
     return {
         "phone": phone_fsa,
-        "flag": flag_fsa,
+        "flag": tag_fsa,
         "sigma": sigma,
         "sigma_star": sigma_star,
         "bow": bow_fsa,
@@ -197,6 +204,8 @@ def build_token_map(
     for feature in struct_registry["Feature"].values():
         for val in feature.values:
             tokens["tag"].append(Token(f"[{feature.id}={val}]", "tag"))
+    for i in range(MAX_HOMOPHONE_COUNT):
+        tokens["tag"].append(Token(f"[{HOMOPHONE_INDEX_FEATURE}={i}]", "tag"))
 
     for pattern_id in struct_registry["Pattern"].keys():
         tokens["id"].append(Token(pattern_id, "id"))

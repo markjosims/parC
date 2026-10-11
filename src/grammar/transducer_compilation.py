@@ -136,7 +136,7 @@ def _compile_rule_marker(
     rules = fst_context.compiled_rules
     if rule_id not in rules:
         raise KeyError(
-            f"Rule '{marker.rule}' not found in set of compiled rules {list(rules.keys())}"
+            f"Rule '{rule_id}' not found in set of compiled rules {list(rules.keys())}"
         )
     rule_fst = rules[rule_id]
     return rule_fst
@@ -146,7 +146,7 @@ def _compile_suppletion_marker(form: str, fst_context: FstContext) -> pynini.Fst
     sigma_star = fst_context.special_fsas["sigma_star"]
     tau = pynini.cross(
         sigma_star,
-        fsa(marker.form, fst_context),
+        fsa(form, fst_context),
     )
     return pynini.cdrewrite(tau, "", "", sigma_star)
 
@@ -169,25 +169,22 @@ def _compile_principal_part_marker(
     project: Project,
 ) -> pynini.Fst:
     lexemes = load_lexicon_df(paradigm.part_of_speech)
-    part_of_speech = project.struct_registry["PartOfSpeechFile"][
-        paradigm.part_of_speech
-    ]
     root_lexemes = stringify_lexemes(
         lexemes=lexemes,
-        part_of_speech=project.part_of_speech,
+        part_of_speech_id=paradigm.part_of_speech,
         project=project,
     )
     principal_part_strs = stringify_lexemes(
         lexemes=lexemes,
-        part_of_speech=project.part_of_speech,
+        part_of_speech_id=paradigm.part_of_speech,
         project=project,
         lexeme_col=principal_part,
     )
     return pynini.union(
-        [
+        *[
             pynini.cross(
-                fsa(root, project.fsa_context),
-                fsa(part, project.fsa_context),
+                fsa(root, project.fst_context),
+                fsa(part, project.fst_context),
             )
             for root, part in zip(root_lexemes.tolist(), principal_part_strs.tolist())
         ]

@@ -470,9 +470,10 @@ class FeatureMarkerReference(
 
     feature: str
     feature_marker: str
-    multifeature_behavior: Literal["multifeature_overrides", "both_marked"] = (
-        "multifeature_overrides"
-    )
+    multifeature_behavior: Literal[
+        "multifeature_overrides",
+        "both_marked",
+    ] = "multifeature_overrides"
 
 
 class FixedFeatureValue(

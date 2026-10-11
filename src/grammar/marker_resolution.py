@@ -48,14 +48,22 @@ def get_paradigm_feature_trie(paradigm_id: str, project: Project) -> FeatureTrie
         ],
         key=lambda f: f.id,
     )
-    # TODO: add fst compilation online with feature space
-    # resolution. will need to track set of available MultiFeatureMarkerFiles
-    # at each node in traversal
+    feature_marker_files = [
+        project.struct_registry["FeatureMarkerFile"].get(spec.feature_marker)
+        for spec in paradigm.feature_markers
+        if isinstance(spec, FeatureMarkerReference)
+    ]
+    multi_feature_marker_files = [
+        project.struct_registry["MultiFeatureMarkerFile"].get(file_id)
+        for file_id in paradigm.multifeature_markers or tuple()
+    ]
     if paradigm.feature_value_combinations is None:
         return cartesian_product_feature_trie(
-            paradigm,
-            inflectional_features,
-            project,
+            paradigm=paradigm,
+            remaining_features=inflectional_features,
+            project=project,
+            feature_marker_files=feature_marker_files,
+            multi_feature_marker_files=multi_feature_marker_files,
         )
 
     return feature_combo_to_trie(
@@ -68,26 +76,56 @@ def cartesian_product_feature_trie(
     paradigm: ParadigmFile,
     remaining_features: list[Feature],
     project: Project,
+    feature_marker_files: list[FeatureMarkerFile],
+    multi_feature_marker_files: list[MultiFeatureMarkerFile],
     exponed_features: list[tuple[str, str]] | None = None,
 ) -> FeatureTrie | None:
     if not remaining_features:
         return None
+    if exponed_features is None:
+        exponed_features = []
     remaining_features = remaining_features.copy()
-    current = remaining_features.pop(0)
-    current_feature_specification: InflectionalFeatureSpecification = next(
+    current_feature = remaining_features.pop(0)
+    current_feature_spec: InflectionalFeatureSpecification = next(
         feature_spec
         for feature_spec in paradigm.feature_markers
         if feature_spec.feature == current_feature.id
     )
+    marker_map = compile_markers_for_node(
+        paradigm=paradigm,
+        current_feature=current_feature,
+        current_feature_spec=current_feature_spec,
+        exponed_features=exponed_features,
+        feature_marker_files=feature_marker_files,
+        multi_feature_marker_files=multi_feature_marker_files,
+    )
     subtree = {}
-    for value in current.values:
-        subtree[value] = cartesian_product_feature_trie(remaining_features)
-    return FeatureTrie(feature_id=current.id, feature_values=subtree)
+    for feature_value in marker_map.keys():
+        current_exponed = exponed_features + [(current_feature.id, feature_value)]
+        subtree[feature_value] = cartesian_product_feature_trie(
+            paradigm=paradigm,
+            remaining_features=remaining_features,
+            project=project,
+            feature_marker_files=feature_marker_files,
+            multi_feature_marker_files=multi_feature_marker_files,
+            exponed_features=current_exponed,
+        )
+
+    return FeatureTrie(
+        feature_id=current_feature.id,
+        feature_values=subtree,
+        markers=marker_map,
+    )
 
 
 def feature_combo_to_trie(
     feature_combo: FeatureCombination,
+    paradigm: ParadigmFile,
     remaining_features: list[Feature],
+    project: Project,
+    feature_marker_files: list[FeatureMarkerFile],
+    multi_feature_marker_files: list[MultiFeatureMarkerFile],
+    exponed_features: list[tuple[str, str]] | None = None,
 ) -> FeatureTrie:
     if not remaining_features:
         return None
@@ -120,56 +158,55 @@ def compile_markers_for_node(
     current_feature_spec: InflectionalFeatureSpecification,
     exponed_features: list[tuple[str, str]],
     paradigm: ParadigmFile,
-    feature_markers_files: list[FeatureMarkerFile],
-    multifeature_marker_files: list[MultiFeatureMarkerFile],
+    feature_marker_files: list[FeatureMarkerFile],
+    multi_feature_marker_files: list[MultiFeatureMarkerFile],
 ):
     """
     Assign markers to each child of the current node.
     """
     marker_map: dict[str, tuple[CompiledMarker, ...]] = {}
     if isinstance(current_feature_spec, FixedFeatureValue):
-        markers = get_multifeature_markers_for_current(
+        multifeat_markers = get_multifeature_markers_for_current(
             current_feature=current_feature,
             current_feature_value=current_feature_spec.feature_value,
             exponed_features=exponed_features,
-            multi_feature_marker_files=multifeature_marker_files,
+            multi_feature_marker_files=multi_feature_marker_files,
+            paradigm=paradigm,
+            project=project,
         )
-        marker_map[current_feature_spec.feature_value] = tuple(markers)
+        marker_map[current_feature_spec.feature_value] = multifeat_markers
 
     elif isinstance(current_feature_spec, FeatureMarkerReference):
-        feature_marker_file = next(
-            file for file in feature_markers_files if file.feature == current_feature
-        )
-        for value in current_feature.values():
-            feature_marker = next(
-                marker
-                for marker in feature_marker_file.data
-                if marker.feature_value == value
+        for value in current_feature.values:
+            feat_markers = get_feature_marker_for_current(
+                current_feature=current_feature,
+                current_feature_value=value,
+                feature_marker_files=feature_marker_files,
+                paradigm=paradigm,
+                project=project,
             )
-            markers = get_multifeature_markers_for_current(
+            multifeat_markers = get_multifeature_markers_for_current(
                 current_feature=current_feature,
                 current_feature_value=value,
                 exponed_features=exponed_features,
-                multi_feature_marker_files=multifeature_marker_files,
+                multi_feature_marker_files=multi_feature_marker_files,
+                paradigm=paradigm,
+                project=project,
             )
-            marker_map[current_feature_spec.feature_value] = tuple(
-                markers + [feature_marker]
-            )
+            marker_map[value] = feat_markers + multifeat_markers
+
     else:  # MultiFeatureMarkerOnly
-        for value in current_feature.values():
-            markers = get_multifeature_markers_for_current(
+        for value in current_feature.values:
+            multifeat_markers = get_multifeature_markers_for_current(
                 current_feature=current_feature,
                 current_feature_value=value,
                 exponed_features=exponed_features,
-                multi_feature_marker_files=multifeature_marker_files,
+                multi_feature_marker_files=multi_feature_marker_files,
+                paradigm=paradigm,
+                project=project,
             )
-            marker_map[current_feature_spec.feature_value] = tuple(markers)
-    for value, marker_array in marker_map.items():
-        compiled_markers=[]
-        for feature_marker in marker_array:
-            if isinstance(feature_marker, FeatureMarker):
-                for marker in feature_marker.markers:
-                    compiled_markers.append(CompiledMarker(marker=marker,feature_set=tuple((current_feature,value))
+            marker_map[current_feature_spec.feature_value] = multifeat_markers
+    return marker_map
 
 
 def get_multifeature_markers_for_current(
@@ -177,11 +214,13 @@ def get_multifeature_markers_for_current(
     current_feature_value: str,
     exponed_features: list[tuple[str, str]],
     multi_feature_marker_files: list[MultiFeatureMarkerFile],
-) -> list[MultiFeatureMarker]:
+    paradigm: ParadigmFile,
+    project: Project,
+) -> tuple[CompiledMarker, ...]:
     features_at_current = set(
         [current_feature.id] + [feature for feature, _ in exponed_features]
     )
-    current_markers: list[MultiFeatureMarker] = []
+    current_markers: list[CompiledMarker] = []
     for marker_file in multi_feature_marker_files:
         # first test that all features in marker file are covered
         # at current node
@@ -192,20 +231,63 @@ def get_multifeature_markers_for_current(
             continue
         # now check if a particular marker within the file matches the
         # specific feature values at the current node
-        for marker in marker_file.data:
+        for multifeat_marker in marker_file.data:
             if (
-                not marker.feature_values.get(current_feature.id, None)
+                not multifeat_marker.feature_values.get(current_feature.id, None)
                 == current_feature_value
             ):
                 continue
             if not all(
-                marker.feature_values[feature] == value
+                multifeat_marker.feature_values[feature] == value
                 for feature, value in exponed_features
             ):
                 continue
-            current_markers.append(marker)
+            for marker in multifeat_marker.markers:
+                fst_array = compile_marker(marker, paradigm, project)
+                compiled = CompiledMarker(
+                    marker=marker,
+                    fst=fst_array,
+                    sourcefile_kind="MultiFeatureMarkerFile",
+                    sourcefile_id=multifeat_marker.id,
+                    feature_set=tuple(multifeat_marker.feature_values.items()),
+                )
+                current_markers.append(compiled)
             break
-    return current_markers
+    return tuple(current_markers)
+
+
+def get_feature_marker_for_current(
+    current_feature: Feature,
+    current_feature_value: str,
+    feature_marker_files: list[FeatureMarkerFile],
+    paradigm: ParadigmFile,
+    project: Project,
+) -> tuple[CompiledMarker, ...]:
+    feature_marker_file = next(
+        file for file in feature_marker_files if file.feature == current_feature.id
+    )
+    feature_marker = next(
+        feature_marker
+        for feature_marker in feature_marker_file.data
+        if feature_marker.feature_value == current_feature_value
+    )
+    current_markers = []
+    for marker in feature_marker.markers:
+        fst_array = compile_marker(marker, paradigm, project)
+        compiled = CompiledMarker(
+            marker=marker,
+            fst=fst_array,
+            sourcefile_kind="FeatureMarkerFile",
+            sourcefile_id=feature_marker_file.id,
+            feature_set=tuple(
+                (
+                    current_feature,
+                    current_feature_value,
+                )
+            ),
+        )
+        current_markers.append(compiled)
+    return tuple(current_markers)
 
 
 def get_fixed_features_for_paradigm(

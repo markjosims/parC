@@ -10,10 +10,12 @@ from src.grammar.fst_utils import pad_with_word_edge_tags, stringify_features
 from src.models import PartOfSpeechFile, Project
 from src.yaml.yaml_server import kind_dir
 
+HOMOPHONE_INDEX_FEATURE = "homophone_index"
+
 
 def get_lexicon_path(part_of_speech_id: str) -> str:
     return os.path.join(
-        kind_dir("Wordlists"),
+        kind_dir("Wordlist"),
         f"{part_of_speech_id}.csv",
     )
 
@@ -23,7 +25,7 @@ def load_lexicon_df(part_of_speech_id: str) -> pd.DataFrame:
         get_lexicon_path(part_of_speech_id),
         keep_default_na=False,
     )
-    df["homophone_index"] = get_homophone_indices(df)
+    df[HOMOPHONE_INDEX_FEATURE] = get_homophone_indices(df)
     return df
 
 
@@ -113,9 +115,9 @@ def stringify_lexemes(
 ) -> pd.Series:
     if type(lexemes) is not pd.DataFrame:
         lexemes = pd.DataFrame(lexemes)
-    part_of_speech = project.struct_registry["PartOfSpeech"][part_of_speech_id]
+    part_of_speech = project.struct_registry["PartOfSpeechFile"][part_of_speech_id]
     lexical_features = part_of_speech.lexical_features
-    lexical_features += "homophone_index"
+    lexical_features += (HOMOPHONE_INDEX_FEATURE,)
     lexeme_strs = lexemes.apply(
         lambda row: _stringify_lexicon_row(
             row,
