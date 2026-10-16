@@ -127,22 +127,24 @@ _relations: dict[str, RelationType | tuple[RelationType, ...]] = {
     # Generic feature_value fields expect a "feature" field
     # in the same struct
     "feature_value": Constraint(
-        scope=["feature", (FeatureMarkerFile, "feature")],
+        scope=[
+            "feature",
+            "inflectional_feature",
+            "lexical_feature",
+            (FeatureMarkerFile, "feature"),
+        ],
         allowed=(Feature, "values"),
+    ),
+    # feature references must match an existing Feature struct
+    "feature": Reference(
+        target=Feature,
     ),
     # Inflectional features specified in a Paradigm must belong
     # to the corresponding set of inflectional features for the
     # specified part of speech
-    "feature": (
-        Constraint(
-            scope=(ParadigmFile, "part_of_speech"),
-            allowed=(PartOfSpeechFile, "inflectional_features"),
-            skip_if_no_scope=True,
-        ),
-        # feature references in general must match an existing Feature struct
-        Reference(
-            target=Feature,
-        ),
+    "inflectional_feature": Constraint(
+        scope=(ParadigmFile, "part_of_speech"),
+        allowed=(PartOfSpeechFile, "inflectional_features"),
     ),
     # Lexical features validate against the respective
     # part of speech in their parent struct

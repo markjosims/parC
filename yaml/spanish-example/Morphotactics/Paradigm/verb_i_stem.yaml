@@ -4,16 +4,16 @@ kind: Paradigm
 part_of_speech: verb # Part of speech reference, e.g., $verb
 
 id: verb_i_stem
-feature_markers:
+inflectional_feature_specs:
   # add feature markers here! See below for examples.
 - kind: feature_marker_file
-  feature: person_number
+  inflectional_feature: person_number
   feature_marker: i_stem_present_indicative
 - kind: fixed_value
-  feature: tense
+  inflectional_feature: tense
   feature_value: present
 - kind: fixed_value
-  feature: mood
+  inflectional_feature: mood
   feature_value: indicative
   # Map features to marker file references (start with $)
   # to indicate which markers expone that feature.
@@ -40,9 +40,10 @@ feature_markers:
 #     - [conjugation, first]
 #   pattern: "<C>+<V>+"  # Phonological filter pattern reference or shape
 # type para-flt to add filter!
-filter:
-  lexical_feature_values:
-    conjugation_class: i_class
+lexical_feature_specs:
+- kind: fixed_value
+  lexical_feature: conjugation_class
+  feature_value: i_class
 
 # Optional: markers or rules applied to every form in this paradigm
 # global_markers:

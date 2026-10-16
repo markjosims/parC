@@ -12,8 +12,8 @@ from __future__ import annotations
 import re
 from typing import NamedTuple
 
+import pandas as pd
 import pynini
-from frozendict import frozendict
 from loguru import logger
 from pynini.lib import pynutil
 
@@ -27,22 +27,11 @@ from src.grammar.acceptor_compilation import (
 )
 from src.grammar.fst_utils import ReservedSymbols as ReservedSymbols
 from src.grammar.fst_utils import stringify_features
-from src.grammar.marker_resolution import (
-    get_feature_combos_for_paradigm,
-    get_features_for_paradigm,
-    get_fixed_features_for_paradigm,
-    get_markers_for_paradigm,
-)
-from src.grammar.transducer_compilation import get_marker_fst
+from src.grammar.lexicon import filter_lexicon_by_features
+from src.grammar.marker_resolution import inflect_lexeme
 from src.lexicon import get_gloss_for_root, get_roots, get_roots_with_lexical_features
+from src.models import FixedLexicalFeatureValue, ParadigmFile, Project
 from src.yaml.cache import is_fst_cache_valid, load_fst, observed_cache, save_fst
-from src.yaml.schema_validation import CONFIG_KIND_TO_PARDIR
-from src.yaml.yaml_server import (
-    get_feature_map,
-    get_yaml_data_safe,
-    get_yaml_kind,
-    kind_dir,
-)
 
 EDIT_BOUND = 5
 EDIT_COST = 1.0
@@ -53,58 +42,19 @@ EDIT_COST = 1.0
 """
 
 
-def _apply_markers(stem_fst: pynini.Fst, markers: list) -> pynini.Fst:
-    current = stem_fst
-    for marker in markers:
-        current = pynini.compose(current, get_marker_fst(marker))
-    return current
-
-
-@observed_cache([get_yaml_dir()])
-def get_roots_for_paradigm(paradigm_name: str) -> list[str]:
-    """
-    Get the roots associated with a given paradigm.
-    Paradigms may further filter roots from their associated
-    part of speech using either a set of lexical feature values
-    or a regex pattern filter.
-    """
-    paradigm_data = get_yaml_data_safe("Paradigm", paradigm_name)
-    if paradigm_data is None:
-        raise ValueError(f"Paradigm '{paradigm_name}' not found or invalid.")
-
-    part_of_speech = paradigm_data["part_of_speech"]
-
-    if filter := paradigm_data.get("filter", None):
-        if lexical_features := filter.get("lexical_features", None):
-            roots = get_roots_with_lexical_features(
-                part_of_speech, lexical_features=lexical_features
-            )
-        else:
-            roots = get_roots(part_of_speech)
-        if pattern_filter := filter.get("pattern", None):
-            roots_fsa = pynini.union(*[word_fsa(root) for root in roots])
-            roots = filter_strings_by_pattern(roots_fsa, pattern_filter)
-    else:
-        roots = get_roots(part_of_speech)
-
-    return roots
-
-
 """
 ## Graph builders
 """
 
 
-def build_inflect_graph(paradigm_name: str) -> pynini.Fst:
+def build_inflect_graph(paradigm_id: str, project: Project) -> pynini.Fst:
     """root[features...] → surface form."""
-    paradigm_data = get_yaml_data_safe("Paradigm", paradigm_name)
-    if paradigm_data is None:
-        raise ValueError(f"Paradigm '{paradigm_name}' not found or invalid.")
+    paradigm: ParadigmFile = project.struct_registry["ParadigmFie"][paradigm_id]
 
     feature_map = get_feature_map()
-    roots = get_roots_for_paradigm(paradigm_name=paradigm_name)
+    roots = get_roots_for_paradigm(paradigm_id=paradigm_id)
     combos, _, _ = get_feature_combos_for_paradigm(
-        name=paradigm_name, feature_map=feature_map, kind="Paradigm"
+        name=paradigm_id, feature_map=feature_map, kind="Paradigm"
     )
 
     inflect_fsts: list[pynini.Fst] = []
@@ -112,13 +62,13 @@ def build_inflect_graph(paradigm_name: str) -> pynini.Fst:
         root_fsa = word_fsa(root)
         for feature_values in combos:
             try:
-                markers = get_markers_for_paradigm(feature_values, paradigm_name)
+                markers = get_markers_for_paradigm(feature_values, paradigm_id)
                 inflected_output = pynini.project(
                     _apply_markers(root_fsa, markers), project_type="output"
                 )
             except Exception as e:
                 logger.warning(
-                    f"Skipping {paradigm_name} root={root} fv={feature_values}: {e}"
+                    f"Skipping {paradigm_id} root={root} fv={feature_values}: {e}"
                 )
                 continue
 

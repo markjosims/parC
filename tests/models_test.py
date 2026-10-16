@@ -20,7 +20,6 @@ from src.models import (
     MultiFeatureMarkerFileRef,
     NestedNode,
     ParadigmFile,
-    ParadigmFilter,
     PartOfSpeechFile,
     PartOfSpeechFileRef,
     Pattern,
@@ -694,11 +693,10 @@ def test_paradigm_and_part_of_speech_file_construction_and_union():
     """
     Test ParadigmFile and PartOfSpeechFile serialization and GrammarFile union conversion
     """
-    pfilt = ParadigmFilter(lexical_features={"lemma": "run"}, pattern="^r")
     paradigm = ParadigmFile(
         part_of_speech=PartOfSpeechFileRef(ref="pos"),
         filter=pfilt,
-        feature_markers={
+        inflectional_feature_specs={
             "Tense": FeatureMarkerFileRef(ref="tense_markers"),
             "Mood": "present",
             "X": None,

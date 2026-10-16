@@ -36,9 +36,8 @@ from src.models import (
     CONFIG_KIND_TO_STRUCT,
     CONFIG_KINDS_ORDERED,
     DependencyGraphType,
+    InflectionStage,
     MtimeGraphType,
-    ParadigmFile,
-    ParadigmFilter,
     Project,
     SourcefileGraphType,
     StructId,
@@ -46,13 +45,27 @@ from src.models import (
     get_struct_id,
     iter_registry,
     registry_ids,
+    resolve_struct_name_from_instance,
     set_struct,
 )
 from src.yaml.relations import validate_struct_relations
 
+DEFAULT_STRUCTS = (InflectionStage(id="stem_selection"),)
+DEFAULT_STRUCT_IDS = tuple(get_struct_id(struct) for struct in DEFAULT_STRUCTS)
+
 """
 ## Config serving functions
 """
+
+
+def build_registry_with_defaults() -> StructRegistryType:
+    struct_registry = {}
+    for struct in DEFAULT_STRUCTS:
+        struct_registry.setdefault(
+            resolve_struct_name_from_instance(struct),
+            {},
+        )[struct.id] = struct
+    return struct_registry
 
 
 def read_configs_flat() -> tuple[
@@ -61,7 +74,7 @@ def read_configs_flat() -> tuple[
     MtimeGraphType,
     list[Diagnostic],
 ]:
-    struct_registry: StructRegistryType = {}
+    struct_registry: StructRegistryType = build_registry_with_defaults()
     sourcefile_graph: SourcefileGraphType = {}
     mtime_graph: MtimeGraphType = {}
     diagnostic_errors: list[Diagnostic] = []
@@ -115,6 +128,8 @@ def walk_all_configs(
     parent_ids_and_structs = list(iter_registry(struct_registry))
     dependency_graph: DependencyGraphType = {}
     for struct_id, struct in parent_ids_and_structs:
+        if struct_id in DEFAULT_STRUCT_IDS:
+            continue
         try:
             mtime = mtime_graph[struct_id]
             source_path = sourcefile_graph[struct_id]
@@ -243,8 +258,6 @@ def walk_config(
         )
     upstream.append(struct)
     downstream = resolve_downstream(struct)
-    # if type(struct) is ParadigmFilter and stage == "validate_relations":
-    # breakpoint()
     children: list[msgspec.Struct] = []
     for child_struct in downstream:
         children.append(child_struct)

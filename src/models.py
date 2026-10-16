@@ -9,12 +9,14 @@ is comprised of structs for data objects defined by the file
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from typing import Annotated, Iterable, Literal, NamedTuple
 
 import msgspec
 import pynini
 
 from src.diagnostics import Diagnostic, build_diagnostic_error
+from src.grammar.fst_utils import serialize_feature_str, stringify_features
 
 """
 Shared models
@@ -316,7 +318,7 @@ class SuppletionMarker(
     """
 
     form: PatternStr
-    stage: str | None = None
+    stage: Literal["stem_selection"] = "stem_selection"
 
 
 class RuleMarker(
@@ -349,6 +351,7 @@ class PrincipalPartMarker(
     """
 
     principal_part_value: str
+    stage: Literal["stem_selection"] = "stem_selection"
 
 
 Marker = (
@@ -389,6 +392,7 @@ class FeatureMarkerFile(
     id: ObjectId
     data: tuple[FeatureMarker, ...]
     feature: str
+    global_stage: ObjectId | None = None
     inherits: str | None = None
 
 
@@ -406,6 +410,7 @@ class MultiFeatureMarkerFile(
     id: ObjectId
     features: tuple[ObjectId, ...]
     data: tuple[MultiFeatureMarker, ...]
+    global_stage: ObjectId | None = None
     inherits: str | None = None
 
 
@@ -449,16 +454,6 @@ class FeatureCombinationFile(
     data: tuple[FeatureCombination, ...]
 
 
-class ParadigmFilter(msgspec.Struct, kw_only=True, frozen=True):
-    """
-    A filter the selects lexical roots based on whether they possess
-    certain lexical features or whether they match a given regex pattern.
-    """
-
-    lexical_feature_values: dict[str, str] | None = None
-    pattern: PatternStr | None = None
-
-
 class FeatureMarkerReference(
     msgspec.Struct,
     kw_only=True,
@@ -468,7 +463,7 @@ class FeatureMarkerReference(
 ):
     """A reference to a FeatureMarker file that expones the given feature"""
 
-    feature: str
+    inflectional_feature: str
     feature_marker: str
     multifeature_behavior: Literal[
         "multifeature_overrides",
@@ -481,7 +476,7 @@ class FixedFeatureValue(
 ):
     """A single feature value the current feature is fixed to for this paradigm"""
 
-    feature: str
+    inflectional_feature: str
     feature_value: str
 
 
@@ -490,11 +485,64 @@ class MultiFeatureOnly(
 ):
     """Indicates the given feature is only exponed by MultiFeatureMarker files"""
 
-    feature: str
+    inflectional_feature: str
 
 
 InflectionalFeatureSpecification = (
     FeatureMarkerReference | FixedFeatureValue | MultiFeatureOnly
+)
+
+
+class LexicalFeatureMarkerReference(
+    msgspec.Struct,
+    kw_only=True,
+    frozen=True,
+    tag_field="kind",
+    tag="feature_marker_file",
+):
+    """A reference to a FeatureMarker file that expones the given feature"""
+
+    lexical_feature: str
+    feature_marker: str
+    multifeature_behavior: Literal[
+        "multifeature_overrides",
+        "both_marked",
+    ] = "multifeature_overrides"
+
+
+class FixedLexicalFeatureValue(
+    msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="fixed_value"
+):
+    """A single feature value the current feature is fixed to for this paradigm"""
+
+    lexical_feature: str
+    feature_value: str
+
+
+class LexicalMultiFeatureOnly(
+    msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="multi_only"
+):
+    """Indicates the given feature is only exponed by MultiFeatureMarker files"""
+
+    lexical_feature: str
+
+
+class UnrealizedLexicalFeature(
+    msgspec.Struct, kw_only=True, frozen=True, tag_field="kind", tag="unrealized"
+):
+    """
+    (Only applies to lexical features) Indicates the given feature is not associated
+    with any morphological process
+    """
+
+    lexical_feature: str
+
+
+LexicalFeatureSpecification = (
+    LexicalFeatureMarkerReference
+    | FixedLexicalFeatureValue
+    | LexicalMultiFeatureOnly
+    | UnrealizedLexicalFeature
 )
 
 
@@ -525,8 +573,9 @@ class ParadigmFile(
 
     id: ObjectId
     part_of_speech: str
-    feature_markers: tuple[InflectionalFeatureSpecification, ...]
-    filter: ParadigmFilter | None = None
+    inflectional_feature_specs: tuple[InflectionalFeatureSpecification, ...]
+    lexical_feature_specs: tuple[LexicalFeatureSpecification, ...]
+    filter_pattern: PatternStr | None = None
     stage_order: tuple[str, ...] | None = None
     global_markers: tuple[Marker, ...] | None = None
     feature_value_combinations: ObjectId | None = None
@@ -666,6 +715,20 @@ class StructId(NamedTuple):
         return str(self)
 
 
+class Lexeme(NamedTuple):
+    root: str
+    homophone_index: int
+    lexical_features: FeatureSet
+    principal_parts: FeatureSet
+
+
+class InflectedWord(NamedTuple):
+    form: str
+    inflectional_feature: dict[str, str]
+    paradigm_id: str
+    lexeme: Lexeme
+
+
 DependencyGraphType = dict[StructId, set[StructId]]
 StructRegistryType = dict[str, dict[str, msgspec.Struct]]
 SourcefileGraphType = dict[StructId, str]
@@ -691,10 +754,11 @@ class Project(NamedTuple):
     mtime_graph: MtimeGraphType
     diagnostic_errors: tuple[Diagnostic, ...]
     fst_context: FstContext | None = None
+    inflect_tries: dict[str, InflectTrie] | None = None
+    lexical_tries: dict[str, LexicalTrie] | None = None
+    global_marker_map: dict[str, tuple[CompiledMarker]] | None = None
 
 
-# A list of FSTs denoting the morphological operations
-# for a given feature vector and the string value
 class CompiledMarker(NamedTuple):
     """
     A struct containing the interpreted FST for a marker
@@ -703,27 +767,95 @@ class CompiledMarker(NamedTuple):
     """
 
     marker: Marker
-    feature_set: tuple[tuple[str, str], ...]
-    fst: pynini.Fst
+    feature_set: FeatureSet
+    fst_array: tuple[pynini.Fst, ...]
     sourcefile_kind: Literal[
         "FeatureMarkerFile",
         "MultiFeatureMarkerFile",
+        "ParadigmFile",
     ]
     sourcefile_id: ObjectId
 
 
-class FeatureTrie(NamedTuple):
+class FeatureSet(Mapping):
+    # TODO: use this instead of dicts/tuples across codebase
+    def __init__(self, *feature_tuples, **feature_values: str):
+        feature_tuples += tuple(feature_values.items())
+        _data = sorted(feature_tuples, key=lambda t: t[0])
+        self._data = _data
+
+    def __getitem__(self, key):
+        return self._data[key]
+
+    def __iter__(self):
+        return iter(self._data)
+
+    def __len__(self):
+        return len(self._data)
+
+    def __hash__(self):
+        return hash(self.__data__)
+
+    def __repr__(self):
+        return f"<FeatureSet {stringify_features(self._data)}>"
+
+    def __str__(self):
+        return stringify_features(self._data)
+
+    def to_dict(self):
+        return {key: value for key, value in self._data}
+
+    @classmethod
+    def from_str(cls, feature_str: str):
+        return cls(**serialize_feature_str(feature_str))
+
+    def __add__(self, other):
+        if isinstance(other, FeatureSet):
+            other_data = other.to_dict()
+        elif isinstance(other, tuple):
+            if len(other) == 2 and type(other[0]) is str:
+                other_data = {other[0]: other[1]}
+            else:
+                other_data = {key: value for key, value in other}
+        elif isinstance(other, dict):
+            other_data = other
+        else:
+            return NotImplemented
+        new_data = self.to_dict()
+        for key, value in other_data.items():
+            if key in new_data:
+                raise ValueError(f"Cannot overwrite {key} in FeatureSet {self}")
+            new_data[key] = value
+
+        return FeatureSet(**new_data)
+
+
+class InflectTrie(NamedTuple):
     """
     A trie mapping values for the current features to subtrees
-    denoting other features, with None marking leaf nodes.
-
-    After compilation, each node is decorated with an array of
-    `CompiledMarker` objects.
+    denoting other features, with None marking leaf nodes. Each
+    node also bears a list of CompiledMarkers indicating the
+    relevant formatives.
     """
 
     feature_id: str
-    feature_values: dict[str, FeatureTrie | None]
-    markers: tuple[CompiledMarker, ...] | None = None
+    feature_values: dict[str, InflectTrie | None]
+    marker_map: dict[str, tuple[CompiledMarker, ...]] | None = None
+
+
+class LexicalTrie(NamedTuple):
+    """
+    A trie mapping values for the current features to subtrees
+    denoting other features, with None marking leaf nodes. Each
+    node also bears a list of CompiledMarkers indicating the
+    relevant formatives, and a list of dicts indicating relevant
+    lexemes that bear the given set of features.
+    """
+
+    feature_id: str
+    feature_values: dict[str, InflectTrie | None]
+    lexeme_map: dict[str, tuple[dict, ...]]
+    marker_map: dict[str, tuple[CompiledMarker, ...]] | None = None
 
 
 """

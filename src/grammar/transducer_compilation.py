@@ -17,7 +17,7 @@ from src.grammar.acceptor_compilation import (
     word_fsa,
 )
 from src.grammar.fst_utils import ReservedSymbols as ReservedSymbols
-from src.grammar.lexicon import load_lexicon_df, stringify_lexemes
+from src.grammar.lexicon import load_lexeme_table, stringify_lexeme_table
 from src.models import (
     Marker,
     ParadigmFile,
@@ -168,14 +168,14 @@ def _compile_principal_part_marker(
     paradigm: ParadigmFile,
     project: Project,
 ) -> pynini.Fst:
-    lexemes = load_lexicon_df(paradigm.part_of_speech)
-    root_lexemes = stringify_lexemes(
-        lexemes=lexemes,
+    lexemes = load_lexeme_table(paradigm.part_of_speech)
+    root_lexemes = stringify_lexeme_table(
+        lexeme_table=lexemes,
         part_of_speech_id=paradigm.part_of_speech,
         project=project,
     )
-    principal_part_strs = stringify_lexemes(
-        lexemes=lexemes,
+    principal_part_strs = stringify_lexeme_table(
+        lexeme_table=lexemes,
         part_of_speech_id=paradigm.part_of_speech,
         project=project,
         lexeme_col=principal_part,
