@@ -196,12 +196,15 @@ def convert_lexeme_table_to_lexemes(
     part_of_speech: PartOfSpeechFile = project.struct_registry["PartOfSpeechFile"][
         part_of_speech_id
     ]
-    principal_part_array = FeatureSet(
-        lexeme_table[list(part_of_speech.principal_parts)].to_dict(orient="records")
+    principal_part_array = lexeme_table[list(part_of_speech.principal_parts)].to_dict(
+        orient="records"
     )
-    lexical_feature_array = FeatureSet(
-        lexeme_table[list(part_of_speech.lexical_features)].to_dict(orient="records")
-    )
+    lexical_feature_array = [
+        FeatureSet(**row)
+        for row in lexeme_table[list(part_of_speech.lexical_features)].to_dict(
+            orient="records"
+        )
+    ]
     lexemes = tuple(
         Lexeme(
             root=root,

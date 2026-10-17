@@ -723,8 +723,8 @@ class Lexeme(NamedTuple):
 
 
 class InflectedWord(NamedTuple):
-    form: str
-    inflectional_feature: dict[str, str]
+    forms: tuple[str, ...]
+    inflectional_feature: FeatureSet
     paradigm_id: str
     lexeme: Lexeme
 
@@ -781,11 +781,25 @@ class FeatureSet(Mapping):
     # TODO: use this instead of dicts/tuples across codebase
     def __init__(self, *feature_tuples, **feature_values: str):
         feature_tuples += tuple(feature_values.items())
+        for feat_tuple in feature_tuples:
+            if len(feat_tuple) != 2:
+                raise ValueError(
+                    f"Feature tuples must have two elements (feature name and value), got {len(feat_tuple)}"
+                )
+            if not type(feat_tuple[0]) is str:
+                raise ValueError(
+                    f"Feature name should be str but got type {type(feat_tuple[0])}"
+                )
+            if not type(feat_tuple[1]) is str:
+                raise ValueError(
+                    f"Feature value should be str but got type {type(feat_tuple[1])}"
+                )
         _data = sorted(feature_tuples, key=lambda t: t[0])
+        _data = tuple(_data)
         self._data = _data
 
     def __getitem__(self, key):
-        return self._data[key]
+        return next(value for curr_key, value in self._data if key == curr_key)
 
     def __iter__(self):
         return iter(self._data)
@@ -794,7 +808,7 @@ class FeatureSet(Mapping):
         return len(self._data)
 
     def __hash__(self):
-        return hash(self.__data__)
+        return hash(self._data)
 
     def __repr__(self):
         return f"<FeatureSet {stringify_features(self._data)}>"
@@ -839,7 +853,7 @@ class InflectTrie(NamedTuple):
     """
 
     feature_id: str
-    feature_values: dict[str, InflectTrie | None]
+    sub_trees: dict[str, InflectTrie | None]
     marker_map: dict[str, tuple[CompiledMarker, ...]] | None = None
 
 
@@ -853,7 +867,7 @@ class LexicalTrie(NamedTuple):
     """
 
     feature_id: str
-    feature_values: dict[str, InflectTrie | None]
+    sub_trees: dict[str, InflectTrie | None]
     lexeme_map: dict[str, tuple[dict, ...]]
     marker_map: dict[str, tuple[CompiledMarker, ...]] | None = None
 

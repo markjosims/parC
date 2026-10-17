@@ -179,6 +179,7 @@ def _compile_principal_part_marker(
         part_of_speech_id=paradigm.part_of_speech,
         project=project,
         lexeme_col=principal_part,
+        fallback_to_root=True,
     )
     return pynini.union(
         *[

@@ -14,7 +14,6 @@ import pandas as pd
 import pynini
 from loguru import logger
 
-from src.diagnostics import build_diagnostic_error
 from src.grammar.acceptor_compilation import (
     build_fst_context_for_project,
     filter_strings_by_pattern,
@@ -22,7 +21,7 @@ from src.grammar.acceptor_compilation import (
     fsm_strings,
     word_fsa,
 )
-from src.grammar.fst_utils import feature_dict_to_tuple, stringify_features
+from src.grammar.fst_utils import stringify_features
 from src.grammar.lexicon import (
     convert_lexeme_table_to_lexemes,
     filter_lexicon_by_features,
@@ -36,15 +35,14 @@ from src.models import (
     FeatureMarkerFile,
     FeatureMarkerReference,
     FeatureSet,
-    FeatureSetType,
     FixedFeatureValue,
     FixedLexicalFeatureValue,
+    InflectedWord,
     InflectionalFeatureSpecification,
     InflectTrie,
     Lexeme,
     LexicalFeatureMarkerReference,
     LexicalFeatureSpecification,
-    LexicalMultiFeatureOnly,
     LexicalTrie,
     MultiFeatureMarkerFile,
     ParadigmFile,
@@ -172,7 +170,7 @@ def cartesian_product_feature_trie(
     if feature_type == "inflectional":
         return InflectTrie(
             feature_id=current_feature.id,
-            feature_values=subtree,
+            sub_trees=subtree,
             marker_map=marker_map,
         )
     lexeme_map = {}
@@ -187,7 +185,7 @@ def cartesian_product_feature_trie(
         lexeme_map[feature_value] = lexemes
     return LexicalTrie(
         feature_id=current_feature.id,
-        feature_set=subtree,
+        sub_trees=subtree,
         marker_map=marker_map,
         lexeme_map=lexeme_map,
     )
@@ -278,7 +276,7 @@ def feature_combo_to_trie(
 
     return InflectTrie(
         feature_id=current_feature.id,
-        feature_values=subtree,
+        sub_trees=subtree,
         marker_map=marker_map,
     )
 
@@ -429,7 +427,7 @@ def get_feature_marker_for_current(
             fst_array=fst_array,
             sourcefile_kind="FeatureMarkerFile",
             sourcefile_id=feature_marker_file.id,
-            feature_set=FeatureSet({current_feature: current_feature_value}),
+            feature_set=FeatureSet((current_feature.id, current_feature_value)),
         )
         current_markers.append(compiled)
     return tuple(current_markers)
@@ -509,7 +507,7 @@ def _filter_out_overridden_markers(
             current_node.feature_id,
             current_feature_value,
         )
-        in marker.feature_set
+        in marker.sub_trees
         for marker in current_markers
         if marker.sourcefile_kind == "MultiFeatureMarkerFile"
     ):
@@ -526,7 +524,7 @@ def _resolve_markers_from_trie(
     feature_set: dict[str, str],
     trie: InflectTrie | LexicalTrie,
     multi_overrides: list[str],
-) -> list[CompiledMarker]:
+) -> tuple[CompiledMarker]:
     current_node = trie
     markers = []
     while current_node is not None:
@@ -539,8 +537,8 @@ def _resolve_markers_from_trie(
                 current_feature_value=current_feature_value,
                 multi_overrides=multi_overrides,
             )
-            current_node = current_node.feature_set[current_feature_value]
-    return markers
+            current_node = current_node.sub_trees[current_feature_value]
+    return tuple(markers)
 
 
 def _flatten_trie(
@@ -548,11 +546,11 @@ def _flatten_trie(
     multi_overrides: list[str],
 ) -> dict[FeatureSet, tuple[CompiledMarker, ...]]:
     if trie is None:
-        return {tuple(): tuple()}
+        return {FeatureSet(): tuple()}
     feature_set_to_markers = {}
     marker_map = trie.marker_map or {}
-    for feature_value, subtree in trie.feature_set.items():
-        current_feature_tuple = FeatureSet({trie.feature_id: feature_value})
+    for feature_value, subtree in trie.sub_trees.items():
+        current_feature_tuple = FeatureSet((trie.feature_id, feature_value))
         current_marker_array: tuple[CompiledMarker, ...] = marker_map.get(feature_value)
 
         flat = _flatten_trie(
@@ -621,7 +619,7 @@ def insert_global_markers_and_sort(
         sorted(
             [
                 compiled_marker
-                for compiled_marker in marker_array + (global_markers or [])
+                for compiled_marker in marker_array + (global_markers or tuple())
             ],
             key=lambda compiled_marker: (
                 stage_order.index(compiled_marker.marker.stage)
@@ -638,7 +636,7 @@ def resolve_markers_for_paradigm(
     paradigm_id: str,
     project: Project,
 ) -> list[tuple[Lexeme, str, tuple[CompiledMarker, ...]]]:
-    lexeme_marker_triples = []
+    inflected_word_list = []
     paradigm: ParadigmFile = project.struct_registry["ParadigmFile"][paradigm_id]
     inflectional_multi_overrides = _get_multi_overrides(
         paradigm=paradigm,
@@ -660,6 +658,14 @@ def resolve_markers_for_paradigm(
     )
     lexical_marker_memo = {}
     for lexeme in lexeme_array:
+        word_input = word_fsa(lexeme.root, project.fst_context) + fsa(
+            # TODO: remove hacky insertion of homophone index with standardized way to stringify root+lexical features
+            stringify_features(
+                lexeme.lexical_features
+                + ("homophone_index", str(lexeme.homophone_index))
+            ),
+            project.fst_context,
+        )
         lexical_markers = lexical_marker_memo.setdefault(
             lexeme.lexical_features,
             _resolve_markers_from_trie(
@@ -672,16 +678,25 @@ def resolve_markers_for_paradigm(
             inflectional_feature_set,
             inflectional_markers,
         ) in inflectional_marker_map.items():
-            current_feature_set = lexeme.lexical_features + inflectional_feature_set
-            inflected_string = stringify_features(current_feature_set) + lexeme.root
             sorted_markers = insert_global_markers_and_sort(
                 marker_array=lexical_markers + inflectional_markers,
                 paradigm=paradigm,
                 project=project,
             )
-            # TODO: use InflectedWord struct?
-            lexeme_marker_triples.append(lexeme, inflected_string, sorted_markers)
-        return lexeme_marker_triples
+            result: pynini.Fst = word_input.copy()
+            for marker in sorted_markers:
+                for fst in marker.fst_array:
+                    result @= fst
+            forms = fsm_strings(result, project.fst_context)
+            curr_word = InflectedWord(
+                forms=tuple(forms),
+                inflectional_feature=inflectional_feature_set,
+                paradigm_id=paradigm_id,
+                lexeme=lexeme,
+            )
+            inflected_word_list.append(curr_word)
+
+        return inflected_word_list
 
 
 def get_roots_for_paradigm(paradigm_id: str, project: Project) -> pd.DataFrame:
@@ -774,5 +789,4 @@ if __name__ == "__main__":
     )
     strings = fsm_strings(result_fst, project.fst_context)
     resolved = resolve_markers_for_paradigm(paradigm_id="verb_a_stem", project=project)
-
     breakpoint()
