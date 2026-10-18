@@ -25,7 +25,6 @@ from loguru import logger
 from pynini.lib import rewrite
 
 from src.constants import MAX_HOMOPHONE_COUNT
-from src.grammar.fst_utils import ReservedSymbols
 from src.grammar.lexicon import HOMOPHONE_INDEX_FEATURE
 from src.models import (
     FstContext,
@@ -33,6 +32,7 @@ from src.models import (
     Node,
     PhonesNode,
     Project,
+    ReservedSymbols,
     StructRegistryType,
     TagsNode,
     Token,
@@ -62,6 +62,8 @@ def build_symbol_table(struct_registry: StructRegistryType) -> pynini.SymbolTabl
     for sym in ReservedSymbols.edit_tags:
         sym_table.add_symbol(sym)
     for sym in ReservedSymbols.bow_eow_tags:
+        sym_table.add_symbol(sym)
+    for sym in ReservedSymbols.feature_brackets:
         sym_table.add_symbol(sym)
     return sym_table
 
@@ -184,7 +186,8 @@ def build_token_map(
 
     for tag in ReservedSymbols.edit_tags:
         tokens["tag"].append(Token(tag, "edit_flag"))
-
+    for tag in ReservedSymbols.feature_brackets:
+        tokens["tag"].append(Token(tag, "tag"))
     for sym in (
         ReservedSymbols.affix_boundary,
         ReservedSymbols.clitic_boundary,

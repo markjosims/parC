@@ -14,10 +14,8 @@ from src.grammar.acceptor_compilation import (
     FstContext,
     build_fst_context_for_project,
     fsa,
-    word_fsa,
 )
-from src.grammar.fst_utils import ReservedSymbols as ReservedSymbols
-from src.grammar.lexicon import load_lexeme_table, stringify_lexeme_table
+from src.grammar.lexicon import convert_lexeme_table_to_lexemes, load_lexeme_table
 from src.models import (
     Marker,
     ParadigmFile,
@@ -25,6 +23,7 @@ from src.models import (
     PrincipalPartMarker,
     Project,
     ReplaceMarker,
+    ReservedSymbols,
     Rule,
     RuleMarker,
     RuleSequence,
@@ -148,7 +147,12 @@ def _compile_suppletion_marker(form: str, fst_context: FstContext) -> pynini.Fst
         sigma_star,
         fsa(form, fst_context),
     )
-    return pynini.cdrewrite(tau, "", "", sigma_star)
+    return pynini.cdrewrite(
+        tau=tau,
+        l=ReservedSymbols.bow,
+        r=ReservedSymbols.eow,
+        sigma_star=sigma_star,
+    )
 
 
 def _compile_replace_marker(
@@ -168,26 +172,27 @@ def _compile_principal_part_marker(
     paradigm: ParadigmFile,
     project: Project,
 ) -> pynini.Fst:
-    lexemes = load_lexeme_table(paradigm.part_of_speech)
-    root_lexemes = stringify_lexeme_table(
-        lexeme_table=lexemes,
+    lexeme_table = load_lexeme_table(paradigm.part_of_speech)
+    lexemes = convert_lexeme_table_to_lexemes(
+        lexeme_table=lexeme_table,
         part_of_speech_id=paradigm.part_of_speech,
         project=project,
     )
-    principal_part_strs = stringify_lexeme_table(
-        lexeme_table=lexemes,
-        part_of_speech_id=paradigm.part_of_speech,
-        project=project,
-        lexeme_col=principal_part,
-        fallback_to_root=True,
-    )
+    root_strs = [lexeme.lexeme_string for lexeme in lexemes]
+    principal_part_strs = [
+        lexeme.principal_part_string(principal_part=principal_part)
+        for lexeme in lexemes
+    ]
     return pynini.union(
         *[
             pynini.cross(
                 fsa(root, project.fst_context),
                 fsa(part, project.fst_context),
             )
-            for root, part in zip(root_lexemes.tolist(), principal_part_strs.tolist())
+            for root, part in zip(
+                root_strs,
+                principal_part_strs,
+            )
         ]
     ).optimize()
 

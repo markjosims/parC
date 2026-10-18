@@ -12,7 +12,6 @@ from typing import Literal, Sequence
 import msgspec
 import pandas as pd
 import pynini
-from loguru import logger
 
 from src.grammar.acceptor_compilation import (
     build_fst_context_for_project,
@@ -658,13 +657,9 @@ def resolve_markers_for_paradigm(
     )
     lexical_marker_memo = {}
     for lexeme in lexeme_array:
-        word_input = word_fsa(lexeme.root, project.fst_context) + fsa(
-            # TODO: remove hacky insertion of homophone index with standardized way to stringify root+lexical features
-            stringify_features(
-                lexeme.lexical_features
-                + ("homophone_index", str(lexeme.homophone_index))
-            ),
-            project.fst_context,
+        word_input = fsa(
+            pattern_str=lexeme.lexeme_string,
+            fst_context=project.fst_context,
         )
         lexical_markers = lexical_marker_memo.setdefault(
             lexeme.lexical_features,
@@ -690,7 +685,7 @@ def resolve_markers_for_paradigm(
             forms = fsm_strings(result, project.fst_context)
             curr_word = InflectedWord(
                 forms=tuple(forms),
-                inflectional_feature=inflectional_feature_set,
+                inflectional_features=inflectional_feature_set,
                 paradigm_id=paradigm_id,
                 lexeme=lexeme,
             )
@@ -746,7 +741,7 @@ def inflect_lexeme(
         project=project,
     )
     word_input = word_fsa(
-        word_str=lexeme.root,
+        word_str=lexeme.lexeme_string,
         fst_context=project.fst_context,
     )
     result: pynini.Fst = word_input

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Annotated, Iterable, Literal, NamedTuple
 
 import msgspec
@@ -704,6 +705,73 @@ YAML config objects.
 """
 
 
+class ReservedSymbols:
+    bow = "[BOW]"
+    eow = "[EOW]"
+    insert = "[INSERT]"
+    substitute = "[SUBSTITUTE]"
+    delete = "[DELETE]"
+
+    lexical_feature_start_tag = "[START_LEX_FEAT]"
+    lexical_feature_end_tag = "[END_LEX_FEAT]"
+
+    inflectional_feature_start_tag = "[START_INFLECT_FEAT]"
+    inflectional_feature_end_tag = "[END_INFLECT_FEAT]"
+
+    word_edge = "#"
+    phone_ref = "<Phone>"
+    flag_ref = "<tag>"
+    sigma_ref = "<Sigma>"
+    dot = "."
+    epsilon_ref = "<Empty>"
+    boundary_ref = "<Boundary>"
+
+    affix_boundary = "-"
+    clitic_boundary = "="
+    periphrasis_break = "_"
+
+    star = "*"
+    plus = "+"
+    optional = "?"
+    union = "|"
+    caret = "^"
+    left_paren = "("
+    right_paren = ")"
+    # curly braces indicate union of tokens, e.g. {A B} matches either A or B
+    # similar to square brackets in regex
+    left_brace = "{"
+    right_brace = "}"
+
+    left_delimiters = (left_paren, left_brace)
+    right_delimiters = (right_paren, right_brace)
+    unary_operators = (star, plus, optional)
+    pipe_operator = union  # (for now) pipe operator is only binary operator
+    caret_operator = caret  # for negation in braced expressions
+    reserved_refs = (phone_ref, flag_ref, epsilon_ref, dot, sigma_ref, boundary_ref)
+    bow_eow_tags = (bow, eow)
+    edit_tags = (insert, substitute, delete)
+    feature_brackets = (
+        lexical_feature_start_tag,
+        lexical_feature_end_tag,
+        inflectional_feature_start_tag,
+        inflectional_feature_end_tag,
+    )
+    boundary_symbols = (affix_boundary, clitic_boundary, periphrasis_break)
+
+    reserved_symbols = (
+        left_delimiters
+        + right_delimiters
+        + unary_operators
+        + (pipe_operator, caret_operator)
+        + reserved_refs
+        + bow_eow_tags
+        + edit_tags
+        + boundary_symbols
+        + (word_edge,)
+        + feature_brackets
+    )
+
+
 class StructId(NamedTuple):
     id: str
     kind: str
@@ -715,25 +783,82 @@ class StructId(NamedTuple):
         return str(self)
 
 
-class Lexeme(NamedTuple):
+@dataclass
+class Lexeme:
     root: str
     homophone_index: int
     lexical_features: FeatureSet
-    principal_parts: FeatureSet
+    principal_parts: dict[str, str]
+
+    def _tagged_string(
+        self,
+        root: str,
+        feature_set: FeatureSet,
+    ) -> str:
+        tagged_string = (
+            ReservedSymbols.lexical_feature_start_tag
+            + str(feature_set)
+            + ReservedSymbols.lexical_feature_end_tag
+            + ReservedSymbols.bow
+            + root
+            + ReservedSymbols.eow
+        )
+        return tagged_string
+
+    @property
+    def lexeme_string(self) -> str:
+        lexical_feature_tags = self.lexical_features + {
+            "homophone_index": self.homophone_index
+        }
+        return self._tagged_string(
+            root=self.root,
+            feature_set=lexical_feature_tags,
+        )
+
+    def principal_part_string(
+        self,
+        principal_part: str,
+        fallback_to_root: bool = True,
+    ) -> str:
+        principal_part_str = self.principal_parts[principal_part]
+        if not principal_part_str and fallback_to_root:
+            principal_part_str = self.root
+        elif not principal_part_str:
+            raise build_diagnostic_error(
+                message=f"Requested principal part {principal_part} for lexeme {self.root} when none is present and {fallback_to_root=}",
+            )
+        lexical_feature_tags = self.lexical_features + {
+            "homophone_index": self.homophone_index
+        }
+
+        return self._tagged_string(
+            feature_set=lexical_feature_tags,
+            root=principal_part_str,
+        )
 
 
-class InflectedWord(NamedTuple):
+@dataclass
+class InflectedWord:
     forms: tuple[str, ...]
-    inflectional_feature: FeatureSet
+    inflectional_features: FeatureSet
     paradigm_id: str
     lexeme: Lexeme
+
+    @property
+    def tagged_root(self) -> str:
+        tagged_root = self.lexeme.lexeme_string.replace(
+            ReservedSymbols.bow,
+            ReservedSymbols.inflectional_feature_start_tag
+            + str(self.inflectional_features)
+            + ReservedSymbols.inflectional_feature_end_tag,
+        )
+        return tagged_root
 
 
 DependencyGraphType = dict[StructId, set[StructId]]
 StructRegistryType = dict[str, dict[str, msgspec.Struct]]
 SourcefileGraphType = dict[StructId, str]
 MtimeGraphType = dict[StructId, float]
-StructRegistryType = dict[StructId, msgspec.Struct]
 
 
 class FstContext(NamedTuple):
@@ -778,7 +903,6 @@ class CompiledMarker(NamedTuple):
 
 
 class FeatureSet(Mapping):
-    # TODO: use this instead of dicts/tuples across codebase
     def __init__(self, *feature_tuples, **feature_values: str):
         feature_tuples += tuple(feature_values.items())
         for feat_tuple in feature_tuples:
@@ -790,11 +914,16 @@ class FeatureSet(Mapping):
                 raise ValueError(
                     f"Feature name should be str but got type {type(feat_tuple[0])}"
                 )
-            if not type(feat_tuple[1]) is str:
+            if not isinstance(feat_tuple[1], (str, int)):
                 raise ValueError(
-                    f"Feature value should be str but got type {type(feat_tuple[1])}"
+                    f"Feature value should be str or int but got type {type(feat_tuple[1])}"
                 )
+
+        # sort by feature name
         _data = sorted(feature_tuples, key=lambda t: t[0])
+        # cast any integer values to str
+        _data = ((t[0], str(t[1])) for t in _data)
+        # freeze as tuple for hashing purposes
         _data = tuple(_data)
         self._data = _data
 

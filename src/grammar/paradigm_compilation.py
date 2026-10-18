@@ -19,18 +19,14 @@ from pynini.lib import pynutil
 
 from src.constants import get_yaml_dir
 from src.grammar.acceptor_compilation import (
-    filter_strings_by_pattern,
     fsa,
     fsm_strings,
     fsm_strings_and_weights,
     word_fsa,
 )
-from src.grammar.fst_utils import ReservedSymbols as ReservedSymbols
 from src.grammar.fst_utils import stringify_features
-from src.grammar.lexicon import filter_lexicon_by_features
-from src.grammar.marker_resolution import inflect_lexeme
-from src.lexicon import get_gloss_for_root, get_roots, get_roots_with_lexical_features
-from src.models import FixedLexicalFeatureValue, ParadigmFile, Project
+from src.lexicon import get_gloss_for_root
+from src.models import ParadigmFile, Project, ReservedSymbols
 from src.yaml.cache import is_fst_cache_valid, load_fst, observed_cache, save_fst
 
 EDIT_BOUND = 5

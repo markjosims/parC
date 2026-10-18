@@ -7,7 +7,6 @@ import pandas as pd
 from frozendict import frozendict
 
 from src.constants import MAX_HOMOPHONE_COUNT
-from src.grammar.fst_utils import pad_with_word_edge_tags, stringify_features
 from src.models import FeatureSet, Lexeme, PartOfSpeechFile, Project
 from src.yaml.yaml_server import kind_dir
 
@@ -92,45 +91,6 @@ def get_principal_part_for_all_roots(
     return df[principal_part].tolist()
 
 
-def _stringify_lexeme_row(
-    row: dict[str, str | int] or pd.Series,
-    feature_cols: list[str],
-    lexeme_col: str = "root",
-    fallback_to_root: bool = True,
-) -> str:
-    features = {k: v for k, v in row.items() if k in feature_cols}
-    stem = row[lexeme_col]
-    if not stem and fallback_to_root:
-        stem = row["root"]
-    padded_stem = pad_with_word_edge_tags(stem)
-    lexeme_str = f"{padded_stem}{stringify_features(features)}"
-    return lexeme_str
-
-
-def stringify_lexeme_table(
-    lexeme_table: pd.DataFrame | list[dict[str, str | int]],
-    part_of_speech_id: str,
-    project: Project,
-    lexeme_col: str = "root",
-    fallback_to_root: bool = True,
-) -> pd.Series:
-    if type(lexeme_table) is not pd.DataFrame:
-        lexeme_table = pd.DataFrame(lexeme_table)
-    part_of_speech = project.struct_registry["PartOfSpeechFile"][part_of_speech_id]
-    lexical_features = part_of_speech.lexical_features
-    lexical_features += (HOMOPHONE_INDEX_FEATURE,)
-    lexeme_strs = lexeme_table.apply(
-        lambda row: _stringify_lexeme_row(
-            row,
-            feature_cols=lexical_features,
-            lexeme_col=lexeme_col,
-            fallback_to_root=fallback_to_root,
-        ),
-        axis=1,
-    )
-    return lexeme_strs
-
-
 def retrieve_lexeme_row(
     root: str,
     lexeme_table: pd.DataFrame | list[dict[str, str | int]],
@@ -178,7 +138,7 @@ def retrieve_lexeme(
         root=root,
         homophone_index=homophone_index or 0,
         principal_parts=principal_parts,
-        lexical_features=lexical_features,
+        lexical_features=FeatureSet(**lexical_features),
     )
 
 
