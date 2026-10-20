@@ -33,7 +33,7 @@ from src.models import (
     SuppletionMarker,
     TransitiveRelation,
 )
-from src.yaml.yaml_server import kind_dir, load_project
+from src.yaml.yaml_server import load_project_structs
 
 """
 ## Rule compilation
@@ -178,12 +178,12 @@ def _compile_principal_part_marker(
         part_of_speech_id=paradigm.part_of_speech,
         project=project,
     )
-    root_strs = [lexeme.lexeme_string for lexeme in lexemes]
+    root_strs = [lexeme.root for lexeme in lexemes]
     principal_part_strs = [
         lexeme.principal_part_string(principal_part=principal_part)
         for lexeme in lexemes
     ]
-    return pynini.union(
+    tau = pynini.union(
         *[
             pynini.cross(
                 fsa(root, project.fst_context),
@@ -195,6 +195,14 @@ def _compile_principal_part_marker(
             )
         ]
     ).optimize()
+
+    sigma_star = project.fst_context.special_fsas["sigma_star"]
+    return pynini.cdrewrite(
+        tau=tau,
+        l=project.fst_context.special_fsas["bow"],
+        r=project.fst_context.special_fsas["eow"],
+        sigma_star=sigma_star,
+    )
 
 
 def compile_marker(
@@ -226,8 +234,17 @@ def compile_marker(
     return (fst,)
 
 
+def strip_special_symbols_rule(fst_context: FstContext) -> pynini.Fst:
+    return pynini.cdrewrite(
+        tau=pynini.cross(fst_context.special_fsas["special_star"], ""),
+        l="",
+        r="",
+        sigma_star=fst_context.special_fsas["sigma_star"],
+    )
+
+
 if __name__ == "__main__":
-    project = load_project()
+    project = load_project_structs()
     project = build_fst_context_for_project(project)
     project = compile_rules_for_project(project)
     breakpoint()

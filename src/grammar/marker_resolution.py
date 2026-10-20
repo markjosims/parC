@@ -18,9 +18,7 @@ from src.grammar.acceptor_compilation import (
     filter_strings_by_pattern,
     fsa,
     fsm_strings,
-    word_fsa,
 )
-from src.grammar.fst_utils import stringify_features
 from src.grammar.lexicon import (
     convert_lexeme_table_to_lexemes,
     filter_lexicon_by_features,
@@ -31,6 +29,7 @@ from src.models import (
     CompiledMarker,
     Feature,
     FeatureCombination,
+    FeatureMarker,
     FeatureMarkerFile,
     FeatureMarkerReference,
     FeatureSet,
@@ -39,21 +38,23 @@ from src.models import (
     InflectedWord,
     InflectionalFeatureSpecification,
     InflectTrie,
-    Lexeme,
+    IntermediateInflectedForm,
     LexicalFeatureMarkerReference,
     LexicalFeatureSpecification,
     LexicalTrie,
+    MultiFeatureMarker,
     MultiFeatureMarkerFile,
     ParadigmFile,
     PartOfSpeechFile,
     Project,
     UnrealizedLexicalFeature,
 )
-from src.yaml.yaml_server import load_project
+from src.yaml.yaml_server import load_project_structs
 
 
 def get_paradigm_tries(
-    paradigm_id: str, project: Project
+    paradigm_id: str,
+    project: Project,
 ) -> tuple[InflectTrie, LexicalTrie]:
     paradigm: ParadigmFile = project.struct_registry["ParadigmFile"][paradigm_id]
     part_of_speech: PartOfSpeechFile = project.struct_registry["PartOfSpeechFile"][
@@ -147,6 +148,7 @@ def cartesian_product_feature_trie(
     )
     marker_map = compile_markers_for_node(
         paradigm=paradigm,
+        project=project,
         current_feature=current_feature,
         current_feature_spec=current_feature_spec,
         exponed_features=exponed_features,
@@ -214,6 +216,7 @@ def feature_combo_to_trie(
     if combo_value == "*":
         marker_map = compile_markers_for_node(
             paradigm=paradigm,
+            project=project,
             current_feature=current_feature,
             current_feature_spec=current_feature_spec,
             exponed_features=exponed_features,
@@ -235,6 +238,7 @@ def feature_combo_to_trie(
     elif combo_value == "undefined":
         marker_map = compile_markers_for_node(
             paradigm=paradigm,
+            project=project,
             current_feature=current_feature,
             current_feature_spec=current_feature_spec,
             exponed_features=exponed_features,
@@ -254,6 +258,7 @@ def feature_combo_to_trie(
     else:  # combo_value is a tuple of feature value strs
         marker_map = compile_markers_for_node(
             paradigm=paradigm,
+            project=project,
             current_feature=current_feature,
             current_feature_spec=current_feature_spec,
             exponed_features=exponed_features,
@@ -288,6 +293,7 @@ def compile_markers_for_node(
     paradigm: ParadigmFile,
     feature_marker_files: list[FeatureMarkerFile],
     multi_feature_marker_files: list[MultiFeatureMarkerFile],
+    project: Project,
     allowed_features: list[str] | None = None,
 ):
     """
@@ -352,6 +358,49 @@ def compile_markers_for_node(
     return marker_map
 
 
+def resolve_multifeature_markers_from_parents(
+    markerfile: MultiFeatureMarkerFile,
+    project: Project,
+) -> tuple[MultiFeatureMarker]:
+    if markerfile.inherits is None:
+        return markerfile.data
+
+    parent_file = project.struct_registry["MultiFeatureMarkerFile"][markerfile.inherits]
+    parent_markers = resolve_multifeature_markers_from_parents(
+        markerfile=parent_file,
+        project=project,
+    )
+    current_feature_sets = [
+        FeatureSet(**marker.feature_values) for marker in markerfile.data
+    ]
+    joined = list(markerfile.data)
+    for parent_marker in parent_markers:
+        marker_features = FeatureSet(**parent_marker.feature_values)
+        if not marker_features in current_feature_sets:
+            joined.append(parent_marker)
+    return tuple(joined)
+
+
+def resolve_feature_markers_from_parents(
+    markerfile: FeatureMarkerFile,
+    project: Project,
+) -> tuple[FeatureMarker]:
+    if markerfile.inherits is None:
+        return markerfile.data
+
+    parent_file = project.struct_registry["FeatureMarkerFile"][markerfile.inherits]
+    parent_markers = resolve_feature_markers_from_parents(
+        markerfile=parent_file,
+        project=project,
+    )
+    current_feature_values = [marker.feature_value for marker in markerfile.data]
+    joined = list(markerfile.data)
+    for parent_marker in parent_markers:
+        if not parent_marker.feature_value in current_feature_values:
+            joined.append(parent_marker)
+    return tuple(joined)
+
+
 def get_multifeature_markers_for_current(
     current_feature: Feature,
     current_feature_value: str,
@@ -374,7 +423,8 @@ def get_multifeature_markers_for_current(
             continue
         # now check if a particular marker within the file matches the
         # specific feature values at the current node
-        for multifeat_marker in marker_file.data:
+        markers = resolve_multifeature_markers_from_parents(marker_file, project)
+        for multifeat_marker in markers:
             if (
                 not multifeat_marker.feature_values.get(current_feature.id, None)
                 == current_feature_value
@@ -411,12 +461,18 @@ def get_feature_marker_for_current(
     feature_marker_file = next(
         file for file in feature_marker_files if file.feature == current_feature.id
     )
+
+    feature_markers = resolve_feature_markers_from_parents(
+        feature_marker_file,
+        project,
+    )
     feature_marker = next(
         feature_marker
-        for feature_marker in feature_marker_file.data
+        for feature_marker in feature_markers
         if feature_marker.feature_value == current_feature_value
     )
     current_markers = []
+
     for marker in feature_marker.markers:
         if not marker.stage and feature_marker_file.global_stage:
             marker = msgspec.structs.replace(stage=feature_marker_file.global_stage)
@@ -536,12 +592,13 @@ def _resolve_markers_from_trie(
                 current_feature_value=current_feature_value,
                 multi_overrides=multi_overrides,
             )
+            markers.extend(current_markers)
             current_node = current_node.sub_trees[current_feature_value]
     return tuple(markers)
 
 
 def _flatten_trie(
-    trie: InflectTrie | LexicalTrie,
+    trie: InflectTrie | LexicalTrie | None,
     multi_overrides: list[str],
 ) -> dict[FeatureSet, tuple[CompiledMarker, ...]]:
     if trie is None:
@@ -568,6 +625,21 @@ def _flatten_trie(
 
             feature_set_to_markers[new_feature_set] = new_marker_array
     return feature_set_to_markers
+
+
+def get_trie_feature_space(
+    trie: InflectTrie | LexicalTrie | None,
+) -> set[FeatureSet]:
+    if trie is None:
+        return set(tuple())
+    feature_space = set()
+    for feature_value, subtree in trie.sub_trees.items():
+        current_feature_tuple = FeatureSet((trie.feature_id, feature_value))
+        flat = get_trie_feature_space(trie=subtree)
+        for child_feature_set in flat:
+            new_feature_set = child_feature_set + current_feature_tuple
+            feature_space.add(new_feature_set)
+    return feature_space
 
 
 def resolve_markers_for_feature_set(
@@ -623,6 +695,7 @@ def insert_global_markers_and_sort(
             key=lambda compiled_marker: (
                 stage_order.index(compiled_marker.marker.stage)
                 if compiled_marker.marker.stage
+                and compiled_marker.marker.stage in stage_order
                 else float("inf")
             ),
         )
@@ -631,10 +704,10 @@ def insert_global_markers_and_sort(
     return sorted_markers
 
 
-def resolve_markers_for_paradigm(
+def resolve_inflected_words(
     paradigm_id: str,
     project: Project,
-) -> list[tuple[Lexeme, str, tuple[CompiledMarker, ...]]]:
+) -> list[InflectedWord]:
     inflected_word_list = []
     paradigm: ParadigmFile = project.struct_registry["ParadigmFile"][paradigm_id]
     inflectional_multi_overrides = _get_multi_overrides(
@@ -657,10 +730,6 @@ def resolve_markers_for_paradigm(
     )
     lexical_marker_memo = {}
     for lexeme in lexeme_array:
-        word_input = fsa(
-            pattern_str=lexeme.lexeme_string,
-            fst_context=project.fst_context,
-        )
         lexical_markers = lexical_marker_memo.setdefault(
             lexeme.lexical_features,
             _resolve_markers_from_trie(
@@ -673,25 +742,98 @@ def resolve_markers_for_paradigm(
             inflectional_feature_set,
             inflectional_markers,
         ) in inflectional_marker_map.items():
+            curr_word = InflectedWord(
+                forms=None,
+                inflectional_features=inflectional_feature_set,
+                paradigm_id=paradigm_id,
+                lexeme=lexeme,
+            )
+
             sorted_markers = insert_global_markers_and_sort(
                 marker_array=lexical_markers + inflectional_markers,
                 paradigm=paradigm,
                 project=project,
             )
-            result: pynini.Fst = word_input.copy()
+            result: pynini.Fst = fsa(
+                pattern_str=curr_word.tagged_root,
+                fst_context=project.fst_context,
+            )
+            intermediate: list[IntermediateInflectedForm] = []
             for marker in sorted_markers:
                 for fst in marker.fst_array:
                     result @= fst
-            forms = fsm_strings(result, project.fst_context)
-            curr_word = InflectedWord(
-                forms=tuple(forms),
-                inflectional_features=inflectional_feature_set,
-                paradigm_id=paradigm_id,
-                lexeme=lexeme,
+                intermediate_forms = fsm_strings(
+                    result,
+                    project.fst_context,
+                )
+                intermediate.append(
+                    IntermediateInflectedForm(
+                        compiled_marker=marker,
+                        forms=intermediate_forms,
+                    )
+                )
+            forms = intermediate_forms
+            curr_word = curr_word.update_word(
+                forms=forms,
+                intermediate=intermediate,
             )
             inflected_word_list.append(curr_word)
 
-        return inflected_word_list
+    return inflected_word_list
+
+
+def inflect_lexeme(
+    paradigm_id: str,
+    root: str,
+    project: Project,
+    inflectional_features: FeatureSet,
+    homophone_index: int = 0,
+) -> InflectedWord:
+    paradigm: ParadigmFile = project.struct_registry["ParadigmFile"][paradigm_id]
+    lexeme = retrieve_lexeme(
+        root=root,
+        part_of_speech_id=paradigm.part_of_speech,
+        project=project,
+        homophone_index=homophone_index,
+    )
+    markers = resolve_markers_for_feature_set(
+        inflectional_features=inflectional_features,
+        lexical_features=lexeme.lexical_features,
+        paradigm_id=paradigm_id,
+        project=project,
+    )
+    inflected_word = InflectedWord(
+        forms=None,
+        inflectional_features=inflectional_features,
+        paradigm_id=paradigm_id,
+        lexeme=lexeme,
+    )
+    result: pynini.Fst = fsa(
+        pattern_str=inflected_word.tagged_root,
+        fst_context=project.fst_context,
+    )
+    intermediate: list[IntermediateInflectedForm] = []
+    for marker in markers:
+        for fst in marker.fst_array:
+            result @= fst
+        intermediate_forms = fsm_strings(
+            result,
+            project.fst_context,
+            strip_all_tags=True,
+        )
+        intermediate.append(
+            IntermediateInflectedForm(
+                compiled_marker=marker,
+                forms=intermediate_forms,
+            )
+        )
+    forms = intermediate_forms
+    inflected_word = inflected_word.update_word(
+        forms=forms,
+        intermediate=intermediate,
+    )
+
+    return inflected_word
 
 
 def get_roots_for_paradigm(paradigm_id: str, project: Project) -> pd.DataFrame:
@@ -727,32 +869,8 @@ def get_roots_for_paradigm(paradigm_id: str, project: Project) -> pd.DataFrame:
     return lexeme_table
 
 
-def inflect_lexeme(
-    lexeme: Lexeme,
-    paradigm_id: str,
-    project: Project,
-    homophone_index: int | None = None,
-    **inflectional_features: str,
-) -> pynini.Fst:
-    markers = resolve_markers_for_feature_set(
-        inflectional_features=inflectional_features,
-        lexical_features=lexeme.lexical_features,
-        paradigm_id=paradigm_id,
-        project=project,
-    )
-    word_input = word_fsa(
-        word_str=lexeme.lexeme_string,
-        fst_context=project.fst_context,
-    )
-    result: pynini.Fst = word_input
-    for marker in markers:
-        for fst in marker.fst_array:
-            result @= fst
-    return result
-
-
 if __name__ == "__main__":
-    project = load_project()
+    project = load_project_structs()
     project = build_fst_context_for_project(project)
     project = compile_rules_for_project(project)
     project = build_all_paradigm_tries(project)
@@ -772,16 +890,6 @@ if __name__ == "__main__":
         part_of_speech_id="verb",
         project=project,
     )
-    result_fst = inflect_lexeme(
-        lexeme=lexeme,
-        paradigm_id="verb_a_stem",
-        project=project,
-        **{
-            "tense": "present",
-            "mood": "indicative",
-            "person_number": "2sg",
-        },
-    )
-    strings = fsm_strings(result_fst, project.fst_context)
-    resolved = resolve_markers_for_paradigm(paradigm_id="verb_a_stem", project=project)
+    resolved = resolve_inflected_words(paradigm_id="verb_a_stem", project=project)
+    form2resolved = {word.forms: word for word in resolved}
     breakpoint()

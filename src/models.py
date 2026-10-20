@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Annotated, Iterable, Literal, NamedTuple
+from typing import Annotated, Iterable, Literal, NamedTuple, Sequence
 
 import msgspec
 import pynini
@@ -582,8 +582,6 @@ class ParadigmFile(
     feature_value_combinations: ObjectId | None = None
     multifeature_markers: tuple[str, ...] | None = None
 
-    inherits: str | None = None
-
 
 """
 ## Lexicon modules
@@ -783,9 +781,14 @@ class StructId(NamedTuple):
         return str(self)
 
 
+HOMOPHONE_INDEX_FEATURE = "homophone_index"
+PARADIGM_TAG = "paradigm"
+
+
 @dataclass
 class Lexeme:
     root: str
+    gloss: str
     homophone_index: int
     lexical_features: FeatureSet
     principal_parts: dict[str, str]
@@ -827,22 +830,46 @@ class Lexeme:
             raise build_diagnostic_error(
                 message=f"Requested principal part {principal_part} for lexeme {self.root} when none is present and {fallback_to_root=}",
             )
-        lexical_feature_tags = self.lexical_features + {
-            "homophone_index": self.homophone_index
-        }
+        return principal_part_str
 
-        return self._tagged_string(
-            feature_set=lexical_feature_tags,
-            root=principal_part_str,
-        )
+
+class IntermediateInflectedForm(NamedTuple):
+    compiled_marker: CompiledMarker
+    forms: tuple[str, ...]
+
+
+def _escape_tag(tag: str) -> str:
+    return tag.replace("[", r"\[").replace("]", r"\]")
+
+
+_PARADIGM_TAG_GROUP = _escape_tag(f"[{PARADIGM_TAG}=(?P<paradigm_id>.*)]")
+
+INFLECTED_WORD_RE = re.compile(
+    "^"
+    + _PARADIGM_TAG_GROUP
+    + _escape_tag(ReservedSymbols.lexical_feature_start_tag)
+    + r"(?P<lexical_features>.*)"
+    + _escape_tag(ReservedSymbols.lexical_feature_end_tag)
+    + _escape_tag(ReservedSymbols.inflectional_feature_start_tag)
+    + r"(?P<inflectional_features>.*)"
+    + _escape_tag(ReservedSymbols.inflectional_feature_end_tag)
+    + _escape_tag(ReservedSymbols.bow)
+    + r"(?P<root>.*)"
+    + _escape_tag(ReservedSymbols.eow)
+    + "$"
+)
+
+FEATURE_STRING_RE = re.compile(r"\[(?P<feature>[^\]]+)=(?P<value>[^\]]+)\]")
 
 
 @dataclass
 class InflectedWord:
-    forms: tuple[str, ...]
     inflectional_features: FeatureSet
     paradigm_id: str
     lexeme: Lexeme
+    forms: tuple[str, ...] | None = None
+    intermediate: tuple[IntermediateInflectedForm, ...] | None = None
+    edit_distance: int | None = None
 
     @property
     def tagged_root(self) -> str:
@@ -850,9 +877,25 @@ class InflectedWord:
             ReservedSymbols.bow,
             ReservedSymbols.inflectional_feature_start_tag
             + str(self.inflectional_features)
-            + ReservedSymbols.inflectional_feature_end_tag,
+            + ReservedSymbols.inflectional_feature_end_tag
+            + ReservedSymbols.bow,
         )
         return tagged_root
+
+    def update_word(
+        self,
+        forms: Sequence[str] | None = None,
+        intermediate: tuple[IntermediateInflectedForm, ...] | None = None,
+        edit_distance: int | None = None,
+    ) -> InflectedWord:
+        return InflectedWord(
+            inflectional_features=self.inflectional_features,
+            paradigm_id=self.paradigm_id,
+            lexeme=self.lexeme,
+            forms=tuple(forms),
+            intermediate=intermediate,
+            edit_distance=edit_distance,
+        )
 
 
 DependencyGraphType = dict[StructId, set[StructId]]
@@ -972,6 +1015,20 @@ class FeatureSet(Mapping):
 
         return FeatureSet(**new_data)
 
+    def __eq__(self, other):
+        if isinstance(other, FeatureSet):
+            other_data = other.to_dict()
+        elif isinstance(other, tuple):
+            if len(other) == 2 and type(other[0]) is str:
+                other_data = {other[0]: other[1]}
+            else:
+                other_data = {key: value for key, value in other}
+        elif isinstance(other, dict):
+            other_data = other
+        else:
+            return NotImplemented
+        return self.to_dict() == other_data
+
 
 class InflectTrie(NamedTuple):
     """
@@ -999,6 +1056,13 @@ class LexicalTrie(NamedTuple):
     sub_trees: dict[str, InflectTrie | None]
     lexeme_map: dict[str, tuple[dict, ...]]
     marker_map: dict[str, tuple[CompiledMarker, ...]] | None = None
+
+
+class CompiledParadigm(NamedTuple):
+    inflect_graph: pynini.Fst
+    parse_graph: pynini.Fst
+    search_lexicon: pynini.Fst
+    search_left_factor: pynini.Fst
 
 
 """

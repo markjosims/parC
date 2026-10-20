@@ -7,10 +7,19 @@ import pandas as pd
 from frozendict import frozendict
 
 from src.constants import MAX_HOMOPHONE_COUNT
-from src.models import FeatureSet, Lexeme, PartOfSpeechFile, Project
+from src.diagnostics import build_diagnostic_error
+from src.models import (
+    FEATURE_STRING_RE,
+    HOMOPHONE_INDEX_FEATURE,
+    INFLECTED_WORD_RE,
+    FeatureSet,
+    InflectedWord,
+    Lexeme,
+    ParadigmFile,
+    PartOfSpeechFile,
+    Project,
+)
 from src.yaml.yaml_server import kind_dir
-
-HOMOPHONE_INDEX_FEATURE = "homophone_index"
 
 
 def get_lexicon_path(part_of_speech_id: str) -> str:
@@ -124,6 +133,7 @@ def retrieve_lexeme(
 ) -> Lexeme:
     lexeme_table = load_lexeme_table(part_of_speech_id=part_of_speech_id)
     lexeme_row = retrieve_lexeme_row(root, lexeme_table, homophone_index)
+    gloss = lexeme_row.gloss
     part_of_speech: PartOfSpeechFile = project.struct_registry["PartOfSpeechFile"][
         part_of_speech_id
     ]
@@ -136,6 +146,7 @@ def retrieve_lexeme(
 
     return Lexeme(
         root=root,
+        gloss=gloss,
         homophone_index=homophone_index or 0,
         principal_parts=principal_parts,
         lexical_features=FeatureSet(**lexical_features),
@@ -151,6 +162,7 @@ def convert_lexeme_table_to_lexemes(
         lexeme_table = pd.DataFrame(lexeme_table)
 
     roots = lexeme_table.root.tolist()
+    glosses = lexeme_table.gloss.tolist()
     homophone_indices = lexeme_table.homophone_index.tolist()
 
     part_of_speech: PartOfSpeechFile = project.struct_registry["PartOfSpeechFile"][
@@ -168,15 +180,48 @@ def convert_lexeme_table_to_lexemes(
     lexemes = tuple(
         Lexeme(
             root=root,
+            gloss=gloss,
             homophone_index=homophone_index,
             principal_parts=principal_parts,
             lexical_features=lexical_features,
         )
-        for root, homophone_index, principal_parts, lexical_features in zip(
+        for root, gloss, homophone_index, principal_parts, lexical_features in zip(
             roots,
+            glosses,
             homophone_indices,
             principal_part_array,
             lexical_feature_array,
         )
     )
     return lexemes
+
+
+def inflected_word_from_string(
+    inflected_string: str,
+    project: Project,
+) -> InflectedWord:
+    match = INFLECTED_WORD_RE.match(inflected_string)
+    paradigm_id = match.group("paradigm_id")
+    lexical_feature_str = match.group("lexical_features")
+    lexical_features = dict(FEATURE_STRING_RE.findall(lexical_feature_str))
+    inflectional_feature_str = match.group("inflectional_features")
+    inflectional_features = dict(FEATURE_STRING_RE.findall(inflectional_feature_str))
+    root = match.group("root")
+    homophone_index = lexical_features.pop(HOMOPHONE_INDEX_FEATURE)
+    paradigm: ParadigmFile = project.struct_registry["ParadigmFile"][paradigm_id]
+    part_of_speech_id = paradigm.part_of_speech
+    lexeme = retrieve_lexeme(
+        root=root,
+        part_of_speech_id=part_of_speech_id,
+        project=project,
+        homophone_index=homophone_index,
+    )
+    if not lexeme.lexical_features == FeatureSet(**lexical_features):
+        raise build_diagnostic_error(
+            message=f"Expected parsed lexical features {FeatureSet(**lexical_features)} to match retrieved {lexeme.lexical_features} for root {root}"
+        )
+    return InflectedWord(
+        paradigm_id=paradigm_id,
+        inflectional_features=FeatureSet(**inflectional_features),
+        lexeme=lexeme,
+    )

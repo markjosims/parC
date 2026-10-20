@@ -29,9 +29,9 @@ inflectional_feature_specs:
   # mood: indicative
 
 # Optional: ordered stages of morphological rule/marker application
-# stage_order:
-#   - stem_change
-#   - suffixation
+stage_order:
+   - vowel_alternation
+   - suffix
 # type para-ord to add order stages!
 
 # Optional: filter to select specific roots from the lexicon

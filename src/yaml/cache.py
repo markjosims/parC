@@ -11,6 +11,10 @@ from src.constants import get_yaml_dir
 CACHE_DIR = os.path.join(get_yaml_dir(), ".cache")
 _SYMS_PATH = os.path.join(CACHE_DIR, "symbol_table.syms")
 
+# TODO: caching logic needs major rework
+# choosing to drop YAML caching for now as the YAML parse+interpret
+# pipeline is quick, caching only needed for FSTs and symbol table
+
 
 def _fst_path(name: str, description: str, fst_kind: str) -> str:
     return os.path.join(CACHE_DIR, name, f"{name}.{fst_kind}.fst")

@@ -12,6 +12,11 @@ Caches:
   special FSAs  → in-memory only                      (inv + feat dirs)
 """
 
+# there's a lot of reduplicated logic here
+# e.g. sometimes the same data is added to the symbol table,
+# special FSA dict and token map separately, when this could
+# be done in one pass
+
 from __future__ import annotations
 
 import re
@@ -25,8 +30,9 @@ from loguru import logger
 from pynini.lib import rewrite
 
 from src.constants import MAX_HOMOPHONE_COUNT
-from src.grammar.lexicon import HOMOPHONE_INDEX_FEATURE
 from src.models import (
+    HOMOPHONE_INDEX_FEATURE,
+    PARADIGM_TAG,
     FstContext,
     NestedNode,
     Node,
@@ -54,6 +60,8 @@ def build_symbol_table(struct_registry: StructRegistryType) -> pynini.SymbolTabl
     for feature in struct_registry["Feature"].values():
         for value in feature.values:
             sym_table.add_symbol(f"[{feature.id}={value}]")
+    for paradigm_id in struct_registry["ParadigmFile"].keys():
+        sym_table.add_symbol(f"[{PARADIGM_TAG}={paradigm_id}]")
     for i in range(MAX_HOMOPHONE_COUNT):
         sym_table.add_symbol(f"[{HOMOPHONE_INDEX_FEATURE}={i}]")
 
@@ -97,6 +105,9 @@ def build_special_fsas(
             tags.append(f"[{feature.id}={value}]")
     for i in range(MAX_HOMOPHONE_COUNT):
         tags.append(f"[{HOMOPHONE_INDEX_FEATURE}={i}]")
+    for paradigm_id in struct_registry["ParadigmFile"].keys():
+        tags.append(f"[{PARADIGM_TAG}={paradigm_id}]")
+
     tag_fsa = (
         pynini.union(*[pynini.accep(t, token_type=sym_table) for t in tags]).optimize()
         if tags
@@ -121,22 +132,46 @@ def build_special_fsas(
         periphrasis_fsa,
     )
 
+    feature_bracket_fsa = pynini.union(
+        *[
+            pynini.accep(t, token_type=sym_table)
+            for t in ReservedSymbols.feature_brackets
+        ]
+    )
+
     bow_fsa = pynini.accep(ReservedSymbols.bow, token_type=sym_table)
     eow_fsa = pynini.accep(ReservedSymbols.eow, token_type=sym_table)
     word_edge_fsa = pynini.union(bow_fsa, eow_fsa)
 
-    sigma = pynini.union(phone_fsa, tag_fsa, boundary_fsa, word_edge_fsa).optimize()
-    sigma_star = sigma.star.optimize()
+    special_symbol = pynini.union(
+        tag_fsa,
+        word_edge_fsa,
+        boundary_fsa,
+        feature_bracket_fsa,
+    ).optimize()
+    special_star = pynini.closure(special_symbol).optimize()
+
+    sigma = pynini.union(
+        phone_fsa,
+        tag_fsa,
+        boundary_fsa,
+        word_edge_fsa,
+        feature_bracket_fsa,
+    ).optimize()
+    sigma_star = pynini.closure(sigma).optimize()
 
     return {
         "phone": phone_fsa,
         "flag": tag_fsa,
         "sigma": sigma,
         "sigma_star": sigma_star,
+        "special": special_symbol,
+        "special_star": special_star,
         "bow": bow_fsa,
         "eow": eow_fsa,
         "word_edge": word_edge_fsa,
         "boundary": boundary_fsa,
+        "feature_bracket": feature_bracket_fsa,
         "affix_boundary": affix_fsa,
         "clitic_boundary": clitic_fsa,
         "periphrasis_break": periphrasis_fsa,
@@ -209,7 +244,8 @@ def build_token_map(
             tokens["tag"].append(Token(f"[{feature.id}={val}]", "tag"))
     for i in range(MAX_HOMOPHONE_COUNT):
         tokens["tag"].append(Token(f"[{HOMOPHONE_INDEX_FEATURE}={i}]", "tag"))
-
+    for paradigm_id in struct_registry["ParadigmFile"].keys():
+        tokens["tag"].append(Token(f"[{PARADIGM_TAG}={paradigm_id}]", "tag"))
     for pattern_id in struct_registry["Pattern"].keys():
         tokens["id"].append(Token(pattern_id, "id"))
 
@@ -687,9 +723,9 @@ def filter_strings_by_pattern(
 
 
 if __name__ == "__main__":
-    from src.yaml.yaml_server import load_project
+    from src.yaml.yaml_server import load_project_structs
 
-    project = load_project()
+    project = load_project_structs()
     project = build_fst_context_for_project(project)
 
     breakpoint()

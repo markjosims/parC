@@ -302,17 +302,21 @@ def kind_dir(kind: str) -> str:
 
 
 def _nested_freeze(obj: object) -> frozendict | object:
-    if type(obj) is list:
+    if isinstance(obj, (list, set)):
         return tuple(_nested_freeze(element) for element in obj)
     elif type(obj) is not dict:
-        return obj
+        try:
+            hash(obj)
+            return obj
+        except Exception as e:
+            raise e
     new_dict = {}
     for key, value in obj.items():
         new_dict[key] = _nested_freeze(value)
     return frozendict(new_dict)
 
 
-def load_project():
+def load_project_structs():
     """
     Reads and walks all config files then checks for cycles.
     """
@@ -347,7 +351,7 @@ def load_project():
 
 
 if __name__ == "__main__":
-    project = load_project()
+    project = load_project_structs()
     for struct_id in registry_ids(project.struct_registry):
         print("Loaded struct:", struct_id)
     for diagnostic in project.diagnostic_errors:
